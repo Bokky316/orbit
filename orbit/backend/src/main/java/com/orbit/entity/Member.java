@@ -1,1 +1,0 @@
-package com.orbit.entity;public class Member {}
