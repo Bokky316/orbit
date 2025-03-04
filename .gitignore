@@ -25,7 +25,6 @@ bin/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
-/frontend_shopping/
 
 ### NetBeans ###
 /nbproject/private/
@@ -38,3 +37,4 @@ out/
 .vscode/
 
 node_modules/
+.idea/
