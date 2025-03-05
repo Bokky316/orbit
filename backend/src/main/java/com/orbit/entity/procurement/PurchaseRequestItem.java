@@ -3,6 +3,7 @@ package com.orbit.entity.procurement;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.eclipse.angus.mail.imap.protocol.Item;
 
 /**
  * 구매 요청 항목 정보를 나타내는 엔티티 클래스

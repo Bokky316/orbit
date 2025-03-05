@@ -1,4 +1,4 @@
-package com.orbit.service.project;
+package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.PurchaseRequestDTO;
 import com.orbit.dto.procurement.PurchaseRequestResponseDTO;

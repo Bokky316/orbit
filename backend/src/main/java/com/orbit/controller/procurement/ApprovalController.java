@@ -2,7 +2,7 @@ package com.orbit.controller.procurement;
 
 import com.orbit.dto.procurement.ApprovalDTO;
 import com.orbit.dto.procurement.ApprovalResponseDTO;
-import com.orbit.service.project.ApprovalService;
+import com.orbit.service.procurement.ApprovalService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
