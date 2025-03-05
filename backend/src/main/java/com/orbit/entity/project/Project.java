@@ -1,0 +1,87 @@
+package com.orbit.entity.project;
+
+import com.orbit.constant.SupplierStatus;
+import com.orbit.entity.BaseEntity;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import java.time.LocalDate;
+
+/**
+ * 프로젝트 정보를 나타내는 엔티티 클래스
+ * BaseEntity를 상속받아 생성자, 수정자, 생성일, 수정일을 자동 관리
+ */
+@Entity
+@Table(name = "projects")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class Project extends BaseEntity {
+
+    /**
+     * 프로젝트의 고유 식별자
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /**
+     * 프로젝트 ID (예: PRJ-001)
+     */
+    @Column(name = "project_id", unique = true, nullable = false)
+    private String projectId;
+
+    /**
+     * 프로젝트 이름
+     */
+    @Column(name = "project_name", nullable = false)
+    private String projectName;
+
+    /**
+     * 프로젝트 담당자 이름
+     */
+    @Column(name = "manager_name", nullable = false)
+    private String managerName;
+
+    /**
+     * 프로젝트 시작일
+     */
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    /**
+     * 프로젝트 종료일
+     */
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
+
+    /**
+     * 프로젝트 상태 (예: 진행중, 완료, 보류)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private ProjectStatus status;
+
+    /**
+     * 프로젝트 설명
+     */
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    /**
+     * 공급업체 상태 (SupplierStatus 열거형 사용)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "supplier_status", nullable = false)
+    private SupplierStatus supplierStatus;
+
+    /**
+     * 프로젝트 상태를 나타내는 열거형
+     */
+    public enum ProjectStatus {
+        IN_PROGRESS, // 진행중
+        COMPLETED,   // 완료됨
+        ON_HOLD      // 보류됨
+    }
+}
