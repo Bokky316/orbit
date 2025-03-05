@@ -1,4 +1,4 @@
-package com.orbit.dto.project;
+package com.orbit.dto.procurement;
 
 import lombok.Getter;
 import lombok.Setter;

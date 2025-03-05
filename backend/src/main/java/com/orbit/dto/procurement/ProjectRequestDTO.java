@@ -1,4 +1,4 @@
-package com.orbit.dto.project;
+package com.orbit.dto.procurement;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

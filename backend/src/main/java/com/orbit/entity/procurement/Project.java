@@ -1,4 +1,4 @@
-package com.orbit.entity.project;
+package com.orbit.entity.procurement;
 
 import com.orbit.constant.SupplierStatus;
 import com.orbit.entity.BaseEntity;
