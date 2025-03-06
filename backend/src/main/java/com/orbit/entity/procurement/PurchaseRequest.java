@@ -60,6 +60,6 @@ public class PurchaseRequest extends BaseEntity {
         제출,
         승인,
         거절,
-        완료
+        대기, 완료
     }
 }

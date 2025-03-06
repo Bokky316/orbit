@@ -5,55 +5,68 @@ import lombok.Setter;
 import lombok.ToString;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.Collection;
-import java.util.Map;
 
+/**
+ * Spring Security에서 사용자 정보를 담는 DTO (Data Transfer Object) 클래스
+ * User 클래스를 상속받아 기본적인 인증 정보를 포함하며, 추가적인 사용자 정보를 저장합니다.
+ */
 @Getter
 @Setter
 @ToString
-public class MemberSecurityDto extends User implements OAuth2User {
+public class MemberSecurityDto extends User {
 
-    private Long id; // 사용자 ID 추가[수정]
-    private String email;
-    private boolean social;
-    private String provider;
-    private String name;
-    private Map<String, Object> attributes; // 소셜 사용자 정보
+    private Long id;              // 사용자 고유 ID
+    private String email;         // 사용자 이메일 (로그인 시 사용)
+    private String username;      // 사용자 이름
+    private String companyName;   // 회사명
+    private String contactNumber; // 연락처
+    private String address;       // 주소
 
-    public MemberSecurityDto(Long id,   // 사용자 ID 추가[수정]
-                             String username,
+    /**
+     * MemberSecurityDto 생성자
+     * @param id 사용자 ID
+     * @param email 사용자 이메일
+     * @param password 비밀번호
+     * @param authorities 권한 목록
+     * @param username 사용자 이름
+     * @param companyName 회사명
+     * @param contactNumber 연락처
+     * @param address 주소
+     */
+    public MemberSecurityDto(Long id,
+                             String email,
                              String password,
                              Collection<? extends GrantedAuthority> authorities,
-                             String name,
-                             boolean social,
-                             String provider,
-                             Map<String, Object> attributes) {
-        super(username, password, authorities);
-        this.email = username;
-        this.id = id;   // 사용자 ID 추가[수정]
-        this.name = name;
-        this.social = social;
-        this.provider = provider;
-        this.attributes = attributes;
+                             String username,
+                             String companyName,
+                             String contactNumber,
+                             String address) {
+        super(email, password, authorities);
+        this.id = id;
+        this.email = email;
+        this.username = username;
+        this.companyName = companyName;
+        this.contactNumber = contactNumber;
+        this.address = address;
     }
 
+    /**
+     * Spring Security에서 사용하는 사용자 식별자를 반환합니다.
+     * 여기서는 이메일을 사용자 식별자로 사용합니다.
+     * @return 사용자 이메일
+     */
     @Override
-    public Map<String, Object> getAttributes() {
-        return attributes;
-    }
-
-    @Override
-    public String getName() {
+    public String getUsername() {
         return email;
     }
 
     /**
-     * 사용자의 실제 이름 반환
+     * 사용자의 실제 이름을 반환합니다.
      * @return 사용자 이름
      */
     public String getRealName() {
-        return name;
+        return username;
     }
 }

@@ -8,7 +8,6 @@ import com.orbit.security.CustomUserDetailsService;
 import com.orbit.security.handler.CustomAuthenticationEntryPoint;
 import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
 import com.orbit.security.handler.CustomLogoutSuccessHandler;
-import com.orbit.security.oauth.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,7 +41,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService; // 사용자 정보를 가져오는 역할
-    private final CustomOAuth2UserService customOAuth2UserService;  // 소셜 로그인
+    //private final CustomOAuth2UserService customOAuth2UserService;  // 소셜 로그인
     private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler; // 로그인 성공 핸들러
     private final TokenAuthenticationFilter tokenAuthenticationFilter; // 토큰을 검증하고 인증 객체를 SecurityContext에 저장하는 역할
     private final TokenProvider tokenProvider;  // 토큰 생성 및 검증
@@ -159,21 +158,21 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable());  // 프론트 엔드를 리액트로 할경우 CSRF 보안 설정을 비활성화
         http.cors(Customizer.withDefaults());   // 이 설정은 출처가 다른 도메인에서 요청을 허용하기 위한 설정, 스프링은 8080포트에서 실행되고 있고, 리액트는 3000포트에서 실행되고 있기 때문에 스프링은 3000 포트에서 오는 요청을 허용하지 않는다. 이를 해결하기 위해 CORS 설정을 추가한다.
 
-        /*
-         * 소셜 로그인 설정
-         *  - oauth2Login() 메소드 : 소셜(OAuth2) 로그인을 활성화하는 설정의 시작점.
-         *  - 이 메서드를 호출함으로써, 애플리케이션은 OAuth2 공급자(Google, Kakao 등)를
-         *    통해 사용자 인증을 수행할 수 있게 된다.
-         *  - loginPage() : 사용자가 인증되지 않은 상태에서 보호된 리소스에 접근시 여기로 리디렉트
-         *    loginPage()를 설정하지 않으면 스프링 시큐리티는 기본 로그인 페이지(/login)를 사용.
-         *  - userInfoEndpoint() : OAuth2 공급자로부터 사용자 정보를 가져오는 엔드포인트를 구성
-         *  - userService() : 사용자 정보를 가져오는 서비스를 구현한 객체를 지정
-         * - customOAuth2UserService : OAuth2 공급자로부터 사용자 정보를 가져오는 엔드포인트를 구성하는 실제 서비스 클래스
-         */
-        http.oauth2Login(oauth2 -> oauth2
-                .loginPage("/members/login")
-                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-        );
+//        /*
+//         * 소셜 로그인 설정
+//         *  - oauth2Login() 메소드 : 소셜(OAuth2) 로그인을 활성화하는 설정의 시작점.
+//         *  - 이 메서드를 호출함으로써, 애플리케이션은 OAuth2 공급자(Google, Kakao 등)를
+//         *    통해 사용자 인증을 수행할 수 있게 된다.
+//         *  - loginPage() : 사용자가 인증되지 않은 상태에서 보호된 리소스에 접근시 여기로 리디렉트
+//         *    loginPage()를 설정하지 않으면 스프링 시큐리티는 기본 로그인 페이지(/login)를 사용.
+//         *  - userInfoEndpoint() : OAuth2 공급자로부터 사용자 정보를 가져오는 엔드포인트를 구성
+//         *  - userService() : 사용자 정보를 가져오는 서비스를 구현한 객체를 지정
+//         * - customOAuth2UserService : OAuth2 공급자로부터 사용자 정보를 가져오는 엔드포인트를 구성하는 실제 서비스 클래스
+//         */
+//        http.oauth2Login(oauth2 -> oauth2
+//                .loginPage("/members/login")
+//                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+//        );
 
         // 지금까지 설정한 내용을 빌드하여 반환, 반환 객체는 SecurityFilterChain 객체
         return http.build();
