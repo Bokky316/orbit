@@ -25,9 +25,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final MemberRepository memberRepository;
 
     /**
-     * 사용자 이름(이메일)을 기반으로 사용자 정보를 로드합니다.
+     * 사용자 이름(username)을 기반으로 사용자 정보를 로드합니다.
      *
-     * @param username 사용자 이름(이메일)
+     * @param username 사용자 이름(username)
      * @return UserDetails 객체
      * @throws UsernameNotFoundException 사용자를 찾을 수 없는 경우 예외 발생
      */
@@ -35,9 +35,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         log.info("CustomUserDetailsService: loadUserByUsername called with username: {}", username);
 
-        // 데이터베이스에서 사용자 정보 조회
-        Member member = memberRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다. 이메일: " + username));
+        // 데이터베이스에서 사용자 정보 조회 (이메일 대신 username으로 조회)
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다. 사용자명: " + username));
 
         // Member 엔티티를 기반으로 MemberSecurityDto 생성 및 반환
         return new MemberSecurityDto(
@@ -46,6 +46,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 member.getPassword(),
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())),
                 member.getUsername(),
+                member.getName(),
                 member.getCompanyName(),
                 member.getContactNumber(),
                 member.getAddress()

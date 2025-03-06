@@ -62,7 +62,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") ||
             path.equals("/api/auth/login") || path.equals("/api/auth/userInfo") ||
-            path.equals("/api/members/register") || path.equals("/api/members/checkEmail") ||
+            path.equals("/api/members/register") || path.equals("/api/members/checkUsername") ||    // email -> username으로 변경
             path.equals("/ping.js") ||
             path.startsWith("/ws") || path.startsWith("/ws/info") ||
             path.startsWith("/topic/chat/")) {
@@ -85,12 +85,12 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 3. 토큰에서 이메일 추출
-        String email = tokenProvider.getEmailFromToken(token);
-        log.info("토큰에서 추출한 이메일: {}", email);
+        // 3. 토큰에서 username 추출
+        String username = tokenProvider.getUsernameFromToken(token); // email -> username으로 변경
+        log.info("토큰에서 추출한 username: {}", username);
 
-        // 4. 위에서 추출한 이메일로 Redis에서 권한 정보 조회
-        List<String> roles = redisService.getUserAuthoritiesFromCache(email);
+        // 4. 위에서 추출한 username으로 Redis에서 권한 정보 조회
+        List<String> roles = redisService.getUserAuthoritiesFromCache(username); // email -> username으로 변경
         if (roles == null || roles.isEmpty()) {
             handleUnauthorizedResponse(response, "Redis에서 권한 정보를 찾을 수 없습니다.");
             return;
@@ -101,7 +101,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         Set<SimpleGrantedAuthority> authorities = roles.stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
-        Authentication auth = new UsernamePasswordAuthenticationToken(email, null, authorities);
+        Authentication auth = new UsernamePasswordAuthenticationToken(username, null, authorities);
         log.info("Redis 권한 정보로 생성된 인증 객체: {}", auth);
 
         // 6. 인증 객체를 SecurityContext 세팅

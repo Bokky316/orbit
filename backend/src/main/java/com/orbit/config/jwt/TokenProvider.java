@@ -32,7 +32,7 @@ public class TokenProvider {
      * @param expiredAt : 토큰의 만료 시간을 나타냅니다.
      * now.getTime() + expiredAt.toMillis() : 현재 시간을 기준으로 만료 시간을 계산합니다.
      */
-    public String generateToken(String email
+    public String generateToken(String username
                                 //, Collection<? extends GrantedAuthority> authorities
                                 //, String name
             , Duration expiredAt) {
@@ -45,7 +45,7 @@ public class TokenProvider {
                 .setIssuer(jwtProperties.getIssuer())           // 발급자(application.properties에서 저장해놓은 jwt.issuer)
                 .setIssuedAt(now)                               // 발급 시간
                 .setExpiration(expiry)                          // 만료 시간
-                .setSubject(email)                              // 주제(사용자 이메일)
+                .setSubject(username)                              // 주제(사용자 ID - username)
                 .signWith(SignatureAlgorithm.HS256, jwtProperties.getSecretKey()) // 서명
                 .compact();                                     // JWT 생성
     }
@@ -122,12 +122,12 @@ public class TokenProvider {
 
     /**
      * 리프레시 토큰 생성
-     * - email과 만료 시간을 받아 리프레시 토큰을 생성합니다.
-     * @param email
+     * - username과 만료 시간을 받아 리프레시 토큰을 생성합니다.
+     * @param username
      * @param expiredAt
      * @return
      */
-    public String generateRefreshToken(String email, Duration expiredAt) {
+    public String generateRefreshToken(String username, Duration expiredAt) {
         Date now = new Date(); // 현재 시간
         Date expiry = new Date(now.getTime() + expiredAt.toMillis()); // 만료 시간 계산
 
@@ -137,18 +137,18 @@ public class TokenProvider {
                 .setIssuer(jwtProperties.getIssuer())           // 발급자 설정
                 .setIssuedAt(now)                               // 발급 시간
                 .setExpiration(expiry)                          // 만료 시간
-                .setSubject(email)                              // 주제(email)
+                .setSubject(username)                              // 주제(username)
                 .signWith(SignatureAlgorithm.HS256, jwtProperties.getSecretKey()) // 서명
                 .compact();                                     // JWT 생성
     }
 
     /**
-     * 리프레시 토큰에서 email 추출
-     * - 리프레시 토큰을 파싱하여 email을 추출합니다.
+     * 리프레시 토큰에서 username 추출
+     * - 리프레시 토큰을 파싱하여 username을 추출합니다.
      * @param token
      * @return
      */
-    public String getEmailFromToken(String token) {
+    public String getUsernameFromToken(String token) {
         Claims claims = getClaims(token); // 기존 메소드 활용
         return claims.getSubject(); // JWT의 subject로 설정된 email 반환
     }

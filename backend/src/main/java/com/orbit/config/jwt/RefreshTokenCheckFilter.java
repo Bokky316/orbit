@@ -54,11 +54,11 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
             // 2. 리프레시 토큰 검증(만료, DB에 저장된 토큰과 일치 여부)
             RefreshToken dbRefreshToken = refreshTokenService.validateAndRefreshToken(refreshToken);
 
-            // 3. 리프레시 토큰에서 이메일 추출
-            String email = tokenProvider.getEmailFromToken(dbRefreshToken.getRefreshToken());
+            // 3. 리프레시 토큰에서 username 추출
+            String username = tokenProvider.getUsernameFromToken(dbRefreshToken.getRefreshToken()); // email -> username으로 변경
 
             // 4. Redis에서 권한 정보 조회
-            List<String> roles = redisService.getUserAuthoritiesFromCache(email);
+            List<String> roles = redisService.getUserAuthoritiesFromCache(username); // email -> username으로 변경
             if (roles == null || roles.isEmpty()) {
                 handleErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Redis에서 권한 정보를 찾을 수 없습니다.");
                 return;
@@ -67,7 +67,7 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
 
             // 5. 새로운 액세스 토큰 생성
             String newAccessToken = tokenProvider.generateToken(
-                    email,
+                    username, // email -> username으로 변경
                     Duration.ofMinutes(50) // 새 액세스 토큰 유효 시간
             );
             log.info("새로운 액세스 토큰 발급 완료: {}", newAccessToken);
@@ -85,8 +85,8 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             response.getWriter().write(String.format(
-                    "{\"message\":\"Access token refreshed successfully\",\"status\":\"success\",\"email\":\"%s\"}",
-                    email
+                    "{\"message\":\"Access token refreshed successfully\",\"status\":\"success\",\"username\":\"%s\"}", // email -> username으로 변경
+                    username
             ));
         } catch (IllegalArgumentException e) {
             handleErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다: " + e.getMessage());

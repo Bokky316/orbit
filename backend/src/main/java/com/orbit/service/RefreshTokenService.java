@@ -43,7 +43,7 @@ public class RefreshTokenService {
 
         // 새로운 액세스 토큰 생성
         return tokenProvider.generateToken(
-                member.getEmail(),
+                member.getUsername(), // email -> username으로 변경
                 Duration.ofHours(1)
         );
     }
@@ -60,8 +60,8 @@ public class RefreshTokenService {
             throw new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다.");
         }
 
-        // 토큰에서 이메일 추출
-        String email = tokenProvider.getEmailFromToken(refreshToken);
+        // 토큰에서 username 추출
+        String username = tokenProvider.getUsernameFromToken(refreshToken); // email -> username으로 변경
 
         // DB에서 기존 리프레시 토큰 조회
         RefreshToken existingToken = storedRefreshTokenRepository.findByRefreshToken(refreshToken)
@@ -70,7 +70,7 @@ public class RefreshTokenService {
         // 토큰 재발급 여부 확인
         if (!tokenProvider.validateToken(refreshToken)) {
             // 새 리프레시 토큰 생성
-            String newRefreshToken = tokenProvider.generateRefreshToken(email, Duration.ofDays(14));
+            String newRefreshToken = tokenProvider.generateRefreshToken(username, Duration.ofDays(14));
 
             // 새 토큰으로 업데이트
             RefreshToken updatedToken = RefreshToken.builder()
@@ -87,13 +87,13 @@ public class RefreshTokenService {
 
     /**
      * 리프레시 토큰 저장 또는 업데이트
-     * @param email 사용자 이메일
+     * @param username 사용자 username
      * @param refreshToken 리프레시 토큰
      */
     @Transactional
-    public void saveOrUpdateRefreshToken(String email, String refreshToken) {
+    public void saveOrUpdateRefreshToken(String username, String refreshToken) {
         // 회원 조회
-        Member member = memberRepository.findByEmail(email)
+        Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
 
         // 새 리프레시 토큰 생성
