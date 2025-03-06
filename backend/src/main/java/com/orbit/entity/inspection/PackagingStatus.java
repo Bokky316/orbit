@@ -1,7 +1,7 @@
 package com.orbit.entity.inspection;
 
-import com.orbit.entity.bidding.SimplifiedContract;
-import com.orbit.entity.member.Member;
+import com.orbit.entity.Member;
+import com.orbit.entity.bidding.BiddingContract;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,7 +21,7 @@ public class Inspection {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id", nullable = false)
-    private SimplifiedContract contract;
+    private BiddingContract contract;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inspector_id", nullable = false)
