@@ -169,4 +169,15 @@ public class TokenProvider {
                 .parseClaimsJws(token)
                 .getBody();
     }
+
+    /**
+     * 토큰에서 사용자 ID를 추출합니다.
+     *
+     * @param token JWT 토큰 문자열
+     * @return 추출된 사용자 ID (Long)
+     */
+    public Long getUserId(String token) {
+        Claims claims = getClaims(token);
+        return claims.get("id", Long.class);
+    }
 }
