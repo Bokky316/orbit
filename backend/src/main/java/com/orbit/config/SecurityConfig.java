@@ -135,6 +135,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/userInfo").permitAll() // 사용자 정보 조회 API는 모든 사용자에게 허용
                 .requestMatchers("/admin/**").hasRole("ADMIN")  // 미사용
                 .requestMatchers("/api/members/**").hasAnyRole("USER", "ADMIN") // 사용자 정보 수정 API는 USER, ADMIN만 접근 가능
+
+                // Bidding API 권한 설정
+                .requestMatchers("/api/biddings/**").permitAll()
+                //                .requestMatchers(HttpMethod.GET, "/api/biddings/**").permitAll()
+                //                .requestMatchers(HttpMethod.POST, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
+                //                .requestMatchers(HttpMethod.PUT, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
+                //                .requestMatchers(HttpMethod.DELETE, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
+                
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()  // 스웨거 Swagger UI는 인증을 거치지 않고 접근 가능
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN") // 사용자의 읽지 않은 메시지 개수 조회 API는 USER, ADMIN만 접근 가능
                 .requestMatchers(
