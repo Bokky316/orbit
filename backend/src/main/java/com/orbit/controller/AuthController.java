@@ -23,7 +23,6 @@ import java.util.Map;
  * - 이 컨트롤러로 오기 전에 이미 필터에서 사용자가 제공한 토큰에서 사용자 정보를 추출해서 인증 객체를 만들고
  *   그것을 SecurityContextHolder에 저장했다. getUserInfo 에서는 이전 단계에서
  *   SecurityContextHolder에 저장된 인증 객체를 매개변수로 받아서 사용자 정보를 조회한다.
- *
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -37,8 +36,8 @@ public class AuthController {
 
     /**
      * 사용자 정보 조회
-     * @param authentication
-     * @return
+     * @param authentication 인증 객체
+     * @return 사용자 정보
      */
     @GetMapping("/userInfo") // api/auth/userInfo
     public ResponseEntity<Map<String, Object>> getUserInfo(Authentication authentication) {
@@ -52,11 +51,11 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
 
-        // 인증 객체에서 사용자 이메일 추출
-        String email = authentication.getName();
+        // 인증 객체에서 사용자 username 추출
+        String username = authentication.getName(); // email -> username으로 변경
 
         // 사용자 정보 가져오기
-        Member member = memberService.findByEmail(email);
+        Member member = memberService.findByUsername(username); // email -> username으로 변경
         if (member == null) {
             response.put("status", "error");
             response.put("message", "사용자를 찾을 수 없습니다.");
@@ -77,6 +76,7 @@ public class AuthController {
       "data": {
         "id": 1,
         "name": "John Doe",
+        "username": "johndoe", // username 추가
         "email": "john.doe@example.com",
         "phone": "010-1234-5678",
         "address": "Seoul, Korea"
@@ -86,7 +86,7 @@ public class AuthController {
 
     /**
      * [개선] 로그인 실패 시 응답
-     * @return
+     * @return 에러 메시지
      */
     @GetMapping("/login/error")
     public ResponseEntity<Map<String, String>> loginError() {
@@ -94,6 +94,5 @@ public class AuthController {
         response.put("error", "로그인에 실패했습니다.");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
-
 }
 

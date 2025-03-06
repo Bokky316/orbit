@@ -15,7 +15,6 @@ import java.time.Duration;
 /**
  * AccessTokenService
  * - 로그인 시 AccessToken 생성을 위한 서비스
- *
  */
 @Service
 @RequiredArgsConstructor
@@ -27,13 +26,13 @@ public class AccessTokenService {
     /**
      * AccessToken 생성
      * - 로그인 시도시 사용자 정보를 통해 AccessToken을 생성합니다.
-     * @param loginForm
-     * @return
+     * @param loginForm 로그인 폼 데이터 (username, password)
+     * @return 생성된 AccessToken
      */
     public String generateAccessToken(LoginFormDto loginForm) {
-        // 로그인 시도시 사용할 UsernamePasswordAuthenticationToken 생성(여기에는 이메일과 비밀번호가 들어감)
+        // 로그인 시도시 사용할 UsernamePasswordAuthenticationToken 생성
         UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(loginForm.getEmail(), loginForm.getPassword());
+                new UsernamePasswordAuthenticationToken(loginForm.getUsername(), loginForm.getPassword()); // email -> username으로 변경
 
         // 토큰으로 인증을 시도하고 인증된 Authentication 객체를 반환
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
@@ -42,9 +41,9 @@ public class AccessTokenService {
         MemberSecurityDto member = (MemberSecurityDto) authentication.getPrincipal();
 
         // 변경된 TokenProvider에 맞춰 파라미터 수정
-        // 이제는 이메일과 만료시간만 전달
+        // 이제는 username과 만료시간만 전달
         return tokenProvider.generateToken(
-                member.getEmail(),
+                member.getUsername(), // email -> username으로 변경
                 Duration.ofHours(1) // 만료 시간 설정
         );
     }

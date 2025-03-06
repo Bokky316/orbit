@@ -55,12 +55,12 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         // 이렇게 추출할 수 있는 이유는 이미 로그인 과정에서 인증이 끝나고 인증 객체가 생성되었기 때문입니다.
         MemberSecurityDto userDetails = (MemberSecurityDto) authentication.getPrincipal();
 
-        // 2. Redis에 사용자 권한 정보 캐싱(이메일을 전달하면 권한 정보를 데이터베이스에서 조회한 뒤 Redis에 저장)
-        redisService.cacheUserAuthorities(userDetails.getEmail());
+        // 2. Redis에 사용자 권한 정보 캐싱(username을 전달하면 권한 정보를 데이터베이스에서 조회한 뒤 Redis에 저장)
+        redisService.cacheUserAuthorities(userDetails.getUsername());
         log.info("사용자의 권한 정보가 Redis에 성공적으로 저장되었습니다.");
 
         // redis에 저장된 사용자 권한 정보 확인하기 위한 로그
-        log.info("사용자 [{}]의 권한 정보가 Redis에 저장되었습니다.", redisService.getUserAuthoritiesFromCache(userDetails.getEmail()));
+        log.info("사용자 [{}]의 권한 정보가 Redis에 저장되었습니다.", redisService.getUserAuthoritiesFromCache(userDetails.getUsername()));
 
         // 3️⃣ 사용자 권한 목록을 문자열로 변환
         //String roles = userDetails.getAuthorities().toString(); // 권한 목록을 문자열로 변환
@@ -72,7 +72,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 
         // 4️⃣ 액세스 토큰(JWT) 생성
         String accessToken = tokenProvider.generateToken(
-                userDetails.getEmail(),
+                userDetails.getUsername(), // username 사용
                 //userDetails.getAuthorities(), // 인증 객체에서 권한 정보 사용
                 //userDetails.getRealName(),  // 사용자 이름
                 Duration.ofMinutes(50) // 액세스 토큰 유효 시간, 5분
@@ -80,12 +80,12 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 
         // 5️⃣ 리프레시 토큰 생성
         String refreshToken = tokenProvider.generateRefreshToken(
-                userDetails.getEmail(),
+                userDetails.getUsername(), // username 사용
                 Duration.ofDays(7) // 리프레시 토큰 유효 기간 7일
         );
 
-        // 6️⃣ 리프레시 토큰을 DB에 저장
-        refreshTokenService.saveOrUpdateRefreshToken(userDetails.getEmail(), refreshToken);
+        // 6️⃣ 리프레시 토큰을 DB에 저장 (username 사용)
+        refreshTokenService.saveOrUpdateRefreshToken(userDetails.getUsername(), refreshToken);
 
         // 7️⃣ 액세스 토큰을 HttpOnly Cookie로 저장
         Cookie accessTokenCookie = new Cookie("accToken", accessToken);
@@ -108,9 +108,9 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(String.format(
-                "{\"message\":\"로그인 성공\",\"status\":\"success\",\"id\":%d,\"email\":\"%s\",\"name\":\"%s\",\"roles\":\"%s\"}",
-                userDetails.getId(),
-                userDetails.getEmail(),
+                "{\"message\":\"로그인 성공\",\"status\":\"success\",\"id\":%d,\"username\":\"%s\",\"name\":\"%s\",\"roles\":\"%s\"}",
+                userDetails.getId(),    // email → username으로 변경
+                userDetails.getUsername(),  // email → username으로 변경
                 userDetails.getRealName(),
                 roles
         ));

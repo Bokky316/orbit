@@ -6,6 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class LoginFormDto {
-    private String email;
+    private String username;  // email -> username으로 변경
     private String password;
 }

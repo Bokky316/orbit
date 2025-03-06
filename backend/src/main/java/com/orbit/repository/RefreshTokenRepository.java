@@ -15,16 +15,16 @@ package com.orbit.repository;
 //    Optional<RefreshToken> findByRefreshToken(String refreshToken);
 //
 //    /**
-//     * 이메일을 기반으로 리프레시 토큰 검색
-//     * @param email 사용자 이메일
+//     * memberId를 기반으로 리프레시 토큰 검색
+//     * @param memberId 사용자 memberId
 //     * @return Optional<RefreshToken>
 //     */
-//    Optional<RefreshToken> findByEmail(String email); // 이메일 기반으로 RefreshToken 검색
+//    Optional<RefreshToken> findByMemberId(Long memberId); // email -> memberId로 변경
 //
 //    /**
-//     * 이메일을 기반으로 리프레시 토큰 삭제
-//     * @param email 사용자 이메일
+//     * memberId를 기반으로 리프레시 토큰 삭제
+//     * @param memberId 사용자 memberId
 //     */
-//    void deleteByEmail(String email);
+//    void deleteByMemberId(Long memberId); // email -> memberId로 변경
 //}
-//
+

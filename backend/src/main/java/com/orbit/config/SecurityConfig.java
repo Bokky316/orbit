@@ -90,7 +90,7 @@ public class SecurityConfig {
                 // WebSocket 접속이 정상인지 체크하는 핸드쉐이크 요청인 /ws/info와 WebSocket 연결, /ws/**는 인증 없이 접근할 수 있도록 설정합니다.
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/topic/**").permitAll()  // ✅ STOMP 메시지 브로커 경로 허용
-                .requestMatchers("/", "/api/auth/login", "/api/auth/logout", "/api/members/register", "/api/members/checkEmail").permitAll() // 로그인 API 허용 [수정]
+                .requestMatchers("/", "/api/auth/login", "/api/auth/logout", "/api/members/register", "/api/members/checkUsername").permitAll() // 로그인 API 허용 [수정]
                 .requestMatchers(HttpMethod.GET, "/api/members/**").permitAll()    // GET 요청은 모든 사용자에게 허용
 
                 // 사용자 관리
