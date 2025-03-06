@@ -1,6 +1,6 @@
 package com.orbit.dto;
 
-import com.orbit.constant.Role;
+import com.orbit.entity.Member;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -8,43 +8,69 @@ import lombok.*;
 import org.hibernate.validator.constraints.Length;
 
 /**
- * 회원가입 폼 DTO
- * - 회원가입 폼 데이터를 전달하는 DTO 클래스
- * - 서비스 레이어에서 Entity로 변환하여 저장되고
- *   서비스에서 전달받은 Entity를 컨트롤러로 전달할 때 사용.
- * - DTO는 Entity와 다르게 데이터 전달만을 위한 클래스이다.
- * - DTO는 Entity와 다르게 비즈니스 로직을 포함하지 않는다.
- * - 화면으로 전달되어 화면에 데이터를 표시하기 위한 클래스이다.
+ * 회원가입 폼 DTO (Data Transfer Object)
+ * - 회원가입 시 클라이언트로부터 받은 데이터를 서버로 전달하는 객체
+ * - 서비스 레이어에서 이 DTO를 사용하여 Member 엔티티를 생성하고 저장
+ * - 컨트롤러와 서비스 계층 사이에서 데이터를 전달하는 역할
+ * - 화면에 표시할 데이터를 담아 뷰로 전달하는 데도 사용
+ * - 엔티티와 달리 비즈니스 로직을 포함하지 않으며, 순수하게 데이터 전달만을 목적으로 함
  */
 @Getter @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class MemberFormDto {
-    // 필드, 속성
-    @NotBlank(message = "이름을 입력해주세요.")  // 공백도 안되고 null도 안됨
-    private String name;
-    /*
-        * @NotBlank(message = "이메일을 입력해주세요.")
-        * @Email(regexp = "이메일 정규식", message = "이메일 형식이 올바르지 않습니다.")
+    /**
+     * 사용자 ID (로그인 시 사용)
      */
-    @NotBlank(message = "이메일을 입력해주세요.") // 공백도 안되고 null도 안됨
-    @Email(regexp = "^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,6}$", message = "유효한 이메일 형식으로 입력해주세요.")
-    private String email;
+    @NotBlank(message = "사용자 ID를 입력해주세요.")
+    @Length(min = 4, max = 50, message = "사용자 ID는 4자 이상 50자 이하로 입력해주세요.")
+    private String username;
 
-    @NotBlank(message = "비밀번호를 입력해주세요.") // 공백도 안되고 null도 안됨
+    /**
+     * 사용자 실제 이름
+     */
+    @NotBlank(message = "이름을 입력해주세요.")
+    @Length(max = 50, message = "이름은 50자 이하로 입력해주세요.")
+    private String name;
+
+    /**
+     * 비밀번호
+     */
+    @NotBlank(message = "비밀번호를 입력해주세요.")
     @Length(min = 4, max = 16, message = "비밀번호는 4자 이상 16자 이하로 입력해주세요.")
     private String password;
 
-    @NotBlank(message = "주소를 입력해주세요.")
+    /**
+     * 이메일 주소
+     */
+    @NotBlank(message = "이메일을 입력해주세요.")
+    @Email(regexp = "^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,6}$", message = "유효한 이메일 형식으로 입력해주세요.")
+    private String email;
+
+    /**
+     * 회사명
+     */
+    @NotBlank(message = "회사명을 입력해주세요.")
+    @Length(max = 100, message = "회사명은 100자 이하로 입력해주세요.")
+    private String companyName;
+
+    /**
+     * 연락처
+     */
+    @Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "연락처는 xxx-xxxx-xxxx 형식으로 입력해주세요.")
+    private String contactNumber;
+
+    /**
+     * 주소
+     */
     private String address;
 
-    @NotBlank(message = "연락처를 입력하세요.") // 공백도 안되고 null도 안됨
-    @Pattern(
-            regexp = "^010-\\d{4}-\\d{4}$",
-            message = "Phone number should be in the format 010-XXXX-XXXX"
-    )
-    private String phone;
-    private Role role;
+    /**
+     * 사용자 역할 (BUYER, SUPPLIER, ADMIN)
+     */
+    private Member.Role role;
 
+    // Department와 Position은 별도의 선택 로직이 필요할 수 있으므로 여기서는 제외했습니다.
+    // 필요하다면 Long 타입의 deptId와 positionId를 추가할 수 있습니다.
 }

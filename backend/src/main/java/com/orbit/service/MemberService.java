@@ -9,6 +9,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 회원 관리 서비스
+ * 회원 가입, 로그인, 회원 조회 등의 기능을 제공합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class MemberService {
@@ -18,7 +22,8 @@ public class MemberService {
 
     /**
      * 회원가입 처리
-     * @param memberFormDto - 클라이언트에서 전달받은 회원가입 데이터
+     * @param memberFormDto 클라이언트에서 전달받은 회원가입 데이터
+     * @throws IllegalStateException 이미 존재하는 이메일로 가입 시도할 경우
      */
     @Transactional
     public void registerMember(MemberFormDto memberFormDto) {
@@ -36,7 +41,7 @@ public class MemberService {
 
     /**
      * 이메일 중복 체크
-     * @param email - 클라이언트에서 입력받은 이메일
+     * @param email 클라이언트에서 입력받은 이메일
      * @return true(중복) or false(사용 가능)
      */
     public boolean isEmailDuplicate(String email) {
@@ -49,7 +54,7 @@ public class MemberService {
      * @return 로그인 성공 여부 (true: 성공, false: 실패)
      */
     public boolean login(LoginFormDto loginForm) {
-        // 이메일로 회원 검색
+        // 이메일로 회원 검색 후 비밀번호 일치 여부 확인
         return memberRepository.findByEmail(loginForm.getEmail())
                 .map(member -> passwordEncoder.matches(loginForm.getPassword(), member.getPassword()))
                 .orElse(false);
@@ -59,6 +64,7 @@ public class MemberService {
      * 회원 ID로 회원 조회
      * @param memberId 조회할 회원의 ID
      * @return 조회된 회원 엔티티
+     * @throws IllegalArgumentException 존재하지 않는 회원 ID로 조회 시
      */
     public Member findById(Long memberId) {
         return memberRepository.findById(memberId)
@@ -69,6 +75,7 @@ public class MemberService {
      * 이메일로 회원 조회
      * @param email 조회할 회원의 이메일
      * @return 조회된 회원 엔티티
+     * @throws IllegalArgumentException 존재하지 않는 이메일로 조회 시
      */
     public Member findByEmail(String email) {
         return memberRepository.findByEmail(email)

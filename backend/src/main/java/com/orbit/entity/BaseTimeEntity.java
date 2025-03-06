@@ -28,13 +28,17 @@ import java.time.LocalDateTime;
 @Getter@Setter
 public abstract class BaseTimeEntity {
 
-    // Entity가 생성되어 저장될 때 시간이 자동 저장, updatable = false로 설정하면
-    // 엔티티가 생성되어 저장될 때 시간이 자동 저장되지만, 엔티티의 값이 변경될 때는 시간이 변경되지 않음
+    /**
+     * Entity가 생성되어 저장될 때 시간이 자동 저장, updatable = false로 설정하면
+     * 엔티티가 생성되어 저장될 때 시간이 자동 저장되지만, 엔티티의 값이 변경될 때는 시간이 변경되지 않음
+     */
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime regTime;
 
-    // 조회한 Entity의 값을 변경할 때 시간이 자동 저장
+    /**
+     * 조회한 Entity의 값을 변경할 때 시간이 자동 저장
+     */
     @LastModifiedDate
     private LocalDateTime updateTime;
 }

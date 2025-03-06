@@ -1,6 +1,5 @@
 package com.orbit.config;
 
-
 import com.orbit.config.jwt.RefreshTokenCheckFilter;
 import com.orbit.config.jwt.TokenAuthenticationFilter;
 import com.orbit.config.jwt.TokenProvider;
@@ -8,21 +7,24 @@ import com.orbit.security.CustomUserDetailsService;
 import com.orbit.security.handler.CustomAuthenticationEntryPoint;
 import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
 import com.orbit.security.handler.CustomLogoutSuccessHandler;
-import com.orbit.security.oauth.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * Spring Security 설정 파일
@@ -39,10 +41,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Profile("!test") // 테스트 환경에서는 제외
 public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService; // 사용자 정보를 가져오는 역할
-    private final CustomOAuth2UserService customOAuth2UserService;  // 소셜 로그인
     private final CustomAuthenticationSuccessHandler customAuthenticationSuccessHandler; // 로그인 성공 핸들러
     private final TokenAuthenticationFilter tokenAuthenticationFilter; // 토큰을 검증하고 인증 객체를 SecurityContext에 저장하는 역할
     private final TokenProvider tokenProvider;  // 토큰 생성 및 검증
@@ -59,17 +61,17 @@ public class SecurityConfig {
                 .loginProcessingUrl("/api/auth/login")
                 .successHandler(customAuthenticationSuccessHandler)
                 .failureHandler((request, response, exception) -> {
-                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                            response.setContentType("application/json");
-                            response.getWriter().write("{\"error\":\"login failure!\"}");})
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"login failure!\"}");})
                 .permitAll()
         );
 
         /*
-            * [수정] 로그아웃 설정
-            * logout() : 스프링의 기본 로그아웃 관련 설정
-            * - /api/auth/logout 을 기본 로그아웃 요청을 처리하는 URL로 하겠다.
-            *   즉 리액트에서 이 요청을 보내면 시큐리티의 기본 로그아웃 처리가 진행된다.
+         * [수정] 로그아웃 설정
+         * logout() : 스프링의 기본 로그아웃 관련 설정
+         * - /api/auth/logout 을 기본 로그아웃 요청을 처리하는 URL로 하겠다.
+         *   즉 리액트에서 이 요청을 보내면 시큐리티의 기본 로그아웃 처리가 진행된다.
          */
         http.logout(logout -> logout
                 .logoutUrl("/api/auth/logout")
@@ -77,27 +79,59 @@ public class SecurityConfig {
                 .permitAll()
         );
 
-
-
         /*
-            * 정적 자원 및 URL에 대한 접근 제어 설정(인가) 로드맵
-            * authorizeRequests() : 애플리케이션의 접근 제어(Authorization) 정책을 정의
-            * requestMatchers() : 요청에 대한 보안 검사를 설정
-            * permitAll() : 모든 사용자에게 접근을 허용
-            * hasRole() : 특정 권한을 가진 사용자만 접근을 허용
-            * anyRequest() : 모든 요청에 대해 접근을 허용
-            * authenticated() : 인증된 사용자만 접근을 허용
-            * favicon.ico : 파비콘 요청은 인증 없이 접근 가능, 이코드 누락시키면 계속 서버에 요청을 보내서 서버에 부하를 줄 수 있다.
-            *
+         * 정적 자원 및 URL에 대한 접근 제어 설정(인가) 로드맵
+         * authorizeRequests() : 애플리케이션의 접근 제어(Authorization) 정책을 정의
+         * requestMatchers() : 요청에 대한 보안 검사를 설정
+         * permitAll() : 모든 사용자에게 접근을 허용
+         * hasRole() : 특정 권한을 가진 사용자만 접근을 허용
+         * anyRequest() : 모든 요청에 대해 접근을 허용
+         * authenticated() : 인증된 사용자만 접근을 허용
+         * favicon.ico : 파비콘 요청은 인증 없이 접근 가능, 이코드 누락시키면 계속 서버에 요청을 보내서 서버에 부하를 줄 수 있다.
+         *
          */
         http.authorizeHttpRequests(request -> request
-                // ✅ WebSocket 관련 요청은 인증 검사 제외
-                //    WebSocket 접속이 정상인지 체크하는 핸드쉐이크 요청인 /ws/info와 WebSocket 연결, /ws/**는 인증 없이 접근할 수 있도록 설정합니다.
-                .requestMatchers("/ws/**").permitAll()  //
+                // WebSocket 관련 요청은 인증 검사 제외
+                // WebSocket 접속이 정상인지 체크하는 핸드쉐이크 요청인 /ws/info와 WebSocket 연결, /ws/**는 인증 없이 접근할 수 있도록 설정합니다.
+                .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/topic/**").permitAll()  // ✅ STOMP 메시지 브로커 경로 허용
                 .requestMatchers("/", "/api/auth/login", "/api/auth/logout", "/api/members/register", "/api/members/checkEmail").permitAll() // 로그인 API 허용 [수정]
                 .requestMatchers(HttpMethod.GET, "/api/members/**").permitAll()    // GET 요청은 모든 사용자에게 허용
-                .requestMatchers("/api/members/**").hasRole("ADMIN")   // 학생 등록, 수정, 삭제는 ADMIN만 접근 가능
+
+                // 사용자 관리
+                .requestMatchers("/api/members/**").hasRole("ADMIN")   // ADMIN 역할만 접근 가능
+
+                // 제품 관리
+                .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+
+                // 구매 요청 관리
+                .requestMatchers("/api/purchase-requests/**").hasAnyRole("BUYER", "ADMIN") // BUYER, ADMIN 역할만 접근 가능
+
+                // 계약 관리
+                .requestMatchers("/api/contracts/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+
+                // 송장 관리
+                .requestMatchers("/api/invoices/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+
+                // 검수 관리
+                .requestMatchers("/api/inspections/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+
+                // 지불 관리
+                .requestMatchers("/api/payments/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+
+                // 협력업체 등록 관리
+                .requestMatchers("/api/supplier-registrations/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+
+                // 조직 구조 관리
+                .requestMatchers("/api/departments/**", "/api/positions/**").hasRole("ADMIN") // 관리자만 접근 가능
+
+                // 시스템 설정
+                .requestMatchers("/api/settings/**").hasRole("ADMIN") // 관리자만 접근 가능
+                // [추가] 테스트를 위한 API 접근 허용
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.GET.name())).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.POST.name())).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.PUT.name())).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.DELETE.name())).permitAll()
                 .requestMatchers("/api/auth/userInfo").permitAll() // 사용자 정보 조회 API는 모든 사용자에게 허용
                 .requestMatchers("/admin/**").hasRole("ADMIN")  // 미사용
                 .requestMatchers("/api/members/**").hasAnyRole("USER", "ADMIN") // 사용자 정보 수정 API는 USER, ADMIN만 접근 가능
@@ -123,7 +157,6 @@ public class SecurityConfig {
                         "/**/*.png",
                         "/**/*.jpg",
                         "/**/*.jpeg",
-                        "/**/*.gif",
                         "/**/*.svg",
                         "/**/*.html",
                         "/ping.js"
@@ -132,11 +165,11 @@ public class SecurityConfig {
         );
 
         /*
-        * 필터의 순서는 addFilterBefore 메서드를 사용하여 정의
-        * RefreshTokenCheckFilter -> TokenAuthenticationFilter -> UsernamePasswordAuthenticationFilter 순서로 실행
-        * UsernamePasswordAuthenticationFilter가 전체 필터 체인의 기준점
-        * 콘솔 로그에서 Filter 로 검색하면 전체 필터와 순서가 출력됨.
-        */
+         * 필터의 순서는 addFilterBefore 메서드를 사용하여 정의
+         * RefreshTokenCheckFilter -> TokenAuthenticationFilter -> UsernamePasswordAuthenticationFilter 순서로 실행
+         * UsernamePasswordAuthenticationFilter가 전체 필터 체인의 기준점
+         * 콘솔 로그에서 Filter 로 검색하면 전체 필터와 순서가 출력됨.
+         */
         /**
          * UsernamePasswordAuthenticationFilter 이전에 TokenAuthenticationFilter 추가
          * - 사용자의 인증이 일어나기 전에 토큰을 검증하고 인증 객체를 SecurityContext에 저장
@@ -164,24 +197,8 @@ public class SecurityConfig {
         );
 
         // http.csrf(csrf -> csrf.disable()); // CSRF 보안 설정을 비활성화
-        http.csrf(csrf -> csrf.disable());  // 프론트 엔드를 리액트로 할경우 CSRF 보안 설정을 비활성화
+        http.csrf(AbstractHttpConfigurer::disable);  // 프론트 엔드를 리액트로 할경우 CSRF 보안 설정을 비활성화
         http.cors(Customizer.withDefaults());   // 이 설정은 출처가 다른 도메인에서 요청을 허용하기 위한 설정, 스프링은 8080포트에서 실행되고 있고, 리액트는 3000포트에서 실행되고 있기 때문에 스프링은 3000 포트에서 오는 요청을 허용하지 않는다. 이를 해결하기 위해 CORS 설정을 추가한다.
-
-        /*
-         * 소셜 로그인 설정
-         *  - oauth2Login() 메소드 : 소셜(OAuth2) 로그인을 활성화하는 설정의 시작점.
-         *  - 이 메서드를 호출함으로써, 애플리케이션은 OAuth2 공급자(Google, Kakao 등)를
-         *    통해 사용자 인증을 수행할 수 있게 된다.
-         *  - loginPage() : 사용자가 인증되지 않은 상태에서 보호된 리소스에 접근시 여기로 리디렉트
-         *    loginPage()를 설정하지 않으면 스프링 시큐리티는 기본 로그인 페이지(/login)를 사용.
-         *  - userInfoEndpoint() : OAuth2 공급자로부터 사용자 정보를 가져오는 엔드포인트를 구성
-         *  - userService() : 사용자 정보를 가져오는 서비스를 구현한 객체를 지정
-         * - customOAuth2UserService : OAuth2 공급자로부터 사용자 정보를 가져오는 엔드포인트를 구성하는 실제 서비스 클래스
-         */
-        http.oauth2Login(oauth2 -> oauth2
-                .loginPage("/members/login")
-                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-        );
 
         // 지금까지 설정한 내용을 빌드하여 반환, 반환 객체는 SecurityFilterChain 객체
         return http.build();
