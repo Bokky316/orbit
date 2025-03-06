@@ -1,6 +1,7 @@
 package com.orbit.entity.invoice;
 
-import com.orbit.entity.paymant.Payment;
+import com.orbit.entity.Member;
+import com.orbit.entity.bidding.SimplifiedContract;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,81 +9,45 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
-/**
- * 📄 송장(Invoice) 엔티티
- * - 계약(`contract_id`)을 기반으로 생성됨
- * - 지불 완료 여부, 마감일, 연체 여부 등을 관리
- */
-@Entity
-@Table(name = "invoices")
 @Getter
 @Setter
 @NoArgsConstructor
+@Entity
+@Table(name = "invoices")
 public class Invoice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // 송장 ID
-
-    @Column(name = "contract_id", nullable = false)
-    private Long contractId; // 연결된 계약 ID
-
-    @Column(name = "supplier_id", nullable = false)
-    private Long supplierId; // 공급업체 ID
+    private Long id;
 
     @Column(name = "invoice_number", nullable = false, unique = true)
-    private String invoiceNumber; // 송장 번호 (유일 값)
+    private String invoiceNumber;
 
-    @Column(name = "supply_amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal supplyAmount; // 공급가액
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contract_id", nullable = false)
+    private SimplifiedContract contract;
 
-    @Column(name = "vat_amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal vatAmount; // 부가세
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id", nullable = false)
+    private Member supplier;
 
-    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal totalAmount; // 총 금액 (공급가액 + 부가세)
+    @Column(name = "total_amount", nullable = false)
+    private BigDecimal totalAmount;
 
     @Column(name = "issue_date", nullable = false)
-    private LocalDate issueDate; // 송장 발행일
+    private LocalDate issueDate;
 
     @Column(name = "due_date", nullable = false)
-    private LocalDate dueDate; // 결제 마감일
-
-    @Column(name = "payment_date")
-    private LocalDate paymentDate; // 결제 완료일 (지불되었을 경우)
+    private LocalDate dueDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private InvoiceStatus status = InvoiceStatus.대기; // 송장 상태 (대기, 지불완료, 연체)
+    @Column(name = "status", nullable = false)
+    private InvoiceStatus status = InvoiceStatus.대기;
 
-    @Column(name = "overdue_days", nullable = false, columnDefinition = "INT DEFAULT 0")
-    private Integer overdueDays; // 연체된 일수 (연체 상태일 경우)
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt; // 생성 일시
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt; // 수정 일시
-
-    @OneToOne(mappedBy = "invoice", cascade = CascadeType.ALL)
-    private Payment payment; // 연결된 결제 정보 (1:1 관계)
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    /**
-     * 📌 송장 상태 Enum
-     */
     public enum InvoiceStatus {
         대기, 지불완료, 연체
     }
 }
+
+
+
