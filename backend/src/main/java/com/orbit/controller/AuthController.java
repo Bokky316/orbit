@@ -1,10 +1,9 @@
 package com.orbit.controller;
 
 import com.orbit.config.jwt.TokenProvider;
-import com.orbit.entity.Member;
-import com.orbit.service.MemberService;
+import com.orbit.entity.member.Member;
 import com.orbit.service.RefreshTokenService;
-import com.orbit.config.jwt.TokenProvider;
+import com.orbit.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

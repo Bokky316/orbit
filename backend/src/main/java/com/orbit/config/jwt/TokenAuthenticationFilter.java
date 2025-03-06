@@ -62,7 +62,8 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         if (path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") ||
             path.equals("/api/auth/login") || path.equals("/api/auth/userInfo") ||
-            path.equals("/api/members/register") || path.equals("/api/members/checkUsername") ||    // email -> username으로 변경
+            path.equals("/api/members/login") ||
+            path.equals("/api/members/register") || path.equals("/api/members/checkUsername") ||
             path.equals("/ping.js") ||
             path.startsWith("/ws") || path.startsWith("/ws/info") ||
             path.startsWith("/topic/chat/")) {

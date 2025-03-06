@@ -2,11 +2,11 @@ package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.ApprovalDTO;
 import com.orbit.dto.procurement.ApprovalResponseDTO;
-import com.orbit.entity.Member;
+import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.Approval;
 import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.exception.ProjectNotFoundException;
-import com.orbit.repository.MemberRepository;
+import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ApprovalRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import org.slf4j.Logger;

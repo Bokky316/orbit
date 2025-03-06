@@ -1,6 +1,6 @@
 package com.orbit.repository;
 
-import com.orbit.entity.Member;
+import com.orbit.entity.member.Member;
 import com.orbit.entity.Message;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

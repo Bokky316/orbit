@@ -23,7 +23,9 @@ public class MemberSecurityDto extends User {
     private String name;          // 사용자 실제 이름
     private String companyName;   // 회사명
     private String contactNumber; // 연락처
-    private String address;       // 주소
+    private String postalCode;    // 우편번호
+    private String roadAddress;   // 도로명 주소
+    private String detailAddress; // 상세 주소
 
     /**
      * MemberSecurityDto 생성자
@@ -35,7 +37,9 @@ public class MemberSecurityDto extends User {
      * @param name 사용자 실제 이름
      * @param companyName 회사명
      * @param contactNumber 연락처
-     * @param address 주소
+     * @param postalCode 우편번호
+     * @param roadAddress 도로명 주소
+     * @param detailAddress 상세 주소
      */
     public MemberSecurityDto(Long id,
                              String email,
@@ -45,7 +49,9 @@ public class MemberSecurityDto extends User {
                              String name,
                              String companyName,
                              String contactNumber,
-                             String address) {
+                             String postalCode,
+                             String roadAddress,
+                             String detailAddress) {
         super(username, password, authorities); // username을 사용자 식별자로 사용
         this.id = id;
         this.email = email;
@@ -53,7 +59,9 @@ public class MemberSecurityDto extends User {
         this.name = name;
         this.companyName = companyName;
         this.contactNumber = contactNumber;
-        this.address = address;
+        this.postalCode = postalCode;
+        this.roadAddress = roadAddress;
+        this.detailAddress = detailAddress;
     }
 
     /**
@@ -72,5 +80,13 @@ public class MemberSecurityDto extends User {
      */
     public String getRealName() {
         return name;
+    }
+
+    /**
+     * 전체 주소를 반환합니다.
+     * @return 전체 주소 (우편번호 + 도로명 주소 + 상세 주소)
+     */
+    public String getFullAddress() {
+        return String.format("%s %s %s", postalCode, roadAddress, detailAddress);
     }
 }
