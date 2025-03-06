@@ -24,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -77,6 +78,9 @@ public class ApprovalControllerTest {
     @Autowired
     private ProjectRepository projectRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private String testToken;
     private static final String TEST_USERNAME = "testuser"; // 테스트에 사용될 이메일 주소
     private Member testMember; // 테스트에 사용될 Member 객체
@@ -89,19 +93,23 @@ public class ApprovalControllerTest {
     @BeforeAll
     public void setupMember() {
         // 테스트 사용자 생성 및 저장 (최초 한 번만 실행)
-        testMember =
-                Member.builder()
-                        .username(TEST_USERNAME)
-                        .name("Test User")
-                        .password("1234")
-                        .email(TEST_USERNAME + "@example.com")
-                        .companyName("Test Company")
-                        .role(Member.Role.BUYER)
-                        .enabled(true)
-                        .build();
+        testMember = Member.builder()
+                .username(TEST_USERNAME)
+                .name("Test User")
+                .password("1234")
+                .email("test@example.com")
+                .companyName("Test Company")
+                .role(Member.Role.BUYER)
+                .enabled(true)
+                .build();
+
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(testMember.getPassword());
+        testMember.setPassword(encodedPassword);
+
         testMember = memberRepository.save(testMember);
 
-        logger.info("Test member created with email: {}", TEST_USERNAME);
+        logger.info("Test member created with username: {}", TEST_USERNAME);
     }
 
     /** 각 테스트 메서드 실행 전에 수행되는 설정 */

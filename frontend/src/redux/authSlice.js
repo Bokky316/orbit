@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { API_URL } from "@/utils/constants";
+import { API_URL, SERVER_URL } from "@/utils/constants";
 
 /**
  * Redux Toolkit의 createSlice 함수를 사용하여 auth 슬라이스를 정의
@@ -16,10 +16,13 @@ import { API_URL } from "@/utils/constants";
  * 3. initialState: 사용자 정보와 로그인 여부를 저장하는 상태 값
  *  - user: 사용자 정보 상태 값, 초기값은 null
  *  - isLoggedIn: 로그인 여부 상태 값, 초기값은 false
+ *  - isSocialLogin: 소셜 로그인 여부 상태 값, 초기값은 false
+ *  - isLoading: 로딩 상태 값, 초기값은 false
  * 4. reducers: 액션을 처리하는 함수를 정의
  *  - setUser: 사용자 정보를 저장하는 리듀서 함수
  *  - clearUser: 사용자 정보를 초기화하는 리듀서 함수
- *  - setUser, clearUser는 액션 생성자 함수로, 사용자 정보를 저장하거나 초기화하는 역할을 수행합니다.
+ *  - setLoading: 로딩 상태를 설정하는 리듀서 함수
+ *  - setUser, clearUser, setLoading는 액션 생성자 함수로, 사용자 정보를 저장하거나 초기화하는 역할을 수행합니다.
  */
 const authSlice = createSlice({
     name: "auth",
@@ -30,22 +33,61 @@ const authSlice = createSlice({
         isLoading: false,
     },
     reducers: {
+        /**
+         * 사용자 정보를 설정하는 리듀서
+         * @param state 현재 상태
+         * @param action 액션 객체, payload에 사용자 정보가 담겨있음
+         */
         setUser(state, action) {
             state.user = action.payload;
             state.isLoggedIn = true;
             state.isSocialLogin = !!action.payload.provider;
         },
+        /**
+         * 사용자 정보를 초기화하는 리듀서
+         * @param state 현재 상태
+         */
         clearUser(state) {
             state.user = null;
             state.isLoggedIn = false;
             state.isSocialLogin = false;
         },
+        /**
+         * 로딩 상태를 설정하는 리듀서
+         * @param state 현재 상태
+         * @param action 액션 객체, payload에 로딩 상태가 담겨있음
+         */
         setLoading(state, action) {
             state.isLoading = action.payload;
         },
     },
 });
 
+/**
+ * 액션 생성자 함수 내보내기
+ * - 액션 생성자 : Redux Toolkit의 createSlice가 reducers에 정의된 리듀서 함수(setUser, clearUser, setLoading)를 기반으로 자동 생성한 액션 생성자 함수입니다.
+ * - setUser: 사용자 정보를 payload로 받아 상태를 업데이트하는 액션 생성자.
+ * - clearUser: 사용자 정보를 초기화하는 액션 생성자
+ * - setLoading: 로딩 상태를 설정하는 액션 생성자
+ * - 액션 생성자 함수는 액션 객체를 생성하여 디스패치할 수 있도록 도와줍니다.
+ * 다른 컴포넌트에서 사용 방법
+ * - 외부에서 setUser, clearUser, setLoading를 import하면, 이를 통해 Redux 상태를 업데이트하는 액션을 쉽게 디스패치할 수 있습니다.
+ * 예시:
+ * - dispatch(setUser({ name: "John", email: "john@example.com", provider: "kakao" }));
+ *   이 코드는 다음과 같은 액션 객체를 생성하여 디스패치합니다:
+ *   { type: "auth/setUser", payload: { name: "John", email: "john@example.com", provider: "kakao" } }
+ * - 이 액션 객체는 Redux의 dispatch를 통해 리듀서가 실행되도록 전달됩니다.
+ */
+export const { setUser, clearUser, setLoading } = authSlice.actions;
+
+/**
+ * authSlice 객체의 reducer 속성 내보내기
+ * authSlice.reducer : Redux Toolkit의 createSlice() 함수로 생성된 리듀서 함수를 말한다.
+ * authSlice.reducer는 Redux 상태를 변경하는 함수로, action.payload에 따라 상태를 변경한다.
+ * 이렇게 내보내진 리듀서 함수를 사용하려면 store.js 파일에서 combineReducers 함수를 사용하여
+ * 루트 리듀서를 생성할 때 포함해야 한다.
+ */
+export default authSlice.reducer;
 
 /**
  * 사용자 정보를 가져오는 비동기 함수로 "청크" Thunk라고 부른다.
@@ -65,24 +107,21 @@ const authSlice = createSlice({
  *   액션 생성자 함수에 전달하여 사용자 정보를 저장합니다.
  */
 export const fetchUserInfo = () => async (dispatch) => {
-  try {
-    const response = await fetchWithAuth(`${API_URL}auth/userInfo`);
-    const userData = await response.json();
+    try {
+        const response = await fetchWithAuth(`${API_URL}auth/userInfo`);
+        const userData = await response.json();
 
-    if (userData && userData.status === "success") {
-      dispatch(setUser({
-        ...userData.data,
-        isLoggedIn: true,
-        isSocialLogin: !!userData.data.provider
-      }));
+        if (userData && userData.status === "success") {
+            dispatch(setUser({
+                ...userData.data,
+                isLoggedIn: true,
+                isSocialLogin: !!userData.data.provider
+            }));
+        }
+    } catch (error) {
+        console.error("사용자 정보 가져오기 오류:", error);
     }
-  } catch (error) {
-    console.error("사용자 정보 가져오기 오류:", error);
-  }
 };
-
-
-
 
 /**
  * 리프레시 토큰을 사용하여 액세스 토큰 갱신 및 사용자 정보 업데이트 (Thunk)
@@ -113,28 +152,3 @@ export const refreshAccessToken = async () => {
         return null; // 실패 시 null 반환
     }
 };
-
-
-/**
- * 자동 생성된 액션 생성자 함수 내보내기
- * - 액션 생성자 : Redux Toolkit의 createSlice가 reducers에 정의된 리듀서 함수(setUser, clearUser)를 기반으로 자동 생성한 액션 생성자 함수입니다.
- * - setUser: 사용자 정보를 payload로 받아 상태를 업데이트하는 액션 생성자.
- * - clearUser: 사용자 정보를 초기화하는 액션 생성자
- * - 액션 생성자 함수는 액션 객체를 생성하여 디스패치할 수 있도록 도와줍니다.
- * 다른 컴포넌트에서 사용 방법
- * - 외부에서 setUser와 clearUser를 import하면, 이를 통해 Redux 상태를 업데이트하는 액션을 쉽게 디스패치할 수 있습니다.
- * - dispatch(setUser({ name: "John", email: "john@example.com", provider: "kakao" }));
- *   이 코드는 다음과 같은 액션 객체를 생성하여 디스패치합니다:
- *   { type: "auth/setUser", payload: { name: "John", email: "john@example.com", provider: "kakao" } }
- * - 이 액션 객체는 Redux의 dispatch를 통해 리듀서가 실행되도록 전달됩니다.
- */
-export const { setUser, clearUser, setLoading } = authSlice.actions;    // 액션 생성자 함수 내보내기
-
-/**
- * authSlice 객체의 reducer 속성 내보내기
- * authSlice.reducer : Redux Toolkit의 createSlice() 함수로 생성된 리듀서 함수를 말한다.
- * authSlice.reducer는 Redux 상태를 변경하는 함수로, action.payload에 따라 상태를 변경한다.
- * 이렇게 내보내진 리듀서 함수를 사용하려면 store.js 파일에서 combineReducers 함수를 사용하여
- * 루트 리듀서를 생성할 때 포함해야 한다.
- */
-export default authSlice.reducer;

@@ -44,7 +44,10 @@ public class MemberService {
             throw new IllegalStateException("이미 존재하는 이메일입니다.");
         }
 
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(memberFormDto.getPassword());
         Member member = Member.createMember(memberFormDto, passwordEncoder);
+        member.setPassword(encodedPassword); // 암호화된 비밀번호 설정
         memberRepository.save(member);
     }
 

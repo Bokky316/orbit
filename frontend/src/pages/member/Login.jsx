@@ -8,11 +8,11 @@ import {
     Box,
     Typography
 } from "@mui/material";
+import { useDispatch } from 'react-redux';
+import { setUser } from '@/redux/authSlice';
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "@/utils/constants";
-import { useDispatch } from "react-redux";
-import { setUser } from "@/redux/authSlice";
 import { setTokenAndUser } from "@/utils/authUtil";
 
 /**
@@ -34,12 +34,12 @@ export default function Login() {
 
     const handleLogin = async () => {
         try {
-            const response = await fetch(API_URL + "auth/login", {
+            const response = await fetch(API_URL + "members/login", { // 백엔드 엔드포인트로 수정
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(credentials),
+                body: JSON.stringify(credentials), // JSON 형식으로 데이터 전송
                 credentials: "include",
             });
 
