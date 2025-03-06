@@ -3,15 +3,18 @@ package com.orbit.controller.procurement;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbit.dto.procurement.ApprovalDTO;
 import com.orbit.dto.procurement.ApprovalResponseDTO;
+import com.orbit.service.MemberService;
+import com.orbit.service.AccessTokenService;
 import com.orbit.service.procurement.ApprovalService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.orbit.config.jwt.RefreshTokenCheckFilter; // RefreshTokenCheckFilter import
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -20,50 +23,39 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * ApprovalController에 대한 통합 테스트 클래스
- *
- * @SpringBootTest: Spring Boot 기반 애플리케이션 컨텍스트를 로드하여 통합 테스트를 수행합니다.
- * @AutoConfigureMockMvc: MockMvc를 자동으로 구성하여 Controller를 테스트할 수 있도록 합니다.
+ * ApprovalController에 대한 단위 테스트 클래스
+ * Spring MVC 기반의 테스트 환경에서 ApprovalController의 API 엔드포인트를 테스트
  */
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(value = ApprovalController.class, excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = RefreshTokenCheckFilter.class))
 public class ApprovalControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
+    @MockitoBean
     private ApprovalService approvalService;
+
+    @MockitoBean
+    private AccessTokenService accessTokenService; // AccessTokenService를 Mock으로 대체
+
+    @MockitoBean // MemberService를 MockitoBean으로 주입
+    private MemberService memberService;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Configuration
-    static class TestConfig {
-        @Bean
-        public ApprovalService approvalService() {
-            return mock(ApprovalService.class);
-        }
-
-        @Bean
-        public ObjectMapper objectMapper() {
-            return new ObjectMapper();
-        }
-    }
-
     /**
-     * 모든 결재 정보를 조회하는 API에 대한 테스트
+     * 모든 Approval 목록을 가져오는 API 테스트
+     * @throws Exception
      */
     @Test
     void getAllApprovals_shouldReturnAllApprovals() throws Exception {
         // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
         ApprovalResponseDTO approval1 = new ApprovalResponseDTO();
         approval1.setId(1L);
         approval1.setComments("Test Comments 1");
@@ -73,7 +65,7 @@ public class ApprovalControllerTest {
         approval2.setComments("Test Comments 2");
 
         List<ApprovalResponseDTO> approvals = Arrays.asList(approval1, approval2);
-        when(mockApprovalService.getAllApprovals()).thenReturn(approvals);
+        when(approvalService.getAllApprovals()).thenReturn(approvals);
 
         // When & Then
         mockMvc.perform(get("/api/approvals"))
@@ -84,16 +76,16 @@ public class ApprovalControllerTest {
     }
 
     /**
-     * 결재 ID로 결재 정보를 조회하는 API에 대한 테스트 (결재 정보가 존재하는 경우)
+     * 특정 ID의 Approval을 가져오는 API 테스트 (Approval이 존재하는 경우)
+     * @throws Exception
      */
     @Test
     void getApprovalById_shouldReturnApproval_whenApprovalExists() throws Exception {
         // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
         ApprovalResponseDTO approval = new ApprovalResponseDTO();
         approval.setId(1L);
         approval.setComments("Test Comments");
-        when(mockApprovalService.getApprovalById(1L)).thenReturn(Optional.of(approval));
+        when(approvalService.getApprovalById(1L)).thenReturn(Optional.of(approval));
 
         // When & Then
         mockMvc.perform(get("/api/approvals/1"))
@@ -103,13 +95,13 @@ public class ApprovalControllerTest {
     }
 
     /**
-     * 결재 ID로 결재 정보를 조회하는 API에 대한 테스트 (결재 정보가 존재하지 않는 경우)
+     * 특정 ID의 Approval을 가져오는 API 테스트 (Approval이 존재하지 않는 경우)
+     * @throws Exception
      */
     @Test
     void getApprovalById_shouldReturnNotFound_whenApprovalDoesNotExist() throws Exception {
         // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
-        when(mockApprovalService.getApprovalById(3L)).thenReturn(Optional.empty());
+        when(approvalService.getApprovalById(3L)).thenReturn(Optional.empty());
 
         // When & Then
         mockMvc.perform(get("/api/approvals/3"))
@@ -117,12 +109,12 @@ public class ApprovalControllerTest {
     }
 
     /**
-     * 새로운 결재 정보를 생성하는 API에 대한 테스트
+     * 새로운 Approval을 생성하는 API 테스트
+     * @throws Exception
      */
     @Test
     void createApproval_shouldCreateNewApproval() throws Exception {
         // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
         ApprovalDTO approvalDTO = new ApprovalDTO();
         approvalDTO.setPurchaseRequestId(1L);
         approvalDTO.setApproverId(1L);
@@ -138,7 +130,7 @@ public class ApprovalControllerTest {
         createdApproval.setStatus("대기");
         createdApproval.setComments("Test Comments");
 
-        when(mockApprovalService.createApproval(any(ApprovalDTO.class))).thenReturn(createdApproval);
+        when(approvalService.createApproval(any(ApprovalDTO.class))).thenReturn(createdApproval);
 
         // When & Then
         mockMvc.perform(post("/api/approvals")
@@ -151,12 +143,12 @@ public class ApprovalControllerTest {
     }
 
     /**
-     * 결재 정보를 업데이트하는 API에 대한 테스트
+     * 기존 Approval을 업데이트하는 API 테스트 (Approval이 존재하는 경우)
+     * @throws Exception
      */
     @Test
     void updateApproval_shouldUpdateApproval_whenApprovalExists() throws Exception {
         // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
         ApprovalDTO approvalDTO = new ApprovalDTO();
         approvalDTO.setPurchaseRequestId(1L);
         approvalDTO.setApproverId(1L);
@@ -172,7 +164,7 @@ public class ApprovalControllerTest {
         updatedApproval.setStatus("승인");
         updatedApproval.setComments("Updated Comments");
 
-        when(mockApprovalService.updateApproval(eq(1L), any(ApprovalDTO.class))).thenReturn(updatedApproval);
+        when(approvalService.updateApproval(eq(1L), any(ApprovalDTO.class))).thenReturn(updatedApproval);
 
         // When & Then
         mockMvc.perform(put("/api/approvals/1")
