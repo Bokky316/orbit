@@ -90,6 +90,9 @@ dependencies {
         maven { url 'https://jitpack.io' } // JitPack 저장소 추가
     }
     implementation 'com.github.iamport:iamport-rest-client-java:0.2.23'
+
+    // 파일 업로드를 위한 의존성
+    implementation 'commons-io:commons-io:2.11.0' // 최신 버전 확인 후 적용
 }
 
 tasks.named('test') {
