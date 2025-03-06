@@ -1,9 +1,9 @@
 package com.orbit.service.supplier;
 
 import com.orbit.constant.SupplierStatus;
-import com.orbit.entity.Member;
+import com.orbit.entity.member.Member;
 import com.orbit.entity.supplier.SupplierRegistration;
-import com.orbit.repository.MemberRepository;
+import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.supplier.SupplierRegistrationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

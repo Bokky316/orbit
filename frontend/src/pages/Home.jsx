@@ -46,6 +46,11 @@ const Home = () => {
           결재 관리
         </Button>
       </Link>
+      <Link to="/supplier-registrations" style={{ textDecoration: "none" }}>
+        <Button variant="contained" color="primary">
+          협력업체 관리
+        </Button>
+      </Link>
     </Box>
   );
 };
