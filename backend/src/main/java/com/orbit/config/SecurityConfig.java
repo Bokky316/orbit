@@ -103,49 +103,64 @@ public class SecurityConfig {
         http.authorizeHttpRequests(request -> request
 
                 // 공개 접근 가능한 API 엔드포인트
-                .requestMatchers("/", "/api/auth/login", "/api/auth/logout", "/api/auth/userInfo", "/api/auth/login/error").permitAll()
-                .requestMatchers("/api/members/register", "/api/members/checkEmail").permitAll()
-                .requestMatchers("/api/email/send", "/api/email/verify").permitAll()
-                .requestMatchers("/members/login").permitAll()
-                .requestMatchers("/api/auth/userInfo").permitAll()
+                .requestMatchers(
+                        "/",
+                        "/api/auth/login",
+                        "/api/auth/logout",
+                        "/api/auth/userInfo",
+                        "/api/auth/login/error",
+                        "/api/members/register",
+                        "/api/members/checkEmail",
+                        "/api/email/send",
+                        "/api/email/verify",
+                        "/members/login",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui.html"
+                ).permitAll()
 
                 // WebSocket 관련 요청은 인증 검사 제외
-                // WebSocket 접속이 정상인지 체크하는 핸드쉐이크 요청인 /ws/info와 WebSocket 연결, /ws/**는 인증 없이 접근할 수 있도록 설정합니다.
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/topic/**").permitAll() // ✅ STOMP 메시지 브로커 경로 허용
-                .requestMatchers("/", "/api/auth/login", "/api/auth/logout", "/api/members/register", "/api/members/checkUsername", "/api/members/login").permitAll()
-                // 사용자 관리
-                .requestMatchers("/api/members/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+                .requestMatchers("/ws/**", "/topic/**").permitAll()
 
-                // 품목 관리
-                .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+                // 사용자 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/members").hasRole("ADMIN")
+                .requestMatchers("/api/members/{id}").hasRole("ADMIN")
+                .requestMatchers("/api/members/search").hasRole("ADMIN")
+                .requestMatchers("/api/members/deactivate/{id}").hasRole("ADMIN")
 
-                // 구매 요청 관리
-                .requestMatchers("/api/purchase-requests/**").hasAnyRole("BUYER", "ADMIN") // BUYER, ADMIN 역할만 접근 가능
+                // 품목 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN")
 
-                // 계약 관리
-                .requestMatchers("/api/contracts/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+                // 구매 요청 관리 (BUYER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/purchase-requests/**").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/approvals/**").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/projects/**").hasAnyRole("BUYER", "ADMIN")
 
-                // 송장 관리
-                .requestMatchers("/api/invoices/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+                // 계약 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/contracts/**").hasRole("ADMIN")
 
-                // 검수 관리
-                .requestMatchers("/api/inspections/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+                // 송장 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/invoices/**").hasAnyRole("SUPPLIER", "ADMIN")
 
-                // 지불 관리
-                .requestMatchers("/api/payments/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+                // 검수 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/inspections/**").hasRole("ADMIN")
 
-                // 협력업체 등록 관리
-                .requestMatchers("/api/supplier-registrations/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+                // 지불 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/payments/**").hasRole("ADMIN")
 
-                // 조직 구조 관리
-                .requestMatchers("/api/departments/**", "/api/positions/**").hasRole("ADMIN") // 관리자만 접근 가능
+                // 협력업체 등록 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/supplier-registrations/**").hasAnyRole("SUPPLIER", "ADMIN")
 
-                // 시스템 설정
-                .requestMatchers("/api/settings/**").hasRole("ADMIN") // 관리자만 접근 가능
+                // 조직 구조 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/departments/**", "/api/positions/**").hasRole("ADMIN")
 
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll() // 스웨거 Swagger UI는 인증을 거치지 않고 접근 가능
-                .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN") // 사용자의 읽지 않은 메시지 개수 조회 API는 USER, ADMIN만 접근 가능
+                // 시스템 설정 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/settings/**").hasRole("ADMIN")
+
+                // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
+
+                // 정적 리소스는 모두 허용
                 .requestMatchers(
                         "/images/**",
                         "/static-images/**",
@@ -161,7 +176,9 @@ public class SecurityConfig {
                         "/**/*.svg",
                         "/**/*.html",
                         "/ping.js"
-                ).permitAll() // 정적 리소스는 모두 허용
+                ).permitAll()
+
+                // 그 외 모든 요청은 인증 필요
                 .anyRequest().authenticated()
         );
 

@@ -1,5 +1,3 @@
-// src/pages/procurement/ProjectListPage.jsx
-
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -67,7 +65,10 @@ function ProjectListPage() {
      */
     const getFilteredProjects = () => {
         return projects.filter(project => {
-            const searchTermMatch = project.projectName?.includes(localFilters.searchTerm) || project.managerName?.includes(localFilters.searchTerm);
+            const searchTerm = localFilters.searchTerm || ''; // searchTerm이 undefined일 경우 빈 문자열로 초기화
+            const projectName = project.projectName || ''; // projectName이 undefined일 경우 빈 문자열로 초기화
+            const managerName = project.managerName || ''; // managerName이 undefined일 경우 빈 문자열로 초기화
+            const searchTermMatch = projectName.includes(searchTerm) || managerName.includes(searchTerm);
             const startDateMatch = !localFilters.startDate || project.startDate >= localFilters.startDate;
             const endDateMatch = !localFilters.endDate || project.endDate <= localFilters.endDate;
             const statusMatch = !localFilters.status || project.status === localFilters.status;
@@ -268,4 +269,3 @@ function ProjectListPage() {
 }
 
 export default ProjectListPage;
-

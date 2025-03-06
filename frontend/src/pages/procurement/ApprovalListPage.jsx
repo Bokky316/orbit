@@ -1,5 +1,3 @@
-// src/components/ApprovalListPage.js
-
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -46,6 +44,8 @@ function ApprovalListPage() {
     const approvals = useSelector(state => state.approval.approvals);
     const filters = useSelector(state => state.approval.filters);
     const [localFilters, setLocalFilters] = useState(filters);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         // 컴포넌트 마운트 시 결재 목록 데이터 로딩
@@ -56,15 +56,25 @@ function ApprovalListPage() {
      * 결재 목록 데이터 API 호출 함수
      */
     const fetchApprovals = async () => {
+        setLoading(true);
+        setError(null);
         try {
             const response = await fetchWithAuth(`${API_URL}approvals`);
             if (!response.ok) {
-                throw new Error(`결재 목록 로딩 실패: ${response.status}`);
+                const errorText = await response.text();
+                setError(`결재 목록 로딩 실패: ${response.status} - ${errorText}`);
+                dispatch(setApprovals([])); // Redux 스토어에 빈 배열 저장
+                throw new Error(`결재 목록 로딩 실패: ${response.status} - ${errorText}`);
             }
+
             const data = await response.json();
             dispatch(setApprovals(data)); // Redux 스토어에 결재 목록 저장
         } catch (error) {
             console.error('결재 목록 로딩 중 오류 발생:', error);
+            setError(error.message);
+            dispatch(setApprovals([])); // Redux 스토어에 빈 배열 저장
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -74,7 +84,10 @@ function ApprovalListPage() {
      */
     const getFilteredApprovals = () => {
         return approvals.filter(approval => {
-            const searchTermMatch = approval.id?.includes(localFilters.searchTerm) || approval.purchaseRequest?.project?.projectName?.includes(localFilters.searchTerm) || approval.purchaseRequest?.requester?.name?.includes(localFilters.searchTerm);
+            const searchTerm = localFilters.searchTerm || '';
+            const searchTermMatch = String(approval.id ?? '').includes(searchTerm) ||
+                String(approval.purchaseRequest?.project?.projectName ?? '').includes(searchTerm) ||
+                String(approval.purchaseRequest?.requester?.name ?? '').includes(searchTerm);
             const requestDateMatch = !localFilters.requestDate || approval.purchaseRequest?.requestDate === localFilters.requestDate;
             return searchTermMatch && requestDateMatch;
         });
@@ -120,10 +133,10 @@ function ApprovalListPage() {
         // TODO: 승인 API 호출 (API 엔드포인트 및 요청 바디는 백엔드에 따라 달라질 수 있음)
         try {
             // const response = await fetchWithAuth(`${API_URL}approvals/${id}/approve`, {
-            //     method: 'POST',
+            // method: 'POST',
             // });
             // if (!response.ok) {
-            //     throw new Error(`승인 실패: ${response.status}`);
+            // throw new Error(`승인 실패: ${response.status}`);
             // }
             // console.log('승인 성공');
             // alert('승인되었습니다.');
@@ -132,10 +145,10 @@ function ApprovalListPage() {
             // ** 가짜로 승인 처리 **
             alert('승인되었습니다.');
             fetchApprovals(); // 결재 목록 갱신
-
         } catch (error) {
             console.error('승인 중 오류 발생:', error);
             alert('승인 중 오류가 발생했습니다.');
+            // 오류 처리 로직 (예: 사용자에게 오류 메시지 표시)
         }
     };
 
@@ -147,10 +160,10 @@ function ApprovalListPage() {
         // TODO: 반려 API 호출 (API 엔드포인트 및 요청 바디는 백엔드에 따라 달라질 수 있음)
         try {
             // const response = await fetchWithAuth(`${API_URL}approvals/${id}/reject`, {
-            //     method: 'POST',
+            // method: 'POST',
             // });
             // if (!response.ok) {
-            //     throw new Error(`반려 실패: ${response.status}`);
+            // throw new Error(`반려 실패: ${response.status}`);
             // }
             // console.log('반려 성공');
             // alert('반려되었습니다.');
@@ -159,84 +172,113 @@ function ApprovalListPage() {
             // ** 가짜로 반려 처리 **
             alert('반려되었습니다.');
             fetchApprovals(); // 결재 목록 갱신
-
         } catch (error) {
             console.error('반려 중 오류 발생:', error);
             alert('반려 중 오류가 발생했습니다.');
+            // 오류 처리 로직 (예: 사용자에게 오류 메시지 표시)
         }
     };
 
+    if (loading) {
+        return <Typography>Loading...</Typography>;
+    }
+
+    if (error) {
+        return <Typography color="error">Error: {error}</Typography>;
+    }
+
     return (
-        <Box sx={{ p: 4 }}>
-            <Typography variant="h4" sx={{ mb: 4 }}>결재 대기 목록</Typography>
+        <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+                결재 대기 목록
+            </Typography>
 
             {/* 검색 및 필터 섹션 */}
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-                <Grid item xs={12} md={4}>
-                    <TextField
-                        fullWidth
-                        label="요청번호/요청자/프로젝트명"
-                        variant="outlined"
-                        value={localFilters.searchTerm}
-                        onChange={handleSearchTermChange}
-                    />
+            <Paper elevation={2} sx={{ padding: 2, marginBottom: 2 }}>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={6}>
+                        <TextField
+                            fullWidth
+                            label="검색"
+                            value={localFilters.searchTerm || ''}
+                            onChange={handleSearchTermChange}
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="요청일"
+                            type="date"
+                            InputLabelProps={{ shrink: true }}
+                            value={localFilters.requestDate || ''}
+                            onChange={handleRequestDateChange}
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleApplyFilters}
+                            fullWidth
+                        >
+                            검색
+                        </Button>
+                    </Grid>
                 </Grid>
-                <Grid item xs={12} md={4}>
-                    <TextField
-                        fullWidth
-                        label="요청일"
-                        type="date"
-                        InputLabelProps={{ shrink: true }}
-                        value={localFilters.requestDate}
-                        onChange={handleRequestDateChange}
-                    />
-                </Grid>
-                <Grid item xs={12} md={4} sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Button variant="contained" color="primary" onClick={handleApplyFilters}>
-                        검색
-                    </Button>
-                </Grid>
-            </Grid>
+            </Paper>
 
             {/* 결재 대기 목록 테이블 */}
-            <Paper>
-                <StyledTableContainer>
-                    <Table stickyHeader aria-label="결재 대기 목록 테이블">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>요청번호</TableCell>
-                                <TableCell>프로젝트명</TableCell>
-                                <TableCell>요청자</TableCell>
-                                <TableCell>총금액</TableCell>
-                                <TableCell>요청일</TableCell>
-                                <TableCell>액션</TableCell>
+            <StyledTableContainer component={Paper}>
+                <Table stickyHeader aria-label="sticky table">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>요청번호</TableCell>
+                            <TableCell>프로젝트명</TableCell>
+                            <TableCell>요청자</TableCell>
+                            <TableCell>총금액</TableCell>
+                            <TableCell>요청일</TableCell>
+                            <TableCell>액션</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {getFilteredApprovals().map(approval => (
+                            <TableRow key={approval.id} hover>
+                                <TableCell>{approval.id}</TableCell>
+                                <TableCell>{approval.purchaseRequest?.project?.projectName}</TableCell>
+                                <TableCell>{approval.purchaseRequest?.requester?.name}</TableCell>
+                                <TableCell>{approval.purchaseRequest?.totalAmount?.toLocaleString()}원</TableCell>
+                                <TableCell>{approval.purchaseRequest?.requestDate}</TableCell>
+                                <TableCell>
+                                    <Button
+                                        size="small"
+                                        variant="contained"
+                                        color="success"
+                                        onClick={() => handleApprove(approval.id)}
+                                    >
+                                        승인
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant="contained"
+                                        color="error"
+                                        onClick={() => handleReject(approval.id)}
+                                    >
+                                        반려
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="primary"
+                                        onClick={() => handleViewDetail(approval.id)}
+                                    >
+                                        상세보기
+                                    </Button>
+                                </TableCell>
                             </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {getFilteredApprovals().map(approval => (
-                                <TableRow key={approval.id} hover>
-                                    <TableCell>{approval.id}</TableCell>
-                                    <TableCell>{approval.purchaseRequest?.project?.projectName}</TableCell>
-                                    <TableCell>{approval.purchaseRequest?.requester?.name}</TableCell>
-                                    <TableCell>{approval.purchaseRequest?.totalAmount?.toLocaleString()}원</TableCell>
-                                    <TableCell>{approval.purchaseRequest?.requestDate}</TableCell>
-                                    <TableCell>
-                                        <Button size="small" variant="contained" color="success" onClick={() => handleApprove(approval.id)}>
-                                            승인
-                                        </Button>
-                                        <Button size="small" variant="contained" color="error" onClick={() => handleReject(approval.id)}>
-                                            반려
-                                        </Button>
-                                        <Button size="small" variant="outlined" onClick={() => handleViewDetail(approval.id)}>
-                                            상세보기
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </StyledTableContainer>
-            </Paper>
+                        ))}
+                    </TableBody>
+                </Table>
+            </StyledTableContainer>
         </Box>
     );
 }

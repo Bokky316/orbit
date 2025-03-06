@@ -1,22 +1,19 @@
-import { SERVER_URL } from "@/utils/constants"; // "/refresh" 요청 시 사용
+import { SERVER_URL } from "@/utils/constants";
+import { getUserFromLocalStorage } from "@/utils/authUtil";
 
 /**
  * 액세스 토큰 갱신 함수
  * - 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받는 함수
- * - API_URL/auth/refresh 엔드포인트로 POST 요청을 보내서 새로운 액세스 토큰을 발급받음
- * - 응답이 성공하면 새로운 액세스 토큰을 반환
- *
- * @returns {Promise<null|*>}
+ * @returns {Promise<boolean>} 토큰 갱신 성공 여부
  */
 export const refreshAccessToken = async () => {
   try {
-    // 1. 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받는 함수, fetch API의 응답은 Promise 객체로 반환된다.
     const response = await fetch(`${SERVER_URL}refresh`, {
       method: "POST",
-      credentials: "include", // HttpOnly 쿠키를 포함해서 요청
+      credentials: "include",
       headers: {
-        "Content-Type": "application/json"
-      }
+        "Content-Type": "application/json",
+      },
     });
     console.log(
       "refreshAccessToken /refresh 요청후 받은 응답 response: ",
@@ -32,58 +29,77 @@ export const refreshAccessToken = async () => {
     return true; // 성공 시 true 반환
   } catch (error) {
     console.error("리프레시 토큰 처리 오류:", error.message);
-    return false; // 실패 여부 반환
+    return false; // 실패 시 false 반환
   }
 };
 
 /**
  * API 요청을 보내는 함수
  * - 요청을 보낼 때 헤더와 JWT 토큰을 포함하여 요청
- * - options 객체에 method, body 등을 객체 형태로 만들어서 보내기 때문에 options = {}로 초기화
- * - credentials: "include" : 요청할 때 HttpOnly 쿠키를 포함해서 요청, 이게 있어야 서버에서 인증.
- *   서버에서는 이걸 받아서 토큰을 디코딩 해서 사용자 정보를 추출하고 그것을 SecurityContext 에 저장한다.
- *   그리고 저장된 정보에서 권한을 조회해서 요청한 메뉴에 대한 권한이 있는지 확인한다.
  * @param {string} url 요청할 URL
  * @param {Object} options fetch API의 두 번째 인자로 전달할 옵션 객체
+ * @returns {Promise<Response>} fetch 응답 객체
  */
 export const fetchWithAuth = async (url, options = {}) => {
+  console.log("fetchWithAuth called with:", { url, options });
+
+  // 로컬 스토리지에서 토큰 가져오기
+  const token = localStorage.getItem("token");
+
   const config = {
     ...options,
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}), // JWT 토큰 추가
+      ...options.headers, // 기존 헤더 유지
     },
-    credentials: "include"
+    credentials: "include",
   };
 
+  if (config.method) {
+    config.method = config.method.toUpperCase();
+  }
+
+  console.log("Sending request with config:", config);
+
   try {
-    // 1. 서버로 첫 번째 요청, fetch API의 반환 결과는 Promise 객체로 반환되며, response 객체를 반환한다. response 객체는 응답에 대한 정보를 담고 있다. 예를 들면 응답이 성공이면 response.ok는 true이다.
-    let response = await fetch(url, config);
+    const response = await fetch(url, config);
+    console.log("Response received:", response);
 
-    // 2. 1.번 요청 결과 401 Unauthorized 상태 처리가 반환 되었을 때
+    console.log("Response status:", response.status);
+    console.log(
+      "Response headers:",
+      Object.fromEntries(response.headers.entries())
+    );
+
     if (response.status === 401) {
-      const errorData = await response.json();
-      console.warn(`401 Error: ${errorData.message}`);
+      console.log(
+        "fetchWithAuth.js: 액세스 토큰 만료되어 refreshAccessToken() 호출 - 1"
+      );
+      const refreshSuccess = await refreshAccessToken();
 
-      if (errorData.message.includes("만료")) {
-        // 액세스 토큰 만료: 리프레시 토큰으로 액세스 토큰 갱신 시도
-        console.log(
-          "fetchWithAuth.js: 액세스 토큰 만료되어 refreshAccessToken() 호출 - 1"
-        );
-        const refreshSuccess = await refreshAccessToken();
-
-        if (refreshSuccess) {
-          console.log("리프레시 토큰 성공, 기존 요청 재시도");
-          response = await fetch(url, config); // 기존 요청 재시도
-        } else {
-          console.error("리프레시 토큰 갱신 실패");
-          throw new Error("Unauthorized: 리프레시 토큰 갱신 실패");
-        }
+      if (refreshSuccess) {
+        console.log("리프레시 토큰 성공, 기존 요청 재시도");
+        // 갱신된 토큰을 사용하여 재시도
+        const newToken = localStorage.getItem("token");
+        const newConfig = {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}), // 갱신된 JWT 토큰 사용
+            ...options.headers, // 기존 헤더 유지
+          },
+          credentials: "include",
+        };
+        const newResponse = await fetch(url, newConfig);
+        return newResponse;
       } else {
-        throw new Error(`Unauthorized: ${errorData.message}`);
+        console.error("리프레시 토큰 갱신 실패, 로그인 페이지로 리다이렉트");
+        window.location.href = "/login"; // 로그인 페이지 URL을 적절히 수정하세요
+        throw new Error("Unauthorized: 리프레시 토큰 갱신 실패");
       }
     }
 
-    // 3. 정상 응답 반환
     return response;
   } catch (error) {
     console.error("API 요청 실패:", error.message);
@@ -95,24 +111,38 @@ export const fetchWithAuth = async (url, options = {}) => {
  * 인증이 필요 없는 API 요청을 보내는 함수
  * - JWT 토큰을 포함하지 않고 요청
  * - 예를들면 회원가입, 로그인 등
- * @param url
- * @param options
- * @returns {Promise<Response>}
+ * @param {string} url 요청할 URL
+ * @param {Object} options fetch API의 두 번째 인자로 전달할 옵션 객체
+ * @returns {Promise<Response>} fetch 응답 객체
  */
 export const fetchWithoutAuth = async (url, options = {}) => {
   const config = {
-    ...options, // method, body 등 유지
+    ...options,
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...options.headers, // 기존 헤더 유지
     },
-    credentials: "include"
+    credentials: "include",
   };
+
+  // HTTP 메소드를 대문자로 변환
+  if (config.method) {
+    config.method = config.method.toUpperCase();
+  }
+
+  console.log("Request config:", config);
 
   try {
     const response = await fetch(url, config); // 비동기 요청
+    if (!response.ok) {
+      throw new Error(`API 요청 실패: ${response.status}`);
+    }
     return response; // 서버 응답 반환
   } catch (error) {
-    console.error("API 요청 실패:", error.message);
-    throw error; // 오류 다시 던지기
+    console.error("API 요청 실패:", error);
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    throw error;
   }
 };

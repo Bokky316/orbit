@@ -12,12 +12,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 회원 관련 API를 제공하는 컨트롤러
@@ -143,7 +145,13 @@ public class MemberController {
 
             responseMap.put("status", "success");
             responseMap.put("message", "로그인 성공");
-            responseMap.put("token", token); // 필요한 경우 토큰을 응답에 포함
+            responseMap.put("id", member.getId());
+            responseMap.put("username", member.getUsername());
+            responseMap.put("name", member.getName());
+            responseMap.put("roles", member.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.toList())); // 역할을 문자열 리스트로 변환
+            responseMap.put("token", token);
             return ResponseEntity.ok(responseMap);
         } else {
             responseMap.put("status", "failed");

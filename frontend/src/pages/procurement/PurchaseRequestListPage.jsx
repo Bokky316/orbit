@@ -1,5 +1,3 @@
-// src/components/PurchaseRequestListPage.js
-
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -66,10 +64,12 @@ function PurchaseRequestListPage() {
             if (!response.ok) {
                 throw new Error(`구매 요청 목록 로딩 실패: ${response.status}`);
             }
+
             const data = await response.json();
             dispatch(setPurchaseRequests(data)); // Redux 스토어에 구매 요청 목록 저장
         } catch (error) {
             console.error('구매 요청 목록 로딩 중 오류 발생:', error);
+            // 오류 처리 로직 (예: 사용자에게 오류 메시지 표시)
         }
     };
 
@@ -79,9 +79,13 @@ function PurchaseRequestListPage() {
      */
     const getFilteredPurchaseRequests = () => {
         return purchaseRequests.filter(request => {
-            const searchTermMatch = request.id?.includes(localFilters.searchTerm) || request.project?.projectName?.includes(localFilters.searchTerm) || request.requester?.name?.includes(localFilters.searchTerm);
+            const searchTerm = localFilters.searchTerm || ''; // searchTerm이 undefined일 경우 빈 문자열로 초기화
+            const searchTermMatch = String(request.id)?.includes(searchTerm) ||
+                String(request.project?.projectName)?.includes(searchTerm) ||
+                String(request.requester?.name)?.includes(searchTerm);
             const requestDateMatch = !localFilters.requestDate || request.requestDate === localFilters.requestDate;
             const statusMatch = !localFilters.status || request.status === localFilters.status;
+
             return searchTermMatch && requestDateMatch && statusMatch;
         });
     };
@@ -137,97 +141,102 @@ function PurchaseRequestListPage() {
     };
 
     return (
-        <Box sx={{ p: 4 }}>
-            <Typography variant="h4" sx={{ mb: 4 }}>구매 요청 목록</Typography>
+        <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+                구매 요청 목록
+            </Typography>
 
             {/* 검색 및 필터 섹션 */}
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-                <Grid item xs={12} md={3}>
-                    <TextField
-                        fullWidth
-                        label="요청번호/요청자/프로젝트명"
-                        variant="outlined"
-                        value={localFilters.searchTerm}
-                        onChange={handleSearchTermChange}
-                    />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <TextField
-                        fullWidth
-                        label="요청일"
-                        type="date"
-                        InputLabelProps={{ shrink: true }}
-                        value={localFilters.requestDate}
-                        onChange={handleRequestDateChange}
-                    />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <FormControl fullWidth>
-                        <InputLabel id="status-label">상태</InputLabel>
-                        <Select
-                            labelId="status-label"
-                            value={localFilters.status}
-                            onChange={handleStatusChange}
-                            label="상태"
+            <Paper elevation={2} sx={{ padding: 2, marginBottom: 2 }}>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={3}>
+                        <FormControl fullWidth>
+                            <InputLabel id="status-select-label">상태</InputLabel>
+                            <Select
+                                labelId="status-select-label"
+                                id="status-select"
+                                value={localFilters.status || ''}
+                                label="상태"
+                                onChange={handleStatusChange}
+                            >
+                                <MenuItem value="">전체</MenuItem>
+                                <MenuItem value="초안">초안</MenuItem>
+                                <MenuItem value="제출">제출</MenuItem>
+                                <MenuItem value="승인">승인</MenuItem>
+                                <MenuItem value="거절">거절</MenuItem>
+                                <MenuItem value="완료">완료</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                        <TextField
+                            fullWidth
+                            label="검색"
+                            value={localFilters.searchTerm || ''}
+                            onChange={handleSearchTermChange}
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleApplyFilters}
+                            fullWidth
                         >
-                            <MenuItem value="">전체</MenuItem>
-                            <MenuItem value="초안">초안</MenuItem>
-                            <MenuItem value="제출">제출</MenuItem>
-                            <MenuItem value="승인">승인</MenuItem>
-                            <MenuItem value="거절">거절</MenuItem>
-                            <MenuItem value="완료">완료</MenuItem>
-                        </Select>
-                    </FormControl>
+                            검색
+                        </Button>
+                    </Grid>
                 </Grid>
-                <Grid item xs={12} md={3} sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Button variant="contained" color="primary" onClick={handleApplyFilters}>
-                        검색
-                    </Button>
-                </Grid>
-            </Grid>
-
-            {/* 구매 요청 목록 테이블 */}
-            <Paper>
-                <StyledTableContainer>
-                    <Table stickyHeader aria-label="구매 요청 목록 테이블">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>요청번호</TableCell>
-                                <TableCell>프로젝트명</TableCell>
-                                <TableCell>요청자</TableCell>
-                                <TableCell>총금액</TableCell>
-                                <TableCell>요청일</TableCell>
-                                <TableCell>상태</TableCell>
-                                <TableCell>액션</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {getFilteredPurchaseRequests().map(request => (
-                                <TableRow key={request.id} hover>
-                                    <TableCell>{request.id}</TableCell>
-                                    <TableCell>{request.project?.projectName}</TableCell>
-                                    <TableCell>{request.requester?.name}</TableCell>
-                                    <TableCell>{request.totalAmount?.toLocaleString()}원</TableCell>
-                                    <TableCell>{request.requestDate}</TableCell>
-                                    <TableCell>{request.status}</TableCell>
-                                    <TableCell>
-                                        <Button size="small" variant="outlined" onClick={() => handleViewDetail(request.id)}>
-                                            상세보기
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </StyledTableContainer>
             </Paper>
 
+            {/* 구매 요청 목록 테이블 */}
+            <StyledTableContainer component={Paper}>
+                <Table stickyHeader aria-label="sticky table">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>요청번호</TableCell>
+                            <TableCell>프로젝트명</TableCell>
+                            <TableCell>요청자</TableCell>
+                            <TableCell>총금액</TableCell>
+                            <TableCell>요청일</TableCell>
+                            <TableCell>상태</TableCell>
+                            <TableCell>액션</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {getFilteredPurchaseRequests().map(request => (
+                            <TableRow key={request.id} hover>
+                                <TableCell>{request.id}</TableCell>
+                                <TableCell>{request.project?.projectName}</TableCell>
+                                <TableCell>{request.requester?.name}</TableCell>
+                                <TableCell>{request.totalAmount?.toLocaleString()}원</TableCell>
+                                <TableCell>{request.requestDate}</TableCell>
+                                <TableCell>{request.status}</TableCell>
+                                <TableCell>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color="primary"
+                                        onClick={() => handleViewDetail(request.id)}
+                                    >
+                                        상세보기
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </StyledTableContainer>
+
             {/* 새 구매 요청 버튼 */}
-            <Box sx={{ mt: 4 }}>
-                <Button variant="contained" color="primary" onClick={handleCreatePurchaseRequest}>
-                    새 구매 요청
-                </Button>
-            </Box>
+            <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleCreatePurchaseRequest}
+                sx={{ mt: 2 }}
+            >
+                새 구매 요청
+            </Button>
         </Box>
     );
 }

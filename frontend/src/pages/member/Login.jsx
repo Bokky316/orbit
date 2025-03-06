@@ -34,57 +34,34 @@ export default function Login() {
 
     const handleLogin = async () => {
         try {
-            const response = await fetch(API_URL + "members/login", { // 백엔드 엔드포인트로 수정
+            const response = await fetch(API_URL + "auth/login", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: JSON.stringify(credentials), // JSON 형식으로 데이터 전송
+                body: new URLSearchParams(credentials), // 폼 데이터 전송
                 credentials: "include",
             });
 
-            if (!response.ok) {
-                setErrorMessage("로그인 실패: 아이디 또는 비밀번호가 틀립니다.");
+            if (response.ok) {
+                // 로그인 성공
                 setOpenSnackbar(true);
-                return;
+                setTimeout(() => {
+                    navigate("/");
+                    window.location.reload();
+                }, 1000);
+            } else {
+                // 로그인 실패
+                const errorText = await response.text();
+                setErrorMessage(`로그인 실패: ${response.status} - ${errorText}`);
             }
-
-            const data = await response.json();
-
-            if (data.status === "failed") {
-                setErrorMessage(data.message);
-                setOpenSnackbar(true);
-                return;
-            }
-
-            // JWT 토큰과 사용자 정보를 로컬 스토리지 및 Redux에 저장
-            setTokenAndUser(data.token, {
-                id: data.id,
-                name: data.name,
-                username: credentials.username,
-                roles: data.roles,
-            });
-
-            dispatch(setUser({
-                id: data.id,
-                name: data.name,
-                username: credentials.username,
-                roles: data.roles,
-            }));
-
-            setOpenSnackbar(true);
-            setTimeout(() => {
-                navigate("/");
-                window.location.reload();
-            }, 1000);
         } catch (error) {
             console.error("로그인 요청 실패:", error.message);
             setErrorMessage("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
-            setOpenSnackbar(true);
         }
     };
 
-    useEffect(() => {
+   useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.key === "Enter" && showLoginFields) {
                 event.preventDefault();
