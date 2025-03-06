@@ -19,7 +19,7 @@ import { setTokenAndUser } from "@/utils/authUtil";
  * @return {JSX.Element}
  */
 export default function Login() {
-    const [credentials, setCredentials] = useState({ email: "", password: "" });
+    const [credentials, setCredentials] = useState({ username: "", password: "" });
     const [showPassword, setShowPassword] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [openSnackbar, setOpenSnackbar] = useState(false);
@@ -34,16 +34,12 @@ export default function Login() {
 
     const handleLogin = async () => {
         try {
-            const formData = new URLSearchParams();
-            formData.append("username", credentials.email);
-            formData.append("password", credentials.password);
-
             const response = await fetch(API_URL + "auth/login", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Content-Type": "application/json",
                 },
-                body: formData,
+                body: JSON.stringify(credentials),
                 credentials: "include",
             });
 
@@ -61,17 +57,18 @@ export default function Login() {
                 return;
             }
 
+            // JWT 토큰과 사용자 정보를 로컬 스토리지 및 Redux에 저장
             setTokenAndUser(data.token, {
                 id: data.id,
                 name: data.name,
-                email: credentials.email,
+                username: credentials.username,
                 roles: data.roles,
             });
 
             dispatch(setUser({
                 id: data.id,
                 name: data.name,
-                email: credentials.email,
+                username: credentials.username,
                 roles: data.roles,
             }));
 
@@ -111,7 +108,6 @@ export default function Login() {
                 backgroundColor: "#f9f9f9",
             }}
         >
-
             <Typography variant="h5" sx={{ mb: 2 }}>
                 로그인
             </Typography>
@@ -122,7 +118,7 @@ export default function Login() {
                 onClick={() => setShowLoginFields(!showLoginFields)}
                 sx={{ mb: 2 }}
             >
-                {showLoginFields ? "취소" : "이메일로 로그인"}
+                {showLoginFields ? "취소" : "아이디로 로그인"}
             </Button>
 
             {showLoginFields && (
@@ -139,10 +135,10 @@ export default function Login() {
                     autoComplete="off"
                 >
                     <TextField
-                        label="사용자 ID (이메일)"
-                        name="email"
-                        type="email"
-                        value={credentials.email}
+                        label="사용자 ID"
+                        name="username"
+                        type="text"
+                        value={credentials.username}
                         onChange={handleChange}
                         fullWidth
                         required

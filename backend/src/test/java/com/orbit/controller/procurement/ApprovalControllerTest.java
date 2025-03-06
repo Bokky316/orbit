@@ -29,10 +29,15 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.mock.web.MockCookie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -41,42 +46,42 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * ApprovalController에 대한 통합 테스트 클래스
  * Spring Boot 기반의 전체 테스트 환경에서 ApprovalController의 API 엔드포인트를 테스트
  */
-@SpringBootTest // Spring Boot 애플리케이션 컨텍스트를 로드하여 통합 테스트 환경을 구성
-@AutoConfigureMockMvc // MockMvc를 자동 구성하여 Spring MVC 기반의 테스트를 지원
-@WithMockUser(username = "testuser", roles = "BUYER") // Spring Security를 위한 가짜 사용자 설정
-@TestInstance(TestInstance.Lifecycle.PER_CLASS) // 테스트 인스턴스의 생명주기를 클래스 단위로 설정
+@SpringBootTest
+@AutoConfigureMockMvc
+@WithMockUser(username = "testuser", roles = "BUYER")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ApprovalControllerTest {
 
     @Autowired
-    private MockMvc mockMvc; // HTTP 요청을 시뮬레이션하고 응답을 검증하는 데 사용되는 MockMvc
+    private MockMvc mockMvc;
 
     @Autowired
-    private ApprovalService approvalService; // 결재 서비스 로직을 수행하는 ApprovalService
+    private ApprovalService approvalService;
 
     @Autowired
-    private ObjectMapper objectMapper; // JSON 객체와 Java 객체 간의 변환을 수행하는 ObjectMapper
+    private ObjectMapper objectMapper;
 
     @Autowired
-    private TokenProvider tokenProvider; // JWT 토큰을 생성하고 검증하는 TokenProvider
+    private TokenProvider tokenProvider;
 
     @Autowired
-    private RedisService redisService; // Redis 데이터베이스에 접근하고 조작하는 RedisService
+    private RedisService redisService;
 
     @Autowired
-    private MemberRepository memberRepository; // 사용자 정보를 데이터베이스에 접근하고 조작하는 MemberRepository
+    private MemberRepository memberRepository;
 
     @Autowired
-    private ApprovalRepository approvalRepository; // 결재 정보를 데이터베이스에 접근하고 조작하는 ApprovalRepository
+    private ApprovalRepository approvalRepository;
 
     @Autowired
-    private PurchaseRequestRepository purchaseRequestRepository; // 구매 요청 정보를 데이터베이스에 접근하고 조작하는 PurchaseRequestRepository
+    private PurchaseRequestRepository purchaseRequestRepository;
 
     @Autowired
-    private ProjectRepository projectRepository; // 프로젝트 정보를 데이터베이스에 접근하고 조작하는 ProjectRepository
+    private ProjectRepository projectRepository;
 
-    private String testToken; // 테스트에 사용될 JWT 토큰
-    private static final String TEST_EMAIL = "test@example.com"; // 테스트에 사용될 이메일 주소
-    private Member testMember; // 테스트에 사용될 Member 객체
+    private String testToken;
+    private static final String TEST_USERNAME = "testuser";
+    private Member testMember;
 
     private static final Logger logger = LoggerFactory.getLogger(ApprovalControllerTest.class);
 
@@ -88,16 +93,17 @@ public class ApprovalControllerTest {
     public void setupMember() {
         // 테스트 사용자 생성 및 저장 (최초 한 번만 실행)
         testMember = Member.builder()
-                .username("testuser")
+                .username(TEST_USERNAME)
                 .name("Test User")
                 .password("1234")
-                .email(TEST_EMAIL)
+                .email("test@example.com")
                 .companyName("Test Company")
                 .role(Role.BUYER)
+                .enabled(true)
                 .build();
         testMember = memberRepository.save(testMember);
 
-        logger.info("Test member created with email: {}", TEST_EMAIL);
+        logger.info("Test member created with username: {}", TEST_USERNAME);
     }
 
     /**
@@ -106,10 +112,11 @@ public class ApprovalControllerTest {
     @BeforeEach
     public void setup() {
         // 테스트 JWT 토큰 생성
-        testToken = tokenProvider.generateToken(TEST_EMAIL, Duration.ofMinutes(30));
+        Collection<? extends GrantedAuthority> authorities = testMember.getAuthorities(); // 권한 정보 가져오기
+        testToken = tokenProvider.generateToken(TEST_USERNAME, authorities, Duration.ofMinutes(30));
 
         // Redis에 테스트 사용자 권한 정보 저장
-        redisService.cacheUserAuthorities(TEST_EMAIL);
+        redisService.cacheUserAuthorities(TEST_USERNAME);
 
         // 테스트 프로젝트 생성 및 저장
         String projectId = UUID.randomUUID().toString();
@@ -174,7 +181,7 @@ public class ApprovalControllerTest {
      */
     @Test
     void getApprovalById_shouldReturnApproval_whenApprovalExists() throws Exception {
-        mockMvc.perform(addJwtToken(get("/api/approvals/1")))
+        mockMvc.perform(addJwtToken(get("/api/approvals/{id}", 1)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
@@ -185,7 +192,7 @@ public class ApprovalControllerTest {
      */
     @Test
     void getApprovalById_shouldReturnNotFound_whenApprovalDoesNotExist() throws Exception {
-        mockMvc.perform(addJwtToken(get("/api/approvals/3")))
+        mockMvc.perform(addJwtToken(get("/api/approvals/{id}", 3)))
                 .andExpect(status().isNotFound());
     }
 
@@ -222,7 +229,7 @@ public class ApprovalControllerTest {
         approvalDTO.setStatus("승인");
         approvalDTO.setComments("Updated Comments");
 
-        mockMvc.perform(addJwtToken(put("/api/approvals/1")
+        mockMvc.perform(addJwtToken(put("/api/approvals/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(approvalDTO))))
                 .andExpect(status().isOk())
