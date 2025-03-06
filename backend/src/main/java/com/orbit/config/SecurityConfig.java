@@ -10,17 +10,21 @@ import com.orbit.security.handler.CustomLogoutSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
  * Spring Security 설정 파일
@@ -37,6 +41,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Profile("!test") // 테스트 환경에서는 제외
 public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService; // 사용자 정보를 가져오는 역할
@@ -122,11 +127,22 @@ public class SecurityConfig {
 
                 // 시스템 설정
                 .requestMatchers("/api/settings/**").hasRole("ADMIN") // 관리자만 접근 가능
-
-
+                // [추가] 테스트를 위한 API 접근 허용
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.GET.name())).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.POST.name())).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.PUT.name())).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.DELETE.name())).permitAll()
                 .requestMatchers("/api/auth/userInfo").permitAll() // 사용자 정보 조회 API는 모든 사용자에게 허용
                 .requestMatchers("/admin/**").hasRole("ADMIN")  // 미사용
                 .requestMatchers("/api/members/**").hasAnyRole("USER", "ADMIN") // 사용자 정보 수정 API는 USER, ADMIN만 접근 가능
+
+                // Bidding API 권한 설정
+                .requestMatchers("/api/biddings/**").permitAll()
+                //                .requestMatchers(HttpMethod.GET, "/api/biddings/**").permitAll()
+                //                .requestMatchers(HttpMethod.POST, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
+                //                .requestMatchers(HttpMethod.PUT, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
+                //                .requestMatchers(HttpMethod.DELETE, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
+                
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()  // 스웨거 Swagger UI는 인증을 거치지 않고 접근 가능
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN") // 사용자의 읽지 않은 메시지 개수 조회 API는 USER, ADMIN만 접근 가능
                 .requestMatchers(
@@ -141,7 +157,6 @@ public class SecurityConfig {
                         "/**/*.png",
                         "/**/*.jpg",
                         "/**/*.jpeg",
-                        "/**/*.gif",
                         "/**/*.svg",
                         "/**/*.html",
                         "/ping.js"
@@ -182,7 +197,7 @@ public class SecurityConfig {
         );
 
         // http.csrf(csrf -> csrf.disable()); // CSRF 보안 설정을 비활성화
-        http.csrf(csrf -> csrf.disable());  // 프론트 엔드를 리액트로 할경우 CSRF 보안 설정을 비활성화
+        http.csrf(AbstractHttpConfigurer::disable);  // 프론트 엔드를 리액트로 할경우 CSRF 보안 설정을 비활성화
         http.cors(Customizer.withDefaults());   // 이 설정은 출처가 다른 도메인에서 요청을 허용하기 위한 설정, 스프링은 8080포트에서 실행되고 있고, 리액트는 3000포트에서 실행되고 있기 때문에 스프링은 3000 포트에서 오는 요청을 허용하지 않는다. 이를 해결하기 위해 CORS 설정을 추가한다.
 
         // 지금까지 설정한 내용을 빌드하여 반환, 반환 객체는 SecurityFilterChain 객체

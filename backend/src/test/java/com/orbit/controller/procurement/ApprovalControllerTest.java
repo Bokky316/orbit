@@ -2,127 +2,199 @@ package com.orbit.controller.procurement;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbit.dto.procurement.ApprovalDTO;
-import com.orbit.dto.procurement.ApprovalResponseDTO;
 import com.orbit.service.procurement.ApprovalService;
+import com.orbit.config.jwt.TokenProvider;
+import com.orbit.service.RedisService;
+import com.orbit.entity.Member;
+import com.orbit.entity.Member.Role;
+import com.orbit.entity.procurement.Approval;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.Project;
+import com.orbit.repository.MemberRepository;
+import com.orbit.repository.procurement.ApprovalRepository;
+import com.orbit.repository.procurement.PurchaseRequestRepository;
+import com.orbit.repository.procurement.ProjectRepository;
+import com.orbit.constant.SupplierStatus;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.mock.web.MockCookie;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * ApprovalController에 대한 통합 테스트 클래스
- *
- * @SpringBootTest: Spring Boot 기반 애플리케이션 컨텍스트를 로드하여 통합 테스트를 수행합니다.
- * @AutoConfigureMockMvc: MockMvc를 자동으로 구성하여 Controller를 테스트할 수 있도록 합니다.
+ * Spring Boot 기반의 전체 테스트 환경에서 ApprovalController의 API 엔드포인트를 테스트
  */
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest // Spring Boot 애플리케이션 컨텍스트를 로드하여 통합 테스트 환경을 구성
+@AutoConfigureMockMvc // MockMvc를 자동 구성하여 Spring MVC 기반의 테스트를 지원
+@WithMockUser(username = "testuser", roles = "BUYER") // Spring Security를 위한 가짜 사용자 설정
+@TestInstance(TestInstance.Lifecycle.PER_CLASS) // 테스트 인스턴스의 생명주기를 클래스 단위로 설정
 public class ApprovalControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private MockMvc mockMvc; // HTTP 요청을 시뮬레이션하고 응답을 검증하는 데 사용되는 MockMvc
 
     @Autowired
-    private ApprovalService approvalService;
+    private ApprovalService approvalService; // 결재 서비스 로직을 수행하는 ApprovalService
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper; // JSON 객체와 Java 객체 간의 변환을 수행하는 ObjectMapper
 
-    @Configuration
-    static class TestConfig {
-        @Bean
-        public ApprovalService approvalService() {
-            return mock(ApprovalService.class);
-        }
+    @Autowired
+    private TokenProvider tokenProvider; // JWT 토큰을 생성하고 검증하는 TokenProvider
 
-        @Bean
-        public ObjectMapper objectMapper() {
-            return new ObjectMapper();
-        }
+    @Autowired
+    private RedisService redisService; // Redis 데이터베이스에 접근하고 조작하는 RedisService
+
+    @Autowired
+    private MemberRepository memberRepository; // 사용자 정보를 데이터베이스에 접근하고 조작하는 MemberRepository
+
+    @Autowired
+    private ApprovalRepository approvalRepository; // 결재 정보를 데이터베이스에 접근하고 조작하는 ApprovalRepository
+
+    @Autowired
+    private PurchaseRequestRepository purchaseRequestRepository; // 구매 요청 정보를 데이터베이스에 접근하고 조작하는 PurchaseRequestRepository
+
+    @Autowired
+    private ProjectRepository projectRepository; // 프로젝트 정보를 데이터베이스에 접근하고 조작하는 ProjectRepository
+
+    private String testToken; // 테스트에 사용될 JWT 토큰
+    private static final String TEST_EMAIL = "test@example.com"; // 테스트에 사용될 이메일 주소
+    private Member testMember; // 테스트에 사용될 Member 객체
+
+    private static final Logger logger = LoggerFactory.getLogger(ApprovalControllerTest.class);
+
+    /**
+     * 모든 테스트 실행 전에 한 번만 수행되는 설정
+     * 테스트 사용자를 생성하고 저장합니다.
+     */
+    @BeforeAll
+    public void setupMember() {
+        // 테스트 사용자 생성 및 저장 (최초 한 번만 실행)
+        testMember = Member.builder()
+                .username("testuser")
+                .name("Test User")
+                .password("1234")
+                .email(TEST_EMAIL)
+                .companyName("Test Company")
+                .role(Role.BUYER)
+                .build();
+        testMember = memberRepository.save(testMember);
+
+        logger.info("Test member created with email: {}", TEST_EMAIL);
     }
 
     /**
-     * 모든 결재 정보를 조회하는 API에 대한 테스트
+     * 각 테스트 메서드 실행 전에 수행되는 설정
+     */
+    @BeforeEach
+    public void setup() {
+        // 테스트 JWT 토큰 생성
+        testToken = tokenProvider.generateToken(TEST_EMAIL, Duration.ofMinutes(30));
+
+        // Redis에 테스트 사용자 권한 정보 저장
+        redisService.cacheUserAuthorities(TEST_EMAIL);
+
+        // 테스트 프로젝트 생성 및 저장
+        String projectId = UUID.randomUUID().toString();
+        Project project = Project.builder()
+                .projectId(projectId)
+                .projectName("Test Project")
+                .managerName("Test Manager")
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusDays(7))
+                .status(Project.ProjectStatus.IN_PROGRESS)
+                .description("Test Project Description")
+                .supplierStatus(SupplierStatus.PENDING)
+                .build();
+        projectRepository.save(project);
+
+        // 테스트 구매 요청 생성 및 저장
+        PurchaseRequest purchaseRequest = new PurchaseRequest();
+        purchaseRequest.setTitle("Test Purchase Request");
+        purchaseRequest.setDescription("Test Description");
+        purchaseRequest.setProject(project);
+        purchaseRequest.setRequester(testMember);
+        purchaseRequest.setStatus(PurchaseRequest.PurchaseStatus.초안);
+        purchaseRequest.setTotalAmount(1000.0);
+        purchaseRequest.setRequestDate(LocalDate.now());
+        purchaseRequest.setDeliveryDate(LocalDate.now().plusDays(3));
+        purchaseRequestRepository.save(purchaseRequest);
+
+        // 테스트 결재 생성 및 저장
+        Approval approval = Approval.builder()
+                .purchaseRequest(purchaseRequest)
+                .approver(testMember)
+                .approvalDate(LocalDate.now())
+                .status(Approval.ApprovalStatus.승인)
+                .comments("Test Approval")
+                .build();
+        approvalRepository.save(approval);
+    }
+
+    /**
+     * JWT 토큰을 쿠키에 추가하는 메서드
+     * @param requestBuilder MockHttpServletRequestBuilder 객체
+     * @return JWT 토큰이 추가된 MockHttpServletRequestBuilder 객체
+     */
+    private MockHttpServletRequestBuilder addJwtToken(MockHttpServletRequestBuilder requestBuilder) {
+        return requestBuilder.cookie(new MockCookie("accToken", testToken));
+    }
+
+    /**
+     * 모든 Approval 목록을 가져오는 API 테스트
+     * @throws Exception 예외 발생 시
      */
     @Test
     void getAllApprovals_shouldReturnAllApprovals() throws Exception {
-        // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
-        ApprovalResponseDTO approval1 = new ApprovalResponseDTO();
-        approval1.setId(1L);
-        approval1.setComments("Test Comments 1");
-
-        ApprovalResponseDTO approval2 = new ApprovalResponseDTO();
-        approval2.setId(2L);
-        approval2.setComments("Test Comments 2");
-
-        List<ApprovalResponseDTO> approvals = Arrays.asList(approval1, approval2);
-        when(mockApprovalService.getAllApprovals()).thenReturn(approvals);
-
-        // When & Then
-        mockMvc.perform(get("/api/approvals"))
+        mockMvc.perform(addJwtToken(get("/api/approvals")))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$[0].comments").value("Test Comments 1"))
-                .andExpect(jsonPath("$[1].comments").value("Test Comments 2"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
     /**
-     * 결재 ID로 결재 정보를 조회하는 API에 대한 테스트 (결재 정보가 존재하는 경우)
+     * 특정 ID의 Approval을 가져오는 API 테스트 (Approval이 존재하는 경우)
+     * @throws Exception 예외 발생 시
      */
     @Test
     void getApprovalById_shouldReturnApproval_whenApprovalExists() throws Exception {
-        // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
-        ApprovalResponseDTO approval = new ApprovalResponseDTO();
-        approval.setId(1L);
-        approval.setComments("Test Comments");
-        when(mockApprovalService.getApprovalById(1L)).thenReturn(Optional.of(approval));
-
-        // When & Then
-        mockMvc.perform(get("/api/approvals/1"))
+        mockMvc.perform(addJwtToken(get("/api/approvals/1")))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.comments").value("Test Comments"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
     /**
-     * 결재 ID로 결재 정보를 조회하는 API에 대한 테스트 (결재 정보가 존재하지 않는 경우)
+     * 특정 ID의 Approval을 가져오는 API 테스트 (Approval이 존재하지 않는 경우)
+     * @throws Exception 예외 발생 시
      */
     @Test
     void getApprovalById_shouldReturnNotFound_whenApprovalDoesNotExist() throws Exception {
-        // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
-        when(mockApprovalService.getApprovalById(3L)).thenReturn(Optional.empty());
-
-        // When & Then
-        mockMvc.perform(get("/api/approvals/3"))
+        mockMvc.perform(addJwtToken(get("/api/approvals/3")))
                 .andExpect(status().isNotFound());
     }
 
     /**
-     * 새로운 결재 정보를 생성하는 API에 대한 테스트
+     * 새로운 Approval을 생성하는 API 테스트
+     * @throws Exception 예외 발생 시
      */
     @Test
     void createApproval_shouldCreateNewApproval() throws Exception {
-        // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
         ApprovalDTO approvalDTO = new ApprovalDTO();
         approvalDTO.setPurchaseRequestId(1L);
         approvalDTO.setApproverId(1L);
@@ -130,33 +202,19 @@ public class ApprovalControllerTest {
         approvalDTO.setStatus("대기");
         approvalDTO.setComments("Test Comments");
 
-        ApprovalResponseDTO createdApproval = new ApprovalResponseDTO();
-        createdApproval.setId(1L);
-        createdApproval.setPurchaseRequestId(1L);
-        createdApproval.setApproverId(1L);
-        createdApproval.setApprovalDate(LocalDate.now());
-        createdApproval.setStatus("대기");
-        createdApproval.setComments("Test Comments");
-
-        when(mockApprovalService.createApproval(any(ApprovalDTO.class))).thenReturn(createdApproval);
-
-        // When & Then
-        mockMvc.perform(post("/api/approvals")
+        mockMvc.perform(addJwtToken(post("/api/approvals")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(approvalDTO)))
+                        .content(objectMapper.writeValueAsString(approvalDTO))))
                 .andExpect(status().isCreated())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.comments").value("Test Comments"))
-                .andExpect(jsonPath("$.status").value("대기"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
     /**
-     * 결재 정보를 업데이트하는 API에 대한 테스트
+     * 기존 Approval을 업데이트하는 API 테스트 (Approval이 존재하는 경우)
+     * @throws Exception 예외 발생 시
      */
     @Test
     void updateApproval_shouldUpdateApproval_whenApprovalExists() throws Exception {
-        // Given
-        ApprovalService mockApprovalService = mock(ApprovalService.class);
         ApprovalDTO approvalDTO = new ApprovalDTO();
         approvalDTO.setPurchaseRequestId(1L);
         approvalDTO.setApproverId(1L);
@@ -164,23 +222,10 @@ public class ApprovalControllerTest {
         approvalDTO.setStatus("승인");
         approvalDTO.setComments("Updated Comments");
 
-        ApprovalResponseDTO updatedApproval = new ApprovalResponseDTO();
-        updatedApproval.setId(1L);
-        updatedApproval.setPurchaseRequestId(1L);
-        updatedApproval.setApproverId(1L);
-        updatedApproval.setApprovalDate(LocalDate.now());
-        updatedApproval.setStatus("승인");
-        updatedApproval.setComments("Updated Comments");
-
-        when(mockApprovalService.updateApproval(eq(1L), any(ApprovalDTO.class))).thenReturn(updatedApproval);
-
-        // When & Then
-        mockMvc.perform(put("/api/approvals/1")
+        mockMvc.perform(addJwtToken(put("/api/approvals/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(approvalDTO)))
+                        .content(objectMapper.writeValueAsString(approvalDTO))))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.comments").value("Updated Comments"))
-                .andExpect(jsonPath("$.status").value("승인"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 }

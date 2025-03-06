@@ -1,38 +1,37 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import react from 'eslint-plugin-react'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
+import globals from "globals";
+import tseslint from "@typescript-eslint/eslint-plugin";
+import pluginReact from "eslint-plugin-react";
 
+/** @type {import('eslint').Linter.FlatConfig[]} */
 export default [
-  { ignores: ['dist'] },
   {
-    files: ['**/*.{js,jsx}'],
+    files: ["**/*.{js,jsx}"], // 적용할 파일 확장자
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
-      },
+      ecmaVersion: 2021,
+      sourceType: "module",
+      globals: globals.browser // 브라우저 환경 활성화
     },
-    settings: { react: { version: '18.3' } },
     plugins: {
-      react,
-      'react-hooks': reactHooks,
-      'react-refresh': reactRefresh,
+      react: pluginReact,
+      "@typescript-eslint": tseslint
     },
     rules: {
-      ...js.configs.recommended.rules,
-      ...react.configs.recommended.rules,
-      ...react.configs['jsx-runtime'].rules,
-      ...reactHooks.configs.recommended.rules,
-      'react/jsx-no-target-blank': 'off',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
-    },
+      // 기본 ESLint 규칙
+      ...tseslint.configs.recommended.rules, // TypeScript 추천 규칙 가져오기
+      ...pluginReact.configs.recommended.rules, // React 추천 규칙 가져오기
+
+      // 커스텀 규칙 추가
+      "react/react-in-jsx-scope": "off", // React 17 이상에서는 불필요한 규칙 비활성화
+      "react/prop-types": "off", // PropTypes 사용하지 않는 경우 비활성화
+      "no-unused-vars": ["warn", { varsIgnorePattern: "^React$" }], // React import 경고 무시
+      "react-hooks/rules-of-hooks": "error", // Hook 규칙 강제
+      "react-hooks/exhaustive-deps": "warn" // useEffect 종속성 검사 경고
+    }
   },
-]
+  {
+    files: ["**/*.js"], // JS 파일에만 적용할 추가 설정 (선택 사항)
+    languageOptions: {
+      sourceType: "script" // CommonJS 모듈 지원 (예: Node.js)
+    }
+  }
+];

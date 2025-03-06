@@ -1,6 +1,5 @@
 package com.orbit.repository.procurement;
 
-
 import com.orbit.entity.procurement.PurchaseRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
