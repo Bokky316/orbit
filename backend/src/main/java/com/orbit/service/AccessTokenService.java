@@ -1,7 +1,7 @@
 package com.orbit.service;
 
 import com.orbit.config.jwt.TokenProvider;
-import com.orbit.dto.LoginFormDto;
+import com.orbit.dto.member.LoginFormDto;
 import com.orbit.security.dto.MemberSecurityDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -42,8 +42,9 @@ public class AccessTokenService {
         // 변경된 TokenProvider에 맞춰 파라미터 수정
         // 이제는 username과 만료시간만 전달
         return tokenProvider.generateToken(
-                member.getUsername(), // email -> username으로 변경
-                Duration.ofHours(1) // 만료 시간 설정
+                member.getUsername(),
+                member.getAuthorities(),
+                Duration.ofHours(1)
         );
     }
 }

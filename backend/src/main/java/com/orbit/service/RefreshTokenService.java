@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.Duration;
 
 /**
@@ -27,6 +28,7 @@ public class RefreshTokenService {
      * @param refreshToken 기존 리프레시 토큰
      * @return 새로운 액세스 토큰
      */
+    @Transactional
     public String renewAccessToken(String refreshToken) {
         // 토큰 유효성 검사
         if (!tokenProvider.validateToken(refreshToken)) {
@@ -37,13 +39,19 @@ public class RefreshTokenService {
         RefreshToken storedRefreshToken = storedRefreshTokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new IllegalArgumentException("리프레시 토큰을 찾을 수 없습니다."));
 
+        // 토큰 만료 확인
+        if (storedRefreshToken.isExpired()) {
+            throw new IllegalArgumentException("만료된 리프레시 토큰입니다.");
+        }
+
         // 회원 조회
         Member member = memberRepository.findById(storedRefreshToken.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
 
         // 새로운 액세스 토큰 생성
         return tokenProvider.generateToken(
-                member.getUsername(), // email -> username으로 변경
+                member.getUsername(),
+                member.getAuthorities(),
                 Duration.ofHours(1)
         );
     }
@@ -60,26 +68,23 @@ public class RefreshTokenService {
             throw new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다.");
         }
 
-        // 토큰에서 username 추출
-        String username = tokenProvider.getUsernameFromToken(refreshToken); // email -> username으로 변경
-
         // DB에서 기존 리프레시 토큰 조회
         RefreshToken existingToken = storedRefreshTokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new IllegalArgumentException("데이터베이스에서 리프레시 토큰을 찾을 수 없습니다."));
 
-        // 토큰 재발급 여부 확인
-        if (!tokenProvider.validateToken(refreshToken)) {
-            // 새 리프레시 토큰 생성
+        // 토큰 만료 확인
+        if (existingToken.isExpired()) {
+            throw new IllegalArgumentException("만료된 리프레시 토큰입니다.");
+        }
+
+        // 토큰 만료 3일 전부터 갱신
+        if (existingToken.getExpiryDate().minusDays(3).isBefore(LocalDateTime.now())) {
+            String username = tokenProvider.getUsernameFromToken(refreshToken);
             String newRefreshToken = tokenProvider.generateRefreshToken(username, Duration.ofDays(14));
+            LocalDateTime newExpiryDate = LocalDateTime.now().plusDays(14);
 
-            // 새 토큰으로 업데이트
-            RefreshToken updatedToken = RefreshToken.builder()
-                    .memberId(existingToken.getMemberId())
-                    .refreshToken(newRefreshToken)
-                    .build();
-
-            // DB에 새 토큰 저장
-            return storedRefreshTokenRepository.save(updatedToken);
+            existingToken.update(newRefreshToken, newExpiryDate);
+            return storedRefreshTokenRepository.save(existingToken);
         }
 
         return existingToken;
@@ -89,20 +94,29 @@ public class RefreshTokenService {
      * 리프레시 토큰 저장 또는 업데이트
      * @param username 사용자 username
      * @param refreshToken 리프레시 토큰
+     * @param memberId 회원 ID
      */
     @Transactional
-    public void saveOrUpdateRefreshToken(String username, String refreshToken) {
-        // 회원 조회
-        Member member = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
+    public void saveOrUpdateRefreshToken(String username, String refreshToken, Long memberId) {
+        LocalDateTime expiryDate = LocalDateTime.now().plusDays(14); // 14일 후 만료
 
-        // 새 리프레시 토큰 생성
-        RefreshToken newRefreshToken = RefreshToken.builder()
-                .memberId(member.getId())
-                .refreshToken(refreshToken)
-                .build();
+        RefreshToken tokenEntity = storedRefreshTokenRepository.findByMemberId(memberId)
+                .map(token -> token.update(refreshToken, expiryDate))
+                .orElse(RefreshToken.builder()
+                        .memberId(memberId)
+                        .refreshToken(refreshToken)
+                        .expiryDate(expiryDate)
+                        .build());
 
-        // 토큰 저장
-        storedRefreshTokenRepository.save(newRefreshToken);
+        storedRefreshTokenRepository.save(tokenEntity);
+    }
+
+    /**
+     * 회원 ID로 리프레시 토큰 삭제
+     * @param memberId 회원 ID
+     */
+    @Transactional
+    public void deleteRefreshTokenByMemberId(Long memberId) {
+        storedRefreshTokenRepository.deleteByMemberId(memberId);
     }
 }
