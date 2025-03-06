@@ -1,3 +1,221 @@
+// import React, { useState, useEffect } from "react";
+// import { useNavigate } from "react-router-dom";
+// import {
+//   Box,
+//   Typography,
+//   Paper,
+//   Table,
+//   TableBody,
+//   TableCell,
+//   TableContainer,
+//   TableHead,
+//   TableRow,
+//   Button,
+//   Chip,
+//   FormControl,
+//   InputLabel,
+//   Select,
+//   MenuItem,
+//   TextField,
+//   Grid,
+//   CircularProgress
+// } from "@mui/material";
+
+// import { fetchWithAuth } from "@/utils/fetchWithAuth";
+// import { API_URL } from "@/utils/constants";
+// // 헬퍼 함수 import
+// import {
+//   getStatusText,
+//   getBidMethodText
+// } from "./helpers/commonBiddingHelpers";
+
+// import {
+//   BiddingStatus,
+//   UserRole,
+//   BiddingMethod,
+//   canParticipateInBidding,
+//   filterParticipableBiddings,
+//   filterMyParticipations,
+//   filterInvitedBiddings
+// } from "./helpers/supplierBiddingHelpers";
+
+// function SupplierBiddingListPage() {
+//   const navigate = useNavigate();
+
+//   // 상태 관리
+//   const [biddings, setBiddings] = useState([]);
+//   const [filteredBiddings, setFilteredBiddings] = useState([]);
+//   const [loading, setLoading] = useState(false);
+//   const [error, setError] = useState(null);
+
+//   // 필터링 상태
+//   const [statusFilter, setStatusFilter] = useState("");
+//   const [methodFilter, setMethodFilter] = useState("");
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [viewMode, setViewMode] = useState("all"); // 'all', 'participable', 'participated', 'invited'
+
+//   // 사용자 정보 상태
+//   const [userSupplierInfo, setUserSupplierInfo] = useState(null);
+
+//   // 사용자 정보 가져오기 (공급사 정보)
+//   const fetchUserInfo = async () => {
+//     try {
+//       // 사용자 정보 API 호출
+//       const userResponse = await fetchWithAuth(`${API_URL}users/me`);
+//       if (!userResponse.ok) {
+//         throw new Error("사용자 정보를 불러올 수 없습니다.");
+//       }
+
+//       const userData = await userResponse.json();
+
+//       // 사용자가 공급사인 경우 공급사 정보 가져오기
+//       if (userData.role === UserRole.SUPPLIER) {
+//         const supplierResponse = await fetchWithAuth(
+//           `${API_URL}suppliers/by-user/${userData.id}`
+//         );
+//         if (supplierResponse.ok) {
+//           const supplierData = await supplierResponse.json();
+//           setUserSupplierInfo(supplierData);
+//         }
+//       }
+//     } catch (error) {
+//       console.error("사용자 정보 로드 중 오류:", error);
+//     }
+//   };
+
+//   // 입찰 공고 목록 불러오기
+//   const fetchBiddings = async () => {
+//     setLoading(true);
+//     try {
+//       // 초대된 입찰 공고 + 공개 입찰 공고 모두 조회
+//       const [invitedResponse, openResponse] = await Promise.all([
+//         fetchWithAuth(`${API_URL}supplier/biddings/invited`),
+//         fetchWithAuth(`${API_URL}biddings/open`)
+//       ]);
+
+//       if (!invitedResponse.ok || !openResponse.ok) {
+//         throw new Error("입찰 공고를 불러오는 중 오류가 발생했습니다.");
+//       }
+
+//       const invitedBiddings = await invitedResponse.json();
+//       const openBiddings = await openResponse.json();
+
+//       // 중복 제거 및 병합
+//       const combinedBiddings = [
+//         ...invitedBiddings,
+//         ...openBiddings.filter(
+//           (open) => !invitedBiddings.some((invited) => invited.id === open.id)
+//         )
+//       ];
+
+//       setBiddings(combinedBiddings);
+//       applyFilters(
+//         combinedBiddings,
+//         viewMode,
+//         statusFilter,
+//         methodFilter,
+//         searchTerm
+//       );
+//     } catch (error) {
+//       setError("입찰 공고를 불러오는 중 오류가 발생했습니다.");
+//       console.error(error);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // 필터 적용
+//   const applyFilters = (
+//     biddingList,
+//     currentViewMode,
+//     status,
+//     method,
+//     search
+//   ) => {
+//     let filtered = [...biddingList];
+
+//     // 보기 모드에 따른 필터링
+//     switch (currentViewMode) {
+//       case "participable":
+//         filtered = filterParticipableBiddings(filtered, userSupplierInfo);
+//         break;
+//       case "participated":
+//         filtered = filterMyParticipations(filtered, userSupplierInfo);
+//         break;
+//       case "invited":
+//         filtered = filterInvitedBiddings(filtered, userSupplierInfo);
+//         break;
+//       default:
+//         // 모두 보기는 필터링 없음
+//         break;
+//     }
+
+//     // 상태 필터
+//     if (status) {
+//       filtered = filtered.filter(
+//         (bidding) => bidding.status?.childCode === status
+//       );
+//     }
+
+//     // 입찰 방식 필터
+//     if (method) {
+//       filtered = filtered.filter((bidding) => bidding.bidMethod === method);
+//     }
+
+//     // 검색어 필터
+//     if (search) {
+//       const searchTermLower = search.toLowerCase();
+//       filtered = filtered.filter(
+//         (bidding) =>
+//           (bidding.title &&
+//             bidding.title.toLowerCase().includes(searchTermLower)) ||
+//           (bidding.bidNumber &&
+//             bidding.bidNumber.toLowerCase().includes(searchTermLower))
+//       );
+//     }
+
+//     setFilteredBiddings(filtered);
+//   };
+
+//   // 컴포넌트 마운트 시 데이터 로드
+//   useEffect(() => {
+//     fetchUserInfo();
+//   }, []);
+
+//   // 사용자 정보가 로드된 후 입찰 정보 가져오기
+//   useEffect(() => {
+//     if (userSupplierInfo) {
+//       fetchBiddings();
+//     }
+//   }, [userSupplierInfo]);
+
+//   // 필터 변경 시 필터 적용
+//   useEffect(() => {
+//     applyFilters(biddings, viewMode, statusFilter, methodFilter, searchTerm);
+//   }, [viewMode, statusFilter, methodFilter, searchTerm, biddings]);
+
+//   // 입찰 상세 페이지로 이동
+//   const handleViewDetail = (id) => {
+//     navigate(`/supplier/biddings/${id}`);
+//   };
+
+//   // 입찰 참여 가능 여부 확인
+//   const checkParticipationEligibility = (bidding) => {
+//     return canParticipateInBidding(
+//       bidding,
+//       UserRole.SUPPLIER,
+//       userSupplierInfo
+//     );
+//   };
+
+//   // 보기 모드 변경 핸들러
+//   const handleViewModeChange = (mode) => {
+//     setViewMode(mode);
+//     applyFilters(biddings, mode, statusFilter, methodFilter, searchTerm);
+//   };
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,27 +235,19 @@ import {
   Select,
   MenuItem,
   TextField,
-  Grid,
-  CircularProgress
+  Grid
 } from "@mui/material";
 
-import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { API_URL } from "@/utils/constants";
-// 헬퍼 함수 import
+// 더미데이터 import
 import {
+  biddingsData,
+  suppliersData,
+  BiddingStatus,
+  BiddingMethod,
+  UserRole,
   getStatusText,
   getBidMethodText
-} from "./helpers/commonBiddingHelpers";
-
-import {
-  BiddingStatus,
-  UserRole,
-  BiddingMethod,
-  canParticipateInBidding,
-  filterParticipableBiddings,
-  filterMyParticipations,
-  filterInvitedBiddings
-} from "./helpers/supplierBiddingHelpers";
+} from "./dummyData";
 
 function SupplierBiddingListPage() {
   const navigate = useNavigate();
@@ -45,8 +255,6 @@ function SupplierBiddingListPage() {
   // 상태 관리
   const [biddings, setBiddings] = useState([]);
   const [filteredBiddings, setFilteredBiddings] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   // 필터링 상태
   const [statusFilter, setStatusFilter] = useState("");
@@ -54,75 +262,21 @@ function SupplierBiddingListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("all"); // 'all', 'participable', 'participated', 'invited'
 
-  // 사용자 정보 상태
-  const [userSupplierInfo, setUserSupplierInfo] = useState(null);
+  // 현재 사용자 공급사 정보 (테스트용)
+  const [userSupplierInfo, setUserSupplierInfo] = useState(suppliersData[0]);
 
-  // 사용자 정보 가져오기 (공급사 정보)
-  const fetchUserInfo = async () => {
-    try {
-      // 사용자 정보 API 호출
-      const userResponse = await fetchWithAuth(`${API_URL}users/me`);
-      if (!userResponse.ok) {
-        throw new Error("사용자 정보를 불러올 수 없습니다.");
-      }
-
-      const userData = await userResponse.json();
-
-      // 사용자가 공급사인 경우 공급사 정보 가져오기
-      if (userData.role === UserRole.SUPPLIER) {
-        const supplierResponse = await fetchWithAuth(
-          `${API_URL}suppliers/by-user/${userData.id}`
-        );
-        if (supplierResponse.ok) {
-          const supplierData = await supplierResponse.json();
-          setUserSupplierInfo(supplierData);
-        }
-      }
-    } catch (error) {
-      console.error("사용자 정보 로드 중 오류:", error);
-    }
-  };
-
-  // 입찰 공고 목록 불러오기
-  const fetchBiddings = async () => {
-    setLoading(true);
-    try {
-      // 초대된 입찰 공고 + 공개 입찰 공고 모두 조회
-      const [invitedResponse, openResponse] = await Promise.all([
-        fetchWithAuth(`${API_URL}supplier/biddings/invited`),
-        fetchWithAuth(`${API_URL}biddings/open`)
-      ]);
-
-      if (!invitedResponse.ok || !openResponse.ok) {
-        throw new Error("입찰 공고를 불러오는 중 오류가 발생했습니다.");
-      }
-
-      const invitedBiddings = await invitedResponse.json();
-      const openBiddings = await openResponse.json();
-
-      // 중복 제거 및 병합
-      const combinedBiddings = [
-        ...invitedBiddings,
-        ...openBiddings.filter(
-          (open) => !invitedBiddings.some((invited) => invited.id === open.id)
-        )
-      ];
-
-      setBiddings(combinedBiddings);
-      applyFilters(
-        combinedBiddings,
-        viewMode,
-        statusFilter,
-        methodFilter,
-        searchTerm
-      );
-    } catch (error) {
-      setError("입찰 공고를 불러오는 중 오류가 발생했습니다.");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 더미데이터 초기화
+  useEffect(() => {
+    // 초기 데이터 설정
+    setBiddings(biddingsData);
+    applyFilters(
+      biddingsData,
+      viewMode,
+      statusFilter,
+      methodFilter,
+      searchTerm
+    );
+  }, []);
 
   // 필터 적용
   const applyFilters = (
@@ -137,13 +291,28 @@ function SupplierBiddingListPage() {
     // 보기 모드에 따른 필터링
     switch (currentViewMode) {
       case "participable":
-        filtered = filterParticipableBiddings(filtered, userSupplierInfo);
+        // 참여 가능한 입찰만 필터링
+        filtered = filtered.filter(
+          (bidding) => bidding.status.childCode === BiddingStatus.ONGOING
+        );
         break;
       case "participated":
-        filtered = filterMyParticipations(filtered, userSupplierInfo);
+        // 이미 참여한 입찰만 필터링
+        filtered = filtered.filter(
+          (bidding) =>
+            bidding.participations &&
+            bidding.participations.some(
+              (p) => p.supplierId === userSupplierInfo.id
+            )
+        );
         break;
       case "invited":
-        filtered = filterInvitedBiddings(filtered, userSupplierInfo);
+        // 초대된 입찰만 필터링
+        filtered = filtered.filter(
+          (bidding) =>
+            bidding.invitedSuppliers &&
+            bidding.invitedSuppliers.includes(userSupplierInfo.id)
+        );
         break;
       default:
         // 모두 보기는 필터링 없음
@@ -153,7 +322,7 @@ function SupplierBiddingListPage() {
     // 상태 필터
     if (status) {
       filtered = filtered.filter(
-        (bidding) => bidding.status?.childCode === status
+        (bidding) => bidding.status.childCode === status
       );
     }
 
@@ -177,18 +346,6 @@ function SupplierBiddingListPage() {
     setFilteredBiddings(filtered);
   };
 
-  // 컴포넌트 마운트 시 데이터 로드
-  useEffect(() => {
-    fetchUserInfo();
-  }, []);
-
-  // 사용자 정보가 로드된 후 입찰 정보 가져오기
-  useEffect(() => {
-    if (userSupplierInfo) {
-      fetchBiddings();
-    }
-  }, [userSupplierInfo]);
-
   // 필터 변경 시 필터 적용
   useEffect(() => {
     applyFilters(biddings, viewMode, statusFilter, methodFilter, searchTerm);
@@ -199,19 +356,29 @@ function SupplierBiddingListPage() {
     navigate(`/supplier/biddings/${id}`);
   };
 
-  // 입찰 참여 가능 여부 확인
+  // 참여 가능 여부 확인
   const checkParticipationEligibility = (bidding) => {
-    return canParticipateInBidding(
-      bidding,
-      UserRole.SUPPLIER,
-      userSupplierInfo
+    // 이미 참여한 경우
+    const alreadyParticipated = bidding.participations?.some(
+      (p) => p.supplierId === userSupplierInfo.id
     );
+    if (alreadyParticipated) return false;
+
+    // 상태가 진행중이 아닌 경우
+    if (bidding.status.childCode !== BiddingStatus.ONGOING) return false;
+
+    // 정가제안 방식이고 초대된 경우만 참여 가능
+    if (bidding.bidMethod === BiddingMethod.FIXED_PRICE) {
+      return bidding.invitedSuppliers?.includes(userSupplierInfo.id);
+    }
+
+    // 가격제안 방식은 누구나 참여 가능
+    return true;
   };
 
   // 보기 모드 변경 핸들러
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
-    applyFilters(biddings, mode, statusFilter, methodFilter, searchTerm);
   };
 
   return (

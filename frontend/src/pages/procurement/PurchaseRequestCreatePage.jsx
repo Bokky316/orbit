@@ -108,7 +108,7 @@ function PurchaseRequestCreatePage() {
         // 부서 목록 가져오기
         const fetchDepartments = async () => {
             try {
-                const response = await fetchWithAuth(`${API_URL}purchase-requests/departments`, {
+                const response = await fetchWithAuth(`${API_URL}organization/departments`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
@@ -127,7 +127,7 @@ function PurchaseRequestCreatePage() {
         // 모든 멤버 목록 가져오기
         const fetchAllMembers = async () => {
             try {
-                const response = await fetchWithAuth(`${API_URL}purchase-requests/members`, {
+                const response = await fetchWithAuth(`${API_URL}organization/members`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
@@ -168,16 +168,28 @@ function PurchaseRequestCreatePage() {
     }, [selectedCategory, availableItems]);
 
     // 부서 선택 시 해당 부서의 멤버 필터링
+    // 부서 선택 시 해당 부서의 멤버 조회
     useEffect(() => {
         if (selectedDepartment) {
-            const filtered = members.filter(member =>
-                member.department && member.department.id === selectedDepartment.id
-            );
-            setDepartmentMembers(filtered);
+            const fetchDepartmentMembers = async () => {
+                try {
+                    const response = await fetchWithAuth(`${API_URL}organization/members/department/${selectedDepartment.id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setDepartmentMembers(data);
+                    } else {
+                        console.error('부서 멤버를 가져오는데 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('부서 멤버 조회 중 오류 발생:', error);
+                }
+            };
+
+            fetchDepartmentMembers();
         } else {
             setDepartmentMembers([]);
         }
-    }, [selectedDepartment, members]);
+    }, [selectedDepartment]);
 
     // 담당자 변경 시 전화번호 자동 설정
     useEffect(() => {

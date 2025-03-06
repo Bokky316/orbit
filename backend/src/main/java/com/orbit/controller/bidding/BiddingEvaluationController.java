@@ -50,7 +50,7 @@ public class BiddingEvaluationController {
     /**
      * 특정 입찰 공고의 평가 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}")
+    @GetMapping("/{biddingId}")
     public ResponseEntity<List<BiddingEvaluationDto>> getEvaluationsByBiddingId(@PathVariable Long biddingId) {
         log.info("특정 입찰 공고의 평가 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -66,7 +66,7 @@ public class BiddingEvaluationController {
     /**
      * 특정 참여에 대한 평가 목록 조회
      */
-    @GetMapping("/participation/{participationId}")
+    @GetMapping("/{participationId}")
     public ResponseEntity<List<BiddingEvaluationDto>> getEvaluationsByParticipationId(@PathVariable Long participationId) {
         log.info("특정 참여에 대한 평가 목록 조회 요청 - 참여 ID: {}", participationId);
         
@@ -82,7 +82,7 @@ public class BiddingEvaluationController {
     /**
      * 특정 평가자의 평가 목록 조회
      */
-    @GetMapping("/evaluator/{evaluatorId}")
+    @GetMapping("/{evaluatorId}")
     public ResponseEntity<List<BiddingEvaluationDto>> getEvaluationsByEvaluatorId(@PathVariable Long evaluatorId) {
         log.info("특정 평가자의 평가 목록 조회 요청 - 평가자 ID: {}", evaluatorId);
         

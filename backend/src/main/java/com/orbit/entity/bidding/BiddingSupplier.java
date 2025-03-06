@@ -40,15 +40,14 @@ public class BiddingSupplier extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "bidding_id", nullable = false)
-    private Long biddingId; // 입찰 ID
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bidding_id", insertable = false, updatable = false)
-    private Bidding bidding; // 입찰 엔티티 (매핑용)
+    @JoinColumn(name = "bidding_id")
+    private Bidding bidding; //  입찰 ID 엔티티 (매핑용)
 
-    @Column(name = "supplier_id", nullable = false)
-    private Long supplierId; // 공급자 ID
+    // 공급사 정보 추가
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id")
+    private Member supplier; 
 
     @Column(name = "company_name")
     private String companyName; // 공급자명 (캐싱용)
@@ -58,6 +57,15 @@ public class BiddingSupplier extends BaseEntity {
 
     @Column(name = "notification_date")
     private LocalDateTime notificationDate; // 알림 발송 일시
+
+    @Column(name = "response_status")
+    private String responseStatus;
+
+    @Column(name = "response_date")
+    private LocalDateTime responseDate;
+   
+    @Column(name = "response_comment", columnDefinition = "TEXT")
+    private String responseComment;
 
     @Column(name = "is_participating", columnDefinition = "boolean default false")
     private Boolean isParticipating; // 참여 여부
@@ -86,20 +94,17 @@ public class BiddingSupplier extends BaseEntity {
         this.notificationDate = LocalDateTime.now();
         
         // 실제 알림 발송
-        if (notificationRepo != null && memberRepo != null) {
+        if (notificationRepo != null && memberRepo != null && supplier != null) {
             try {
-                Member supplier = memberRepo.findById(this.supplierId).orElse(null);
-                if (supplier != null) {
-                    Notification notification = Notification.builder()
-                        .user(supplier)
-                        .title(title)
-                        .content(content)
-                        .type(Notification.NotificationType.입찰공고)
-                        .relatedId(this.biddingId)
-                        .isRead(false)
-                        .build();
-                    notificationRepo.save(notification);
-                }
+                Notification notification = Notification.builder()
+                    .user(supplier)
+                    .title(title)
+                    .content(content)
+                    .type(Notification.NotificationType.입찰공고)
+                    .relatedId(this.bidding != null ? this.bidding.getId() : null)
+                    .isRead(false)
+                    .build();
+                notificationRepo.save(notification);
             } catch (Exception e) {
                 // 알림 발송 실패 (로깅 필요)
                 System.err.println("공급사 알림 발송 실패: " + e.getMessage());
@@ -128,7 +133,7 @@ public class BiddingSupplier extends BaseEntity {
                         .title("입찰 참여 확인")
                         .content(this.companyName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여 의사를 확인했습니다.")
                         .type(Notification.NotificationType.입찰공고)
-                        .relatedId(this.biddingId)
+                        .relatedId(this.bidding != null ? this.bidding.getId() : null)
                         .isRead(false)
                         .build();
                         notificationRepo.save(notification);
@@ -161,7 +166,7 @@ public class BiddingSupplier extends BaseEntity {
                             .title("입찰 참여 거부")
                             .content(this.companyName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여를 거부했습니다. 사유: " + reason)
                             .type(Notification.NotificationType.입찰공고)
-                            .relatedId(this.biddingId)
+                            .relatedId(this.bidding != null ? this.bidding.getId() : null)
                             .isRead(false)
                             .build();
                         notificationRepo.save(notification);
@@ -178,11 +183,11 @@ public class BiddingSupplier extends BaseEntity {
      * 공급사 이름 업데이트 (캐싱)
      */
     public void updateSupplierName(MemberRepository memberRepo) {
-        if (memberRepo != null && this.supplierId != null) {
+        if (memberRepo != null && this.supplier != null) {
             try {
-                Member supplier = memberRepo.findById(this.supplierId).orElse(null);
-                if (supplier != null) {
-                    this.companyName = supplier.getCompanyName();
+                Member supplierMember = memberRepo.findById(this.supplier.getId()).orElse(null);
+                if (supplierMember != null) {
+                    this.companyName = supplierMember.getCompanyName();
                 }
             } catch (Exception e) {
                 // 공급사 정보 조회 실패 (로깅 필요)

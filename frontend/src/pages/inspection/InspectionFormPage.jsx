@@ -1,36 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Container,
-  Paper,
-  Typography,
-  Grid,
-  Box,
-  Divider,
-  Chip,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  Button,
-  TextField,
-  CircularProgress,
-  Alert,
-  Tooltip,
-  Stack,
-  Card,
-  CardContent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  DialogContentText,
-  Select,
-  MenuItem,
-  IconButton,
-  FormControl,
-  InputLabel
+  Container, Paper, Typography, Grid, Box, Divider, Chip, Table,
+  TableHead, TableBody, TableRow, TableCell, Button, TextField,
+  CircularProgress, Alert, Tooltip, Stack, Card, CardContent,
+  Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText,
+  Select, MenuItem, IconButton, FormControl, InputLabel
 } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -47,59 +22,31 @@ import AddIcon from "@mui/icons-material/Add";
 
 // 결과별 스타일 정보
 const resultStatusMap = {
-  검수대기: { color: "default", icon: <HistoryIcon />, text: "검수대기" },
-  합격: { color: "success", icon: <CheckCircleIcon />, text: "합격" },
-  불합격: { color: "error", icon: <ErrorIcon />, text: "불합격" },
-  반품요청: { color: "warning", icon: <WarningIcon />, text: "반품요청" },
-  재검수요청: { color: "info", icon: <InfoIcon />, text: "재검수요청" }
+  "검수대기": { color: "default", icon: <HistoryIcon />, text: "검수대기" },
+  "합격": { color: "success", icon: <CheckCircleIcon />, text: "합격" },
+  "불합격": { color: "error", icon: <ErrorIcon />, text: "불합격" },
+  "반품요청": { color: "warning", icon: <WarningIcon />, text: "반품요청" },
+  "재검수요청": { color: "info", icon: <InfoIcon />, text: "재검수요청" }
 };
 
 // 평가 항목 옵션과 스타일
 const evaluationOptions = {
-  quantity_status: [
-    {
-      value: "정상",
-      color: "success.main",
-      icon: <CheckCircleIcon fontSize="small" />
-    },
-    {
-      value: "부족",
-      color: "error.main",
-      icon: <ErrorIcon fontSize="small" />
-    },
-    {
-      value: "초과",
-      color: "warning.main",
-      icon: <WarningIcon fontSize="small" />
-    }
+  "quantity_status": [
+    { value: "정상", color: "success.main", icon: <CheckCircleIcon fontSize="small" /> },
+    { value: "부족", color: "error.main", icon: <ErrorIcon fontSize="small" /> },
+    { value: "초과", color: "warning.main", icon: <WarningIcon fontSize="small" /> }
   ],
-  quality_status: [
-    {
-      value: "양호",
-      color: "success.main",
-      icon: <CheckCircleIcon fontSize="small" />
-    },
+  "quality_status": [
+    { value: "양호", color: "success.main", icon: <CheckCircleIcon fontSize="small" /> },
     { value: "불량", color: "error.main", icon: <ErrorIcon fontSize="small" /> }
   ],
-  packaging_status: [
-    {
-      value: "양호",
-      color: "success.main",
-      icon: <CheckCircleIcon fontSize="small" />
-    },
+  "packaging_status": [
+    { value: "양호", color: "success.main", icon: <CheckCircleIcon fontSize="small" /> },
     { value: "불량", color: "error.main", icon: <ErrorIcon fontSize="small" /> }
   ],
-  spec_match_status: [
-    {
-      value: "일치",
-      color: "success.main",
-      icon: <CheckCircleIcon fontSize="small" />
-    },
-    {
-      value: "불일치",
-      color: "error.main",
-      icon: <ErrorIcon fontSize="small" />
-    }
+  "spec_match_status": [
+    { value: "일치", color: "success.main", icon: <CheckCircleIcon fontSize="small" /> },
+    { value: "불일치", color: "error.main", icon: <ErrorIcon fontSize="small" /> }
   ]
 };
 
@@ -145,11 +92,9 @@ const InspectionFormPage = () => {
             contract_id: "CNT-2025-003",
             inspector_id: "USR-123",
             inspector_name: "홍길동",
-            inspection_date: new Date().toISOString().split("T")[0],
+            inspection_date: new Date().toISOString().split('T')[0],
             result: id.includes("new") ? "" : "불합격",
-            comments: id.includes("new")
-              ? ""
-              : "포장이 손상된 상태로 배송되어 불합격 처리합니다. 내부 제품은 이상 없으나 포장 상태가 고객에게 제공하기에 적절하지 않습니다.",
+            comments: id.includes("new") ? "" : "포장이 손상된 상태로 배송되어 불합격 처리합니다. 내부 제품은 이상 없으나 포장 상태가 고객에게 제공하기에 적절하지 않습니다.",
             quantity_status: id.includes("new") ? "" : "정상",
             quality_status: id.includes("new") ? "" : "양호",
             packaging_status: id.includes("new") ? "" : "불량",
@@ -182,9 +127,10 @@ const InspectionFormPage = () => {
           setComments(inspectionData.comments || "");
           setLoading(false);
         }, 800); // 로딩 시뮬레이션
+
       } catch (err) {
-        console.error("데이터 로드 오류:", err);
-        setError("검수 정보를 불러오는데 실패했습니다.");
+        console.error('데이터 로드 오류:', err);
+        setError('검수 정보를 불러오는데 실패했습니다.');
         setLoading(false);
       }
     };
@@ -194,25 +140,22 @@ const InspectionFormPage = () => {
 
   // 입력 필드 변경 핸들러
   const handleEvaluationChange = (field, value) => {
-    setInspection((prev) => ({ ...prev, [field]: value }));
-    setValidation((prev) => ({ ...prev, [field]: value !== "" }));
+    setInspection(prev => ({ ...prev, [field]: value }));
+    setValidation(prev => ({ ...prev, [field]: value !== "" }));
     setFormChanged(true);
   };
 
   // 검수 결과 변경 핸들러
   const handleResultChange = (event) => {
-    setInspection((prev) => ({ ...prev, result: event.target.value }));
-    setValidation((prev) => ({ ...prev, result: event.target.value !== "" }));
+    setInspection(prev => ({ ...prev, result: event.target.value }));
+    setValidation(prev => ({ ...prev, result: event.target.value !== "" }));
     setFormChanged(true);
   };
 
   // 검수 의견 변경 핸들러
   const handleCommentsChange = (e) => {
     setComments(e.target.value);
-    setValidation((prev) => ({
-      ...prev,
-      comments: e.target.value.trim() !== ""
-    }));
+    setValidation(prev => ({ ...prev, comments: e.target.value.trim() !== "" }));
     setFormChanged(true);
   };
 
@@ -220,16 +163,14 @@ const InspectionFormPage = () => {
   const handleFileUpload = (event) => {
     const files = event.target.files;
     if (files.length > 0) {
-      setAttachments((prev) => [...prev, ...Array.from(files)]);
+      setAttachments(prev => [...prev, ...Array.from(files)]);
       setFormChanged(true);
     }
   };
 
   // 파일 삭제 핸들러
   const handleFileDelete = (indexToDelete) => {
-    setAttachments((prev) =>
-      prev.filter((_, index) => index !== indexToDelete)
-    );
+    setAttachments(prev => prev.filter((_, index) => index !== indexToDelete));
     setFormChanged(true);
   };
 
@@ -245,7 +186,7 @@ const InspectionFormPage = () => {
     };
 
     setValidation(newValidation);
-    return Object.values(newValidation).every((v) => v === true);
+    return Object.values(newValidation).every(v => v === true);
   };
 
   // 검수 결과 제출 핸들러
@@ -254,12 +195,10 @@ const InspectionFormPage = () => {
       setConfirmDialogOpen(true);
     } else {
       // 스크롤을 첫 번째 오류 필드로 이동
-      const firstErrorField = Object.keys(validation).find(
-        (key) => !validation[key]
-      );
+      const firstErrorField = Object.keys(validation).find(key => !validation[key]);
       const element = document.getElementById(firstErrorField);
       if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
   };
@@ -297,14 +236,15 @@ const InspectionFormPage = () => {
         spec_match_status: inspection.spec_match_status,
         result: inspection.result,
         comments: comments,
-        attachments: attachments.map((f) => f.name)
+        attachments: attachments.map(f => f.name)
       });
 
       // 데이터 저장 후 목록 페이지로 이동
-      navigate("/inspections");
+      navigate('/inspections');
+
     } catch (err) {
-      console.error("검수 결과 저장 오류:", err);
-      setError("검수 결과 저장에 실패했습니다.");
+      console.error('검수 결과 저장 오류:', err);
+      setError('검수 결과 저장에 실패했습니다.');
     }
   };
 
@@ -333,82 +273,60 @@ const InspectionFormPage = () => {
   };
 
   // 로딩 중
-  if (loading)
-    return (
-      <Container
-        maxWidth="md"
-        sx={{
-          mt: 4,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "50vh"
-        }}>
-        <CircularProgress />
-      </Container>
-    );
+  if (loading) return (
+    <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+      <CircularProgress />
+    </Container>
+  );
 
   // 오류 발생
-  if (error)
-    return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          sx={{ mt: 2 }}>
-          목록으로 돌아가기
-        </Button>
-      </Container>
-    );
+  if (error) return (
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+      <Button
+        variant="outlined"
+        startIcon={<ArrowBackIcon />}
+        onClick={() => navigate(-1)}
+        sx={{ mt: 2 }}
+      >
+        목록으로 돌아가기
+      </Button>
+    </Container>
+  );
 
   // 데이터 없음
-  if (!inspection || !contract)
-    return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Alert severity="warning">검수 정보를 찾을 수 없습니다.</Alert>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          sx={{ mt: 2 }}>
-          목록으로 돌아가기
-        </Button>
-      </Container>
-    );
+  if (!inspection || !contract) return (
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Alert severity="warning">검수 정보를 찾을 수 없습니다.</Alert>
+      <Button
+        variant="outlined"
+        startIcon={<ArrowBackIcon />}
+        onClick={() => navigate(-1)}
+        sx={{ mt: 2 }}
+      >
+        목록으로 돌아가기
+      </Button>
+    </Container>
+  );
 
   // 상태 정보 가져오기
-  const statusInfo =
-    resultStatusMap[inspection.status] || resultStatusMap["검수대기"];
+  const statusInfo = resultStatusMap[inspection.status] || resultStatusMap["검수대기"];
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 6 }}>
       <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
         {/* 헤더 영역 */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-            flexWrap: "wrap",
-            gap: 1
-          }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1 }}>
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
             size="small"
-            onClick={handleGoBack}>
+            onClick={handleGoBack}
+          >
             목록
           </Button>
 
-          <Typography
-            variant="h5"
-            component="h1"
-            sx={{ fontWeight: 600, flex: 1, textAlign: "center" }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 600, flex: 1, textAlign: 'center' }}>
             {id.includes("new") ? "검수 결과 등록" : "검수 결과 수정"}
           </Typography>
 
@@ -417,7 +335,7 @@ const InspectionFormPage = () => {
             label={statusInfo.text}
             color={statusInfo.color}
             size="medium"
-            sx={{ fontWeight: "bold", px: 1 }}
+            sx={{ fontWeight: 'bold', px: 1 }}
           />
         </Box>
 
@@ -426,52 +344,28 @@ const InspectionFormPage = () => {
           <CardContent>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  계약 번호
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                  {contract.transaction_number}
-                </Typography>
+                <Typography variant="body2" color="text.secondary">계약 번호</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{contract.transaction_number}</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  공급업체
-                </Typography>
-                <Typography variant="body1">
-                  {contract.supplier_name}
-                </Typography>
+                <Typography variant="body2" color="text.secondary">공급업체</Typography>
+                <Typography variant="body1">{contract.supplier_name}</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  검수자
-                </Typography>
-                <Typography variant="body1">
-                  {inspection.inspector_name}
-                </Typography>
+                <Typography variant="body2" color="text.secondary">검수자</Typography>
+                <Typography variant="body1">{inspection.inspector_name}</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  검수일
-                </Typography>
-                <Typography variant="body1">
-                  {inspection.inspection_date}
-                </Typography>
+                <Typography variant="body2" color="text.secondary">검수일</Typography>
+                <Typography variant="body1">{inspection.inspection_date}</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  예상 납기일
-                </Typography>
-                <Typography variant="body1">
-                  {contract.delivery_date}
-                </Typography>
+                <Typography variant="body2" color="text.secondary">예상 납기일</Typography>
+                <Typography variant="body1">{contract.delivery_date}</Typography>
               </Grid>
               <Grid item xs={12} sm={6} md={4}>
-                <Typography variant="body2" color="text.secondary">
-                  실제 납기일
-                </Typography>
-                <Typography variant="body1">
-                  {contract.actual_delivery_date}
-                </Typography>
+                <Typography variant="body2" color="text.secondary">실제 납기일</Typography>
+                <Typography variant="body1">{contract.actual_delivery_date}</Typography>
               </Grid>
             </Grid>
           </CardContent>
@@ -479,159 +373,90 @@ const InspectionFormPage = () => {
 
         {/* 제품 정보 섹션 */}
         <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h6"
-            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <InventoryIcon color="primary" /> 제품 정보
           </Typography>
           <Divider sx={{ mb: 2 }} />
 
           <Grid container spacing={2}>
             <Grid item xs={6} sm={2.4}>
-              <Typography variant="body2" color="text.secondary">
-                품목명
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                {contract.product_name}
-              </Typography>
+              <Typography variant="body2" color="text.secondary">품목명</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{contract.product_name}</Typography>
             </Grid>
             <Grid item xs={6} sm={2.4}>
-              <Typography variant="body2" color="text.secondary">
-                규격
-              </Typography>
+              <Typography variant="body2" color="text.secondary">규격</Typography>
               <Typography variant="body1">{contract.product_spec}</Typography>
             </Grid>
             <Grid item xs={4} sm={2.4}>
-              <Typography variant="body2" color="text.secondary">
-                수량
-              </Typography>
+              <Typography variant="body2" color="text.secondary">수량</Typography>
               <Typography variant="body1">{contract.quantity}개</Typography>
             </Grid>
             <Grid item xs={4} sm={2.4}>
-              <Typography variant="body2" color="text.secondary">
-                단가
-              </Typography>
-              <Typography variant="body1">
-                {contract.unit_price.toLocaleString()}원
-              </Typography>
+              <Typography variant="body2" color="text.secondary">단가</Typography>
+              <Typography variant="body1">{contract.unit_price.toLocaleString()}원</Typography>
             </Grid>
             <Grid item xs={4} sm={2.4}>
-              <Typography variant="body2" color="text.secondary">
-                총 금액
-              </Typography>
-              <Typography variant="body1">
-                {contract.total_amount.toLocaleString()}원
-              </Typography>
+              <Typography variant="body2" color="text.secondary">총 금액</Typography>
+              <Typography variant="body1">{contract.total_amount.toLocaleString()}원</Typography>
             </Grid>
           </Grid>
         </Box>
 
         {/* 검수 평가 결과 섹션 */}
         <Box sx={{ mb: 4 }} id="evaluation-section">
-          <Typography
-            variant="h6"
-            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <ReceiptIcon color="primary" /> 검수 평가
           </Typography>
           <Divider sx={{ mb: 2 }} />
 
-          <Box sx={{ overflowX: "auto" }}>
+          <Box sx={{ overflowX: 'auto' }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: "background.default" }}>
-                  <TableCell width="30%">
-                    <strong>평가 항목</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>결과</strong>
-                  </TableCell>
+                <TableRow sx={{ backgroundColor: 'background.default' }}>
+                  <TableCell width="30%"><strong>평가 항목</strong></TableCell>
+                  <TableCell><strong>결과</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {[
-                  {
-                    label: "수량 상태",
-                    field: "quantity_status",
-                    options: evaluationOptions.quantity_status
-                  },
-                  {
-                    label: "품질 상태",
-                    field: "quality_status",
-                    options: evaluationOptions.quality_status
-                  },
-                  {
-                    label: "포장 상태",
-                    field: "packaging_status",
-                    options: evaluationOptions.packaging_status
-                  },
-                  {
-                    label: "규격 일치 여부",
-                    field: "spec_match_status",
-                    options: evaluationOptions.spec_match_status
-                  }
+                  { label: "수량 상태", field: "quantity_status", options: evaluationOptions.quantity_status },
+                  { label: "품질 상태", field: "quality_status", options: evaluationOptions.quality_status },
+                  { label: "포장 상태", field: "packaging_status", options: evaluationOptions.packaging_status },
+                  { label: "규격 일치 여부", field: "spec_match_status", options: evaluationOptions.spec_match_status }
                 ].map(({ label, field, options }) => (
                   <TableRow key={field}>
                     <TableCell>
                       {label}
                       {!validation[field] && (
-                        <Typography
-                          color="error"
-                          variant="caption"
-                          sx={{ display: "block", mt: 0.5 }}>
+                        <Typography color="error" variant="caption" sx={{ display: 'block', mt: 0.5 }}>
                           * 필수 항목입니다
                         </Typography>
                       )}
                     </TableCell>
                     <TableCell>
-                      <FormControl
-                        fullWidth
-                        id={field}
-                        error={!validation[field]}>
+                      <FormControl fullWidth id={field} error={!validation[field]}>
                         <Select
                           value={inspection[field] || ""}
-                          onChange={(e) =>
-                            handleEvaluationChange(field, e.target.value)
-                          }
+                          onChange={(e) => handleEvaluationChange(field, e.target.value)}
                           displayEmpty
                           renderValue={(selected) => {
                             if (!selected) {
-                              return (
-                                <Typography color="text.secondary">
-                                  선택하세요
-                                </Typography>
-                              );
+                              return <Typography color="text.secondary">선택하세요</Typography>;
                             }
 
-                            const option = options.find(
-                              (opt) => opt.value === selected
-                            );
+                            const option = options.find(opt => opt.value === selected);
                             return (
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                  color: option?.color
-                                }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: option?.color }}>
                                 {option?.icon}
-                                <Typography fontWeight="medium">
-                                  {selected}
-                                </Typography>
+                                <Typography fontWeight="medium">{selected}</Typography>
                               </Box>
                             );
-                          }}>
-                          <MenuItem value="" disabled>
-                            선택하세요
-                          </MenuItem>
+                          }}
+                        >
+                          <MenuItem value="" disabled>선택하세요</MenuItem>
                           {options.map((option) => (
                             <MenuItem key={option.value} value={option.value}>
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                  color: option.color
-                                }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: option.color }}>
                                 {option.icon}
                                 <Typography>{option.value}</Typography>
                               </Box>
@@ -649,9 +474,7 @@ const InspectionFormPage = () => {
 
         {/* 검수 결과 선택 */}
         <Box sx={{ mb: 4 }} id="result">
-          <Typography
-            variant="h6"
-            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <InfoIcon color="primary" /> 검수 결과
           </Typography>
           <Divider sx={{ mb: 2 }} />
@@ -661,52 +484,30 @@ const InspectionFormPage = () => {
             <Select
               value={inspection.result || ""}
               onChange={handleResultChange}
-              label="검수 결과">
-              <MenuItem value="" disabled>
-                선택하세요
-              </MenuItem>
+              label="검수 결과"
+            >
+              <MenuItem value="" disabled>선택하세요</MenuItem>
               <MenuItem value="합격">
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    color: "success.main"
-                  }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'success.main' }}>
                   <CheckCircleIcon />
                   <Typography>합격</Typography>
                 </Box>
               </MenuItem>
               <MenuItem value="불합격">
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    color: "error.main"
-                  }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
                   <ErrorIcon />
                   <Typography>불합격</Typography>
                 </Box>
               </MenuItem>
               <MenuItem value="반품요청">
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    color: "warning.main"
-                  }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.main' }}>
                   <WarningIcon />
                   <Typography>반품요청</Typography>
                 </Box>
               </MenuItem>
             </Select>
             {!validation.result && (
-              <Typography
-                color="error"
-                variant="caption"
-                sx={{ mt: 0.5, ml: 1.5 }}>
+              <Typography color="error" variant="caption" sx={{ mt: 0.5, ml: 1.5 }}>
                 * 검수 결과를 선택해주세요
               </Typography>
             )}
@@ -715,9 +516,7 @@ const InspectionFormPage = () => {
 
         {/* 검수 의견 섹션 */}
         <Box sx={{ mb: 4 }} id="comments">
-          <Typography
-            variant="h6"
-            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <InfoIcon color="primary" /> 검수 의견
           </Typography>
           <Divider sx={{ mb: 2 }} />
@@ -736,9 +535,7 @@ const InspectionFormPage = () => {
 
         {/* 첨부 파일 섹션 */}
         <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h6"
-            sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <AttachFileIcon color="primary" /> 첨부 파일
           </Typography>
           <Divider sx={{ mb: 2 }} />
@@ -749,58 +546,59 @@ const InspectionFormPage = () => {
                 <Box
                   key={index}
                   sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    border: "1px solid",
-                    borderColor: "divider",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    border: '1px solid',
+                    borderColor: 'divider',
                     borderRadius: 1,
                     p: 1
-                  }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      overflow: "hidden"
-                    }}>
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}>
                     <AttachFileIcon color="action" />
-                    <Typography variant="body2" noWrap>
-                      {file.name || `파일_${index + 1}`}
-                    </Typography>
+                    <Typography variant="body2" noWrap>{file.name || `파일_${index + 1}`}</Typography>
                   </Box>
                   <IconButton
                     size="small"
                     color="error"
-                    onClick={() => handleFileDelete(index)}>
+                    onClick={() => handleFileDelete(index)}
+                  >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>
               ))}
             </Stack>
           ) : (
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              첨부된 파일이 없습니다.
-            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 2 }}>첨부된 파일이 없습니다.</Typography>
           )}
 
-          <Button variant="outlined" startIcon={<AddIcon />} component="label">
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            component="label"
+          >
             파일 추가
             <input type="file" hidden multiple onChange={handleFileUpload} />
           </Button>
         </Box>
 
         {/* 제출 버튼 영역 */}
-        <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 4 }}>
           <Button
             variant="contained"
             color="primary"
             startIcon={<SaveIcon />}
             onClick={handleSubmit}
-            size="large">
+            size="large"
+          >
             저장하기
           </Button>
-          <Button variant="outlined" onClick={handleCancel} size="large">
+          <Button
+            variant="outlined"
+            onClick={handleCancel}
+            size="large"
+          >
             취소
           </Button>
         </Box>
@@ -809,23 +607,17 @@ const InspectionFormPage = () => {
       {/* 검수 결과 저장 확인 다이얼로그 */}
       <Dialog
         open={confirmDialogOpen}
-        onClose={() => setConfirmDialogOpen(false)}>
+        onClose={() => setConfirmDialogOpen(false)}
+      >
         <DialogTitle>검수 결과 저장</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            검수 결과를 저장하시겠습니까? 저장 후에는 공급업체에게 알림이
-            전송됩니다.
+            검수 결과를 저장하시겠습니까? 저장 후에는 공급업체에게 알림이 전송됩니다.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDialogOpen(false)} color="inherit">
-            취소
-          </Button>
-          <Button
-            onClick={handleConfirmSubmit}
-            color="primary"
-            variant="contained"
-            autoFocus>
+          <Button onClick={() => setConfirmDialogOpen(false)} color="inherit">취소</Button>
+          <Button onClick={handleConfirmSubmit} color="primary" variant="contained" autoFocus>
             저장
           </Button>
         </DialogActions>
@@ -834,7 +626,8 @@ const InspectionFormPage = () => {
       {/* 취소 확인 다이얼로그 */}
       <Dialog
         open={cancelDialogOpen}
-        onClose={() => setCancelDialogOpen(false)}>
+        onClose={() => setCancelDialogOpen(false)}
+      >
         <DialogTitle>작업 취소</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -842,10 +635,7 @@ const InspectionFormPage = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setCancelDialogOpen(false)}
-            color="primary"
-            variant="contained">
+          <Button onClick={() => setCancelDialogOpen(false)} color="primary" variant="contained">
             계속 작업
           </Button>
           <Button onClick={handleConfirmCancel} color="inherit">

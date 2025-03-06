@@ -2,6 +2,7 @@ package com.orbit.repository.bidding;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import com.orbit.entity.commonCode.SystemStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,6 +39,26 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 
+
+         @Query("SELECT b FROM Bidding b " +
+       "LEFT JOIN FETCH b.purchaseRequest pr " +
+       "LEFT JOIN FETCH b.purchaseRequestItem pri " +
+       "WHERE b.id = :id")
+        Optional<Bidding> findByIdWithPurchaseRequest(@Param("id") Long id);
+
+        @Query("SELECT b FROM Bidding b " +
+        "LEFT JOIN FETCH b.suppliers s " +
+        "WHERE b.id = :id")
+        Optional<Bidding> findByIdWithSuppliers(@Param("id") Long id);
+
+        @Query("SELECT b FROM Bidding b " +
+       "LEFT JOIN FETCH b.purchaseRequest pr " +
+       "LEFT JOIN FETCH b.purchaseRequestItem pri " +
+       "LEFT JOIN FETCH b.suppliers s " +
+       "LEFT JOIN FETCH s.supplier " +
+       "WHERE b.id = :id")
+        Optional<Bidding> findByIdWithPurchaseRequestAndSuppliers(@Param("id") Long id);
+
     /**
      * 특정 입찰 공고의 상태 변경 이력 조회
      */
@@ -48,11 +69,14 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
      * 특정 상태의 입찰 공고 목록 조회
      */
     List<Bidding> findByStatusChild(ChildCode statusChild);
+
     
     /**
-     * 특정 공급사가 초대된 입찰 공고 목록 조회
-     */
-    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId ORDER BY b.id DESC")
+    * 특정 공급사가 초대된 입찰 공고 목록 조회
+    */
+    @Query("SELECT DISTINCT b FROM Bidding b " +
+       "JOIN b.suppliers s " +
+       "WHERE s.supplier.id = :supplierId")
     List<Bidding> findBiddingsInvitedSupplier(@Param("supplierId") Long supplierId);
     
     /**
@@ -82,13 +106,13 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
      // ===== 공급자 메서드 =====
     
     // 특정 공급사가 초대된 입찰 공고 중 특정 상태의 목록 조회
-    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId AND b.statusChild IN :statuses")
+    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId AND b.statusChild IN :statuses")
     List<Bidding> findBiddingsInvitedSupplierByStatuses(
             @Param("supplierId") Long supplierId, 
             @Param("statuses") List<ChildCode> statuses);
     
     // 특정 공급사가 초대된 입찰 공고 중 특정 상태의 개수 조회
-    @Query("SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId AND b.statusChild = :status")
+    @Query("SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId AND b.statusChild = :status")
     long countBiddingsInvitedSupplierByStatus(
             @Param("supplierId") Long supplierId, 
             @Param("status") ChildCode status);
@@ -102,17 +126,20 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
         long countBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
 
     // 특정 공급사가 최근에 초대받은 입찰 공고 목록 조회 (최신순, 제한 개수)
-    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId ORDER BY b.startDate DESC")
+    @Query(value = "SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId ORDER BY b.startDate DESC",
+           countQuery = "SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId")
     List<Bidding> findRecentBiddingsInvitedSupplier(
             @Param("supplierId") Long supplierId, 
-            @Param("limit") int limit);
+            Pageable pageable);
+            
     
     // 특정 공급사가 초대받은 입찰 공고 중 특정 기간 내 마감되는 목록 조회
-    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId AND b.endDate BETWEEN :startDate AND :endDate ORDER BY b.endDate ASC")
+    @Query(value = "SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId AND b.endDate BETWEEN :startDate AND :endDate ORDER BY b.endDate ASC",
+           countQuery = "SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId AND b.endDate BETWEEN :startDate AND :endDate")
     List<Bidding> findBiddingsInvitedSupplierWithDeadlineBetween(
             @Param("supplierId") Long supplierId, 
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
-            @Param("limit") int limit);
+            Pageable pageable);
 
 }

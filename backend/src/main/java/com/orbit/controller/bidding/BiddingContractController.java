@@ -72,7 +72,7 @@ public class BiddingContractController {
     /**
      * 특정 입찰 공고의 계약 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}")
+    @GetMapping("/{biddingId}")
     public ResponseEntity<List<BiddingContractDto>> getContractsByBiddingId(@PathVariable Long biddingId) {
         log.info("특정 입찰 공고의 계약 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -88,7 +88,7 @@ public class BiddingContractController {
     /**
      * 특정 공급사의 계약 목록 조회
      */
-    @GetMapping("/supplier/{supplierId}")
+    @GetMapping("/{supplierId}")
     public ResponseEntity<List<BiddingContractDto>> getContractsBySupplierId(@PathVariable Long supplierId) {
         log.info("특정 공급사의 계약 목록 조회 요청 - 공급사 ID: {}", supplierId);
         
@@ -120,7 +120,7 @@ public class BiddingContractController {
     /**
      * 계약 번호로 계약 조회
      */
-    @GetMapping("/number/{transactionNumber}")
+    @GetMapping("/{transactionNumber}")
     public ResponseEntity<BiddingContractDto> getContractByTransactionNumber(@PathVariable String transactionNumber) {
         log.info("계약 번호로 계약 조회 요청 - 계약번호: {}", transactionNumber);
         

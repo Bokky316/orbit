@@ -81,11 +81,9 @@ public class Project extends BaseEntity {
     private ChildCode procurementStatusChild;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
     private List<PurchaseRequest> purchaseRequests = new ArrayList<>();
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
     private List<ProjectAttachment> attachments = new ArrayList<>();
 
     /**

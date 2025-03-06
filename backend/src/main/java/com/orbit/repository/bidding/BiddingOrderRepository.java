@@ -2,7 +2,6 @@ package com.orbit.repository.bidding;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -81,10 +80,4 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
      * 특정 생성자의 발주 목록 조회
      */
     List<BiddingOrder> findByCreatedBy(String createdBy);
-
-    @Query("SELECT bo FROM BiddingOrder bo WHERE bo.approvedAt IS NULL AND bo.id NOT IN (SELECT d.biddingOrder.id FROM Delivery d)")
-    List<BiddingOrder> findUnapprovedAndUnreceivedOrders();
-
-
-
 }

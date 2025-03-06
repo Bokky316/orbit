@@ -1,11 +1,10 @@
 package com.orbit.repository.procurement;
 
-import java.util.List;
-
+import com.orbit.entity.procurement.ProjectAttachment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.orbit.entity.procurement.ProjectAttachment;
+import java.util.List;
 
 @Repository
 public interface ProjectAttachmentRepository extends JpaRepository<ProjectAttachment, Long> {

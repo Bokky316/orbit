@@ -52,7 +52,8 @@ public class BiddingEvaluationDto {
     public BiddingEvaluation toEntity() {
         BiddingEvaluation evaluation = new BiddingEvaluation();
         evaluation.setId(this.id);
-        evaluation.setBiddingParticipationId(this.biddingParticipationId);
+        // participation 관계는 서비스 레이어에서 설정
+        // biddingParticipationId 필드는 양방향 매핑을 위해 유지
         evaluation.setBiddingId(this.biddingId);
         evaluation.setEvaluatorId(this.evaluatorId);
         evaluation.setSupplierName(this.supplierName);
@@ -69,9 +70,14 @@ public class BiddingEvaluationDto {
 
     // 엔티티로부터 DTO 생성 메서드
     public static BiddingEvaluationDto fromEntity(BiddingEvaluation evaluation) {
+        if (evaluation == null) return null;
+        
         BiddingEvaluationDto dto = new BiddingEvaluationDto();
         dto.setId(evaluation.getId());
-        dto.setBiddingParticipationId(evaluation.getBiddingParticipationId());
+        // participation 객체를 통해 ID 가져오기
+        dto.setBiddingParticipationId(evaluation.getParticipation() != null ? 
+                                     evaluation.getParticipation().getId() : 
+                                     evaluation.getBiddingParticipationId());
         dto.setBiddingId(evaluation.getBiddingId());
         dto.setEvaluatorId(evaluation.getEvaluatorId());
         dto.setSupplierName(evaluation.getSupplierName());
@@ -84,8 +90,11 @@ public class BiddingEvaluationDto {
         dto.setSelectedForOrder(evaluation.isSelectedForOrder());
         dto.setEvaluatedAt(evaluation.getEvaluatedAt());
         
-        // 총점 및 가중치 점수 계산
-        dto.calculateWeightedScore();
+        // 총점 설정
+        dto.setTotalScore(evaluation.getTotalScore());
+        
+        // 가중치 점수 계산
+        dto.setWeightedTotalScore(dto.calculateWeightedScore());
         
         return dto;
     }

@@ -2,6 +2,7 @@ package com.orbit.dto.bidding;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.orbit.entity.bidding.Bidding;
@@ -61,6 +62,7 @@ public class BiddingDto {
     
     // 파일 및 기타 정보
     private String filePath;
+    private List<String> attachmentPaths;
     
     // 시간 및 생성자 정보
     private LocalDateTime createdAt;
@@ -69,7 +71,10 @@ public class BiddingDto {
     private String modifiedBy;
     
     // 공급자 및 참여 정보
-    private List<Long> supplierIds;
+    private List<BiddingSupplierDto> suppliers;
+    private List<BiddingParticipationDto> participations;
+    private int totalSuppliers;
+    private int totalParticipations;
 
     // 상태 텍스트 가져오기 (UI 표시용)
     public String getStatusText() {
@@ -86,6 +91,19 @@ public class BiddingDto {
         };
     }
     
+    // 입찰 방식 텍스트 가져오기
+    public String getMethodText() {
+        if (this.methodChild == null) {
+            return "미정";
+        }
+        
+        return switch (this.methodChild.getCodeValue()) {
+            case "FIXED_PRICE" -> "정가제안";
+            case "PRICE_SUGGESTION" -> "가격제안";
+            default -> this.methodChild.getCodeValue();
+        };
+    }
+    
     // Entity -> DTO 변환
     public static BiddingDto fromEntity(Bidding entity) {
         if (entity == null) {
@@ -96,7 +114,7 @@ public class BiddingDto {
                 .id(entity.getId())
                 .bidNumber(entity.getBidNumber())
                 .purchaseRequest(entity.getPurchaseRequest())
-                .purchaseRequestId(entity.getPurchaseRequestId())
+                .purchaseRequestId(entity.getPurchaseRequest() != null ? entity.getPurchaseRequest().getId() : null)
                 .purchaseRequestItem(entity.getPurchaseRequestItem())
                 .purchaseRequestItemId(entity.getPurchaseRequestItemId())
                 .title(entity.getTitle())
@@ -115,10 +133,13 @@ public class BiddingDto {
                 .methodParent(entity.getMethodParent())
                 .methodChild(entity.getMethodChild())
                 .filePath(entity.getFilePath())
+                .attachmentPaths(entity.getAttachmentPaths())
                 .createdBy(entity.getCreatedBy())
                 .modifiedBy(entity.getModifiedBy())
                 .createdAt(entity.getRegTime())
                 .updatedAt(entity.getUpdateTime())
+                .suppliers(new ArrayList<>())  // 빈 리스트로 초기화
+                .participations(new ArrayList<>())  // 빈 리스트로 초기화
                 .build();
         
         // 상태 텍스트 설정

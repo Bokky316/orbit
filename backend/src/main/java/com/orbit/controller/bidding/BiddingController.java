@@ -1,11 +1,14 @@
 package com.orbit.controller.bidding;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.core.io.Resource;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -35,8 +38,12 @@ import com.orbit.dto.bidding.BiddingParticipationDto;
 import com.orbit.dto.bidding.BiddingSupplierDto;
 import com.orbit.entity.commonCode.StatusHistory;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.supplier.SupplierRegistration;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.service.bidding.BiddingService;
+import com.orbit.service.supplier.SupplierRegistrationService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +55,121 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class BiddingController {
     private final BiddingService biddingService;
+    private final SupplierRegistrationService supplierRegistrationService;
+    private final PurchaseRequestRepository purchaseRequestRepository;
     private final MemberRepository memberRepository;
+
+   
+
+    //구매요청 가져오기
+    @GetMapping("/purchase-requests/active")
+    public ResponseEntity<List<Map<String, Object>>> getActivePurchaseRequests() {
+        log.info("활성화된 구매 요청 목록 조회 요청 시작");
+        
+        try {
+            // 모든 구매 요청을 가져온 후 필터링
+            List<PurchaseRequest> allRequests = purchaseRequestRepository.findAll();
+            
+            log.info("전체 구매 요청 수: {}", allRequests.size());
+            
+            // 상태에 따라 필터링 (코드에서 필터링)
+            List<PurchaseRequest> activeRequests = allRequests.stream()
+                .filter(request -> {
+                    // 안전한 상태 필터링
+                    if (request.getStatus() == null || request.getStatus().getChildCode() == null) {
+                        log.warn("상태 정보가 없는 구매 요청 발견: ID {}", request.getId());
+                        return false;
+                    }
+                    
+                    String status = request.getStatus().getChildCode();
+                    boolean isActive = !"CANCELED".equals(status) && !"REJECTED".equals(status);
+                    
+                    log.debug("구매 요청 ID: {}, 상태: {}, 활성 상태: {}", 
+                        request.getId(), status, isActive);
+                    
+                    return isActive;
+                })
+                .collect(Collectors.toList());
+            
+            log.info("활성 구매 요청 수: {}", activeRequests.size());
+            
+            // PurchaseRequest를 Map으로 변환
+            List<Map<String, Object>> result = activeRequests.stream()
+                .map(request -> {
+                    Map<String, Object> requestMap = new HashMap<>();
+                    requestMap.put("id", request.getId());
+                    requestMap.put("requestName", request.getRequestName());
+                    requestMap.put("prStatusChild", request.getStatus().getChildCode());
+                    requestMap.put("requestNumber", request.getRequestNumber());
+                    requestMap.put("customer", request.getCustomer());
+                    requestMap.put("requestDate", request.getRequestDate());
+                    requestMap.put("businessDepartment", request.getBusinessDepartment());
+                    
+                    // 품목 정보 변환
+                    List<Map<String, Object>> items = Optional.ofNullable(request.getPurchaseRequestItems())
+                        .map(requestItems -> requestItems.stream()
+                            .map(item -> {
+                                Map<String, Object> itemMap = new HashMap<>();
+                                itemMap.put("id", item.getId());
+                                itemMap.put("quantity", item.getQuantity());
+                                itemMap.put("unitPrice", item.getUnitPrice());
+                                itemMap.put("supplyPrice", item.getTotalPrice());
+                                itemMap.put("vat", item.getTotalPrice() != null 
+                                    ? item.getTotalPrice().multiply(BigDecimal.valueOf(0.1)) 
+                                    : BigDecimal.ZERO);
+                                return itemMap;
+                            })
+                            .collect(Collectors.toList())
+                        )
+                        .orElse(new ArrayList<>());
+                    
+                    requestMap.put("items", items);
+                    
+                    return requestMap;
+                })
+                .collect(Collectors.toList());
+            
+            log.info("변환된 구매 요청 맵 수: {}", result.size());
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("구매 요청 목록 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+     /**
+     * 활성화된 공급사 목록 조회 (입찰 공고에서 사용)
+     */
+    @GetMapping("/suppliers/active")
+    public ResponseEntity<List<Map<String, Object>>> getActiveSuppliers() {
+        log.info("활성화된 공급사 목록 조회 요청");
+        
+        try {
+            // 승인(APPROVED) 상태인 공급사만 조회
+            List<SupplierRegistration> supplierRegistrations = 
+                supplierRegistrationService.getSuppliers("APPROVED");
+            
+            // SupplierRegistration을 Map으로 변환
+            List<Map<String, Object>> suppliers = supplierRegistrations.stream()
+                .map(registration -> {
+                    Map<String, Object> supplierMap = new HashMap<>();
+                    supplierMap.put("id", registration.getSupplier().getId());
+                    supplierMap.put("name", registration.getSupplier().getCompanyName());
+                    supplierMap.put("businessNumber", registration.getBusinessNo());
+                    supplierMap.put("contact", registration.getPhoneNumber());
+                    supplierMap.put("email", registration.getContactEmail());
+                    return supplierMap;
+                })
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(suppliers);
+        } catch (Exception e) {
+            log.error("공급사 목록 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
      * 입찰 공고 첨부파일 추가
@@ -186,7 +307,7 @@ public class BiddingController {
     /**
      * 특정 공급사가 초대된 입찰 공고 목록 조회
      */
-    @GetMapping("/supplier/{supplierId}/invited")
+    @GetMapping("/{supplierId}/invited")
     public ResponseEntity<List<BiddingDto>> getBiddingsInvitedSupplier(@PathVariable Long supplierId) {
         log.info("특정 공급사가 초대된 입찰 공고 목록 조회 요청 - 공급사 ID: {}", supplierId);
         
@@ -197,7 +318,7 @@ public class BiddingController {
     /**
      * 특정 공급사가 참여한 입찰 공고 목록 조회
      */
-    @GetMapping("/supplier/{supplierId}/participated")
+    @GetMapping("/{supplierId}/participated")
     public ResponseEntity<List<BiddingDto>> getBiddingsParticipatedBySupplier(@PathVariable Long supplierId) {
         log.info("특정 공급사가 참여한 입찰 공고 목록 조회 요청 - 공급사 ID: {}", supplierId);
         

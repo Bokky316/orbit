@@ -162,9 +162,7 @@ public class BiddingFormDto {
         // 엔티티 생성
         Bidding bidding = Bidding.builder()
                 .purchaseRequest(this.purchaseRequest)
-                .purchaseRequestId(this.purchaseRequest.getId())
                 .purchaseRequestItem(this.purchaseRequestItem)
-                .purchaseRequestItemId(this.purchaseRequestItem.getId())
                 .title(this.title)
                 .description(this.description)
                 .startDate(this.startDate)

@@ -58,7 +58,7 @@ public class BiddingOrderController {
     /**
      * 특정 입찰 공고의 발주 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}")
+    @GetMapping("/{biddingId}")
     public ResponseEntity<List<BiddingOrderDto>> getOrdersByBiddingId(@PathVariable Long biddingId) {
         log.info("특정 입찰 공고의 발주 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -74,7 +74,7 @@ public class BiddingOrderController {
     /**
      * 특정 공급사의 발주 목록 조회
      */
-    @GetMapping("/supplier/{supplierId}")
+    @GetMapping("/{supplierId}")
     public ResponseEntity<List<BiddingOrderDto>> getOrdersBySupplierId(@PathVariable Long supplierId) {
         log.info("특정 공급사의 발주 목록 조회 요청 - 공급사 ID: {}", supplierId);
         
@@ -105,7 +105,7 @@ public class BiddingOrderController {
     /**
      * 발주 번호로 발주 조회
      */
-    @GetMapping("/number/{orderNumber}")
+    @GetMapping("/{orderNumber}")
     public ResponseEntity<BiddingOrderDto> getOrderByOrderNumber(@PathVariable String orderNumber) {
         log.info("발주 번호로 발주 조회 요청 - 발주번호: {}", orderNumber);
         
@@ -345,28 +345,4 @@ public class BiddingOrderController {
         return memberRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
-
-    @GetMapping("/available-ids")
-    public ResponseEntity<List<BiddingOrderDto>> getAvailableBiddingOrderIds() {
-        try {
-            List<BiddingOrderDto> orderIds = orderService.getAvailableBiddingOrderIds();
-            return ResponseEntity.ok(orderIds);
-        } catch (Exception e) {
-            log.error("발주 목록 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping("/{biddingOrderId}/detail")
-    public ResponseEntity<BiddingOrderDto> getBiddingOrderDetail(@PathVariable Long biddingOrderId) {
-        try {
-            BiddingOrderDto order = orderService.getBiddingOrderDetail(biddingOrderId);
-            return ResponseEntity.ok(order);
-        } catch (Exception e) {
-            log.error("발주 상세 조회 중 오류 발생: {}", biddingOrderId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-
 }

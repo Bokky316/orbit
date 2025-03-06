@@ -8,23 +8,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.orbit.entity.bidding.BiddingSupplier;
+import com.orbit.entity.member.Member;
 
 public interface BiddingSupplierRepository extends JpaRepository<BiddingSupplier, Long> {
 
     /**
      * 특정 입찰 공고에 초대된 공급사 목록 조회
      */
-    List<BiddingSupplier> findByBiddingId(Long biddingId);
+    @Query("SELECT bs FROM BiddingSupplier bs WHERE bs.bidding.id = :biddingId")
+    List<BiddingSupplier> findByBiddingId(@Param("biddingId") Long biddingId);
     
     /**
      * 특정 공급사가 초대된 입찰 공고 목록 조회
      */
-    List<BiddingSupplier> findBySupplierId(Long supplierId);
-    
-    /**
-     * 특정 입찰과 공급사 ID로 조회
-     */
-    Optional<BiddingSupplier> findByBiddingIdAndSupplierId(Long biddingId, Long supplierId);
+    List<BiddingSupplier> findBySupplier(Member supplier);
     
     /**
      * 특정 입찰에 공급사가 초대되었는지 확인
@@ -32,29 +29,34 @@ public interface BiddingSupplierRepository extends JpaRepository<BiddingSupplier
     boolean existsByBiddingIdAndSupplierId(Long biddingId, Long supplierId);
     
     /**
+     * 특정 입찰에 초대된 특정 공급사 정보 조회
+     */
+    @Query("SELECT bs FROM BiddingSupplier bs WHERE bs.bidding.id = :biddingId AND bs.supplier.id = :supplierId")
+    Optional<BiddingSupplier> findByBiddingIdAndSupplierId(@Param("biddingId") Long biddingId, @Param("supplierId") Long supplierId);
+    
+    /**
      * 특정 입찰에 초대된 공급사 중 알림이 발송되지 않은 공급사 조회
      */
-    @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId AND (s.notificationSent = false OR s.notificationSent IS NULL)")
-    List<BiddingSupplier> findNonNotifiedSuppliers(@Param("biddingId") Long biddingId);
+    @Query("SELECT bs FROM BiddingSupplier bs WHERE bs.bidding.id = :biddingId AND (bs.notificationSent = false OR bs.notificationSent IS NULL)")
+    List<BiddingSupplier> findByBiddingIdAndNotificationSentFalse(@Param("biddingId") Long biddingId);
     
     /**
      * 특정 입찰에 초대된 공급사 중 참여 의사를 밝힌 공급사 조회
      */
-    @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId AND s.isParticipating = true")
-    List<BiddingSupplier> findParticipatingSuppliers(@Param("biddingId") Long biddingId);
+    @Query("SELECT bs FROM BiddingSupplier bs WHERE bs.bidding.id = :biddingId AND bs.isParticipating = true")
+    List<BiddingSupplier> findByBiddingIdAndIsParticipatingTrue(@Param("biddingId") Long biddingId);
 
     /**
      * 특정 입찰에 초대된 공급사 중 참여를 거부한 공급사 조회
      */
-    @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId AND s.isRejected = true")
-    List<BiddingSupplier> findRejectedSuppliers(@Param("biddingId") Long biddingId);
+    @Query("SELECT bs FROM BiddingSupplier bs WHERE bs.bidding.id = :biddingId AND bs.isRejected = true")
+    List<BiddingSupplier> findByBiddingIdAndIsRejectedTrue(@Param("biddingId") Long biddingId);
 
     /**
      * 특정 입찰에 초대된 공급사 중 응답하지 않은 공급사 조회
      */
-   @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId " +
-   "AND (s.isParticipating = false OR s.isParticipating IS NULL) " +
-   "AND (s.isRejected = false OR s.isRejected IS NULL)")
-    List<BiddingSupplier> findNonRespondedSuppliers(@Param("biddingId") Long biddingId);
-
+    @Query("SELECT bs FROM BiddingSupplier bs WHERE bs.bidding.id = :biddingId " +
+          "AND (bs.isParticipating = false OR bs.isParticipating IS NULL) " +
+          "AND (bs.isRejected = false OR bs.isRejected IS NULL)")
+    List<BiddingSupplier> findByBiddingIdAndIsParticipatingNullAndIsRejectedNull(@Param("biddingId") Long biddingId);
 }

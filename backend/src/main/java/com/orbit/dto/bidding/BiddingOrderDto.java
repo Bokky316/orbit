@@ -70,7 +70,6 @@ public class BiddingOrderDto {
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
-                .itemName(entity.getPurchaseRequestItem().getItem().getName())
                 .build();
     }
     

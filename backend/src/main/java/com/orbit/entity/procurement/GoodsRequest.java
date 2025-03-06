@@ -1,14 +1,16 @@
 package com.orbit.entity.procurement;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.PurchaseRequestItem;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @DiscriminatorValue("GOODS")
