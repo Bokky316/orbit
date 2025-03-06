@@ -1,6 +1,6 @@
 package com.orbit.config.jwt;
 
-import com.orbit.repository.MemberRepository;
+import com.orbit.repository.member.MemberRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;

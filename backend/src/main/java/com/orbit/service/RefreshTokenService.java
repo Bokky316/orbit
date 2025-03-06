@@ -1,9 +1,9 @@
 package com.orbit.service;
 
 import com.orbit.config.jwt.TokenProvider;
-import com.orbit.entity.Member;
+import com.orbit.entity.member.Member;
 import com.orbit.entity.RefreshToken;
-import com.orbit.repository.MemberRepository;
+import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.StoredRefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

@@ -1,11 +1,9 @@
-// src/App.js
-
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
-import { store, persistor } from './redux/store';
-import Home from "./pages/Home.jsx";
+import { store } from './redux/store'; // Redux 스토어 import
+import { useSelector } from 'react-redux';
+import Home from "./pages/Home";
 import BiddingListPage from "./pages/bidding/BiddingListPage";
 import BiddingFormPage from "./pages/bidding/BiddingFormPage";
 import ErrorPage from "./pages/error/ErrorPage";
@@ -15,48 +13,39 @@ import PurchaseRequestListPage from "./pages/procurement/PurchaseRequestListPage
 import PurchaseRequestDetailPage from "./pages/procurement/PurchaseRequestDetailPage.jsx";
 import ApprovalListPage from "./pages/procurement/ApprovalListPage.jsx";
 import ApprovalDetailPage from "./pages/procurement/ApprovalDetailPage.jsx";
+import Login from "./pages/member/Login.jsx";
 
-/**
- * React 애플리케이션의 메인 컴포넌트
- * @returns {JSX.Element}
- */
+// ProtectedRoute 컴포넌트 정의
+const ProtectedRoute = ({ children }) => {
+    const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
+    return isLoggedIn ? children : <Navigate to="/login" replace />;
+};
+
 function App() {
-  return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <Routes>
-          {/* Home 페이지 */}
-          <Route path="/" element={<Home />} />
-
-          {/* 입찰 관련 페이지 */}
-          <Route path="/biddings" element={<BiddingListPage />} />
-          <Route
-            path="/biddings/new"
-            element={<BiddingFormPage mode="create" />}
-          />
-          <Route
-            path="/biddings/edit/:id"
-            element={<BiddingFormPage mode="edit" />}
-          />
-
-          {/* 프로젝트 관리 페이지 */}
-          <Route path="/projects" element={<ProjectListPage />} />
-          <Route path="/projects/:id" element={<ProjectDetailPage />} />
-
-          {/* 구매 요청 관리 페이지 */}
-          <Route path="/purchase-requests" element={<PurchaseRequestListPage />} />
-          <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-
-          {/* 결재 관리 페이지 */}
-          <Route path="/approvals" element={<ApprovalListPage />} />
-          <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
-
-          {/* 에러 페이지 */}
-          <Route path="*" element={<ErrorPage type="notFound" />} />
-        </Routes>
-      </PersistGate>
-    </Provider>
-  );
+    return (
+        <Provider store={store}>
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<Home />} />
+                <Route path="/biddings" element={<ProtectedRoute><BiddingListPage /></ProtectedRoute>} />
+                <Route
+                    path="/biddings/new"
+                    element={<ProtectedRoute><BiddingFormPage mode="create" /></ProtectedRoute>}
+                />
+                <Route
+                    path="/biddings/edit/:id"
+                    element={<ProtectedRoute><BiddingFormPage mode="edit" /></ProtectedRoute>}
+                />
+                <Route path="/projects" element={<ProtectedRoute><ProjectListPage /></ProtectedRoute>} />
+                <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
+                <Route path="/purchase-requests" element={<ProtectedRoute><PurchaseRequestListPage /></ProtectedRoute>} />
+                <Route path="/purchase-requests/:id" element={<ProtectedRoute><PurchaseRequestDetailPage /></ProtectedRoute>} />
+                <Route path="/approvals" element={<ProtectedRoute><ApprovalListPage /></ProtectedRoute>} />
+                <Route path="/approvals/:id" element={<ProtectedRoute><ApprovalDetailPage /></ProtectedRoute>} />
+                <Route path="*" element={<ErrorPage type="notFound" />} />
+            </Routes>
+        </Provider>
+    );
 }
 
 export default App;

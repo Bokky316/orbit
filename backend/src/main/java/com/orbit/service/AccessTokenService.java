@@ -2,7 +2,6 @@ package com.orbit.service;
 
 import com.orbit.config.jwt.TokenProvider;
 import com.orbit.dto.LoginFormDto;
-import com.orbit.entity.Member;
 import com.orbit.security.dto.MemberSecurityDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;

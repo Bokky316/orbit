@@ -1,6 +1,6 @@
 package com.orbit.dto;
 
-import com.orbit.entity.Member;
+import com.orbit.entity.member.Member;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

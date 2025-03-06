@@ -7,6 +7,8 @@ import { combineReducers } from 'redux';
 import projectReducer from "./projectSlice";
 import purchaseRequestReducer from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
+// import authReducer from "@/store/authSlice"; // 예시로 추가, 필요에 따라 사용
+// import uiReducer from '@/store/uiSlice'; // 예시로 추가, 필요에 따라 사용
 
 /**
  * Redux Persist의 설정을 정의합니다.
@@ -50,7 +52,7 @@ export const store = configureStore({
             serializableCheck: {
                 ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER, "persist/PERSIST", "persist/REHYDRATE"],
                 ignoredActionPaths: ['payload.error', 'meta.arg'],
-                // ignoredPaths: ['survey.responses'],
+                // ignoredPaths: ['survey.responses'], // survey 관련 설정 제거
             },
         }),
 });

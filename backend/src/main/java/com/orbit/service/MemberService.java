@@ -2,8 +2,8 @@ package com.orbit.service;
 
 import com.orbit.dto.LoginFormDto;
 import com.orbit.dto.MemberFormDto;
-import com.orbit.entity.Member;
-import com.orbit.repository.MemberRepository;
+import com.orbit.entity.member.Member;
+import com.orbit.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

@@ -21,6 +21,11 @@ const Home = () => {
       }}
     >
       <h1 className="text-3xl font-bold mb-4">Home</h1>
+      <Link to="/login" style={{ textDecoration: "none" }}>
+        <Button variant="contained" color="primary">
+          로그인
+        </Button>
+      </Link>
       <Link to="/biddings" style={{ textDecoration: "none" }}>
         <Button variant="contained" color="primary">
           입찰 공고 리스트
@@ -36,7 +41,7 @@ const Home = () => {
           구매 요청 관리
         </Button>
       </Link>
-       <Link to="/approvals" style={{ textDecoration: "none" }}>
+      <Link to="/approvals" style={{ textDecoration: "none" }}>
         <Button variant="contained" color="primary">
           결재 관리
         </Button>

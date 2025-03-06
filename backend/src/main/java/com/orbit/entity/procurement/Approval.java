@@ -1,7 +1,7 @@
 package com.orbit.entity.procurement;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.Member;
+import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
