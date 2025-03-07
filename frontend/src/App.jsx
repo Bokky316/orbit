@@ -1,8 +1,23 @@
 import React from "react";
 import { useSelector } from "react-redux";
-import { Provider } from "react-redux";
-import { store } from "@/redux/store";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Provider } from 'react-redux';
+import { store } from './redux/store';
+import Home from "./pages/Home";
+import BiddingListPage from "./pages/bidding/BiddingListPage";
+import BiddingFormPage from "./pages/bidding/BiddingFormPage";
+import ErrorPage from "./pages/error/ErrorPage";
+import ProjectListPage from "./pages/procurement/ProjectListPage";
+import ProjectDetailPage from "./pages/procurement/ProjectDetailPage";
+import PurchaseRequestListPage from "./pages/procurement/PurchaseRequestListPage";
+import PurchaseRequestDetailPage from "./pages/procurement/PurchaseRequestDetailPage";
+import ApprovalListPage from "./pages/procurement/ApprovalListPage";
+import ApprovalDetailPage from "./pages/procurement/ApprovalDetailPage";
+import InspectionsListPage from "./pages/inspection/InspectionsListPage";
+import Login from "./pages/member/Login";
+// import Header from "./layouts/Header";
+// import Footer from "./layouts/Footer";
+// import Layout from "./layouts/Layout";
 
 import Home from "@/pages/Home";
 import Login from "@/pages/member/Login";
