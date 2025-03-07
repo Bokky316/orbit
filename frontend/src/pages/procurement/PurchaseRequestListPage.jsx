@@ -49,6 +49,12 @@ function PurchaseRequestListPage() {
     const filters = useSelector(state => state.purchaseRequest.filters);
     const [localFilters, setLocalFilters] = useState(filters);
 
+    // 검색어 상태
+    const [requestNameSearchTerm, setRequestNameSearchTerm] = useState('');
+    const [requestNumberSearchTerm, setRequestNumberSearchTerm] = useState('');
+    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+    const [businessManagerSearchTerm, setBusinessManagerSearchTerm] = useState('');
+
     useEffect(() => {
         // 컴포넌트 마운트 시 구매 요청 목록 데이터 로딩
         dispatch(fetchPurchaseRequests());
@@ -60,24 +66,35 @@ function PurchaseRequestListPage() {
      */
     const getFilteredPurchaseRequests = () => {
         return purchaseRequests.filter(request => {
-            const searchTerm = localFilters.searchTerm || ''; // searchTerm이 undefined일 경우 빈 문자열로 초기화
-            const searchTermMatch = String(request.id)?.includes(searchTerm) ||
-                String(request.title)?.includes(searchTerm) || // title로 검색
-                String(request.department)?.includes(searchTerm) || // department로 검색
-                String(request.projectManager)?.includes(searchTerm); // projectManager로 검색
+            const requestNameMatch = String(request.requestName)?.includes(requestNameSearchTerm);
+            const requestNumberMatch = String(request.id)?.includes(requestNumberSearchTerm);
+            const customerMatch = String(request.customer)?.includes(customerSearchTerm);
+            const businessManagerMatch = String(request.businessManager)?.includes(businessManagerSearchTerm);
+
             const requestDateMatch = !localFilters.requestDate || request.requestDate === localFilters.requestDate;
             const statusMatch = !localFilters.status || request.status === localFilters.status;
 
-            return searchTermMatch && requestDateMatch && statusMatch;
+            return requestNameMatch && requestNumberMatch && customerMatch && businessManagerMatch && requestDateMatch && statusMatch;
         });
     };
 
     /**
-     * 검색어 변경 핸들러
-     * @param {object} event - 이벤트 객체
+     * 각 검색어 변경 핸들러
      */
-    const handleSearchTermChange = (event) => {
-        setLocalFilters({ ...localFilters, searchTerm: event.target.value });
+    const handleRequestNameSearchTermChange = (event) => {
+        setRequestNameSearchTerm(event.target.value);
+    };
+
+    const handleRequestNumberSearchTermChange = (event) => {
+        setRequestNumberSearchTerm(event.target.value);
+    };
+
+    const handleCustomerSearchTermChange = (event) => {
+        setCustomerSearchTerm(event.target.value);
+    };
+
+    const handleBusinessManagerSearchTermChange = (event) => {
+        setBusinessManagerSearchTerm(event.target.value);
     };
 
     /**
@@ -100,7 +117,12 @@ function PurchaseRequestListPage() {
      * 필터 적용 핸들러
      */
     const handleApplyFilters = () => {
-        dispatch(setSearchTerm(localFilters.searchTerm));
+        dispatch(setSearchTerm({
+            requestName: requestNameSearchTerm,
+            requestNumber: requestNumberSearchTerm,
+            customer: customerSearchTerm,
+            businessManager: businessManagerSearchTerm
+        }));
         dispatch(setRequestDate(localFilters.requestDate));
         dispatch(setStatus(localFilters.status));
     };
@@ -133,8 +155,35 @@ function PurchaseRequestListPage() {
                         <TextField
                             fullWidth
                             label="요청명"
-                            value={localFilters.searchTerm || ''}
-                            onChange={handleSearchTermChange}
+                            value={requestNameSearchTerm}
+                            onChange={handleRequestNameSearchTermChange}
+                        />
+                    </Grid>
+                    {/* 요청번호 검색 필드 */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="요청번호"
+                            value={requestNumberSearchTerm}
+                            onChange={handleRequestNumberSearchTermChange}
+                        />
+                    </Grid>
+                    {/* 고객사 검색 필드 */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="고객사"
+                            value={customerSearchTerm}
+                            onChange={handleCustomerSearchTermChange}
+                        />
+                    </Grid>
+                    {/* 사업담당자 필터 */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="사업담당자"
+                            value={businessManagerSearchTerm}
+                            onChange={handleBusinessManagerSearchTermChange}
                         />
                     </Grid>
                     {/* 요청일 검색 필드 (DatePicker 대신 텍스트 필드 사용) */}
@@ -144,24 +193,6 @@ function PurchaseRequestListPage() {
                             label="요청일"
                             value={localFilters.requestDate || ''}
                             onChange={handleRequestDateChange}
-                        />
-                    </Grid>
-                    {/* 요청번호 검색 필드 */}
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="요청번호"
-                            value={localFilters.searchTerm || ''}
-                            onChange={handleSearchTermChange}
-                        />
-                    </Grid>
-                    {/* 고객사 검색 필드 */}
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="고객사"
-                            value={localFilters.searchTerm || ''}
-                            onChange={handleSearchTermChange}
                         />
                     </Grid>
                     {/* 진행상태 필터 */}
@@ -184,17 +215,6 @@ function PurchaseRequestListPage() {
                             </Select>
                         </FormControl>
                     </Grid>
-
-                    {/* 사업담당자 필터 */}
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="사업담당자"
-                            value={localFilters.searchTerm || ''}
-                            onChange={handleSearchTermChange}
-                        />
-                    </Grid>
-
                     {/* 조회 버튼 */}
                     <Grid item xs={12} sm={3}>
                         <Button
@@ -239,7 +259,6 @@ function PurchaseRequestListPage() {
                             <TableCell>요청일</TableCell>
                             <TableCell>사업부서</TableCell>
                             <TableCell>사업담당자</TableCell>
-                            <TableCell>등록자</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -264,15 +283,14 @@ function PurchaseRequestListPage() {
                                             },
                                         }}
                                     >
-                                        {request.title}
+                                        {request.requestName}
                                     </Typography>
                                 </TableCell>
                                 <TableCell>{request.id}</TableCell>
-                                <TableCell>{request.requesterId}</TableCell>
+                                <TableCell>{request.customer}</TableCell>
                                 <TableCell>{request.requestDate}</TableCell>
-                                <TableCell>{request.department}</TableCell>
-                                <TableCell>{request.projectManager}</TableCell>
-                                <TableCell>{request.requesterId}</TableCell>
+                                <TableCell>{request.businessDepartment}</TableCell>
+                                <TableCell>{request.businessManager}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
