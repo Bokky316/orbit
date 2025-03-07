@@ -13,7 +13,6 @@ import com.orbit.service.RedisService;
 import com.orbit.repository.procurement.ApprovalRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.repository.procurement.ProjectRepository;
-import com.orbit.constant.SupplierStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -138,7 +137,6 @@ public class ApprovalControllerTest {
                         .endDate(LocalDate.now().plusDays(7))
                         .status(Project.ProjectStatus.IN_PROGRESS)
                         .description("Test Project Description")
-                        .supplierStatus(SupplierStatus.PENDING)
                         .build();
         projectRepository.save(project);
 

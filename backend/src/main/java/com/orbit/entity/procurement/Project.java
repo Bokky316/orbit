@@ -1,6 +1,5 @@
 package com.orbit.entity.procurement;
 
-import com.orbit.constant.SupplierStatus;
 import com.orbit.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -68,13 +67,6 @@ public class Project extends BaseEntity {
      */
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
-
-    /**
-     * 공급업체 상태 (SupplierStatus 열거형 사용)
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "supplier_status", nullable = false)
-    private SupplierStatus supplierStatus;
 
     /**
      * 프로젝트 상태를 나타내는 열거형

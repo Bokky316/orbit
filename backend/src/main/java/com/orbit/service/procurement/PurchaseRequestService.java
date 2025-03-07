@@ -2,6 +2,7 @@ package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.PurchaseRequestDTO;
 import com.orbit.dto.procurement.PurchaseRequestResponseDTO;
+import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.Project;
 import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.exception.ProjectNotFoundException;
@@ -114,16 +115,26 @@ public class PurchaseRequestService {
                 .orElseThrow(() -> new ProjectNotFoundException("Project not found with id: " + purchaseRequestDTO.getProjectId()));
         purchaseRequest.setProject(project);
 
-        // TODO:  Member 엔티티는 어떻게 가져올지??
-        //Member requester = memberRepository.findById(purchaseRequestDTO.getRequesterId())
-        //        .orElseThrow(() -> new /*MemberNotFoundException*/ Exception("Member not found with id: " + purchaseRequestDTO.getRequesterId()));
-        //purchaseRequest.setRequester(requester);
+        // Member 엔티티 가져오기
+        Member requester = memberRepository.findById(purchaseRequestDTO.getRequesterId())
+                .orElseThrow(() -> new ProjectNotFoundException("Requester not found with id: " + purchaseRequestDTO.getRequesterId()));
+        purchaseRequest.setRequester(requester);
 
         purchaseRequest.setTitle(purchaseRequestDTO.getTitle());
         purchaseRequest.setDescription(purchaseRequestDTO.getDescription());
         purchaseRequest.setRequestDate(purchaseRequestDTO.getRequestDate());
         purchaseRequest.setDeliveryDate(purchaseRequestDTO.getDeliveryDate());
         purchaseRequest.setStatus(PurchaseRequest.PurchaseStatus.valueOf(purchaseRequestDTO.getStatus()));
+
+        // 추가 필드 (PurchaseRequest 테이블로 이동)
+        purchaseRequest.setDepartment(purchaseRequestDTO.getDepartment());
+        purchaseRequest.setProjectManager(purchaseRequestDTO.getProjectManager());
+        purchaseRequest.setManagerPhone(purchaseRequestDTO.getManagerPhone());
+        purchaseRequest.setSpecialNotes(purchaseRequestDTO.getSpecialNotes());
+        purchaseRequest.setContractPeriod(purchaseRequestDTO.getContractPeriod());
+        purchaseRequest.setContractAmount(purchaseRequestDTO.getContractAmount());
+        purchaseRequest.setContractDetails(purchaseRequestDTO.getContractDetails());
+
         return purchaseRequest;
     }
 

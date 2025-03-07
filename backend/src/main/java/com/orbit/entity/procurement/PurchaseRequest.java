@@ -1,11 +1,13 @@
 package com.orbit.entity.procurement;
 
 import com.orbit.entity.BaseEntity;
+
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -50,6 +52,28 @@ public class PurchaseRequest extends BaseEntity {
 
     @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseRequestItem> purchaseRequestItems; // 구매 요청 항목 목록
+
+    // 추가 필드 (PurchaseRequest 테이블로 이동)
+    @Column(name = "department")
+    private String department; // 사업부서
+
+    @Column(name = "project_manager")
+    private String projectManager; // 사업담당자
+
+    @Column(name = "manager_phone")
+    private String managerPhone; // 담당자핸드폰
+
+    @Column(name = "special_notes", columnDefinition = "TEXT")
+    private String specialNotes; // 특기사항
+
+    @Column(name = "contract_period")
+    private String contractPeriod; // 계약기간
+
+    @Column(name = "contract_amount")
+    private String contractAmount; // 계약금액
+
+    @Column(name = "contract_details", columnDefinition = "TEXT")
+    private String contractDetails; // 계약내용
 
     /**
      * 구매 요청 상태를 나타내는 열거형

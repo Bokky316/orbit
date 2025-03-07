@@ -30,13 +30,19 @@ export const fetchPurchaseRequests = createAsyncThunk(
 /**
  * 구매 요청을 생성하는 비동기 액션
  */
+/**
+ * 구매 요청을 생성하는 비동기 액션
+ */
 export const createPurchaseRequest = createAsyncThunk(
     'purchaseRequest/createPurchaseRequest',
     async (requestData, { rejectWithValue }) => {
         try {
             const response = await fetchWithAuth(`${API_URL}purchase-requests`, {
                 method: 'POST',
-                body: JSON.stringify(requestData),
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
             });
             if (!response.ok) {
                 const errorText = await response.text();
