@@ -169,7 +169,6 @@ body {
 }
 select,
 input,
-button,
 textarea,
 button {
   font-family: "Pretendard Variable", Pretendard, -apple-system,
@@ -225,6 +224,11 @@ legend {
 
 input::-ms-clear {
   display: none;
+}
+
+button {
+  border: none;
+  background: transparent;
 }
 
 input[type="tel"],

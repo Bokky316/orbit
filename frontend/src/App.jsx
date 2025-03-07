@@ -1,58 +1,91 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainContainer from "./components/layout/MainContainer";
-import Home from "./pages/Home";
-import BiddingListPage from "./pages/bidding/BiddingListPage";
-import BiddingFormPage from "./pages/bidding/BiddingFormPage";
-import BiddingPriceTestPage from "./pages/bidding/BiddingPriceTestPage";
-import ErrorPage from "./pages/error/ErrorPage";
-// import LoginPage from "./pages/auth/LoginPage"; // 로그인 페이지 (추후 개발)
+import { useSelector } from "react-redux";
+import { Provider } from "react-redux";
+import { store } from "@/redux/store";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-function App() {
-  // 로그인 상태 체크 (추후 구현)
-  // const [isLoggedIn, setIsLoggedIn] = useState(true);
+// 페이지 컴포넌트 임포트
+import Home from "@/pages/Home";
+import Login from "@/pages/member/Login";
+import BiddingListPage from "@/pages/bidding/BiddingListPage";
+import BiddingFormPage from "@/pages/bidding/BiddingFormPage";
+import BiddingPriceTestPage from "@/pages/bidding/BiddingPriceTestPage";
+import ErrorPage from "@/pages/error/ErrorPage";
+import ProjectListPage from "@/pages/procurement/ProjectListPage";
+import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
+import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
+import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
+import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+
+function AppContent() {
+  const { isLoggedIn } = useSelector((state) => state.auth);
+
+  // 대시보드 페이지 임시 컴포넌트
+  const DashboardPage = () => <div>대시보드 페이지</div>;
 
   return (
     <BrowserRouter>
-      {/* 로그인 페이지 (로그인 완료 되면 로그인 후 MainContainer 나옴)
-      {!isLoggedIn ? (
+      <div className="App">
         <Routes>
-          <Route path="*" element={<LoginPage onLogin={() => setIsLoggedIn(true)} />} />
+          {isLoggedIn ? (
+            <Route element={<Home />}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+
+              {/* 입찰 관리 */}
+              <Route path="/biddings" element={<BiddingListPage />} />
+              <Route
+                path="/biddings/new"
+                element={<BiddingFormPage mode="create" />}
+              />
+              <Route
+                path="/biddings/edit/:id"
+                element={<BiddingFormPage mode="edit" />}
+              />
+              <Route
+                path="/biddings/price-test"
+                element={<BiddingPriceTestPage />}
+              />
+
+              {/* 프로젝트 관리 */}
+              <Route path="/projects" element={<ProjectListPage />} />
+              <Route path="/projects/:id" element={<ProjectDetailPage />} />
+
+              {/* 구매 요청 관리 */}
+              <Route
+                path="/purchase-requests"
+                element={<PurchaseRequestListPage />}
+              />
+              <Route
+                path="/purchase-requests/:id"
+                element={<PurchaseRequestDetailPage />}
+              />
+
+              {/* 승인 관리 */}
+              <Route path="/approvals" element={<ApprovalListPage />} />
+              <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
+
+              {/* 404 페이지 */}
+              <Route path="*" element={<ErrorPage type="notFound" />} />
+            </Route>
+          ) : (
+            <>
+              <Route path="/login" element={<Login />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </>
+          )}
         </Routes>
-      ) : ( */}
-      <MainContainer>
-        <Routes>
-          {/* 홈 페이지 */}
-          <Route path="/" element={<Home />} />
-
-          {/* 입찰 공고, 계약 관리 */}
-          <Route path="/biddings" element={<BiddingListPage />} />
-          <Route
-            path="/biddings/new"
-            element={<BiddingFormPage mode="create" />}
-          />
-          <Route
-            path="/biddings/edit/:id"
-            element={<BiddingFormPage mode="edit" />}
-          />
-          {/* 테스트 페이지 */}
-          <Route
-            path="/biddings/price-test"
-            element={<BiddingPriceTestPage />}
-          />
-          {/* 대시보드 */}
-          <Route path="/dashboard" element={<div>대시보드 페이지</div>} />
-
-          {/* 계약 관리 */}
-          <Route path="/contracts" element={<div>계약 관리 페이지</div>} />
-          <Route path="/contracts/list" element={<div>계약 목록 페이지</div>} />
-
-          {/* 에러 페이지 */}
-          <Route path="*" element={<ErrorPage type="notFound" />} />
-        </Routes>
-      </MainContainer>
-      {/* )} */}
+      </div>
     </BrowserRouter>
+  );
+}
+
+function App() {
+  return (
+    <Provider store={store}>
+      <AppContent />
+    </Provider>
   );
 }
 
