@@ -1,3 +1,4 @@
+/* TopBar */
 .top_container {
   display: flex;
   justify-content: space-between;
@@ -36,6 +37,7 @@
   }
 }
 
+/* SideBar */
 .sidebar_container {
   display: flex;
   flex-direction: column;
@@ -50,9 +52,17 @@
     .sidebar_menu_item {
       padding: 14px 0;
     }
+    .sidebar_logout {
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      justify-items: center;
+    }
   }
 }
 
+/* MainContainer */
 .main_content {
   padding: 20px;
   width: 100%;

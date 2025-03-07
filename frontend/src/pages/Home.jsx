@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import SideBar from "../components/layout/SideBar";
 import TopBar from "../components/layout/TopBar";
 import { Box } from "@mui/material";
-import "@public/css/layout/Layout.css";
+import "/public/css/layout/Layout.css";
 
 const Home = () => {
   return (

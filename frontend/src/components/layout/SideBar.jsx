@@ -1,5 +1,7 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { clearUser } from "@/redux/authSlice";
 import "/public/css/layout/Layout.css";
 
 // 대카테고리 메뉴 데이터
@@ -20,10 +22,35 @@ const mainMenuItems = [
 
 function SideBar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // 현재 활성화된 메뉴 확인
   const isActive = (path) => {
     return location.pathname.startsWith(path);
+  };
+
+  // 로그아웃 핸들러
+  const handleLogout = async () => {
+    try {
+      // 서버에 로그아웃 요청 (옵션)
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+
+      // Redux 상태 초기화
+      dispatch(clearUser());
+
+      // 로그인 페이지로 리다이렉트
+      navigate("/login");
+    } catch (error) {
+      console.error("로그아웃 중 오류 발생:", error);
+
+      // 에러 발생해도 클라이언트 상태는 초기화
+      dispatch(clearUser());
+      navigate("/login");
+    }
   };
 
   return (
@@ -44,7 +71,7 @@ function SideBar() {
       </ul>
 
       <div className="sidebar_bottom">
-        <a href="#logout" className="sidebar_logout">
+        <button onClick={handleLogout} className="sidebar_logout">
           <svg
             width="18"
             height="18"
@@ -57,7 +84,7 @@ function SideBar() {
             />
           </svg>
           로그아웃
-        </a>
+        </button>
       </div>
     </div>
   );

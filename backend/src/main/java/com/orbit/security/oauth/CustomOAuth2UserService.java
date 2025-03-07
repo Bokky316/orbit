@@ -1,7 +1,7 @@
 //package com.orbit.security.oauth;
 //
-//import com.orbit.entity.Member;
-//import com.orbit.repository.MemberRepository;
+//import com.orbit.entity.member.Member;
+//import com.orbit.repository.member.MemberRepository;
 //import com.orbit.security.dto.MemberSecurityDto;
 //import lombok.RequiredArgsConstructor;
 //import lombok.extern.log4j.Log4j2;

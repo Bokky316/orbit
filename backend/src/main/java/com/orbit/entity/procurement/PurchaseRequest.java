@@ -1,12 +1,11 @@
 package com.orbit.entity.procurement;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.Member;
+import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**

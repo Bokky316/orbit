@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import "/public/css/layout/Layout.css";
 
 function TopBar() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(0);
+
+  // Redux에서 사용자 정보 가져오기
+  const { user } = useSelector((state) => state.auth);
 
   // 소카테고리 메뉴 데이터 - URL 경로에 따라 정의
   const subCategories = {
@@ -111,7 +115,9 @@ function TopBar() {
 
         {/* 로그인 정보 */}
         <div className="login_info">
-          <span className="login_name">홍길동님</span>
+          <span className="login_name">
+            {user?.name ? `${user.name}님` : "사용자"}
+          </span>
           <span className="login_position">마케팅팀</span>
         </div>
       </div>

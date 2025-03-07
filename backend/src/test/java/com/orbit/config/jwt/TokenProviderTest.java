@@ -1,12 +1,16 @@
 package com.orbit.config.jwt;
 
-import com.orbit.repository.MemberRepository;
+import com.orbit.entity.member.Member;
+import com.orbit.repository.member.MemberRepository;
+import io.jsonwebtoken.Jwts;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Duration;
 import java.util.Date;
@@ -31,29 +35,31 @@ class TokenProviderTest {
     /**
      * 토큰 생성 메소드 테스트
      */
-//    @DisplayName("generateToken(): 유저 정보와 만료 기간을 전달해 토큰을 만들 수 있다.")
-//    @Test
-//    void generateToken() {
-//        // given, 회원 저장, 이렇게 저장한 회원 정보로 토큰을 생성한다.
-//        Member testUser = memberRepository.save(Member.builder()
-//                .email("test@test.com")    // DB에 없는 이메일로 테스트
-//                .password("1234")
-//                .build());
-//
-//        // when, 토큰 생성, 회원 정보와 만료 기간을 전달해 토큰을 생성한다. ofDays(14) : 14일
-//        String token = tokenProvider.generateToken(testUser, Duration.ofDays(7));
-//        log.info("token: " + token); // token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhanVmcmVzaEBnbWFpbC5jb20iLCJpYXQiOjE3MzczNDE0ODEsImV4cCI6MTczODU1MTA4MSwic3ViIjoidGVzdDFAdGVzdC5jb20iLCJpZCI6MTAyfQ.D3PxyZFlw_nvt71Gh9cDR1jDF5aRgQGgOLI30gkKaNw
-//
-//        // then, 위에서 생성한 토큰 검증, 토큰을 파싱(암호해독, 복호화)해서 회원 정보를 가져온다.
-//        Long memberId = Jwts.parser()
-//                .setSigningKey(jwtProperties.getSecretKey()) //  토큰을 생성할 때 사용한 시크릿 키를 사용해 토큰을 파싱한다.
-//                .parseClaimsJws(token)  // 토큰을 파싱한다.
-//                .getBody()  // 토큰의 바디를 가져온다.
-//                .get("id", Long.class); // 토큰의 바디에서 id를 가져온다. 이때 id는 회원 ID이다.
-//
-//        // 토큰 생성시 클레임으로 담은 회원 ID가 given 절에서 만든 회원 ID와 같은지 검증한다.
-//        assertThat(memberId).isEqualTo(testUser.getId());
-//    }
+    @DisplayName("generateToken(): 유저 정보와 만료 기간을 전달해 토큰을 만들 수 있다.")
+    @Test
+    void generateToken() {
+        // given, 회원 저장, 이렇게 저장한 회원 정보로 토큰을 생성한다.
+        Member testUser = memberRepository.save(Member.builder()
+                .username("testuser")    // DB에 없는 이메일로 테스트 -> username으로 변경
+                .password("1234")
+                .email("test@test.com")    // 이메일 추가
+                .name("Test User") // 이름 추가
+                .build());
+
+        // when, 토큰 생성, 회원 정보와 만료 기간을 전달해 토큰을 생성한다. ofDays(14) : 14일
+        String token = tokenProvider.generateToken(testUser.getUsername(), testUser.getAuthorities(), Duration.ofDays(7)); // username, authorities 추가
+        log.info("token: " + token);
+
+        // then, 위에서 생성한 토큰 검증, 토큰을 파싱(암호해독, 복호화)해서 회원 정보를 가져온다.
+        String username = Jwts.parser()
+                .setSigningKey(jwtProperties.getSecretKey()) //  토큰을 생성할 때 사용한 시크릿 키를 사용해 토큰을 파싱한다.
+                .parseClaimsJws(token)  // 토큰을 파싱한다.
+                .getBody()  // 토큰의 바디를 가져온다.
+                .getSubject(); // 토큰의 바디에서 subject를 가져온다. 이때 subject는 username이다.
+
+        // 토큰 생성시 클레임으로 담은 username이 given 절에서 만든 username과 같은지 검증한다.
+        assertThat(username).isEqualTo(testUser.getUsername()); // username으로 변경
+    }
 
     /**
      * 유효성 검증 메소드 테스트
@@ -110,8 +116,8 @@ class TokenProviderTest {
 //
 //        // when, 토큰 제공자의 getAuthentication 메소드에 토큰을 전달해 인증 정보를 가져온다.
 //        Authentication authentication = tokenProvider.getAuthentication(token);
-//        log.info("authentication: " + authentication); // authentication: UsernamePasswordAuthenticationToken [Principal=org.springframework.security.core.userdetails.User [Username=test@test.com, Password=[PROTECTED], Enabled=true, AccountNonExpired=true, CredentialsNonExpired=true, AccountNonLocked=true, Granted Authorities=[ROLE_USER]], Credentials=[PROTECTED], Authenticated=true, Details=null, Granted Authorities=[ROLE_USER]]
-//        log.info("authentication.getPrincipal() : " + authentication.getPrincipal().getClass().getName()); // authentication.getPrincipal() :
+//        log.info("authentication: " + authentication);
+//        log.info("authentication.getPrincipal() : " + authentication.getPrincipal().getClass().getName());
 //
 //        // then, 반환받은 인증 정보에서 주제로 사용한 이메일이 위에서 설정한 이메일과 같은지 검증한다.
 //        assertThat(((UserDetails) authentication.getPrincipal()).getUsername()).isEqualTo(userEmail);
