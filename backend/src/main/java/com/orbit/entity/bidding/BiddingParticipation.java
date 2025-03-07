@@ -48,17 +48,23 @@ public class BiddingParticipation {
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId; //공급자 ID
 
-    @Column(name = "proposed_price")
-    private BigDecimal proposedPrice; //제안 가격'
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity; //수량
+
+    @Column(name = "unit_price")
+    private BigDecimal unitPrice; //입찰 단가
 
     @Column(name = "supply_price")
-    private BigDecimal supplyPrice; //공급가액
+    private BigDecimal supplyPrice; //입찰 공급가액
 
     @Column(name = "vat")
-    private BigDecimal vat; //부가세
+    private BigDecimal vat;//입찰 부가세
+
+    @Column(name = "total_amount")
+    private BigDecimal totalAmount; //총금액
 
     @Column(name = "delivery_date")
-    private LocalDate deliveryDate; //예상 납기일'
+    private LocalDate deliveryDate; //예상 납기일
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description; //제안 설명

@@ -1,0 +1,61 @@
+.top_container {
+  display: flex;
+  justify-content: space-between;
+  justify-items: center;
+  align-items: center;
+  width: 100%;
+  padding: 10px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #e5e7eb;
+  .logo {
+    img {
+      width: 120px;
+    }
+  }
+  .top_toolbar {
+    display: flex;
+    justify-content: flex-start;
+    justify-items: center;
+    align-items: center;
+    gap: 100px;
+  }
+  .util_container {
+    display: flex;
+    justify-content: flex-start;
+    justify-items: center;
+    align-items: center;
+    .search_container {
+      position: relative;
+      .search_icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+    }
+  }
+}
+
+.sidebar_container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  justify-items: start;
+  align-items: start;
+  border-right: 1px solid #ffd7c2;
+  padding: 20px;
+  background: #f9f9f9;
+  width: 200px;
+  .sidebar_menu {
+    .sidebar_menu_item {
+      padding: 14px 0;
+    }
+  }
+}
+
+.main_content {
+  padding: 20px;
+  width: 100%;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
