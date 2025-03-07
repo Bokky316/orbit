@@ -1,7 +1,7 @@
 package com.orbit.entity.inspection;
 
-import com.orbit.entity.Member;
-import com.orbit.entity.bidding.BiddingContract;
+import com.orbit.entity.bidding.SimplifiedContract;
+import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
