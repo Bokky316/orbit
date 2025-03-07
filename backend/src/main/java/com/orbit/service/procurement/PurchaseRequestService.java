@@ -5,7 +5,7 @@ import com.orbit.dto.procurement.PurchaseRequestResponseDTO;
 import com.orbit.entity.procurement.Project;
 import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.exception.ProjectNotFoundException;
-import com.orbit.repository.MemberRepository;
+import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ProjectRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import org.slf4j.Logger;

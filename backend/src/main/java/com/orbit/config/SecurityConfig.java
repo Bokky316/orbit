@@ -10,13 +10,9 @@ import com.orbit.security.handler.CustomLogoutSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -25,6 +21,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.CorsUtils;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Spring Security 설정 파일
@@ -41,7 +44,6 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-@Profile("!test") // 테스트 환경에서는 제외
 public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService; // 사용자 정보를 가져오는 역할
@@ -52,19 +54,27 @@ public class SecurityConfig {
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler; // 로그아웃 성공 핸들러
 
 
+    /**
+     * Spring Security 필터 체인 구성을 정의하는 빈입니다.
+     * 이 설정은 애플리케이션의 보안 정책을 정의합니다.
+     *
+     * @param http HttpSecurity 객체, 보안 설정을 구성하는 데 사용됩니다.
+     * @return 구성된 SecurityFilterChain 객체
+     * @throws Exception 보안 구성 중 발생할 수 있는 예외
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
+        // 폼 로그인 설정
         http.formLogin(form -> form
-                .loginPage("/api/auth/login")   // 인증되지 않은 사용자가 보호된 리소스에 접근하면 /api/auth/login으로 리다이렉트됩니다.
-                // Spring Security가 인증 처리할 URL(로그인 요청을 처리하는 URL)을 설정, 리액트에서 로그인을 요청할때 사용(/api/auth/login)
-                .loginProcessingUrl("/api/auth/login")
-                .successHandler(customAuthenticationSuccessHandler)
-                .failureHandler((request, response, exception) -> {
+                .loginPage("/api/auth/login")  // 커스텀 로그인 페이지 URL
+                .loginProcessingUrl("/api/auth/login")  // 로그인 처리 URL
+                .successHandler(customAuthenticationSuccessHandler)  // 로그인 성공 핸들러
+                .failureHandler((request, response, exception) -> {  // 로그인 실패 핸들러
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"login failure!\"}");})
-                .permitAll()
+                    response.getWriter().write("{\"error\":\"login failure!\"}");
+                })
+                .permitAll()  // 로그인 관련 URL은 모든 사용자에게 접근 허용
         );
 
         /*
@@ -88,63 +98,69 @@ public class SecurityConfig {
          * anyRequest() : 모든 요청에 대해 접근을 허용
          * authenticated() : 인증된 사용자만 접근을 허용
          * favicon.ico : 파비콘 요청은 인증 없이 접근 가능, 이코드 누락시키면 계속 서버에 요청을 보내서 서버에 부하를 줄 수 있다.
-         *
          */
+        // URL 별 접근 권한 설정
         http.authorizeHttpRequests(request -> request
+
+                // 공개 접근 가능한 API 엔드포인트
+                .requestMatchers(
+                        "/",
+                        "/api/auth/login",
+                        "/api/auth/logout",
+                        "/api/auth/userInfo",
+                        "/api/auth/login/error",
+                        "/api/members/register",
+                        "/api/members/checkEmail",
+                        "/api/email/send",
+                        "/api/email/verify",
+                        "/members/login",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui.html"
+                ).permitAll()
+
                 // WebSocket 관련 요청은 인증 검사 제외
-                // WebSocket 접속이 정상인지 체크하는 핸드쉐이크 요청인 /ws/info와 WebSocket 연결, /ws/**는 인증 없이 접근할 수 있도록 설정합니다.
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/topic/**").permitAll()  // ✅ STOMP 메시지 브로커 경로 허용
-                .requestMatchers("/", "/api/auth/login", "/api/auth/logout", "/api/members/register", "/api/members/checkEmail").permitAll() // 로그인 API 허용 [수정]
-                .requestMatchers(HttpMethod.GET, "/api/members/**").permitAll()    // GET 요청은 모든 사용자에게 허용
+                .requestMatchers("/ws/**", "/topic/**").permitAll()
 
-                // 사용자 관리
-                .requestMatchers("/api/members/**").hasRole("ADMIN")   // ADMIN 역할만 접근 가능
+                // 사용자 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/members").hasRole("ADMIN")
+                .requestMatchers("/api/members/{id}").hasRole("ADMIN")
+                .requestMatchers("/api/members/search").hasRole("ADMIN")
+                .requestMatchers("/api/members/deactivate/{id}").hasRole("ADMIN")
 
-                // 제품 관리
-                .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+                // 품목 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN")
 
-                // 구매 요청 관리
-                .requestMatchers("/api/purchase-requests/**").hasAnyRole("BUYER", "ADMIN") // BUYER, ADMIN 역할만 접근 가능
+                // 구매 요청 관리 (BUYER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/purchase-requests/**").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/approvals/**").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/projects/**").hasAnyRole("BUYER", "ADMIN")
 
-                // 계약 관리
-                .requestMatchers("/api/contracts/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+                // 계약 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/contracts/**").hasRole("ADMIN")
 
-                // 송장 관리
-                .requestMatchers("/api/invoices/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+                // 송장 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/invoices/**").hasAnyRole("SUPPLIER", "ADMIN")
 
-                // 검수 관리
-                .requestMatchers("/api/inspections/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+                // 검수 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/inspections/**").hasRole("ADMIN")
 
-                // 지불 관리
-                .requestMatchers("/api/payments/**").hasRole("ADMIN") // ADMIN 역할만 접근 가능
+                // 지불 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/payments/**").hasRole("ADMIN")
 
-                // 협력업체 등록 관리
-                .requestMatchers("/api/supplier-registrations/**").hasAnyRole("SUPPLIER", "ADMIN") // SUPPLIER, ADMIN 역할만 접근 가능
+                // 협력업체 등록 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/supplier-registrations/**").hasAnyRole("SUPPLIER", "ADMIN")
 
-                // 조직 구조 관리
-                .requestMatchers("/api/departments/**", "/api/positions/**").hasRole("ADMIN") // 관리자만 접근 가능
+                // 조직 구조 관리 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/departments/**", "/api/positions/**").hasRole("ADMIN")
 
-                // 시스템 설정
-                .requestMatchers("/api/settings/**").hasRole("ADMIN") // 관리자만 접근 가능
-                // [추가] 테스트를 위한 API 접근 허용
-                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.GET.name())).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.POST.name())).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.PUT.name())).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/api/**", HttpMethod.DELETE.name())).permitAll()
-                .requestMatchers("/api/auth/userInfo").permitAll() // 사용자 정보 조회 API는 모든 사용자에게 허용
-                .requestMatchers("/admin/**").hasRole("ADMIN")  // 미사용
-                .requestMatchers("/api/members/**").hasAnyRole("USER", "ADMIN") // 사용자 정보 수정 API는 USER, ADMIN만 접근 가능
+                // 시스템 설정 (ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/settings/**").hasRole("ADMIN")
 
-                // Bidding API 권한 설정
-                .requestMatchers("/api/biddings/**").permitAll()
-                //                .requestMatchers(HttpMethod.GET, "/api/biddings/**").permitAll()
-                //                .requestMatchers(HttpMethod.POST, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
-                //                .requestMatchers(HttpMethod.PUT, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
-                //                .requestMatchers(HttpMethod.DELETE, "/api/biddings/**").hasAnyRole("ADMIN", "BUYER")
-                
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()  // 스웨거 Swagger UI는 인증을 거치지 않고 접근 가능
-                .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN") // 사용자의 읽지 않은 메시지 개수 조회 API는 USER, ADMIN만 접근 가능
+                // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
+
+                // 정적 리소스는 모두 허용
                 .requestMatchers(
                         "/images/**",
                         "/static-images/**",
@@ -160,7 +176,9 @@ public class SecurityConfig {
                         "/**/*.svg",
                         "/**/*.html",
                         "/ping.js"
-                ).permitAll() // 정적 리소스는 모두 허용
+                ).permitAll()
+
+                // 그 외 모든 요청은 인증 필요
                 .anyRequest().authenticated()
         );
 
@@ -198,7 +216,7 @@ public class SecurityConfig {
 
         // http.csrf(csrf -> csrf.disable()); // CSRF 보안 설정을 비활성화
         http.csrf(AbstractHttpConfigurer::disable);  // 프론트 엔드를 리액트로 할경우 CSRF 보안 설정을 비활성화
-        http.cors(Customizer.withDefaults());   // 이 설정은 출처가 다른 도메인에서 요청을 허용하기 위한 설정, 스프링은 8080포트에서 실행되고 있고, 리액트는 3000포트에서 실행되고 있기 때문에 스프링은 3000 포트에서 오는 요청을 허용하지 않는다. 이를 해결하기 위해 CORS 설정을 추가한다.
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource()));   // 이 설정은 출처가 다른 도메인에서 요청을 허용하기 위한 설정, 스프링은 8080포트에서 실행되고, 리액트는 3000포트에서 실행되고 있기 때문에 스프링은 3000 포트에서 오는 요청을 허용하지 않는다. 이를 해결하기 위해 CORS 설정을 추가한다.
 
         // 지금까지 설정한 내용을 빌드하여 반환, 반환 객체는 SecurityFilterChain 객체
         return http.build();
@@ -232,4 +250,23 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * CORS 설정을 위한 Bean
+     * 이 설정은 클라이언트의 Cross-Origin 요청을 처리하기 위한 상세한 CORS 정책을 정의합니다.
+     *
+     * @return CorsConfigurationSource 객체
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // 클라이언트 origin
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("Authorization")); // Authorization 헤더 노출
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }

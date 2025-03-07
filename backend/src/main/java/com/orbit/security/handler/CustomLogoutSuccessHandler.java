@@ -33,8 +33,8 @@ public class CustomLogoutSuccessHandler implements LogoutSuccessHandler {
             MemberSecurityDto userDetails = (MemberSecurityDto) authentication.getPrincipal();
 
             // Redis에서 권한 정보 삭제
-            redisService.removeUserAuthorities(userDetails.getEmail());
-            log.info("사용자 [{}]의 권한 정보가 Redis에서 삭제되었습니다.", userDetails.getEmail());
+            redisService.removeUserAuthorities(userDetails.getUsername());     // email -> username으로 변경
+            log.info("사용자 [{}]의 권한 정보가 Redis에서 삭제되었습니다.", userDetails.getUsername());   // email -> username으로 변경
         }
 
         // 액세스 토큰 쿠키 삭제
