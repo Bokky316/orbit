@@ -23,8 +23,22 @@ public class SupplierRegistrationService {
 
     // 협력업체 목록 조회
     public List<SupplierRegistration> getSuppliers(SupplierStatus status) {
-        return supplierRegistrationRepository.findByStatus(status);
+        System.out.println("🔍 SupplierStatus: " + status);
+
+        if (status == null) {
+            List<SupplierRegistration> allSuppliers = supplierRegistrationRepository.findAll();
+            System.out.println("✅ 전체 조회, 총 개수: " + allSuppliers.size());
+            return allSuppliers;
+        }
+
+        List<SupplierRegistration> filteredSuppliers = supplierRegistrationRepository.findByStatus(status);
+        System.out.println("✅ 상태별 조회, 총 개수: " + filteredSuppliers.size());
+
+        return filteredSuppliers;
     }
+
+
+
 
     // 협력업체 상세 조회
     public SupplierRegistration getSupplierById(Long id) {
@@ -33,7 +47,20 @@ public class SupplierRegistrationService {
     }
 
     // 협력업체 등록 요청
-    public SupplierRegistration registerSupplier(Long supplierId, String businessNo, String businessCategory, MultipartFile businessFile) {
+    public SupplierRegistration registerSupplier(
+            Long supplierId,
+            String businessNo,
+            String companyName,
+            String ceoName,
+            String businessType,
+            String businessCategory,
+            String sourcingCategory,
+            String sourcingSubCategory,
+            String phoneNumber,
+            String headOfficeAddress,
+            String comments,
+            MultipartFile businessFile
+    ) {
         Member supplier = memberRepository.findById(supplierId)
                 .orElseThrow(() -> new IllegalArgumentException("회원이 존재하지 않습니다."));
 
@@ -43,7 +70,15 @@ public class SupplierRegistrationService {
         SupplierRegistration registration = new SupplierRegistration();
         registration.setSupplier(supplier);
         registration.setBusinessNo(businessNo);
+        registration.setCompanyName(companyName);
+        registration.setCeoName(ceoName);
+        registration.setBusinessType(businessType);
         registration.setBusinessCategory(businessCategory);
+        registration.setSourcingCategory(sourcingCategory);
+        registration.setSourcingSubCategory(sourcingSubCategory);
+        registration.setPhoneNumber(phoneNumber);
+        registration.setHeadOfficeAddress(headOfficeAddress);
+        registration.setComments(comments);
         registration.setBusinessFile(storedFileName); // 저장된 파일명만 DB에 저장
         registration.setStatus(SupplierStatus.PENDING);
         registration.setRegistrationDate(LocalDate.now());
