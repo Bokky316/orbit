@@ -29,9 +29,10 @@ public class BiddingDto {
     private LocalDateTime endDate;
     private String conditions;
     private String internalNote;
-    private BigDecimal biddingUnitPrice;
-    private BigDecimal biddingSupplyPrice;
-    private BigDecimal biddingVat;
+    private BigDecimal unitPrice;
+    private BigDecimal supplyPrice;
+    private BigDecimal vat;
+    private BigDecimal totalAmount;
     private Bidding.BiddingStatus status;
     private String filePath;
     private LocalDateTime createdAt;
@@ -51,9 +52,10 @@ public class BiddingDto {
                 .endDate(entity.getEndDate())
                 .conditions(entity.getConditions())
                 .internalNote(entity.getInternalNote())
-                .biddingUnitPrice(entity.getBiddingUnitPrice())
-                .biddingSupplyPrice(entity.getBiddingSupplyPrice())
-                .biddingVat(entity.getBiddingVat())
+                .unitPrice(entity.getUnitPrice())
+                .supplyPrice(entity.getSupplyPrice())
+                .vat(entity.getVat())
+                .totalAmount(entity.getTotalAmount())
                 .status(entity.getStatus())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -72,9 +74,10 @@ public class BiddingDto {
                 .endDate(this.endDate)
                 .conditions(this.conditions)
                 .internalNote(this.internalNote)
-                .biddingUnitPrice(this.biddingUnitPrice)
-                .biddingSupplyPrice(this.biddingSupplyPrice)
-                .biddingVat(this.biddingVat)
+                .unitPrice(this.unitPrice)
+                .supplyPrice(this.supplyPrice)
+                .vat(this.vat)
+                .totalAmount(this.totalAmount)
                 .status(this.status)
                 .filePath(this.filePath)
                 .build();

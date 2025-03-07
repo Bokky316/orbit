@@ -140,6 +140,7 @@ address {
 }
 
 a {
+  color: #333;
   text-decoration: none;
 }
 
@@ -148,7 +149,7 @@ a:active,
 a:focus,
 button,
 input {
-  text-decoration: underline;
+  text-decoration: none;
   outline-style: none;
   outline: none;
 }

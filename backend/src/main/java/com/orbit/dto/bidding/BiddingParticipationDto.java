@@ -20,7 +20,8 @@ public class BiddingParticipationDto {
     private Long biddingId;
     private Long biddingItemId;
     private Long supplierId;
-    private BigDecimal proposedPrice;
+    private Integer quantity;
+    private BigDecimal unitPrice;
     private BigDecimal supplyPrice;
     private BigDecimal vat;
     private LocalDate deliveryDate;
@@ -36,7 +37,7 @@ public static BiddingParticipationDto fromEntity(BiddingParticipation entity) {
             .biddingId(entity.getBiddingId()) 
             .biddingItemId(entity.getBiddingItemId()) 
             .supplierId(entity.getSupplierId())
-            .proposedPrice(entity.getProposedPrice())
+            .unitPrice(entity.getUnitPrice())
             .supplyPrice(entity.getSupplyPrice())
             .vat(entity.getVat())
             .deliveryDate(entity.getDeliveryDate())
@@ -54,7 +55,7 @@ public static BiddingParticipationDto fromEntity(BiddingParticipation entity) {
                 .biddingId(this.biddingId) 
                 .biddingItemId(this.biddingItemId) 
                 .supplierId(this.supplierId)
-                .proposedPrice(this.proposedPrice)
+                .unitPrice(this.unitPrice)
                 .supplyPrice(this.supplyPrice)
                 .vat(this.vat)
                 .deliveryDate(this.deliveryDate)
