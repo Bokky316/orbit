@@ -14,6 +14,7 @@ import PurchaseRequestListPage from "./pages/procurement/PurchaseRequestListPage
 import PurchaseRequestDetailPage from "./pages/procurement/PurchaseRequestDetailPage";
 import ApprovalListPage from "./pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "./pages/procurement/ApprovalDetailPage";
+import InspectionsListPage from "./pages/inspection/InspectionsListPage";
 import Login from "./pages/member/Login";
 // import Header from "./layouts/Header";
 // import Footer from "./layouts/Footer";
@@ -43,6 +44,7 @@ function AppContent() {
                     <Route path="/purchase-requests/:id" element={<ProtectedRoute><PurchaseRequestDetailPage /></ProtectedRoute>} />
                     <Route path="/approvals" element={<ProtectedRoute><ApprovalListPage /></ProtectedRoute>} />
                     <Route path="/approvals/:id" element={<ProtectedRoute><ApprovalDetailPage /></ProtectedRoute>} />
+                    <Route path="/inspections" element={<ProtectedRoute><InspectionsListPage /></ProtectedRoute>} />
                     <Route path="*" element={<ErrorPage type="notFound" />} />
                 </Routes>
 {/*             </Layout> */}

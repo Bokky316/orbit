@@ -46,6 +46,11 @@ const Home = () => {
           결재 관리
         </Button>
       </Link>
+      <Link to="/inspections" style={{ textDecoration: "none" }}>
+        <Button variant="contained" color="primary">
+          검수목록
+        </Button>
+      </Link>
     </Box>
   );
 };
