@@ -39,27 +39,37 @@ export default function Login() {
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: new URLSearchParams(credentials), // 폼 데이터 전송
-                credentials: "include",
+                body: new URLSearchParams(credentials),
+                credentials: "include", // 쿠키 포함
             });
 
-            if (response.ok) {
-                // 로그인 성공
+            if (!response.ok) {
+                const errorText = await response.text();
+                setErrorMessage(`로그인 실패: ${response.status} - ${errorText}`);
+                return;
+            }
+
+            const data = await response.json(); // JSON 파싱
+            console.log("로그인 성공, 응답 데이터:", data);
+
+            if (data.status === "success") {
+                setTokenAndUser(data); // 유저 정보 및 토큰 저장
+                dispatch(setUser(data)); // Redux에 유저 상태 저장(redux에 isloggedin을 true로 만들어 줌)
+
                 setOpenSnackbar(true);
                 setTimeout(() => {
                     navigate("/");
                     window.location.reload();
                 }, 1000);
             } else {
-                // 로그인 실패
-                const errorText = await response.text();
-                setErrorMessage(`로그인 실패: ${response.status} - ${errorText}`);
+                setErrorMessage("로그인 실패: " + data.message);
             }
         } catch (error) {
             console.error("로그인 요청 실패:", error.message);
             setErrorMessage("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
         }
     };
+
 
    useEffect(() => {
         const handleKeyDown = (event) => {

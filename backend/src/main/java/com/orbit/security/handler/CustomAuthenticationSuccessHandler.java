@@ -1,5 +1,6 @@
 package com.orbit.security.handler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbit.config.jwt.TokenProvider;
 import com.orbit.security.dto.MemberSecurityDto;
 import com.orbit.service.RedisService;
@@ -17,7 +18,9 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -95,12 +98,19 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
     private void sendJsonResponse(HttpServletResponse response, MemberSecurityDto userDetails, List<String> roles) throws IOException {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(String.format(
-                "{\"message\":\"로그인 성공\",\"status\":\"success\",\"id\":%d,\"username\":\"%s\",\"name\":\"%s\",\"roles\":%s}",
-                userDetails.getId(),
-                userDetails.getUsername(),
-                userDetails.getRealName(),
-                roles.toString()
-        ));
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("message", "로그인 성공");
+        responseData.put("status", "success");
+        responseData.put("id", userDetails.getId());
+        responseData.put("username", userDetails.getUsername());
+        responseData.put("name", userDetails.getRealName());
+        responseData.put("roles", roles);
+
+        response.getWriter().write(objectMapper.writeValueAsString(responseData));
+
     }
 }
