@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Member 엔티티를 위한 JpaRepository
@@ -14,9 +15,9 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
     /**
      * 사용자 ID(username)로 회원 정보 조회
      * @param username 사용자 ID
-     * @return Member 객체
+     * @return Optional<Member> 객체
      */
-    Member findByUsername(String username);
+    Optional<Member> findByUsername(String username);
 
     /**
      * 이메일로 회원 정보 조회

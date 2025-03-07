@@ -13,6 +13,7 @@ import com.orbit.service.RedisService;
 import com.orbit.repository.procurement.ApprovalRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.repository.procurement.ProjectRepository;
+import com.orbit.constant.SupplierStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -137,19 +138,20 @@ public class ApprovalControllerTest {
                         .endDate(LocalDate.now().plusDays(7))
                         .status(Project.ProjectStatus.IN_PROGRESS)
                         .description("Test Project Description")
+//                        .supplierStatus(SupplierStatus.PENDING)
                         .build();
         projectRepository.save(project);
 
         // 테스트 구매 요청 생성 및 저장
         PurchaseRequest purchaseRequest = new PurchaseRequest();
-        purchaseRequest.setTitle("Test Purchase Request");
-        purchaseRequest.setDescription("Test Description");
+        purchaseRequest.setRequestName("Test Purchase Request"); // title -> requestName
+        purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
         purchaseRequest.setProject(project);
-        purchaseRequest.setRequester(testMember);
-        purchaseRequest.setStatus(PurchaseRequest.PurchaseStatus.초안);
-        purchaseRequest.setTotalAmount(1000.0);
+        purchaseRequest.setMember(testMember); // Requester -> Member
+        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
+        purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
         purchaseRequest.setRequestDate(LocalDate.now());
-        purchaseRequest.setDeliveryDate(LocalDate.now().plusDays(3));
+        purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
         purchaseRequestRepository.save(purchaseRequest);
 
         // 테스트 결재 생성 및 저장

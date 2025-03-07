@@ -31,12 +31,10 @@ export default defineConfig({
     },
     optimizeDeps: {
         include: [
-            'date-fns/*',
             '@emotion/react',
             '@emotion/styled',
             '@mui/icons-material',
             '@mui/material',
-            '@mui/x-date-pickers',
             '@tiptap/react',
             '@tiptap/starter-kit',
             '@tiptap/extension-bold',

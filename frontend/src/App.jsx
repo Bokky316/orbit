@@ -12,7 +12,7 @@ import ProjectListPage from "./pages/procurement/ProjectListPage";
 import ProjectDetailPage from "./pages/procurement/ProjectDetailPage";
 import PurchaseRequestListPage from "./pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "./pages/procurement/PurchaseRequestDetailPage";
-// import PurchaseRequestCreatePage from './pages/procurement/PurchaseRequestCreatePage';
+import PurchaseRequestCreatePage from './pages/procurement/PurchaseRequestCreatePage';
 import ApprovalListPage from "./pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "./pages/procurement/ApprovalDetailPage";
 import Login from "./pages/member/Login";
@@ -51,7 +51,7 @@ function AppContent() {
                 <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
                 <Route path="/purchase-requests" element={<ProtectedRoute><PurchaseRequestListPage /></ProtectedRoute>} />
                 <Route path="/purchase-requests/:id" element={<ProtectedRoute><PurchaseRequestDetailPage /></ProtectedRoute>} />
-{/*                 <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />} /> */}
+                <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />} />
                 <Route path="/approvals" element={<ProtectedRoute><ApprovalListPage /></ProtectedRoute>} />
                 <Route path="/approvals/:id" element={<ProtectedRoute><ApprovalDetailPage /></ProtectedRoute>} />
                 <Route path="*" element={<ErrorPage type="notFound" />} />

@@ -15,7 +15,11 @@ import java.time.LocalDate;
  */
 @Entity
 @Table(name = "projects")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Project extends BaseEntity {
 
     /**
@@ -67,6 +71,60 @@ public class Project extends BaseEntity {
      */
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    /**
+     * 고객사
+     */
+    @Column(name = "customer")
+    private String customer;
+
+    /**
+     * 사업구분 (예: SI, SM)
+     */
+    @Column(name = "business_type")
+    private String businessType;
+
+    /**
+     * 프로젝트 예산
+     */
+    @Column(name = "budget")
+    private Long budget;
+
+    /**
+     * 영업 담당
+     */
+    @Column(name = "sales_manager")
+    private String salesManager;
+
+    /**
+     * 수행 PM
+     */
+    @Column(name = "execution_pm")
+    private String executionPM;
+
+    /**
+     * 자체/통합 구매 여부
+     */
+    @Column(name = "is_integrated_purchase")
+    private Boolean isIntegratedPurchase;
+
+    /**
+     * 비고
+     */
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
+    /**
+     * 계약 구분
+     */
+    @Column(name = "contract_type")
+    private String contractType;
+
+    /**
+     * 등록일
+     */
+    @Column(name = "registration_date")
+    private LocalDate registrationDate;
 
     /**
      * 프로젝트 상태를 나타내는 열거형

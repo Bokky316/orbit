@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-    setPurchaseRequests,
+    fetchPurchaseRequests,
     setSearchTerm,
     setRequestDate,
     setStatus
@@ -27,8 +27,6 @@ import {
     Checkbox,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { fetchWithAuth } from '@/utils/fetchWithAuth'; // 인증이 필요한 API 호출 함수
-import { API_URL } from '@/utils/constants';
 
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
     maxHeight: 440,
@@ -53,26 +51,8 @@ function PurchaseRequestListPage() {
 
     useEffect(() => {
         // 컴포넌트 마운트 시 구매 요청 목록 데이터 로딩
-        fetchPurchaseRequests();
+        dispatch(fetchPurchaseRequests());
     }, [dispatch]);
-
-    /**
-     * 구매 요청 목록 데이터 API 호출 함수
-     */
-    const fetchPurchaseRequests = async () => {
-        try {
-            const response = await fetchWithAuth(`${API_URL}purchase-requests`);
-            if (!response.ok) {
-                throw new Error(`구매 요청 목록 로딩 실패: ${response.status}`);
-            }
-
-            const data = await response.json();
-            dispatch(setPurchaseRequests(data)); // Redux 스토어에 구매 요청 목록 저장
-        } catch (error) {
-            console.error('구매 요청 목록 로딩 중 오류 발생:', error);
-            // 오류 처리 로직 (예: 사용자에게 오류 메시지 표시)
-        }
-    };
 
     /**
      * 검색 및 필터링된 구매 요청 목록을 반환합니다.
@@ -82,8 +62,9 @@ function PurchaseRequestListPage() {
         return purchaseRequests.filter(request => {
             const searchTerm = localFilters.searchTerm || ''; // searchTerm이 undefined일 경우 빈 문자열로 초기화
             const searchTermMatch = String(request.id)?.includes(searchTerm) ||
-                String(request.project?.projectName)?.includes(searchTerm) ||
-                String(request.requester?.name)?.includes(searchTerm);
+                String(request.title)?.includes(searchTerm) || // title로 검색
+                String(request.department)?.includes(searchTerm) || // department로 검색
+                String(request.projectManager)?.includes(searchTerm); // projectManager로 검색
             const requestDateMatch = !localFilters.requestDate || request.requestDate === localFilters.requestDate;
             const statusMatch = !localFilters.status || request.status === localFilters.status;
 
@@ -182,7 +163,8 @@ function PurchaseRequestListPage() {
                             value={localFilters.searchTerm || ''}
                             onChange={handleSearchTermChange}
                         />
-                    </Grid>... {/* 진행상태 필터 */}
+                    </Grid>
+                    {/* 진행상태 필터 */}
                     <Grid item xs={12} sm={3}>
                         <FormControl fullWidth>
                             <InputLabel id="status-select-label">진행상태</InputLabel>
@@ -194,9 +176,11 @@ function PurchaseRequestListPage() {
                                 onChange={handleStatusChange}
                             >
                                 <MenuItem value="">전체</MenuItem>
-                                <MenuItem value="구매요청">구매요청</MenuItem>
-                                <MenuItem value="접수반려">접수반려</MenuItem>
-                                <MenuItem value="구매접수">구매접수</MenuItem>
+                                <MenuItem value="초안">초안</MenuItem>
+                                <MenuItem value="제출">제출</MenuItem>
+                                <MenuItem value="승인">승인</MenuItem>
+                                <MenuItem value="거절">거절</MenuItem>
+                                <MenuItem value="완료">완료</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
@@ -222,7 +206,6 @@ function PurchaseRequestListPage() {
                             조회
                         </Button>
                     </Grid>
-
                     {/* 신규, 수정, 삭제 버튼 */}
                     <Grid item xs={12} sm={3} container justifyContent="flex-end">
                         {/* "신규" 버튼 클릭 시 새 구매 요청 생성 페이지로 이동 */}
@@ -242,7 +225,8 @@ function PurchaseRequestListPage() {
                         </Button>
                     </Grid>
                 </Grid>
-            </Paper>... {/* 구매 요청 목록 테이블 */}
+            </Paper>
+            {/* 구매 요청 목록 테이블 */}
             <StyledTableContainer component={Paper}>
                 <Table stickyHeader aria-label="sticky table">
                     <TableHead>
@@ -256,7 +240,6 @@ function PurchaseRequestListPage() {
                             <TableCell>사업부서</TableCell>
                             <TableCell>사업담당자</TableCell>
                             <TableCell>등록자</TableCell>
-                            <TableCell>액션</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -281,25 +264,15 @@ function PurchaseRequestListPage() {
                                             },
                                         }}
                                     >
-                                        {request.project?.projectName}
+                                        {request.title}
                                     </Typography>
                                 </TableCell>
                                 <TableCell>{request.id}</TableCell>
-                                <TableCell>{request.requester?.name}</TableCell>
+                                <TableCell>{request.requesterId}</TableCell>
                                 <TableCell>{request.requestDate}</TableCell>
-                                <TableCell> {/* 사업부서 데이터 바인딩 */}</TableCell>
-                                <TableCell> {/* 사업담당자 데이터 바인딩 */}</TableCell>
-                                <TableCell> {/* 등록자 데이터 바인딩 */}</TableCell>
-                                <TableCell>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="primary"
-                                        onClick={() => handleViewDetail(request.id)}
-                                    >
-                                        상세보기
-                                    </Button>
-                                </TableCell>
+                                <TableCell>{request.department}</TableCell>
+                                <TableCell>{request.projectManager}</TableCell>
+                                <TableCell>{request.requesterId}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 회원 관리 서비스
@@ -74,9 +75,16 @@ public class MemberService {
      * @param loginForm 로그인 폼 데이터 (username, 비밀번호)
      * @return 로그인 성공 여부 (true: 성공, false: 실패)
      */
+    /**
+     * 로그인 시도
+     * @param loginForm 로그인 정보
+     * @return 로그인 성공 여부
+     */
     @Transactional
     public boolean login(LoginFormDto loginForm) {
-        Member member = memberRepository.findByUsername(loginForm.getUsername());
+        Optional<Member> optionalMember = memberRepository.findByUsername(loginForm.getUsername());
+        Member member = optionalMember.orElse(null);
+
         if (member != null && passwordEncoder.matches(loginForm.getPassword(), member.getPassword())) {
             member.setLastLoginAt(LocalDateTime.now());
             memberRepository.save(member);
@@ -97,17 +105,14 @@ public class MemberService {
     }
 
     /**
-     * username으로 회원 조회
-     * @param username 조회할 회원의 username
-     * @return 조회된 회원 엔티티
-     * @throws IllegalArgumentException 존재하지 않는 username으로 조회 시
+     * 사용자 이름(username)으로 Member 엔티티를 조회합니다.
+     * @param username 사용자 이름(username)
+     * @return Member 객체
+     * @throws IllegalArgumentException 사용자가 존재하지 않을 경우 예외 발생
      */
     public Member findByUsername(String username) {
-        Member member = memberRepository.findByUsername(username);
-        if (member == null) {
-            throw new IllegalArgumentException("존재하지 않는 사용자입니다");
-        }
-        return member;
+        return memberRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다: " + username));
     }
 
     /**
