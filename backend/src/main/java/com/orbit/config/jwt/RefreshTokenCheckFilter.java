@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -27,18 +28,19 @@ import java.util.List;
 @Slf4j
 public class RefreshTokenCheckFilter extends OncePerRequestFilter {
 
-    private final RedisService redisService;
-    private final TokenProvider tokenProvider;
-    private final RefreshTokenService refreshTokenService;
-    private final static String REFRESH_TOKEN_COOKIE_NAME = "refToken"; // 리프레시 토큰 쿠키 이름
-    private final static String ACCESS_TOKEN_COOKIE_NAME = "accToken"; // 액세스 토큰 쿠키 이름
+    private final RedisService redisService; // Redis에서 권한 정보를 조회하기 위한 서비스
+    private final TokenProvider tokenProvider; // JWT 토큰 생성 및 검증을 위한 서비스
+    private final RefreshTokenService refreshTokenService; // 리프레시 토큰 관리 서비스
+
+    private static final String REFRESH_TOKEN_COOKIE_NAME = "refToken"; // 리프레시 토큰 쿠키 이름
+    private static final String ACCESS_TOKEN_COOKIE_NAME = "accToken"; // 액세스 토큰 쿠키 이름
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // "/refresh" 요청이 아니면 다음 필터로 이동 즉, /refresh 요청만 처리
-        if (!request.getRequestURI().equals("/refresh")) {
+        // "/refresh" 요청이 아니면 다음 필터로 이동
+        if (!"/refresh".equals(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -51,14 +53,14 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
         }
 
         try {
-            // 2. 리프레시 토큰 검증(만료, DB에 저장된 토큰과 일치 여부)
+            // 2. 리프레시 토큰 검증 및 갱신
             RefreshToken dbRefreshToken = refreshTokenService.validateAndRefreshToken(refreshToken);
 
-            // 3. 리프레시 토큰에서 이메일 추출
-            String email = tokenProvider.getEmailFromToken(dbRefreshToken.getRefreshToken());
+            // 3. 리프레시 토큰에서 username 추출
+            String username = tokenProvider.getUsernameFromToken(dbRefreshToken.getRefreshToken());
 
             // 4. Redis에서 권한 정보 조회
-            List<String> roles = redisService.getUserAuthoritiesFromCache(email);
+            List<String> roles = redisService.getUserAuthoritiesFromCache(username);
             if (roles == null || roles.isEmpty()) {
                 handleErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Redis에서 권한 정보를 찾을 수 없습니다.");
                 return;
@@ -67,7 +69,8 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
 
             // 5. 새로운 액세스 토큰 생성
             String newAccessToken = tokenProvider.generateToken(
-                    email,
+                    username,
+                    roles.stream().map(role -> new SimpleGrantedAuthority(role)).toList(),
                     Duration.ofMinutes(50) // 새 액세스 토큰 유효 시간
             );
             log.info("새로운 액세스 토큰 발급 완료: {}", newAccessToken);
@@ -85,8 +88,8 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             response.getWriter().write(String.format(
-                    "{\"message\":\"Access token refreshed successfully\",\"status\":\"success\",\"email\":\"%s\"}",
-                    email
+                    "{\"message\":\"Access token refreshed successfully\",\"status\":\"success\",\"username\":\"%s\"}",
+                    username
             ));
         } catch (IllegalArgumentException e) {
             handleErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다: " + e.getMessage());
@@ -97,6 +100,10 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
 
     /**
      * 쿠키에서 특정 이름의 토큰 추출
+     *
+     * @param cookies   요청에 포함된 쿠키 배열
+     * @param tokenName 추출할 쿠키 이름
+     * @return 추출된 쿠키 값 또는 null (쿠키가 없거나 이름이 일치하지 않을 경우)
      */
     private String extractTokenFromCookies(Cookie[] cookies, String tokenName) {
         if (cookies != null) {
@@ -106,17 +113,32 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
                 }
             }
         }
-        return null;
+        return null; // 쿠키가 없거나 이름이 일치하지 않는 경우 null 반환
     }
 
+    /**
+     * HttpOnly 쿠키 생성 메서드
+     *
+     * @param name  쿠키 이름
+     * @param value 쿠키 값
+     * @return 생성된 HttpOnly 쿠키 객체
+     */
     private Cookie createCookie(String name, String value) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        cookie.setSecure(true); // HTTPS 환경에서만 전송되도록 설정 (개발 환경에서는 false로 설정 가능)
         cookie.setPath("/");
         return cookie;
     }
 
+    /**
+     * 에러 응답 처리 메서드
+     *
+     * @param response HTTP 응답 객체
+     * @param status   HTTP 상태 코드 (예: 401 Unauthorized)
+     * @param message  에러 메시지 내용
+     * @throws IOException 응답 작성 중 발생할 수 있는 예외
+     */
     private void handleErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json");
@@ -124,6 +146,6 @@ public class RefreshTokenCheckFilter extends OncePerRequestFilter {
         response.getWriter().write(String.format(
                 "{\"error\":\"Unauthorized\",\"message\":\"%s\"}", message
         ));
-        log.warn(message);
+        log.warn(message); // 로그에 경고 메시지 출력
     }
 }

@@ -8,6 +8,6 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class RefreshTokenDto {
-    private String email;
+    private String username;  // email -> username으로 변경
     private String refreshToken;
 }
