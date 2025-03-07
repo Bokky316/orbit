@@ -6,14 +6,21 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "inspections")
 @Getter
 @Setter
 @NoArgsConstructor
-@Entity
-@Table(name = "inspections")
+@ToString(exclude = {"contract", "inspector"})  // Lazy 로딩 오류 방지
+@EntityListeners(AuditingEntityListener.class)  // 자동 타임스탬프
 public class Inspection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,9 +44,14 @@ public class Inspection {
     @Column(name = "comments")
     private String comments;
 
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+
     public enum InspectionResult {
         합격, 불합격
     }
 }
-
-
