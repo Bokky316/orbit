@@ -32,14 +32,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByProjectNameContaining(String projectName);
 
     /**
-     * 프로젝트 상태로 프로젝트를 조회합니다.
-     *
-     * @param status 조회할 프로젝트의 상태
-     * @return 조회된 프로젝트 목록
-     */
-    List<Project> findByStatus(Project.ProjectStatus status);
-
-    /**
      * 페이징 및 정렬을 적용하여 모든 프로젝트를 조회합니다.
      *
      * @param pageable 페이징 및 정렬 정보

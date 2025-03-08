@@ -184,7 +184,6 @@ public class PurchaseRequestService {
         dto.setId(entity.getId());
         dto.setRequestName(entity.getRequestName());
         dto.setRequestNumber(entity.getRequestNumber());
-        dto.setStatus(entity.getStatus());
         dto.setRequestDate(entity.getRequestDate());
         dto.setCustomer(entity.getCustomer());
         dto.setBusinessDepartment(entity.getBusinessDepartment());

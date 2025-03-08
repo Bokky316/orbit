@@ -1,5 +1,6 @@
 package com.orbit.entity.procurement;
 
+import com.orbit.constant.PurchaseRequestStatus;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -10,8 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 구매 요청 엔티티.
- * 구매 요청에 대한 정보를 담고 있습니다.
+ * 구매 요청 엔티티
+ * 구매 요청에 대한 상세 정보를 저장합니다.
  */
 @Entity
 @Getter
@@ -20,7 +21,7 @@ import java.util.List;
 public class PurchaseRequest {
 
     /**
-     * 구매 요청 ID (PK).
+     * 구매 요청의 고유 식별자
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,117 +29,113 @@ public class PurchaseRequest {
     private Long id;
 
     /**
-     * 요청명.
+     * 구매 요청의 이름
      */
     @Column(name = "request_name", nullable = false)
     private String requestName;
 
     /**
-     * 요청 번호.
+     * 구매 요청의 고유 번호
      */
     @Column(name = "request_number", unique = true)
     private String requestNumber;
 
     /**
-     * 진행 상태.
+     * 구매 요청의 현재 상태
      */
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private String status; // 예: "구매요청", "접수완료", "진행중", "완료"
+    private PurchaseRequestStatus status;
 
     /**
-     * 요청일.
+     * 구매 요청이 생성된 날짜
      */
     @Column(name = "request_date")
     private LocalDate requestDate;
 
     /**
-     * 고객사.
+     * 구매 요청과 관련된 고객사 정보
      */
     @Column(name = "customer")
     private String customer;
 
     /**
-     * 사업 부서.
+     * 구매를 요청한 사업 부서
      */
     @Column(name = "business_department")
     private String businessDepartment;
 
     /**
-     * 사업 담당자.
+     * 구매 요청을 담당하는 사업 관리자
      */
     @Column(name = "business_manager")
     private String businessManager;
 
     /**
-     * 사업 구분.
+     * 사업의 유형 (예: SI, SM 등)
      */
     @Column(name = "business_type")
-    private String businessType; // 예: "SI", "SM"
+    private String businessType;
 
     /**
-     * 사업 예산.
+     * 구매에 할당된 사업 예산
      */
     @Column(name = "business_budget")
     private Long businessBudget;
 
     /**
-     * 특이 사항.
+     * 구매 요청에 대한 특별 참고 사항
      */
     @Column(name = "special_notes", length = 1000)
     private String specialNotes;
 
     /**
-     * 담당자 핸드폰 번호.
+     * 구매 요청 담당자의 연락처
      */
     @Column(name = "manager_phone_number")
     private String managerPhoneNumber;
 
     /**
-     * 사업 기간 (시작일).
+     * 관련 프로젝트의 시작 날짜
      */
     @Column(name = "project_start_date")
     private LocalDate projectStartDate;
 
     /**
-     * 사업 기간 (종료일).
+     * 관련 프로젝트의 종료 예정 날짜
      */
     @Column(name = "project_end_date")
     private LocalDate projectEndDate;
 
     /**
-     * 사업 내용.
+     * 구매 요청과 관련된 프로젝트의 상세 내용
      */
     @Column(name = "project_content", length = 2000)
     private String projectContent;
 
     /**
-     * 첨부 파일 목록. (실제 파일 저장 경로는 별도 관리)
+     * 구매 요청에 첨부된 파일들의 정보
      */
     @Column(name = "attachments")
     private String attachments;
 
     /**
-     * 프로젝트 엔티티와의 관계 (ManyToOne).
-     * 하나의 구매 요청은 하나의 프로젝트에 속할 수 있습니다.
+     * 구매 요청이 속한 프로젝트
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Project project;
 
     /**
-     * 멤버 엔티티와의 관계 (ManyToOne).
-     * 구매 요청을 등록한 멤버 정보를 나타냅니다.
-     * registrant 필드 삭제 후 member 필드로 대체
+     * 구매 요청을 생성한 회원
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
     private Member member;
 
     /**
-     * 구매 요청 아이템 목록 (OneToMany).
-     * 하나의 구매 요청은 여러 개의 아이템을 가질 수 있습니다.
+     * 이 구매 요청에 포함된 개별 아이템들의 목록
      */
     @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
-
 }
