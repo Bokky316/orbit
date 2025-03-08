@@ -66,7 +66,7 @@ public class StateService {
         validateTransition(current, newStatus);
 
         return StatusHistory.builder()
-                .entityId(entityId)
+
                 .entityType(entityType)
                 .fromStatus(current)
                 .toStatus(newStatus)

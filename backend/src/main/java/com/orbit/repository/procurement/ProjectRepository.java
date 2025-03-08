@@ -17,11 +17,10 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     /**
      * 프로젝트 ID로 프로젝트를 조회합니다.
-     *
-     * @param projectId 조회할 프로젝트의 ID
      * @return 조회된 프로젝트 (Optional)
      */
-    Optional<Project> findByProjectId(String projectId);
+    Optional<Project> findByProjectIdentifier(String projectIdentifier);  // 메서드명 변경
+
 
     /**
      * 프로젝트 이름으로 프로젝트를 조회합니다.

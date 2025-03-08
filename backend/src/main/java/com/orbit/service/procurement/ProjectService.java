@@ -128,7 +128,7 @@ public class ProjectService {
         dto.setTotalBudget(project.getTotalBudget());
         dto.setClientCompany(project.getClientCompany());
         dto.setContractType(project.getContractType());
-        dto.setRegistrationDate(project.getRegistrationDate());
+
 
         ProjectResponseDTO.ManagerInfo managerInfo = new ProjectResponseDTO.ManagerInfo();
         managerInfo.setName(project.getProjectManager().getName());

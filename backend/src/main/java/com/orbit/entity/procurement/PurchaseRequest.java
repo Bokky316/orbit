@@ -13,58 +13,41 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 구매 요청 엔티티
- * 구매 요청에 대한 상세 정보를 저장합니다.
+ * 구매 요청 엔티티 - 상태 관리 시스템 통합
  */
 @Entity
-@Getter
-@Setter
-@Table(name = "purchase_request")
+@Getter @Setter
+@Table(name = "purchase_requests")
 public class PurchaseRequest {
 
-    /**
-     * 구매 요청의 고유 식별자
-     */
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "purchase_request_id")
     private Long id;
 
-    /**
-     * 구매 요청의 이름
-     */
     @Column(name = "request_name", nullable = false)
     private String requestName;
 
-    /**
-     * 구매 요청의 고유 번호
-     */
     @Column(name = "request_number", unique = true)
     private String requestNumber;
 
     /**
-     * 구매 요청 상태 (상위코드-하위코드)
-     * 예: PURCHASE_REQUEST-REQUESTED
+     * 구매 요청 상태 (PURCHASE_REQUEST-REQUESTED 형식)
      */
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "parentCode", column = @Column(name = "status_parent")),
-            @AttributeOverride(name = "childCode", column = @Column(name = "status_child"))
+            @AttributeOverride(name = "parentCode", column = @Column(name = "pr_status_parent")),
+            @AttributeOverride(name = "childCode", column = @Column(name = "pr_status_child"))
     })
     private SystemStatus status;
 
-    /**
-     * 요청 일자
-     */
     @Column(name = "request_date")
     private LocalDate requestDate;
 
     /**
-     * 상태 변경 이력 목록
+     * 상태 변경 이력 목록 (양방향 매핑)
      */
-    @OneToMany(mappedBy = "entityId", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StatusHistory> statusHistories = new ArrayList<>();
-
 
     /**
      * 상태 변경 메서드
@@ -72,21 +55,21 @@ public class PurchaseRequest {
     public void changeStatus(SystemStatus newStatus, Member changedBy) {
         StatusHistory history = new StatusHistory();
         history.setEntityType(StatusHistory.EntityType.PURCHASE_REQUEST);
-        history.setEntityId(this.id);
         history.setFromStatus(this.status);
         history.setToStatus(newStatus);
         history.setChangedBy(changedBy);
+        history.setPurchaseRequest(this); // ✅ 반드시 추가
 
         this.status = newStatus;
         this.statusHistories.add(history);
     }
 
     /**
-     * 상태 전이 유효성 검증 메서드
+     * 상태 전이 유효성 검증 (예시)
      */
     public void validateTransition(SystemStatus newStatus) {
         if (this.status.getParentCode().equals(newStatus.getParentCode())) {
-            throw new IllegalStateException("Invalid status transition: "
+            throw new IllegalStateException("잘못된 상태 전이: "
                     + this.status.getFullCode() + " → " + newStatus.getFullCode());
         }
     }

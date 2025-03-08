@@ -1,19 +1,17 @@
 package com.orbit.entity.state;
 
+import com.orbit.entity.procurement.Project;
+import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
-/**
- * 범용 상태 이력 관리 엔티티
- * - 어떤 엔티티의 상태 변경이든 기록 가능
- * - 다형성(polymorphic) 관계 지원
- */
 @Entity
 @Table(name = "status_histories")
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -22,22 +20,6 @@ public class StatusHistory {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * 대상 엔티티 유형 (예: 프로젝트, 구매요청 등)
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EntityType entityType;
-
-    /**
-     * 대상 엔티티 ID (예: project_id, purchase_request_id)
-     */
-    @Column(nullable = false)
-    private Long entityId;
-
-    /**
-     * 변경 전 상태
-     */
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "parentCode", column = @Column(name = "from_parent")),
@@ -45,9 +27,6 @@ public class StatusHistory {
     })
     private SystemStatus fromStatus;
 
-    /**
-     * 변경 후 상태
-     */
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "parentCode", column = @Column(name = "to_parent")),
@@ -55,27 +34,40 @@ public class StatusHistory {
     })
     private SystemStatus toStatus;
 
-    /**
-     * 변경 수행자
-     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "entity_type", nullable = false) // ✅ 추가된 필드
+    private EntityType entityType;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "changed_by")
     private Member changedBy;
 
-    /**
-     * 변경 일시
-     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "purchase_request_id")
+    private PurchaseRequest purchaseRequest;
+
     @Column(nullable = false)
     private LocalDateTime changedAt;
 
-    /**
-     * 지원하는 엔티티 유형
-     */
     public enum EntityType {
-        PROJECT,          // 프로젝트
-        PURCHASE_REQUEST, // 구매요청
-        BIDDING,          // 입찰
-        CONTRACT,         // 계약
-        PAYMENT           // 지급
+        PROJECT, PURCHASE_REQUEST, BIDDING, CONTRACT, PAYMENT
+    }
+
+    public String getStatusChangeSummary() {
+        String entityName = switch (this.entityType) { // ✅ 정상 작동
+            case PROJECT -> "프로젝트";
+            case PURCHASE_REQUEST -> "구매요청";
+            default -> "기타";
+        };
+        return String.format("[%s → %s] %s (%s)",
+                fromStatus.getFullCode(),
+                toStatus.getFullCode(),
+                changedBy.getUsername(),
+                entityName
+        );
     }
 }
