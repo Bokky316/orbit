@@ -97,18 +97,22 @@ public class Bidding {
     private Long updatedBy; //최종수정자 ID
 
     public enum BidMethod {
-        정가제안, 가격제안
+        FIXED_PRICE,   // 정가제안
+        PRICE_SUGGESTION // 가격제안
     }
 
     public enum BiddingStatus {
-        대기중, 오픈, 마감, 취소
+        PENDING,   // 대기중
+        OPEN,      // 오픈
+        CLOSED,    // 마감
+        CANCELED   // 취소
     }
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.status = BiddingStatus.대기중;
+        this.status = BiddingStatus.PENDING;
     }
 
     @PreUpdate

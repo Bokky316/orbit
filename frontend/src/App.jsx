@@ -1,5 +1,6 @@
 import React from "react";
 import { useSelector } from "react-redux";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "@/redux/store";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -58,9 +59,18 @@ function AppContent() {
                 path="/purchase-requests"
                 element={<PurchaseRequestListPage />}
               />
-              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />}/>
-              <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
+              <Route
+                path="/purchase-requests/:id"
+                element={<PurchaseRequestDetailPage />}
+              />
+              <Route
+                path="/purchase-requests/:id"
+                element={<PurchaseRequestDetailPage />}
+              />
+              <Route
+                path="/purchase-requests/new"
+                element={<PurchaseRequestCreatePage />}
+              />
 
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
