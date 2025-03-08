@@ -12,19 +12,35 @@ import java.time.LocalDate;
 @Setter
 public class PurchaseRequestResponseDTO {
 
-    private Long id;
+    private Long id; // 구매 요청 ID
 
-    private Long projectId; // 프로젝트 ID
+    private String requestName; // 요청명
 
-    private String title; // 제목
+    private String requestNumber; // 요청 번호
 
-    private String description; // 설명
-
-    private Double totalAmount; // 총 금액
-
-    private String status; // 상태 (초안, 제출, 승인, 거절, 완료)
+    private String status; // 진행 상태
 
     private LocalDate requestDate; // 요청일
 
-    private LocalDate deliveryDate; // 납기일
+    private String customer; // 고객사
+
+    private String businessDepartment; // 사업 부서
+
+    private String businessManager; // 사업 담당자
+
+    private String businessType; // 사업 구분
+
+    private Long businessBudget; // 사업 예산
+
+    private String specialNotes; // 특이 사항
+
+    private String managerPhoneNumber; // 담당자 핸드폰 번호
+
+    private LocalDate projectStartDate; // 사업 기간 (시작일)
+
+    private LocalDate projectEndDate; // 사업 기간 (종료일)
+
+    private String projectContent; // 사업 내용
+
+    private String attachments; // 첨부 파일 목록
 }
