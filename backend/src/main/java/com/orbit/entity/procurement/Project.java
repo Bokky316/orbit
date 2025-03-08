@@ -89,7 +89,7 @@ public class Project extends BaseEntity {
      * - CascadeType.ALL: 프로젝트 삭제시 이력 자동 삭제
      * - orphanRemoval: 이력 개체 삭제시 DB에서도 제거
      */
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "entityId", cascade = CascadeType.ALL)
     private List<StatusHistory> statusHistories = new ArrayList<>();
 
     /**
@@ -97,7 +97,6 @@ public class Project extends BaseEntity {
      * @param history 추가할 상태 이력 객체
      */
     public void addStatusHistory(StatusHistory history) {
-        history.setProject(this); // 양방향 관계 설정
         this.statusHistories.add(history);
     }
 
@@ -124,7 +123,6 @@ public class Project extends BaseEntity {
 
         // 2. 이력 기록 생성
         StatusHistory history = new StatusHistory();
-        history.setEntityType(StatusHistory.EntityType.PROCUREMENT);
         history.setEntityId(this.id);
         history.setFromStatus(this.procurementStatus);
         history.setToStatus(newStatus);

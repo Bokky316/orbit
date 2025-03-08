@@ -2,6 +2,8 @@ package com.orbit.entity.procurement;
 
 import com.orbit.constant.PurchaseRequestStatus;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.state.StatusHistory;
+import com.orbit.entity.state.SystemStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,17 +43,53 @@ public class PurchaseRequest {
     private String requestNumber;
 
     /**
-     * 구매 요청의 현재 상태
+     * 구매 요청 상태 (상위코드-하위코드)
+     * 예: PURCHASE_REQUEST-REQUESTED
      */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private PurchaseRequestStatus status;
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "parentCode", column = @Column(name = "status_parent")),
+            @AttributeOverride(name = "childCode", column = @Column(name = "status_child"))
+    })
+    private SystemStatus status;
 
     /**
-     * 구매 요청이 생성된 날짜
+     * 요청 일자
      */
     @Column(name = "request_date")
     private LocalDate requestDate;
+
+    /**
+     * 상태 변경 이력 목록
+     */
+    @OneToMany(mappedBy = "entityId", cascade = CascadeType.ALL)
+    private List<StatusHistory> statusHistories = new ArrayList<>();
+
+
+    /**
+     * 상태 변경 메서드
+     */
+    public void changeStatus(SystemStatus newStatus, Member changedBy) {
+        StatusHistory history = new StatusHistory();
+        history.setEntityType(StatusHistory.EntityType.PURCHASE_REQUEST);
+        history.setEntityId(this.id);
+        history.setFromStatus(this.status);
+        history.setToStatus(newStatus);
+        history.setChangedBy(changedBy);
+
+        this.status = newStatus;
+        this.statusHistories.add(history);
+    }
+
+    /**
+     * 상태 전이 유효성 검증 메서드
+     */
+    public void validateTransition(SystemStatus newStatus) {
+        if (this.status.getParentCode().equals(newStatus.getParentCode())) {
+            throw new IllegalStateException("Invalid status transition: "
+                    + this.status.getFullCode() + " → " + newStatus.getFullCode());
+        }
+    }
 
     /**
      * 구매 요청과 관련된 고객사 정보
@@ -138,4 +176,5 @@ public class PurchaseRequest {
      */
     @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
+
 }
