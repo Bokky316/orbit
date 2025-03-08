@@ -62,14 +62,20 @@ public class Bidding {
     @Column(name = "internal_note", columnDefinition = "TEXT")
     private String internalNote; //비고(내부용)
 
-    @Column(name = "bidding_unit_price")
-    private BigDecimal biddingUnitPrice; //입찰 단가
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity; //수량
 
-    @Column(name = "bidding_supply_price")
-    private BigDecimal biddingSupplyPrice; //입찰 공급가액
+    @Column(name = "unit_price")
+    private BigDecimal unitPrice; //입찰 단가
 
-    @Column(name = "bidding_vat")
-    private BigDecimal biddingVat; //입찰 부가세
+    @Column(name = "supply_price")
+    private BigDecimal supplyPrice; //입찰 공급가액
+
+    @Column(name = "vat")
+    private BigDecimal vat;//입찰 부가세
+
+    @Column(name = "total_amount")
+    private BigDecimal totalAmount; //총금액
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
