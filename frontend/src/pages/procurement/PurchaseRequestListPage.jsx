@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-    setPurchaseRequests,
+    fetchPurchaseRequests,
     setSearchTerm,
     setRequestDate,
     setStatus
-} from '@redux/purchaseRequestSlice';
+} from '@/redux/purchaseRequestSlice';
 import {
     Paper,
     Table,
@@ -23,11 +23,10 @@ import {
     MenuItem,
     Box,
     Typography,
-    Grid
+    Grid,
+    Checkbox,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { fetchWithAuth } from '@/utils/fetchWithAuth'; // 인증이 필요한 API 호출 함수
-import { API_URL } from '@/utils/constants';
 
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
     maxHeight: 440,
@@ -50,28 +49,16 @@ function PurchaseRequestListPage() {
     const filters = useSelector(state => state.purchaseRequest.filters);
     const [localFilters, setLocalFilters] = useState(filters);
 
+    // 검색어 상태
+    const [requestNameSearchTerm, setRequestNameSearchTerm] = useState('');
+    const [requestNumberSearchTerm, setRequestNumberSearchTerm] = useState('');
+    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+    const [businessManagerSearchTerm, setBusinessManagerSearchTerm] = useState('');
+
     useEffect(() => {
         // 컴포넌트 마운트 시 구매 요청 목록 데이터 로딩
-        fetchPurchaseRequests();
+        dispatch(fetchPurchaseRequests());
     }, [dispatch]);
-
-    /**
-     * 구매 요청 목록 데이터 API 호출 함수
-     */
-    const fetchPurchaseRequests = async () => {
-        try {
-            const response = await fetchWithAuth(`${API_URL}purchase-requests`);
-            if (!response.ok) {
-                throw new Error(`구매 요청 목록 로딩 실패: ${response.status}`);
-            }
-
-            const data = await response.json();
-            dispatch(setPurchaseRequests(data)); // Redux 스토어에 구매 요청 목록 저장
-        } catch (error) {
-            console.error('구매 요청 목록 로딩 중 오류 발생:', error);
-            // 오류 처리 로직 (예: 사용자에게 오류 메시지 표시)
-        }
-    };
 
     /**
      * 검색 및 필터링된 구매 요청 목록을 반환합니다.
@@ -79,23 +66,35 @@ function PurchaseRequestListPage() {
      */
     const getFilteredPurchaseRequests = () => {
         return purchaseRequests.filter(request => {
-            const searchTerm = localFilters.searchTerm || ''; // searchTerm이 undefined일 경우 빈 문자열로 초기화
-            const searchTermMatch = String(request.id)?.includes(searchTerm) ||
-                String(request.project?.projectName)?.includes(searchTerm) ||
-                String(request.requester?.name)?.includes(searchTerm);
+            const requestNameMatch = String(request.requestName)?.includes(requestNameSearchTerm);
+            const requestNumberMatch = String(request.id)?.includes(requestNumberSearchTerm);
+            const customerMatch = String(request.customer)?.includes(customerSearchTerm);
+            const businessManagerMatch = String(request.businessManager)?.includes(businessManagerSearchTerm);
+
             const requestDateMatch = !localFilters.requestDate || request.requestDate === localFilters.requestDate;
             const statusMatch = !localFilters.status || request.status === localFilters.status;
 
-            return searchTermMatch && requestDateMatch && statusMatch;
+            return requestNameMatch && requestNumberMatch && customerMatch && businessManagerMatch && requestDateMatch && statusMatch;
         });
     };
 
     /**
-     * 검색어 변경 핸들러
-     * @param {object} event - 이벤트 객체
+     * 각 검색어 변경 핸들러
      */
-    const handleSearchTermChange = (event) => {
-        setLocalFilters({ ...localFilters, searchTerm: event.target.value });
+    const handleRequestNameSearchTermChange = (event) => {
+        setRequestNameSearchTerm(event.target.value);
+    };
+
+    const handleRequestNumberSearchTermChange = (event) => {
+        setRequestNumberSearchTerm(event.target.value);
+    };
+
+    const handleCustomerSearchTermChange = (event) => {
+        setCustomerSearchTerm(event.target.value);
+    };
+
+    const handleBusinessManagerSearchTermChange = (event) => {
+        setBusinessManagerSearchTerm(event.target.value);
     };
 
     /**
@@ -118,7 +117,12 @@ function PurchaseRequestListPage() {
      * 필터 적용 핸들러
      */
     const handleApplyFilters = () => {
-        dispatch(setSearchTerm(localFilters.searchTerm));
+        dispatch(setSearchTerm({
+            requestName: requestNameSearchTerm,
+            requestNumber: requestNumberSearchTerm,
+            customer: customerSearchTerm,
+            businessManager: businessManagerSearchTerm
+        }));
         dispatch(setRequestDate(localFilters.requestDate));
         dispatch(setStatus(localFilters.status));
     };
@@ -135,9 +139,7 @@ function PurchaseRequestListPage() {
      * 새 구매 요청 생성 핸들러
      */
     const handleCreatePurchaseRequest = () => {
-        // TODO: 새 구매 요청 생성 페이지로 이동
-        console.log('새 구매 요청 생성');
-        alert('새 구매 요청 생성 페이지로 이동합니다.');
+        navigate('/purchase-requests/new'); // 구매 요청 생성 페이지로 이동
     };
 
     return (
@@ -145,18 +147,63 @@ function PurchaseRequestListPage() {
             <Typography variant="h4" component="h1" gutterBottom>
                 구매 요청 목록
             </Typography>
-
             {/* 검색 및 필터 섹션 */}
             <Paper elevation={2} sx={{ padding: 2, marginBottom: 2 }}>
                 <Grid container spacing={2} alignItems="center">
+                    {/* 요청명 검색 필드 */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="요청명"
+                            value={requestNameSearchTerm}
+                            onChange={handleRequestNameSearchTermChange}
+                        />
+                    </Grid>
+                    {/* 요청번호 검색 필드 */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="요청번호"
+                            value={requestNumberSearchTerm}
+                            onChange={handleRequestNumberSearchTermChange}
+                        />
+                    </Grid>
+                    {/* 고객사 검색 필드 */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="고객사"
+                            value={customerSearchTerm}
+                            onChange={handleCustomerSearchTermChange}
+                        />
+                    </Grid>
+                    {/* 사업담당자 필터 */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="사업담당자"
+                            value={businessManagerSearchTerm}
+                            onChange={handleBusinessManagerSearchTermChange}
+                        />
+                    </Grid>
+                    {/* 요청일 검색 필드 (DatePicker 대신 텍스트 필드 사용) */}
+                    <Grid item xs={12} sm={3}>
+                        <TextField
+                            fullWidth
+                            label="요청일"
+                            value={localFilters.requestDate || ''}
+                            onChange={handleRequestDateChange}
+                        />
+                    </Grid>
+                    {/* 진행상태 필터 */}
                     <Grid item xs={12} sm={3}>
                         <FormControl fullWidth>
-                            <InputLabel id="status-select-label">상태</InputLabel>
+                            <InputLabel id="status-select-label">진행상태</InputLabel>
                             <Select
                                 labelId="status-select-label"
                                 id="status-select"
                                 value={localFilters.status || ''}
-                                label="상태"
+                                label="진행상태"
                                 onChange={handleStatusChange}
                             >
                                 <MenuItem value="">전체</MenuItem>
@@ -168,14 +215,7 @@ function PurchaseRequestListPage() {
                             </Select>
                         </FormControl>
                     </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <TextField
-                            fullWidth
-                            label="검색"
-                            value={localFilters.searchTerm || ''}
-                            onChange={handleSearchTermChange}
-                        />
-                    </Grid>
+                    {/* 조회 버튼 */}
                     <Grid item xs={12} sm={3}>
                         <Button
                             variant="contained"
@@ -183,60 +223,79 @@ function PurchaseRequestListPage() {
                             onClick={handleApplyFilters}
                             fullWidth
                         >
-                            검색
+                            조회
+                        </Button>
+                    </Grid>
+                    {/* 신규, 수정, 삭제 버튼 */}
+                    <Grid item xs={12} sm={3} container justifyContent="flex-end">
+                        {/* "신규" 버튼 클릭 시 새 구매 요청 생성 페이지로 이동 */}
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={handleCreatePurchaseRequest} // 이 부분을 수정
+                            sx={{ mr: 1 }}
+                        >
+                            신규
+                        </Button>
+                        <Button variant="contained" color="info" onClick={handleCreatePurchaseRequest} sx={{ mr: 1 }}>
+                            수정
+                        </Button>
+                        <Button variant="contained" color="error" onClick={handleCreatePurchaseRequest}>
+                            삭제
                         </Button>
                     </Grid>
                 </Grid>
             </Paper>
-
             {/* 구매 요청 목록 테이블 */}
             <StyledTableContainer component={Paper}>
                 <Table stickyHeader aria-label="sticky table">
                     <TableHead>
                         <TableRow>
+                            <TableCell><Checkbox /></TableCell>
+                            <TableCell>진행상태</TableCell>
+                            <TableCell>요청제목</TableCell>
                             <TableCell>요청번호</TableCell>
-                            <TableCell>프로젝트명</TableCell>
-                            <TableCell>요청자</TableCell>
-                            <TableCell>총금액</TableCell>
+                            <TableCell>고객사</TableCell>
                             <TableCell>요청일</TableCell>
-                            <TableCell>상태</TableCell>
-                            <TableCell>액션</TableCell>
+                            <TableCell>사업부서</TableCell>
+                            <TableCell>사업담당자</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {getFilteredPurchaseRequests().map(request => (
                             <TableRow key={request.id} hover>
-                                <TableCell>{request.id}</TableCell>
-                                <TableCell>{request.project?.projectName}</TableCell>
-                                <TableCell>{request.requester?.name}</TableCell>
-                                <TableCell>{request.totalAmount?.toLocaleString()}원</TableCell>
-                                <TableCell>{request.requestDate}</TableCell>
+                                <TableCell><Checkbox /></TableCell>
                                 <TableCell>{request.status}</TableCell>
+                                {/* 요청제목 클릭 시 상세보기 이동 */}
                                 <TableCell>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="primary"
-                                        onClick={() => handleViewDetail(request.id)}
+                                    <Typography
+                                        component="a"
+                                        href="#"
+                                        onClick={(e) => {
+                                            e.preventDefault(); // 기본 링크 동작 방지
+                                            handleViewDetail(request.id); // 상세보기 핸들러 호출
+                                        }}
+                                        sx={{
+                                            textDecoration: 'none',
+                                            color: 'blue',
+                                            '&:hover': {
+                                                textDecoration: 'underline',
+                                            },
+                                        }}
                                     >
-                                        상세보기
-                                    </Button>
+                                        {request.requestName}
+                                    </Typography>
                                 </TableCell>
+                                <TableCell>{request.id}</TableCell>
+                                <TableCell>{request.customer}</TableCell>
+                                <TableCell>{request.requestDate}</TableCell>
+                                <TableCell>{request.businessDepartment}</TableCell>
+                                <TableCell>{request.businessManager}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </StyledTableContainer>
-
-            {/* 새 구매 요청 버튼 */}
-            <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleCreatePurchaseRequest}
-                sx={{ mt: 2 }}
-            >
-                새 구매 요청
-            </Button>
         </Box>
     );
 }

@@ -1,57 +1,62 @@
+// ProjectRequestDTO.java
 package com.orbit.dto.procurement;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
 
-/**
- * 프로젝트 생성 및 수정 요청 DTO
- */
-@Getter
-@Setter
+@Getter @Setter
 public class ProjectRequestDTO {
 
-    /**
-     * 프로젝트 ID
-     */
-    @NotBlank(message = "프로젝트 ID는 필수 입력 값입니다.")
-    @Size(max = 20, message = "프로젝트 ID는 20자 이내로 입력해주세요.")
-    private String projectId;
-
-    /**
-     * 프로젝트 이름
-     */
-    @NotBlank(message = "프로젝트 이름은 필수 입력 값입니다.")
-    @Size(max = 100, message = "프로젝트 이름은 100자 이내로 입력해주세요.")
+    @NotBlank @Size(max = 200)
     private String projectName;
 
-    /**
-     * 담당자 이름
-     */
-    @NotBlank(message = "담당자 이름은 필수 입력 값입니다.")
-    @Size(max = 50, message = "담당자 이름은 50자 이내로 입력해주세요.")
-    private String managerName;
+    @Size(max = 50)
+    private String businessCategory;
 
-    /**
-     * 프로젝트 시작일
-     */
-    private LocalDate startDate;
+    @Pattern(regexp = "^[A-Z]+-[A-Z_]+$")
+    private String basicStatus;
 
-    /**
-     * 프로젝트 종료일
-     */
-    private LocalDate endDate;
+    @Pattern(regexp = "^[A-Z]+-[A-Z_]+$")
+    private String procurementStatus;
 
-    /**
-     * 프로젝트 상태
-     */
-    private String status;
+    @Valid @NotNull
+    private ManagerDTO projectManager;
 
-    /**
-     * 프로젝트 설명
-     */
-    private String description;
+    @Valid @NotNull
+    private PeriodDTO projectPeriod;
+
+    @NotNull
+    private Long totalBudget;
+
+    @Size(max = 100)
+    private String clientCompany;
+
+    @Size(max = 50)
+    private String contractType;
+
+    @Getter @Setter
+    public static class ManagerDTO {
+        @NotBlank @Size(max = 50)
+        private String name;
+
+        @Size(max = 20)
+        private String contact;
+
+        @Email @Size(max = 100)
+        private String email;
+    }
+
+    @Getter @Setter
+    public static class PeriodDTO {
+        @NotNull
+        private LocalDate startDate;
+
+        @NotNull
+        private LocalDate endDate;
+    }
 }
+

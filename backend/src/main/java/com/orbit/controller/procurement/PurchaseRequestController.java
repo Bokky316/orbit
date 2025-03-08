@@ -22,6 +22,7 @@ public class PurchaseRequestController {
 
     /**
      * 생성자를 통한 의존성 주입
+     *
      * @param purchaseRequestService 구매 요청 서비스
      */
     public PurchaseRequestController(PurchaseRequestService purchaseRequestService) {
@@ -30,6 +31,7 @@ public class PurchaseRequestController {
 
     /**
      * 모든 구매 요청을 조회합니다.
+     *
      * @return 구매 요청 목록
      */
     @GetMapping
@@ -40,6 +42,7 @@ public class PurchaseRequestController {
 
     /**
      * 구매 요청 ID로 구매 요청을 조회합니다.
+     *
      * @param id 구매 요청 ID
      * @return 조회된 구매 요청 (존재하지 않으면 404 상태 코드 반환)
      */
@@ -52,6 +55,7 @@ public class PurchaseRequestController {
 
     /**
      * 새로운 구매 요청을 생성합니다.
+     *
      * @param purchaseRequestDTO 생성할 구매 요청 정보
      * @return 생성된 구매 요청 (201 상태 코드 반환)
      */
@@ -63,7 +67,8 @@ public class PurchaseRequestController {
 
     /**
      * 구매 요청 정보를 업데이트합니다.
-     * @param id 업데이트할 구매 요청 ID
+     *
+     * @param id               업데이트할 구매 요청 ID
      * @param purchaseRequestDTO 업데이트할 구매 요청 정보
      * @return 업데이트된 구매 요청
      */
@@ -71,5 +76,17 @@ public class PurchaseRequestController {
     public ResponseEntity<PurchaseRequestResponseDTO> updatePurchaseRequest(@PathVariable Long id, @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
         PurchaseRequestResponseDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO);
         return new ResponseEntity<>(updatedPurchaseRequest, HttpStatus.OK);
+    }
+
+    /**
+     * 구매 요청을 삭제합니다.
+     *
+     * @param id 삭제할 구매 요청 ID
+     * @return 삭제 성공 여부 (성공 시 204, 실패 시 404)
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePurchaseRequest(@PathVariable Long id) {
+        boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id);
+        return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 }

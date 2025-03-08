@@ -50,14 +50,20 @@ public class SimplifiedContract {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate; //계약 종료일
 
-    @Column(name = "total_amount", nullable = false)
-    private BigDecimal totalAmount; //총금액
-
     @Column(name = "quantity", nullable = false)
     private Integer quantity; //수량
 
-    @Column(name = "unit_price", nullable = false)
-    private BigDecimal unitPrice; //단가
+    @Column(name = "unit_price")
+    private BigDecimal unitPrice; //입찰 단가
+
+    @Column(name = "supply_price")
+    private BigDecimal supplyPrice; //입찰 공급가액
+
+    @Column(name = "vat")
+    private BigDecimal vat;//입찰 부가세
+
+    @Column(name = "total_amount")
+    private BigDecimal totalAmount; //총금액
 
     @Column(name = "delivery_date")
     private LocalDate deliveryDate; //납기일

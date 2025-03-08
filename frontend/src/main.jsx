@@ -7,18 +7,15 @@ import { ThemeProvider } from "@mui/material/styles";
 //import theme from "../public/assets/css/mui/theme.jsx";
 
 createRoot(document.getElementById("root")).render(
-//   <ThemeProvider theme={theme}>
-//     <BrowserRouter>
-//       <React.StrictMode>
-//         <App />
-//       </React.StrictMode>
-//     </BrowserRouter>
-//   </ThemeProvider> 나중에 mui 테마 적용하게 되면 사용 예정
+  //   <ThemeProvider theme={theme}>
+  //     <BrowserRouter>
+  //       <React.StrictMode>
+  //         <App />
+  //       </React.StrictMode>
+  //     </BrowserRouter>
+  //   </ThemeProvider> 나중에 mui 테마 적용하게 되면 사용 예정
 
-      <BrowserRouter>
-        <React.StrictMode>
-          <App />
-        </React.StrictMode>
-      </BrowserRouter>
-
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 );
