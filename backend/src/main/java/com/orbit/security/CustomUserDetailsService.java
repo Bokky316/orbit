@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.Optional;
 
 /**
  * Spring Security의 UserDetailsService 구현체
@@ -36,11 +37,11 @@ public class CustomUserDetailsService implements UserDetailsService {
         log.info("CustomUserDetailsService: loadUserByUsername called with username: {}", username);
 
         // 데이터베이스에서 사용자 정보 조회
-        Member member = memberRepository.findByUsername(username);
-        if (member == null) {
+        Optional<Member> optionalMember = memberRepository.findByUsername(username);
+        Member member = optionalMember.orElseThrow(() -> {
             log.error("사용자를 찾을 수 없습니다. 사용자명: {}", username);
-            throw new UsernameNotFoundException("사용자를 찾을 수 없습니다. 사용자명: " + username);
-        }
+            return new UsernameNotFoundException("사용자를 찾을 수 없습니다. 사용자명: " + username);
+        });
 
         // Member 엔티티를 기반으로 MemberSecurityDto 생성 및 반환
         return createMemberSecurityDto(member);

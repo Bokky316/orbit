@@ -1,87 +1,132 @@
 package com.orbit.entity.procurement;
 
-import com.orbit.constant.SupplierStatus;
 import com.orbit.entity.BaseEntity;
+import com.orbit.entity.member.Member;
+import com.orbit.entity.state.StatusHistory;
+import com.orbit.entity.state.SystemStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.validation.constraints.AssertTrue;
+import lombok.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
- * 프로젝트 정보를 나타내는 엔티티 클래스
- * BaseEntity를 상속받아 생성자, 수정자, 생성일, 수정일을 자동 관리
+ * 프로젝트 마스터 엔티티
+ * - 상태 변경 이력을 포함한 모든 프로젝트 정보 관리
+ * - JPA 양방향 매핑 적용
  */
 @Entity
-@Table(name = "projects")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name = "projects", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_project_identifier", columnNames = {"project_identifier"})
+})
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Project extends BaseEntity {
 
-    /**
-     * 프로젝트의 고유 식별자
-     */
+    // ██ 시스템 식별자 (PK) ██████████████████████████████████████████████████████████████████
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * 프로젝트 ID (예: PRJ-001)
-     */
-    @Column(name = "project_id", unique = true, nullable = false)
-    private String projectId;
+    // ██ 비즈니스 식별자 █████████████████████████████████████████████████████████████████████
+    @Column(name = "project_identifier", nullable = false, length = 20, updatable = false)
+    private String projectIdentifier;
 
-    /**
-     * 프로젝트 이름
-     */
-    @Column(name = "project_name", nullable = false)
+    // ██ 기본 정보 ███████████████████████████████████████████████████████████████████████████
+    @Column(name = "project_name", nullable = false, length = 200)
     private String projectName;
 
-    /**
-     * 프로젝트 담당자 이름
-     */
-    @Column(name = "manager_name", nullable = false)
-    private String managerName;
+    @Embedded
+    private ProjectPeriod projectPeriod;
+
+    @Column(name = "business_category", length = 50)
+    private String businessCategory;
+
+    @Embedded
+    private ProjectManager projectManager;
+
+    @Column(name = "total_budget")
+    private Long totalBudget;
+
+    @Column(name = "client_company", length = 100)
+    private String clientCompany;
+
+    @Column(name = "contract_type", length = 50)
+    private String contractType;
+
+    // ██ 상태 관리 시스템 ████████████████████████████████████████████████████████████████████
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "parentCode", column = @Column(name = "basic_status_parent")),
+            @AttributeOverride(name = "childCode", column = @Column(name = "basic_status_child"))
+    })
+    private SystemStatus basicStatus;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "parentCode", column = @Column(name = "procurement_parent")),
+            @AttributeOverride(name = "childCode", column = @Column(name = "procurement_child"))
+    })
+    private SystemStatus procurementStatus;
+
+    // ██ 상태 변경 이력 (양방향 1:N) █████████████████████████████████████████████████████████
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StatusHistory> statusHistories = new ArrayList<>();
 
     /**
-     * 프로젝트 시작일
+     * 프로젝트 식별자 자동 생성 (PRJ-YYMM-XXX 형식)
      */
-    @Column(name = "start_date", nullable = false)
-    private LocalDate startDate;
+    @PrePersist
+    public void generateProjectIdentifier() {
+        if (this.projectIdentifier == null) {
+            String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM"));
+            String randomPart = String.format("%03d", new Random().nextInt(1000));
+            this.projectIdentifier = "PRJ-" + datePart + "-" + randomPart;
+        }
+    }
 
     /**
-     * 프로젝트 종료일
+     * 상태 이력 추가 (양방향 관계 설정)
      */
-    @Column(name = "end_date", nullable = false)
-    private LocalDate endDate;
+    public void addStatusHistory(StatusHistory history) {
+        history.setProject(this); // ✅ 반드시 호출해야 함
+        this.statusHistories.add(history);
+    }
 
-    /**
-     * 프로젝트 상태 (예: 진행중, 완료, 보류)
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private ProjectStatus status;
+    // ██ 임베디드 타입 ██████████████████████████████████████████████████████████████████████
 
-    /**
-     * 프로젝트 설명
-     */
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    /** 프로젝트 기간 */
+    @Embeddable
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ProjectPeriod {
+        @Column(name = "start_date", nullable = false)
+        private LocalDate startDate;
 
-    /**
-     * 공급업체 상태 (SupplierStatus 열거형 사용)
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "supplier_status", nullable = false)
-    private SupplierStatus supplierStatus;
+        @Column(name = "end_date", nullable = false)
+        private LocalDate endDate;
 
-    /**
-     * 프로젝트 상태를 나타내는 열거형
-     */
-    public enum ProjectStatus {
-        IN_PROGRESS, // 진행중
-        COMPLETED,   // 완료됨
-        ON_HOLD      // 보류됨
+        @AssertTrue(message = "종료일은 시작일 이후여야 합니다")
+        public boolean isPeriodValid() {
+            return endDate.isAfter(startDate);
+        }
+    }
+
+    /** 프로젝트 담당자 */
+    @Embeddable
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ProjectManager {
+        @Column(name = "manager_name", nullable = false, length = 50)
+        private String name;
+
+        @Column(name = "manager_contact", length = 20)
+        private String contact;
+
+        @Column(name = "manager_email", length = 100)
+        private String email;
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -24,8 +25,7 @@ public class RedisService {
     private final MemberRepository memberRepository; // MemberRepository 객체
 
     /**
-     * 사용자의 권한 정보를 Redis에 캐싱
-     *
+     * 사용자 권한 정보를 Redis에 캐싱합니다.
      * @param username 사용자 ID
      */
     @Transactional(readOnly = true)
@@ -33,10 +33,8 @@ public class RedisService {
         log.info("사용자 [{}]의 권한 정보를 Redis에 캐싱합니다.", username);
 
         // username으로 사용자 조회
-        Member member = memberRepository.findByUsername(username);
-        if (member == null) {
-            throw new IllegalArgumentException("해당 username을 가진 사용자가 존재하지 않습니다.");
-        }
+        Optional<Member> optionalMember = memberRepository.findByUsername(username);
+        Member member = optionalMember.orElseThrow(() -> new IllegalArgumentException("해당 username을 가진 사용자가 존재하지 않습니다."));
 
         // 사용자 권한 정보 추출
         List<String> authorities = member.getAuthorities().stream()
