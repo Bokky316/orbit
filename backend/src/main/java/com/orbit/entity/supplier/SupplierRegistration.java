@@ -42,9 +42,6 @@ public class SupplierRegistration {
     @Column(name = "business_file", length = 255)
     private String businessFile; // 사업자등록증 파일 경로
 
-    @Column(name = "company_name", nullable = false, length = 255)
-    private String companyName; // 회사명
-
     @Column(name = "ceo_name", nullable = false, length = 100)
     private String ceoName; // 대표자명
 

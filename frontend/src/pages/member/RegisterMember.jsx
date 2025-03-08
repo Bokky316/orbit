@@ -11,34 +11,43 @@ export default function RegisterMember() {
     const [credentials, setCredentials] = useState({ birthDate: "2025-02-05"});
     const [member, setMember] = useState({
         name: "",
+        username: "",  // 추가: 사용자 아이디 필드
         email: "",
         password: "",
-        confirmPassword: "",  // 비밀번호 확인 추가
+        confirmPassword: "",
         phone: "",
         birthDate: "",
         gender: "",
-        postalCode: "",     // 우편번호 추가
-        roadAddress: "",    // 도로명 주소 추가
-        detailAddress: "",  // 상세 주소 추가
+        postalCode: "",
+        roadAddress: "",
+        detailAddress: "",
     });
     const [email, setEmail] = useState(""); // 이메일 상태
+    const [username, setUsername] = useState(""); // 추가: username 상태
     const debouncedEmail = useDebounce(email, 500); // 500ms 디바운스 적용
+    const debouncedUsername = useDebounce(username, 500); // 추가: username 디바운스
 
     const [emailError, setEmailError] = useState(""); // 이메일 중복 체크 에러 메시지
+    const [usernameError, setUsernameError] = useState(""); // 추가: username 중복 체크 에러 메시지
     const [passwordError, setPasswordError] = useState(""); // 비밀번호 확인 메시지
     const navigate = useNavigate();
 
     const [verificationCode, setVerificationCode] = useState(""); // 입력받은 인증 코드
     const [isVerified, setIsVerified] = useState(false); // 인증 완료 여부
 
-
-    // debounce된 이메일 값이 변경될 때마다 실행, 사용자가 입력할 때마다 실행되지 않고 500ms 후에 실행됩니다
-    // 즉, 사용자가 입력을 멈추고 500ms 후에 실행됩니다
+    // debounce된 이메일 값 체크
     useEffect(() => {
         if (debouncedEmail) {
             checkEmail(debouncedEmail);
         }
     }, [debouncedEmail]);
+
+    // 추가: debounce된 username 값 체크
+    useEffect(() => {
+        if (debouncedUsername) {
+            checkUsername(debouncedUsername);
+        }
+    }, [debouncedUsername]);
 
     // 입력 필드 변경 처리
     const onMemberChange = (event) => {
@@ -46,7 +55,12 @@ export default function RegisterMember() {
         setMember({ ...member, [name]: value }); // 입력 필드 값 업데이트
 
         if (name === "email") {
-            setEmail(value); // 이 부분을 추가
+            setEmail(value);
+        }
+
+        // 추가: username 변경 처리
+        if (name === "username") {
+            setUsername(value);
         }
     };
 
@@ -77,6 +91,23 @@ export default function RegisterMember() {
             .catch((error) => {
                 console.error("이메일 중복 체크 중 오류 발생:", error);
                 setEmailError("이메일 확인 중 오류가 발생했습니다.");
+            });
+    };
+
+    // 추가: username 중복 체크
+    const checkUsername = (username) => {
+        fetch(`${API_URL}members/checkUsername?username=${username}`)
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.status === "duplicate") {
+                    setUsernameError(data.message);
+                } else {
+                    setUsernameError("");
+                }
+            })
+            .catch((error) => {
+                console.error("아이디 중복 체크 중 오류 발생:", error);
+                setUsernameError("아이디 확인 중 오류가 발생했습니다.");
             });
     };
 
@@ -143,12 +174,23 @@ export default function RegisterMember() {
             return;
         }
 
-        console.log("회원가입 요청 데이터:", member); // ✅ 확인용 로그 추가
+        // 추가: username 검증
+        if (!member.username) {
+            alert("아이디를 입력해주세요.");
+            return;
+        }
+
+        if (usernameError) {
+            alert("사용할 수 없는 아이디입니다.");
+            return;
+        }
+
+        console.log("회원가입 요청 데이터:", member);
 
         fetch(API_URL + "members/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(member), // ✅ confirmPassword도 포함됨을 확인
+            body: JSON.stringify(member),
         })
         .then(async (response) => {
             const message = await response.text();
@@ -184,6 +226,16 @@ export default function RegisterMember() {
                 value={member.name}
                 onChange={onMemberChange}
                 style={{ width: "400px", marginBottom: "10px" }}
+            />
+            {/* 추가: Username 입력 필드 */}
+            <TextField
+                label="Username (로그인 아이디)"
+                name="username"
+                value={member.username}
+                onChange={onMemberChange}
+                style={{ width: "400px", marginBottom: "10px" }}
+                error={!!usernameError}
+                helperText={usernameError}
             />
             <TextField
                 label="Email"
@@ -232,7 +284,6 @@ export default function RegisterMember() {
                 helperText={passwordError}
                 sx={{ "& .MuiFormHelperText-root": { color: passwordError === "비밀번호가 맞지 않습니다." ? "red" : "green" } }}
             />
-
 
              {/* 카카오 주소 검색 컴포넌트 */}
             <div style={{ display: "flex", width: "400px", marginBottom: "10px" }}>

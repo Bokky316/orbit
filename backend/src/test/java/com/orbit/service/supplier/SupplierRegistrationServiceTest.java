@@ -35,12 +35,11 @@ public class SupplierRegistrationServiceTest {
         Member supplier = new Member();
         supplier.setUsername("supplier1");
         supplier.setEmail("supplier@example.com");
-        supplier.setCompanyName("ABC Company"); // 회사명 추가
-        supplier.setName("홍길동"); // 이름 추가
-        supplier.setPassword("1234"); // 비밀번호 추가
+        supplier.setCompanyName("ABC Company");
+        supplier.setName("홍길동");
+        supplier.setPassword("1234");
         supplier.setRole(Member.Role.SUPPLIER);
         memberRepository.save(supplier);
-
 
         MockMultipartFile mockFile = new MockMultipartFile(
                 "businessFile",
@@ -53,7 +52,6 @@ public class SupplierRegistrationServiceTest {
         SupplierRegistration registration = supplierRegistrationService.registerSupplier(
                 supplier.getId(),
                 "123-45-67890",
-                "ABC Company", // 회사명
                 "홍길동", // 대표자명
                 "전자기기 판매", // 업태
                 "전자기기", // 업종
@@ -68,7 +66,7 @@ public class SupplierRegistrationServiceTest {
         // Then
         assertNotNull(registration);
         assertEquals(SupplierStatus.PENDING, registration.getStatus());
-        assertEquals("ABC Company", registration.getCompanyName());
+        assertEquals("ABC Company", registration.getSupplier().getCompanyName());
         assertEquals("홍길동", registration.getCeoName());
         assertEquals("전자기기 판매", registration.getBusinessType());
         assertEquals("전자기기", registration.getBusinessCategory());

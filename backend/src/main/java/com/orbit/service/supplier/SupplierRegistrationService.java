@@ -37,9 +37,6 @@ public class SupplierRegistrationService {
         return filteredSuppliers;
     }
 
-
-
-
     // 협력업체 상세 조회
     public SupplierRegistration getSupplierById(Long id) {
         return supplierRegistrationRepository.findById(id)
@@ -50,7 +47,6 @@ public class SupplierRegistrationService {
     public SupplierRegistration registerSupplier(
             Long supplierId,
             String businessNo,
-            String companyName,
             String ceoName,
             String businessType,
             String businessCategory,
@@ -68,9 +64,8 @@ public class SupplierRegistrationService {
         String storedFileName = fileStorageService.storeFile(businessFile);
 
         SupplierRegistration registration = new SupplierRegistration();
-        registration.setSupplier(supplier);
+        registration.setSupplier(supplier); // Member 엔티티 참조
         registration.setBusinessNo(businessNo);
-        registration.setCompanyName(companyName);
         registration.setCeoName(ceoName);
         registration.setBusinessType(businessType);
         registration.setBusinessCategory(businessCategory);

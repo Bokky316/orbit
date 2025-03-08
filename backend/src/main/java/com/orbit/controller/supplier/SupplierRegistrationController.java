@@ -59,9 +59,6 @@ public class SupplierRegistrationController {
         }
     }
 
-
-
-
     // ✅ 협력업체 상세 조회 (ADMIN만 접근 가능)
     //@PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}")
@@ -79,7 +76,6 @@ public class SupplierRegistrationController {
         SupplierRegistration registration = supplierRegistrationService.registerSupplier(
                 requestDto.getSupplierId(),
                 requestDto.getBusinessNo(),
-                requestDto.getCompanyName(),
                 requestDto.getCeoName(),
                 requestDto.getBusinessType(),
                 requestDto.getBusinessCategory(),

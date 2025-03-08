@@ -2,6 +2,7 @@ package com.orbit.dto.supplier;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,14 +14,13 @@ import org.springframework.web.multipart.MultipartFile;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SupplierRegistrationRequestDto {
+
     @NotNull(message = "회원 ID는 필수입니다.")
     private Long supplierId;
 
     @NotBlank(message = "사업자등록번호는 필수입니다.")
+    @Pattern(regexp = "^\\d{3}-\\d{2}-\\d{5}$", message = "사업자등록번호는 '000-00-00000' 형식이어야 합니다.")
     private String businessNo;
-
-    @NotBlank(message = "회사명은 필수입니다.")
-    private String companyName;
 
     @NotBlank(message = "대표자명은 필수입니다.")
     private String ceoName;

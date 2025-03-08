@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React from "react";
 import {
   Box,
   Typography,
@@ -10,125 +9,110 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
   Tabs,
   Tab,
-  TextField,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  Button, // Button 추가
 } from "@mui/material";
-import { useParams, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux"; // Redux에서 role 가져오기
+import { useLocation, useNavigate } from "react-router-dom"; // useNavigate 추가
 
 const SupplierReviewPage = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { role } = useSelector((state) => state.auth); // 사용자의 역할 가져오기
-  const [tabIndex, setTabIndex] = useState(0);
-  const [supplier, setSupplier] = useState(null);
-  const [openRejectDialog, setOpenRejectDialog] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({});
-
-  useEffect(() => {
-    fetchSupplierDetails();
-  }, []);
-
-  const fetchSupplierDetails = async () => {
-    try {
-      const res = await axios.get(`http://localhost:8080/api/supplier-registrations/${id}`);
-      setSupplier(res.data);
-      setFormData(res.data);
-    } catch (error) {
-      console.error("❌ 데이터 로딩 실패:", error.response?.data || error.message);
-    }
+  const location = useLocation();
+  const navigate = useNavigate(); // useNavigate 훅 추가
+  const formData = location.state || {
+    businessNo: "123-45-67890",
+    businessFile: null,
+    companyName: "더미 회사",
+    ceoName: "더미 대표",
+    businessType: "제조업",
+    businessCategory: "IT",
+    sourcingCategory: "하드웨어",
+    sourcingSubCategory: "컴퓨터 장비",
+    sourcingMinorCategory: "기타서버",
+    managerName: "더미 담당자",
+    managerPosition: "과장",
+    managerPhone: "010-1234-5678",
+    managerMobile: "010-9876-5432",
+    managerEmail: "dummy@example.com",
+    zipCode: "12345",
+    address: "더미 주소",
+    detailAddress: "더미 상세 주소",
+    businessCert: null,
+    comments: "더미 코멘트",
   };
+  const [tabIndex, setTabIndex] = React.useState(0);
 
-  const handleApprove = async () => {
-    try {
-      await axios.put(`http://localhost:8080/api/supplier-registrations/${id}/status`, {
-        status: "APPROVED",
-      });
-      alert("승인되었습니다.");
-      navigate("/supplier-registrations");
-    } catch (error) {
-      console.error("❌ 승인 실패:", error.response?.data || error.message);
-    }
+  const handleGoToList = () => {
+    navigate("/supplier-registrations"); // 목록 페이지로 이동
   };
-
-  const handleReject = async () => {
-    try {
-      await axios.put(`http://localhost:8080/api/supplier-registrations/${id}/status`, {
-        status: "REJECTED",
-        rejectionReason: rejectReason,
-      });
-      alert("반려되었습니다.");
-      setOpenRejectDialog(false);
-      navigate("/supplier-registrations");
-    } catch (error) {
-      console.error("❌ 반려 실패:", error.response?.data || error.message);
-    }
-  };
-
-  const handleSaveChanges = async () => {
-    try {
-      await axios.put(`http://localhost:8080/api/supplier-registrations/${id}`, formData);
-      alert("수정이 완료되었습니다.");
-      setIsEditing(false);
-      fetchSupplierDetails();
-    } catch (error) {
-      console.error("❌ 수정 실패:", error.response?.data || error.message);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  if (!supplier) return <Typography>로딩 중...</Typography>;
 
   return (
     <Box sx={{ width: "90%", margin: "auto", mt: 5 }}>
-      <Typography variant="h5" sx={{ mb: 3 }}>협력업체 등록대기 - 검토</Typography>
+      <Typography variant="h5" sx={{ mb: 3 }}>
+        협력업체 등록 정보
+      </Typography>
 
       {/* 탭 메뉴 */}
       <Tabs value={tabIndex} onChange={(e, newIndex) => setTabIndex(newIndex)} sx={{ mb: 3 }}>
-        <Tab label="기본정보" />
-        <Tab label="담당자정보" />
+        <Tab label="기본 정보" />
+        <Tab label="담당자 정보" />
       </Tabs>
 
-      {/* 기본 정보 (수정 가능하도록) */}
+      {/* 기본 정보 */}
       {tabIndex === 0 && (
         <TableContainer component={Paper}>
           <Table>
             <TableBody>
               <TableRow>
-                <TableCell>회사명</TableCell>
-                <TableCell>
-                  {isEditing ? (
-                    <TextField name="companyName" value={formData.companyName} onChange={handleInputChange} fullWidth />
-                  ) : (
-                    supplier.companyName
-                  )}
-                </TableCell>
+                <TableCell>사업자등록번호</TableCell>
+                <TableCell>{formData.businessNo}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell>사업자등록번호</TableCell>
-                <TableCell>{supplier.businessNo}</TableCell>
+                <TableCell>회사명</TableCell>
+                <TableCell>{formData.companyName}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>대표자명</TableCell>
-                <TableCell>
-                  {isEditing ? (
-                    <TextField name="ceoName" value={formData.ceoName} onChange={handleInputChange} fullWidth />
-                  ) : (
-                    supplier.ceoName
-                  )}
-                </TableCell>
+                <TableCell>{formData.ceoName}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>업태</TableCell>
+                <TableCell>{formData.businessType}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>업종</TableCell>
+                <TableCell>{formData.businessCategory}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>소싱대분류</TableCell>
+                <TableCell>{formData.sourcingCategory}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>소싱중분류</TableCell>
+                <TableCell>{formData.sourcingSubCategory}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>소싱소분류</TableCell>
+                <TableCell>{formData.sourcingMinorCategory}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>우편번호</TableCell>
+                <TableCell>{formData.zipCode}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>주소</TableCell>
+                <TableCell>{formData.address}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>상세주소</TableCell>
+                <TableCell>{formData.detailAddress}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>사업자등록증</TableCell>
+                <TableCell>{formData.businessCert ? "첨부됨" : "미첨부"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>의견</TableCell>
+                <TableCell>{formData.comments}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -139,76 +123,38 @@ const SupplierReviewPage = () => {
       {tabIndex === 1 && (
         <TableContainer component={Paper}>
           <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>담당자명</TableCell>
-                <TableCell>직책</TableCell>
-                <TableCell>전화번호</TableCell>
-                <TableCell>이메일</TableCell>
-              </TableRow>
-            </TableHead>
             <TableBody>
               <TableRow>
-                <TableCell>{supplier.managerName}</TableCell>
-                <TableCell>{supplier.managerPosition}</TableCell>
-                <TableCell>{supplier.managerPhone}</TableCell>
-                <TableCell>{supplier.managerEmail}</TableCell>
+                <TableCell>담당자명</TableCell>
+                <TableCell>{formData.managerName}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>직책</TableCell>
+                <TableCell>{formData.managerPosition}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>전화번호</TableCell>
+                <TableCell>{formData.managerPhone}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>휴대전화번호</TableCell>
+                <TableCell>{formData.managerMobile}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>이메일</TableCell>
+                <TableCell>{formData.managerEmail}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </TableContainer>
       )}
 
-      {/* 협력업체가 수정 가능하도록 버튼 제공 */}
-      {role === "ROLE_SUPPLIER" && (
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
-          {isEditing ? (
-            <>
-              <Button variant="contained" color="primary" sx={{ mr: 2 }} onClick={handleSaveChanges}>
-                저장
-              </Button>
-              <Button variant="outlined" color="secondary" onClick={() => setIsEditing(false)}>
-                취소
-              </Button>
-            </>
-          ) : (
-            <Button variant="contained" color="warning" onClick={() => setIsEditing(true)}>
-              수정
-            </Button>
-          )}
-        </Box>
-      )}
-
-      {/* 관리자만 승인/반려 가능 */}
-      {role === "ROLE_ADMIN" && (
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
-          <Button variant="contained" color="success" sx={{ mr: 2 }} onClick={handleApprove}>
-            승인
-          </Button>
-          <Button variant="contained" color="error" onClick={() => setOpenRejectDialog(true)}>
-            반려
-          </Button>
-        </Box>
-      )}
-
-      {/* 반려 사유 입력 다이얼로그 */}
-      <Dialog open={openRejectDialog} onClose={() => setOpenRejectDialog(false)}>
-        <DialogTitle>반려 사유 입력</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="반려 사유"
-            fullWidth
-            multiline
-            rows={3}
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenRejectDialog(false)} color="secondary">취소</Button>
-          <Button onClick={handleReject} color="error">반려</Button>
-        </DialogActions>
-      </Dialog>
+      {/* 목록으로 버튼 */}
+      <Box sx={{ mt: 3, textAlign: "center" }}>
+        <Button variant="contained" color="primary" onClick={handleGoToList}>
+          목록으로
+        </Button>
+      </Box>
     </Box>
   );
 };
