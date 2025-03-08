@@ -14,6 +14,8 @@ import PurchaseRequestDetailPage from "./pages/procurement/PurchaseRequestDetail
 import ApprovalListPage from "./pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "./pages/procurement/ApprovalDetailPage";
 import InspectionsListPage from "./pages/inspection/InspectionsListPage";
+import InspectionDetailPage from "./pages/inspection/InspectionDetailPage";
+import InspectionFormPage from "./pages/inspection/InspectionFormPage";
 import Login from "./pages/member/Login";
 // import Header from "./layouts/Header";
 // import Footer from "./layouts/Footer";
