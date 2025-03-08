@@ -15,6 +15,7 @@ import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
+import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
 
@@ -57,10 +58,9 @@ function AppContent() {
                 path="/purchase-requests"
                 element={<PurchaseRequestListPage />}
               />
-              <Route
-                path="/purchase-requests/:id"
-                element={<PurchaseRequestDetailPage />}
-              />
+              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
+              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />}/>
+              <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
 
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
