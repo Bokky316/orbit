@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Container, Paper, Typography, Grid, TextField, Select, MenuItem, Button,
@@ -7,29 +7,38 @@ import {
 
 const InspectionsListPage = () => {
   const navigate = useNavigate();
+  const [inspections, setInspections] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [inspections, setInspections] = useState([
-    {
-      id: 1,
-      contractId: 101,
-      supplierName: "ABC 공급업체",
-      productName: "비타민C",
-      quantity: 100,
-      inspection_date: "2025-03-05",
-      result: "합격",
-      inspectorName: "김검수"
-    },
-    {
-      id: 2,
-      contractId: 102,
-      supplierName: "XYZ 공급업체",
-      productName: "오메가3",
-      quantity: 50,
-      inspection_date: "2025-03-06",
-      result: "",
-      inspectorName: "박검수"
-    }
-  ]);
+  // ✅ 검수 목록 불러오기 (API 호출)
+ useEffect(() => {
+   const token = localStorage.getItem("accessToken"); // ✅ 저장된 JWT 토큰 가져오기
+
+   fetch("/api/inspections", {
+     method: "GET",
+     headers: {
+       "Authorization": `Bearer ${token}`, // ✅ JWT 토큰 포함
+       "Content-Type": "application/json"
+     }
+   })
+     .then((response) => {
+       console.log("🔍 API 응답 상태 코드:", response.status);
+       if (!response.ok) {
+         throw new Error(`HTTP error! Status: ${response.status}`);
+       }
+       return response.json();
+     })
+     .then((data) => {
+       console.log("✅ 검수 데이터:", data);
+       setInspections(Array.isArray(data) ? data : []);
+     })
+     .catch((error) => {
+       console.error("❌ 검수 목록 불러오기 실패:", error);
+       setInspections([]);
+     });
+ }, []);
+
+
 
   // 🔍 검색 및 필터링 상태
   const [searchTerm, setSearchTerm] = useState(""); // 검색어
