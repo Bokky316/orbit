@@ -11,38 +11,25 @@ import {
   Paper,
   Tabs,
   Tab,
-  Button, // Button 추가
+  Button,
 } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom"; // useNavigate 추가
+import { useLocation, useNavigate } from "react-router-dom";
 
 const SupplierReviewPage = () => {
   const location = useLocation();
-  const navigate = useNavigate(); // useNavigate 훅 추가
-  const formData = location.state || {
-    businessNo: "123-45-67890",
-    businessFile: null,
-    companyName: "더미 회사",
-    ceoName: "더미 대표",
-    businessType: "제조업",
-    businessCategory: "IT",
-    sourcingCategory: "하드웨어",
-    sourcingSubCategory: "컴퓨터 장비",
-    sourcingMinorCategory: "기타서버",
-    managerName: "더미 담당자",
-    managerPosition: "과장",
-    managerPhone: "010-1234-5678",
-    managerMobile: "010-9876-5432",
-    managerEmail: "dummy@example.com",
-    zipCode: "12345",
-    address: "더미 주소",
-    detailAddress: "더미 상세 주소",
-    businessCert: null,
-    comments: "더미 코멘트",
-  };
+  const navigate = useNavigate();
+
+  // ✅ 이전 페이지 정보 저장
+  const formData = location.state?.data || {};
+  const prevPage = location.state?.from || "/supplier-registrations"; // 기본값 설정
+
+  console.log("넘어온 업체 데이터:", formData);
+  console.log("이전 페이지:", prevPage);
+
   const [tabIndex, setTabIndex] = React.useState(0);
 
   const handleGoToList = () => {
-    navigate("/supplier-registrations"); // 목록 페이지로 이동
+    navigate(prevPage); // ✅ 이전 페이지로 이동
   };
 
   return (
@@ -68,7 +55,7 @@ const SupplierReviewPage = () => {
               </TableRow>
               <TableRow>
                 <TableCell>회사명</TableCell>
-                <TableCell>{formData.companyName}</TableCell>
+                <TableCell>{formData.supplierName || "데이터 없음"}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell>대표자명</TableCell>

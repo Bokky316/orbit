@@ -18,6 +18,11 @@ import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetail
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+import SupplierListPage from "@/pages/supplier/SupplierListPage";
+import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
+import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
+import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
+
 
 function AppContent() {
   const { isLoggedIn } = useSelector((state) => state.auth);
@@ -65,6 +70,12 @@ function AppContent() {
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
+
+              {/* 협력사 관리 */}
+              <Route path="/supplier-registrations" element={<SupplierListPage />} />
+              <Route path="/supplier-registrations/new" element={<SupplierRegistrationPage />} />
+              <Route path="/supplier-review/:id" element={<SupplierReviewPage />} />
+              <Route path="/supplier-approval" element={<SupplierApprovalListPage />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />

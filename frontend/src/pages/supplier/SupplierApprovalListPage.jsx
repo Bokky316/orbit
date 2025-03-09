@@ -13,19 +13,19 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
-const SupplierList = () => {
+const SupplierApprovalListPage = () => {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
-  const [searchName, setSearchName] = useState("");
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
 
   useEffect(() => {
+    // ✅ `SupplierListPage` 데이터와 동일한 형식 + 진행 상태 유지
     const dummyData = [
       {
         id: 1,
@@ -37,18 +37,8 @@ const SupplierList = () => {
         sourcingSubCategory: "서버",
         sourcingMinorCategory: "기타서버",
         ceoName: "김대표",
-        managerName: "이담당",
-        managerPosition: "과장",
-        managerPhone: "02-1234-5678",
-        managerMobile: "010-9876-5432",
-        managerEmail: "manager@servermaster.com",
-        zipCode: "12345",
-        address: "서울특별시 강남구",
-        detailAddress: "테헤란로 123",
-        businessCert: "첨부됨",
-        comments: "서버 전문 업체",
-        status: "승인완료",
-        rejectReason: ""
+        status: "검토대기",
+        rejectReason: "",
       },
       {
         id: 2,
@@ -60,88 +50,33 @@ const SupplierList = () => {
         sourcingSubCategory: "소프트웨어",
         sourcingMinorCategory: "개발툴",
         ceoName: "박대표",
-        managerName: "최담당",
-        managerPosition: "팀장",
-        managerPhone: "031-5678-1234",
-        managerMobile: "010-2345-6789",
-        managerEmail: "manager@swsolution.com",
-        zipCode: "54321",
-        address: "경기도 성남시 분당구",
-        detailAddress: "판교로 45",
-        businessCert: "첨부됨",
-        comments: "소프트웨어 개발 솔루션 제공",
         status: "반려",
-        rejectReason: "서류 미비로 인해 반려되었습니다."
+        rejectReason: "서류 미비로 인해 반려되었습니다.",
       },
-      {
-        id: 3,
-        supplierName: "스마트테크",
-        businessNo: "345-67-89012",
-        businessType: "도소매업",
-        businessCategory: "전자기기",
-        sourcingCategory: "전자제품",
-        sourcingSubCategory: "스마트폰",
-        sourcingMinorCategory: "전자기기",
-        ceoName: "이대표",
-        managerName: "강담당",
-        managerPosition: "부장",
-        managerPhone: "051-8765-4321",
-        managerMobile: "010-6789-0123",
-        managerEmail: "manager@smarttech.com",
-        zipCode: "67890",
-        address: "부산광역시 해운대구",
-        detailAddress: "센텀로 89",
-        businessCert: "미첨부",
-        comments: "스마트 디바이스 유통",
-        status: "승인대기",
-        rejectReason: ""
-      }
     ];
     setSuppliers(dummyData);
+    setFilteredSuppliers(dummyData);
   }, []);
 
-  useEffect(() => {
-    filterSuppliers();
-  }, [searchName, suppliers]);
-
-  const filterSuppliers = () => {
-    let filtered = suppliers.filter((s) =>
-      s.supplierName.toLowerCase().includes(searchName.toLowerCase())
-    );
-    setFilteredSuppliers(filtered);
-  };
-
-  const handleRejectClick = (supplier) => {
+  const handleRejectReasonClick = (supplier) => {
     setSelectedSupplier(supplier);
     setOpenModal(true);
   };
 
+  const handleReviewClick = (supplier) => {
+    navigate(`/supplier-review/${supplier.id}`, { state: { from: "/supplier-approval", data: supplier } });
+  };
+
+  // ✅ 목록으로 버튼 클릭 시 `/supplier-registrations`로 이동
+  const handleGoToList = () => {
+    navigate("/supplier-registrations");
+  };
+
   return (
     <Box sx={{ width: "95%", margin: "20px auto", textAlign: "center" }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>협력업체 목록</Typography>
-
-      {/* 상단 버튼 영역 */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-        {/* 승인 관리 버튼 (좌측) */}
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={() => navigate("/supplier-approval")}
-          sx={{ borderRadius: 2 }}
-        >
-          가입 승인 관리
-        </Button>
-
-        {/* 협력업체 등록 버튼 (우측) */}
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => navigate("/supplier-registrations/new")}
-          sx={{ borderRadius: 2 }}
-        >
-          협력업체 등록
-        </Button>
-      </Box>
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        가입 승인 대기 & 승인 검토
+      </Typography>
 
       <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
         <Table stickyHeader>
@@ -171,7 +106,7 @@ const SupplierList = () => {
                       variant="text"
                       color="primary"
                       onClick={() =>
-                        navigate(`/supplier-review/${s.id}`, { state: { from: "/supplier-registrations", data: s } })
+                        navigate(`/supplier-review/${s.id}`, { state: { from: "/supplier-approval", data: s } })
                       }
                     >
                       {s.supplierName}
@@ -181,10 +116,32 @@ const SupplierList = () => {
                   <TableCell align="center">{s.businessCategory}</TableCell>
                   <TableCell align="center">{s.businessNo}</TableCell>
                   <TableCell align="center">
-                    {s.status === "반려" ? (
-                      <Button color="error" onClick={() => handleRejectClick(s)}>
-                        반려
-                      </Button>
+                    {s.status === "검토대기" ? (
+                      <Box>
+                        {s.status}{" "}
+                        <Button
+                          variant="contained"
+                          size="small"
+                          color="primary"
+                          onClick={() => handleReviewClick(s)}
+                          sx={{ ml: 1 }}
+                        >
+                          검토하기
+                        </Button>
+                      </Box>
+                    ) : s.status === "반려" ? (
+                      <Box>
+                        {s.status}{" "}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          onClick={() => handleRejectReasonClick(s)}
+                          sx={{ ml: 1 }}
+                        >
+                          반려사유확인
+                        </Button>
+                      </Box>
                     ) : (
                       s.status
                     )}
@@ -211,8 +168,15 @@ const SupplierList = () => {
           <Button onClick={() => setOpenModal(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
+
+      {/* ✅ 목록으로 버튼 추가 */}
+      <Box sx={{ mt: 3, textAlign: "center" }}>
+        <Button variant="contained" color="primary" onClick={handleGoToList}>
+          목록으로
+        </Button>
+      </Box>
     </Box>
   );
 };
 
-export default SupplierList;
+export default SupplierApprovalListPage;
