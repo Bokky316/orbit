@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 
-// 입찰 평가
+// 입찰 참여 공급자 평가
 
 @Entity
 @Table(name = "bidding_evaluations")
@@ -43,6 +43,9 @@ public class BiddingEvaluation {
 
     @Column(name = "evaluator_id", nullable = false)
     private Long evaluatorId; //평가자 ID
+
+    @Column(name = "supplier_name")
+    private String supplierName; // 공급자 이름
 
     @Column(name = "price_score", nullable = false)
     private Integer priceScore; //가격 점수 (5점 만점)
@@ -68,6 +71,15 @@ public class BiddingEvaluation {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt; //수정일시
 
+    @Column(name = "selected_for_order", columnDefinition = "boolean default false")
+    private boolean selectedForOrder; // 발주 선정 여부
+
+    @Column(name = "is_selected_bidder", columnDefinition = "boolean default false")
+    private boolean isSelectedBidder; // 낙찰자 선정 여부
+        
+    @Column(name = "bidder_selected_at")
+    private LocalDateTime bidderSelectedAt; // 낙찰자 선정 일시
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -76,6 +88,24 @@ public class BiddingEvaluation {
 
     @PreUpdate
     protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 낙찰자로 선정
+     */
+    public void selectAsBidder() {
+        this.isSelectedBidder = true;
+        this.bidderSelectedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 낙찰자 선정 취소
+     */
+    public void cancelSelectedBidder() {
+        this.isSelectedBidder = false;
+        this.bidderSelectedAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 }

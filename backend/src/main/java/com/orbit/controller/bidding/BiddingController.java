@@ -1,4 +1,4 @@
-package com.orbit.controller;
+package com.orbit.controller.bidding;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -19,12 +19,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.orbit.dto.bidding.BiddingDto;
-import com.orbit.dto.bidding.BiddingEvaluationDto;
 import com.orbit.dto.bidding.BiddingParticipationDto;
 import com.orbit.dto.bidding.SimplifiedContractDto;
 import com.orbit.entity.bidding.Bidding.BiddingStatus;
 import com.orbit.entity.bidding.SimplifiedContract.ContractStatus;
-import com.orbit.service.BiddingService;
+import com.orbit.service.bidding.BiddingService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -74,8 +73,18 @@ public class BiddingController {
     public ResponseEntity<BiddingDto> createBidding(@RequestBody BiddingDto bidding) {
         log.info("입찰 공고 생성 요청 - 제목: {}", bidding.getTitle());
         
-        BiddingDto createdBidding = biddingService.createBidding(bidding);
-        return new ResponseEntity<>(createdBidding, HttpStatus.CREATED);
+        try {
+            // 필수 필드 유효성 검사
+            if (bidding.getTitle() == null || bidding.getTitle().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            BiddingDto createdBidding = biddingService.createBidding(bidding);
+            return new ResponseEntity<>(createdBidding, HttpStatus.CREATED);
+        } catch (Exception e) {
+            log.error("입찰 공고 생성 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     /**
@@ -140,56 +149,20 @@ public class BiddingController {
         return ResponseEntity.ok(participation);
     }
 
-    /**
-     * 입찰 평가
-     */
-    @PostMapping("/participations/{participationId}/evaluate")
-    public ResponseEntity<BiddingEvaluationDto> evaluateBidding(
-            @PathVariable Long participationId,
-            @RequestBody BiddingEvaluationDto evaluation
-    ) {
-        log.info("입찰 평가 요청 - 참여 ID: {}, 평가자 ID: {}", participationId, evaluation.getEvaluatorId());
-        
-        evaluation.setBiddingParticipationId(participationId);
-        BiddingEvaluationDto result = biddingService.evaluateBidding(evaluation);
-        return new ResponseEntity<>(result, HttpStatus.CREATED);
-    }
     
-    /**
-     * 입찰 평가 목록 조회
-     */
-    @GetMapping("/participations/{participationId}/evaluations")
-    public ResponseEntity<List<BiddingEvaluationDto>> getBiddingEvaluations(@PathVariable Long participationId) {
-        log.info("입찰 평가 목록 조회 요청 - 참여 ID: {}", participationId);
+    // /**
+    //  * 낙찰자 선정
+    //  */
+    // @GetMapping("/{biddingId}/winning-bid")
+    // public ResponseEntity<BiddingEvaluationDto> selectWinningBid(@PathVariable Long biddingId) {
+    //     log.info("낙찰자 선정 요청 - 입찰 ID: {}", biddingId);
         
-        List<BiddingEvaluationDto> evaluations = biddingService.getBiddingEvaluations(participationId);
-        return ResponseEntity.ok(evaluations);
-    }
-    
-    /**
-     * 입찰별 평가 목록 조회
-     */
-    @GetMapping("/{biddingId}/evaluations")
-    public ResponseEntity<List<BiddingEvaluationDto>> getEvaluationsByBiddingId(@PathVariable Long biddingId) {
-        log.info("입찰별 평가 목록 조회 요청 - 입찰 ID: {}", biddingId);
-        
-        List<BiddingEvaluationDto> evaluations = biddingService.getEvaluationsByBiddingId(biddingId);
-        return ResponseEntity.ok(evaluations);
-    }
-    
-    /**
-     * 낙찰자 선정
-     */
-    @GetMapping("/{biddingId}/winning-bid")
-    public ResponseEntity<BiddingEvaluationDto> selectWinningBid(@PathVariable Long biddingId) {
-        log.info("낙찰자 선정 요청 - 입찰 ID: {}", biddingId);
-        
-        BiddingEvaluationDto winningBid = biddingService.selectWinningBid(biddingId);
-        if (winningBid == null) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(winningBid);
-    }
+    //     BiddingEvaluationDto winningBid = biddingService.selectWinningBid(biddingId);
+    //     if (winningBid == null) {
+    //         return ResponseEntity.noContent().build();
+    //     }
+    //     return ResponseEntity.ok(winningBid);
+    // }
 
     /**
      * 계약 생성

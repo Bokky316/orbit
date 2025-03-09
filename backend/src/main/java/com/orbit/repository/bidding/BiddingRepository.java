@@ -29,4 +29,9 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
     
     @Query("SELECT b FROM Bidding b WHERE b.bidNumber LIKE %:keyword% OR b.title LIKE %:keyword%")
     List<Bidding> searchByKeyword(@Param("keyword") String keyword);
+/**
+     * 특정 상태이면서 마감일이 지정된 날짜보다 이전인 입찰 목록 조회
+     * 주로 자동 마감 처리를 위해 사용됨
+     */
+    List<Bidding> findByStatusAndEndDateBefore(BiddingStatus status, LocalDateTime endDate);
 }

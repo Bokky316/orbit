@@ -1,0 +1,105 @@
+package com.orbit.dto.bidding;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import com.orbit.entity.bidding.BiddingOrder;
+import com.orbit.entity.bidding.BiddingOrder.OrderStatus;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class BiddingOrderDto {
+    private Long id;
+    private String orderNumber;
+    private Long biddingId;
+    private Long biddingParticipationId;
+    private Long biddingItemId;
+    private Long supplierId;
+    private String supplierName;
+    private boolean isSelectedBidder;
+    private LocalDateTime bidderSelectedAt;
+    private String title;
+    private String description;
+    private Integer quantity;
+    private BigDecimal unitPrice;
+    private BigDecimal supplyPrice;
+    private BigDecimal vat;
+    private BigDecimal totalAmount;
+    private String terms;
+    private LocalDate expectedDeliveryDate;
+    private OrderStatus status;
+    private Long approvedBy;
+    private LocalDateTime approvedAt;
+    private Long createdBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    // 추가 표시 정보
+    private String bidNumber;
+    private String bidTitle;
+    private String itemName;
+    
+    public static BiddingOrderDto fromEntity(BiddingOrder entity) {
+        return BiddingOrderDto.builder()
+                .id(entity.getId())
+                .orderNumber(entity.getOrderNumber())
+                .biddingId(entity.getBiddingId())
+                .biddingParticipationId(entity.getBiddingParticipationId())
+                .biddingItemId(entity.getBiddingItemId())
+                .supplierId(entity.getSupplierId())
+                .supplierName(entity.getSupplierName())
+                .isSelectedBidder(entity.isSelectedBidder())
+                .bidderSelectedAt(entity.getBidderSelectedAt())
+                .title(entity.getTitle())
+                .description(entity.getDescription())
+                .quantity(entity.getQuantity())
+                .unitPrice(entity.getUnitPrice())
+                .supplyPrice(entity.getSupplyPrice())
+                .vat(entity.getVat())
+                .totalAmount(entity.getTotalAmount())
+                .terms(entity.getTerms())
+                .expectedDeliveryDate(entity.getExpectedDeliveryDate())
+                .status(entity.getStatus())
+                .approvedBy(entity.getApprovedBy())
+                .approvedAt(entity.getApprovedAt())
+                .createdBy(entity.getCreatedBy())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+    
+    public BiddingOrder toEntity() {
+        return BiddingOrder.builder()
+                .id(this.id)
+                .orderNumber(this.orderNumber)
+                .biddingId(this.biddingId)
+                .biddingParticipationId(this.biddingParticipationId)
+                .biddingItemId(this.biddingItemId)
+                .supplierId(this.supplierId)
+                .supplierName(this.supplierName)
+                .isSelectedBidder(this.isSelectedBidder)
+                .bidderSelectedAt(this.bidderSelectedAt)
+                .title(this.title)
+                .description(this.description)
+                .quantity(this.quantity)
+                .unitPrice(this.unitPrice)
+                .supplyPrice(this.supplyPrice)
+                .vat(this.vat)
+                .totalAmount(this.totalAmount)
+                .terms(this.terms)
+                .expectedDeliveryDate(this.expectedDeliveryDate)
+                .status(this.status)
+                .approvedBy(this.approvedBy)
+                .approvedAt(this.approvedAt)
+                .createdBy(this.createdBy)
+                .build();
+    }
+}

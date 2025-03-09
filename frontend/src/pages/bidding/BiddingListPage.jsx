@@ -21,6 +21,7 @@ import {
   CircularProgress
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { fetchWithAuth } from "@/utils/fetchWithAuth"; // 인증이 필요한 API 호출 함수 추가
 
 // 스티키 헤더를 위한 스타일링된 TableContainer
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
@@ -83,14 +84,9 @@ function BiddingListPage() {
         queryParams.append("keyword", searchTerm);
       }
 
-      const response = await fetch(
-        `${API_URL}biddings?${queryParams.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
+      // fetchWithAuth 함수 사용
+      const response = await fetchWithAuth(
+        `${API_URL}biddings?${queryParams.toString()}`
       );
 
       if (!response.ok) {
@@ -101,7 +97,7 @@ function BiddingListPage() {
       }
 
       const data = await response.json();
-      console.log("API 응답 데이터:", data);
+      //console.log("API 응답 데이터:", data);
 
       // biddings 필드 또는 content 필드에 따라 구조 조정
       // Spring Data JPA Page 응답 구조에 맞춤
@@ -114,7 +110,14 @@ function BiddingListPage() {
       setTotalRows(totalElements);
     } catch (error) {
       console.error("입찰 공고 목록 가져오기 실패:", error.message);
-      setError("입찰 공고 목록을 불러오는 중 오류가 발생했습니다.");
+      setError(
+        "입찰 공고 목록을 불러오는 중 오류가 발생했습니다. " + error.message
+      );
+
+      // 에러 발생 시 빈 배열로 설정
+      setBiddings([]);
+      setFilteredBiddings([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -151,6 +154,11 @@ function BiddingListPage() {
     navigate(`/biddings/edit/${id}`);
   }
 
+  // 상세보기 핸들러
+  function handleViewDetail(id) {
+    navigate(`/biddings/${id}`);
+  }
+
   // 새 입찰 등록 페이지로 이동
   function handleCreateBidding() {
     navigate("/biddings/new");
@@ -163,74 +171,83 @@ function BiddingListPage() {
       </Typography>
 
       {/* 필터 영역 */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={3}>
-          <TextField
-            fullWidth
-            label="검색어 입력"
-            variant="outlined"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </Grid>
+      <Paper elevation={2} sx={{ padding: 2, marginBottom: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              label="검색어 입력"
+              variant="outlined"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </Grid>
 
-        <Grid item xs={12} md={2}>
-          <FormControl fullWidth>
-            <InputLabel id="status-select-label">상태 선택</InputLabel>
-            <Select
-              labelId="status-select-label"
-              value={status}
-              label="상태 선택"
-              onChange={handleStatusChange}>
-              <MenuItem value="">전체</MenuItem>
-              <MenuItem value="대기중">대기중</MenuItem>
-              <MenuItem value="진행중">진행중</MenuItem>
-              <MenuItem value="마감">마감</MenuItem>
-              <MenuItem value="취소">취소</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel id="status-select-label">상태 선택</InputLabel>
+              <Select
+                labelId="status-select-label"
+                value={status}
+                label="상태 선택"
+                onChange={handleStatusChange}>
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="PENDING">대기중</MenuItem>
+                <MenuItem value="OPEN">오픈</MenuItem>
+                <MenuItem value="CLOSED">마감</MenuItem>
+                <MenuItem value="CANCELED">취소</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
 
-        <Grid item xs={12} md={2}>
-          <TextField
-            fullWidth
-            label="시작일"
-            type="date"
-            value={dateRange.start}
-            onChange={(e) => handleDateChange("start", e)}
-            InputLabelProps={{
-              shrink: true
-            }}
-          />
-        </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              fullWidth
+              label="시작일"
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => handleDateChange("start", e)}
+              InputLabelProps={{
+                shrink: true
+              }}
+            />
+          </Grid>
 
-        <Grid item xs={12} md={2}>
-          <TextField
-            fullWidth
-            label="종료일"
-            type="date"
-            value={dateRange.end}
-            onChange={(e) => handleDateChange("end", e)}
-            InputLabelProps={{
-              shrink: true
-            }}
-          />
-        </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              fullWidth
+              label="종료일"
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => handleDateChange("end", e)}
+              InputLabelProps={{
+                shrink: true
+              }}
+            />
+          </Grid>
 
-        <Grid
-          item
-          xs={12}
-          md={3}
-          sx={{ display: "flex", alignItems: "center" }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSearch}
-            sx={{ height: "56px" }}>
-            검색
-          </Button>
+          <Grid
+            item
+            xs={12}
+            md={3}
+            sx={{ display: "flex", alignItems: "center" }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSearch}
+              sx={{ height: "56px", marginRight: 1 }}>
+              검색
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleCreateBidding}
+              sx={{ height: "56px" }}>
+              신규
+            </Button>
+          </Grid>
         </Grid>
-      </Grid>
+      </Paper>
 
       {/* 에러 메시지 */}
       {error && (
@@ -251,6 +268,7 @@ function BiddingListPage() {
             <Table stickyHeader aria-label="입찰 공고 목록 테이블">
               <TableHead>
                 <TableRow>
+                  <TableCell>구매요청번호</TableCell>
                   <TableCell>공고번호</TableCell>
                   <TableCell>공고명</TableCell>
                   <TableCell>공고기간</TableCell>
@@ -265,16 +283,47 @@ function BiddingListPage() {
                 {filteredBiddings.length > 0 ? (
                   filteredBiddings.map((item) => (
                     <TableRow key={item.id} hover>
+                      <TableCell>{item.purchaseRequestId || "-"}</TableCell>
                       <TableCell>{item.bidNumber}</TableCell>
-                      <TableCell>{item.title}</TableCell>
+                      <TableCell>
+                        <Typography
+                          component="a"
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleViewDetail(item.id);
+                          }}
+                          sx={{
+                            textDecoration: "none",
+                            color: "blue",
+                            "&:hover": {
+                              textDecoration: "underline"
+                            }
+                          }}>
+                          {item.title}
+                        </Typography>
+                      </TableCell>
                       <TableCell>{`${item.startDate} ~ ${item.endDate}`}</TableCell>
                       <TableCell>{item.itemName}</TableCell>
                       <TableCell align="right">
                         {item.totalAmount?.toLocaleString()}원
                       </TableCell>
-                      <TableCell>{item.status}</TableCell>
+                      <TableCell>
+                        {item.status === "PENDING" && "대기중"}
+                        {item.status === "OPEN" && "오픈"}
+                        {item.status === "CLOSED" && "마감"}
+                        {item.status === "CANCELED" && "취소"}
+                      </TableCell>
                       <TableCell>{item.endDate}</TableCell>
                       <TableCell>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleViewDetail(item.id)}
+                          sx={{ mr: 1 }}>
+                          상세보기
+                        </Button>
                         <Button
                           size="small"
                           variant="outlined"
@@ -286,7 +335,7 @@ function BiddingListPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       데이터가 없습니다.
                     </TableCell>
                   </TableRow>
@@ -307,7 +356,10 @@ function BiddingListPage() {
         }}>
         <Typography>
           총 {totalRows}개 항목 중{" "}
-          {(paginationModel.page - 1) * paginationModel.pageSize + 1} -
+          {totalRows > 0
+            ? (paginationModel.page - 1) * paginationModel.pageSize + 1
+            : 0}{" "}
+          -
           {Math.min(paginationModel.page * paginationModel.pageSize, totalRows)}
         </Typography>
 
@@ -329,16 +381,6 @@ function BiddingListPage() {
             다음
           </Button>
         </Box>
-      </Box>
-
-      {/* 신규 등록 버튼 */}
-      <Box sx={{ mt: 4 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleCreateBidding}>
-          새 입찰 등록
-        </Button>
       </Box>
     </Box>
   );

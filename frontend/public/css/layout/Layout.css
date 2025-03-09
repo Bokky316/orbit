@@ -35,6 +35,10 @@
       }
     }
   }
+  .sub_categories {
+    display: flex;
+    gap: 40px;
+  }
 }
 
 /* SideBar */
