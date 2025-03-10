@@ -3,6 +3,7 @@ package com.orbit.dto.procurement;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -25,6 +26,9 @@ import java.util.List;
 })
 @Getter @Setter
 public abstract class PurchaseRequestDTO {
+    @NotNull(message = "사업 구분은 필수 항목입니다")
+    @Schema(description = "사업 구분 (SI, MAINTENANCE, GOODS)", example = "SI", required = true)
+    private String businessType; // ★★★ 상위 클래스에 필드 위치
 
     private Long id; // 구매 요청 ID
 
@@ -43,8 +47,6 @@ public abstract class PurchaseRequestDTO {
 
     private String businessManager; // 사업 담당자
 
-    private String businessType; // 사업 구분
-
     @PositiveOrZero @Digits(integer=15, fraction=2)
     private BigDecimal businessBudget; // 사업 예산
 
@@ -53,11 +55,11 @@ public abstract class PurchaseRequestDTO {
     @Pattern(regexp = "^01[0-9]{8,9}$")
     private String managerPhoneNumber; // 담당자 핸드폰 번호
 
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate projectStartDate; // 사업 기간 (시작일)
-
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate projectEndDate; // 사업 기간 (종료일)
+//    @JsonFormat(pattern = "yyyy-MM-dd")
+//    private LocalDate projectStartDate; // 사업 기간 (시작일)
+//
+//    @JsonFormat(pattern = "yyyy-MM-dd")
+//    private LocalDate projectEndDate; // 사업 기간 (종료일)
 
     private String projectContent; // 사업 내용
 

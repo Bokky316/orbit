@@ -51,7 +51,7 @@ public class PurchaseRequestController {
     // 4. Multipart 요청 생성 (파일 포함)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PurchaseRequestDTO> createPurchaseRequestWithFiles(
-            @Valid @RequestPart("purchaseRequestDTO") PurchaseRequestDTO purchaseRequestDTO,
+            @Valid @RequestPart("purchaseRequestDTO") PurchaseRequestDTO purchaseRequestDTO, // ★★★ 필드명 변경 X
             @RequestPart(value = "files", required = false) MultipartFile[] files) {
         PurchaseRequestDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, files);
         return new ResponseEntity<>(createdPurchaseRequest, HttpStatus.CREATED);
