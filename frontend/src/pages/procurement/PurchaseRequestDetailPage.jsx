@@ -1,80 +1,180 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Box,
-    Typography,
-    Paper,
-    Button,
+    Box, Typography, Paper, Button, Link, Chip,
+    Grid, List, ListItem, ListItemText, Divider
 } from '@mui/material';
-import { useParams } from 'react-router-dom';
-import { fetchWithAuth } from '@/utils/fetchWithAuth'; // 인증이 필요한 API 호출 함수
+import { useParams, useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
+import moment from 'moment';
+import { useDispatch } from 'react-redux';
 
-/**
- * 구매 요청 상세 페이지 컴포넌트
- * @returns {JSX.Element}
- */
-function PurchaseRequestDetailPage() {
-    const { id } = useParams(); // URL에서 구매 요청 ID를 가져옴
-    const [request, setRequest] = useState(null); // 구매 요청 정보 상태
+const PurchaseRequestDetailPage = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [request, setRequest] = useState(null);
 
     useEffect(() => {
-        // 컴포넌트 마운트 시 구매 요청 상세 정보 및 관련 데이터 로딩
-        fetchPurchaseRequestDetail();
+        const fetchData = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
+                if (!response.ok) throw new Error('데이터 로드 실패');
+                const data = await response.json();
+                setRequest(data);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        };
+        fetchData();
     }, [id]);
 
-    /**
-     * 구매 요청 상세 정보 및 관련 데이터 API 호출 함수
-     */
-    const fetchPurchaseRequestDetail = async () => {
-        try {
-            // 1. 구매 요청 정보 가져오기
-            const purchaseRequestResponse = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
-            if (!purchaseRequestResponse.ok) {
-                throw new Error(`구매 요청 정보 로딩 실패: ${purchaseRequestResponse.status}`);
-            }
-            const purchaseRequestData = await purchaseRequestResponse.json();
-            setRequest(purchaseRequestData); // 구매 요청 정보 설정
+    if (!request) return <Typography>Loading...</Typography>;
 
+    const statusColor = {
+        'REQUESTED': 'info',
+        'APPROVED': 'success',
+        'REJECTED': 'error',
+        'COMPLETED': 'warning'
+    }[request.prStatusChild] || 'default';
+
+    const downloadFile = async (attachment) => {
+      try {
+        console.log("[DEBUG] 첨부파일 객체 전체:", attachment); // 추가
+
+        // ID 유효성 검사 강화
+        if (!attachment?.id || typeof attachment.id !== "number") {
+          alert("유효하지 않은 첨부파일 ID입니다.");
+          return;
+        }
+
+        const response = await fetchWithAuth(
+          `${API_URL}purchase-requests/attachments/${attachment.id}/download`,
+          { method: 'GET', responseType: 'blob' }
+        );
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = attachment.fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                console.error('다운로드 실패:', await response.text());
+            }
         } catch (error) {
-            console.error('구매 요청 상세 정보 로딩 중 오류 발생:', error);
-            // 에러 처리 로직 (예: 사용자에게 알림)
+            console.error('다운로드 오류:', error);
         }
     };
 
-    if (!request) {
-        return <Typography>Loading...</Typography>; // 데이터 로딩 중 표시
-    }
-
     return (
-        <Box sx={{ padding: 3 }}>
-            <Typography variant="h5" gutterBottom>
-                구매 요청 정보
-            </Typography>
-            <Paper sx={{ padding: 2 }}>
-                {/* 구매 요청 기본 정보 */}
-                <Typography variant="h6">구매 요청 정보</Typography>
-                <Typography>요청번호: {request.id}</Typography>
-                <Typography>요청명: {request.requestName}</Typography>
-                <Typography>상태: {request.status}</Typography>
-                <Typography>요청일: {request.requestDate}</Typography>
-                <Typography>고객사: {request.customer}</Typography>
-                <Typography>사업부서: {request.businessDepartment}</Typography>
-                <Typography>사업담당자: {request.businessManager}</Typography>
-                <Typography>사업구분: {request.businessType}</Typography>
-                <Typography>사업예산: {request.businessBudget?.toLocaleString()}원</Typography>
-                <Typography>특이사항: {request.specialNotes}</Typography>
-                <Typography>담당자 핸드폰: {request.managerPhoneNumber}</Typography>
-                <Typography>사업시작일: {request.projectStartDate}</Typography>
-                <Typography>사업종료일: {request.projectEndDate}</Typography>
-                <Typography>사업내용: {request.projectContent}</Typography>
-                <Typography>첨부파일: {request.attachments}</Typography>
+        <Box sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Typography variant="h4">{request.requestName}</Typography>
+                <Chip label={request.prStatusChild} color={statusColor} variant="outlined" />
+            </Box>
 
-                {/* 액션 버튼 */}
-                <Button variant="contained" color="primary">수정</Button>
-                <Button variant="contained" color="success">결재 요청</Button>
+            {/* 기본 정보 */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>기본 정보</Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={4}>
+                        <Typography><strong>요청번호:</strong> {request.id}</Typography>
+                        <Typography><strong>사업구분:</strong> {request.businessType}</Typography>
+                        <Typography><strong>요청일:</strong> {moment(request.requestDate).format('YYYY-MM-DD')}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                        <Typography><strong>고객사:</strong> {request.customer}</Typography>
+                        <Typography><strong>사업부서:</strong> {request.businessDepartment}</Typography>
+                        <Typography><strong>담당자:</strong> {request.businessManager}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                        <Typography><strong>예산:</strong> {request.businessBudget?.toLocaleString()}원</Typography>
+                        <Typography><strong>연락처:</strong> {request.managerPhoneNumber}</Typography>
+                    </Grid>
+                </Grid>
             </Paper>
+
+            {/* 사업 구분별 상세 정보 */}
+            {request.businessType === 'SI' && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>SI 프로젝트 정보</Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <Typography><strong>시작일:</strong> {moment(request.projectStartDate).format('YYYY-MM-DD')}</Typography>
+                            <Typography><strong>종료일:</strong> {moment(request.projectEndDate).format('YYYY-MM-DD')}</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography><strong>프로젝트 내용:</strong></Typography>
+                            <Typography sx={{ whiteSpace: 'pre-wrap' }}>{request.projectContent}</Typography>
+                        </Grid>
+                    </Grid>
+                </Paper>
+            )}
+
+            {request.businessType === 'MAINTENANCE' && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>유지보수 정보</Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <Typography><strong>계약기간:</strong> {moment(request.contractStartDate).format('YYYY-MM-DD')} ~ {moment(request.contractEndDate).format('YYYY-MM-DD')}</Typography>
+                            <Typography><strong>계약금액:</strong> {request.contractAmount?.toLocaleString()}원</Typography>
+                            <Typography><strong>시작일:</strong> {moment(request.contractStartDate).format('YYYY-MM-DD')}</Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography><strong>계약내용:</strong></Typography>
+                            <Typography sx={{ whiteSpace: 'pre-wrap' }}>{request.contractDetails}</Typography>
+                        </Grid>
+                    </Grid>
+                </Paper>
+            )}
+
+            {request.businessType === 'GOODS' && request.items?.length > 0 && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>구매 품목</Typography>
+                    <List>
+                        {request.items.map((item, index) => (
+                            <div key={index}>
+                                <ListItem>
+                                    <ListItemText
+                                        primary={`${item.itemName} (${item.specification})`}
+                                        secondary={`수량: ${item.quantity} ${item.unit} | 단가: ${item.unitPrice?.toLocaleString()}원`}
+                                    />
+                                </ListItem>
+                                {index < request.items.length - 1 && <Divider />}
+                            </div>
+                        ))}
+                    </List>
+                </Paper>
+            )}
+
+            {/* 첨부 파일 */}
+            {request.attachments?.length > 0 && (
+                <Paper sx={{ p: 3 }}>
+                    <Typography variant="h6" gutterBottom>첨부 파일</Typography>
+                    <List>
+                        {request.attachments.map((attachment, index) => (
+                           <ListItem key={attachment.id}>
+                             <Link
+                               component="button"
+                               onClick={() => downloadFile(attachment)}
+                               sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                             >
+                               📎 {attachment.fileName}
+                               <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                                 ({Math.round(attachment.fileSize / 1024)}KB)
+                               </Typography>
+                             </Link>
+                           </ListItem>
+                        ))}
+                    </List>
+                </Paper>
+            )}
         </Box>
     );
-}
+};
 
 export default PurchaseRequestDetailPage;
