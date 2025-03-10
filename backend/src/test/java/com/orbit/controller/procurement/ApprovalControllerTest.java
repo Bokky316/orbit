@@ -145,13 +145,13 @@ public class ApprovalControllerTest {
         // 테스트 구매 요청 생성 및 저장
         PurchaseRequest purchaseRequest = new PurchaseRequest();
         purchaseRequest.setRequestName("Test Purchase Request"); // title -> requestName
-        purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
-        purchaseRequest.setProject(project);
-        purchaseRequest.setMember(testMember); // Requester -> Member
-//        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
-        purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
-        purchaseRequest.setRequestDate(LocalDate.now());
-        purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
+//        purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
+//        purchaseRequest.setProject(project);
+//        purchaseRequest.setMember(testMember); // Requester -> Member
+////        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
+//        purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
+//        purchaseRequest.setRequestDate(LocalDate.now());
+//        purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
         purchaseRequestRepository.save(purchaseRequest);
 
         // 테스트 결재 생성 및 저장
