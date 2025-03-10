@@ -28,13 +28,13 @@ const resultStatusMap = {
 
 // 평가 상태별 스타일
 const evaluationStatusStyles = {
-  "정상": { color: "success.main", bgcolor: "success.light", icon: <CheckCircleIcon fontSize="small" /> },
-  "양호": { color: "success.main", bgcolor: "success.light", icon: <CheckCircleIcon fontSize="small" /> },
-  "일치": { color: "success.main", bgcolor: "success.light", icon: <CheckCircleIcon fontSize="small" /> },
-  "부족": { color: "error.main", bgcolor: "error.light", icon: <ErrorIcon fontSize="small" /> },
-  "불량": { color: "error.main", bgcolor: "error.light", icon: <ErrorIcon fontSize="small" /> },
-  "불일치": { color: "error.main", bgcolor: "error.light", icon: <ErrorIcon fontSize="small" /> },
-  "초과": { color: "warning.main", bgcolor: "warning.light", icon: <WarningIcon fontSize="small" /> }
+  "정상": { color: "success.main",  icon: <CheckCircleIcon fontSize="small" /> },
+  "양호": { color: "success.main", icon: <CheckCircleIcon fontSize="small" /> },
+  "일치": { color: "success.main",  icon: <CheckCircleIcon fontSize="small" /> },
+  "부족": { color: "error.main",  icon: <ErrorIcon fontSize="small" /> },
+  "불량": { color: "error.main",  icon: <ErrorIcon fontSize="small" /> },
+  "불일치": { color: "error.main", icon: <ErrorIcon fontSize="small" /> },
+  "초과": { color: "warning.main",  icon: <WarningIcon fontSize="small" /> }
 };
 
 const InspectionDetailPage = ({ userRole = "BUYER" }) => {
