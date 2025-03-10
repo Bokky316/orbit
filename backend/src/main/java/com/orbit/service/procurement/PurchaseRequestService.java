@@ -2,6 +2,7 @@ package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.*;
 import com.orbit.entity.procurement.*;
+import com.orbit.entity.state.SystemStatus;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
@@ -173,6 +174,12 @@ public class PurchaseRequestService {
         purchaseRequest.setSpecialNotes(dto.getSpecialNotes());
         purchaseRequest.setManagerPhoneNumber(dto.getManagerPhoneNumber());
 
+        // 상태 정보 설정 - 추가된 부분
+        SystemStatus status = new SystemStatus();
+        status.setParentCode("PURCHASE_REQUEST");
+        status.setChildCode("REQUESTED");
+        purchaseRequest.setStatus(status);
+
         return purchaseRequest;
     }
 
@@ -244,6 +251,13 @@ public class PurchaseRequestService {
         dto.setId(entity.getId());
         dto.setRequestName(entity.getRequestName());
         dto.setRequestNumber(entity.getRequestNumber());
+
+        // status가 null이 아닌 경우에만 toString() 호출 - NPE 방지
+        if (entity.getStatus() != null) {
+            dto.setStatus(entity.getStatus().getFullCode());
+        } else {
+            dto.setStatus("PURCHASE_REQUEST-REQUESTED"); // 기본값 설정
+        }
         dto.setStatus(entity.getStatus().toString()); // Enum 값 문자열로 변환
         dto.setRequestDate(entity.getRequestDate());
         dto.setCustomer(entity.getCustomer());
