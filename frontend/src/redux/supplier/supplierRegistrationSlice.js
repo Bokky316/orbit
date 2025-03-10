@@ -12,7 +12,7 @@ export const fetchSupplierRegistrations = createAsyncThunk(
     'supplier/fetchSupplierRegistrations',
     async (_, { rejectWithValue }) => {
         try {
-            const response = await fetchWithAuth(`${API_URL}/supplier-registrations`, {
+            const response = await fetchWithAuth(`${API_URL}/supplier`, {
                 method: 'GET',
             });
 
@@ -40,7 +40,7 @@ export const createSupplierRegistration = createAsyncThunk(
     'supplier/createSupplierRegistration',
     async (supplierData, { rejectWithValue }) => {
         try {
-            const response = await fetchWithAuth(`${API_URL}/supplier-registrations`, {
+            const response = await fetchWithAuth(`${API_URL}/supplier`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

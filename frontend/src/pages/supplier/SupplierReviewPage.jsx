@@ -21,7 +21,7 @@ const SupplierReviewPage = () => {
 
   // ✅ 이전 페이지 정보 저장
   const formData = location.state?.data || {};
-  const prevPage = location.state?.from || "/supplier-registrations"; // 기본값 설정
+  const prevPage = location.state?.from || "/supplier"; // 기본값 설정
 
   console.log("넘어온 업체 데이터:", formData);
   console.log("이전 페이지:", prevPage);

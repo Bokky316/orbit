@@ -90,10 +90,10 @@ function AppContent() {
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
 
               {/* 협력사 관리 */}
-              <Route path="/supplier-registrations" element={<SupplierListPage />} />
-              <Route path="/supplier-registrations/new" element={<SupplierRegistrationPage />} />
-              <Route path="/supplier-review/:id" element={<SupplierReviewPage />} />
-              <Route path="/supplier-approval" element={<SupplierApprovalListPage />} />
+              <Route path="/supplier" element={<SupplierListPage />} />
+              <Route path="/supplier/registrations" element={<SupplierRegistrationPage />} />
+              <Route path="/supplier/review/:id" element={<SupplierReviewPage />} />
+              <Route path="/supplier/approval" element={<SupplierApprovalListPage />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />

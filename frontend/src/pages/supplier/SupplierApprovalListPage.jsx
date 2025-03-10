@@ -64,12 +64,12 @@ const SupplierApprovalListPage = () => {
   };
 
   const handleReviewClick = (supplier) => {
-    navigate(`/supplier-review/${supplier.id}`, { state: { from: "/supplier-approval", data: supplier } });
+    navigate(`/supplier/review/${supplier.id}`, { state: { from: "/supplier/approval", data: supplier } });
   };
 
   // ✅ 목록으로 버튼 클릭 시 `/supplier-registrations`로 이동
   const handleGoToList = () => {
-    navigate("/supplier-registrations");
+      navigate("/supplier");
   };
 
   return (
@@ -106,7 +106,7 @@ const SupplierApprovalListPage = () => {
                       variant="text"
                       color="primary"
                       onClick={() =>
-                        navigate(`/supplier-review/${s.id}`, { state: { from: "/supplier-approval", data: s } })
+                        navigate(`/supplier/review/${s.id}`, { state: { from: "/supplier/approval", data: s } })
                       }
                     >
                       {s.supplierName}
@@ -168,13 +168,6 @@ const SupplierApprovalListPage = () => {
           <Button onClick={() => setOpenModal(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
-
-      {/* ✅ 목록으로 버튼 추가 */}
-      <Box sx={{ mt: 3, textAlign: "center" }}>
-        <Button variant="contained" color="primary" onClick={handleGoToList}>
-          목록으로
-        </Button>
-      </Box>
     </Box>
   );
 };

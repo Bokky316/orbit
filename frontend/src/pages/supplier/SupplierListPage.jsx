@@ -121,22 +121,12 @@ const SupplierList = () => {
       <Typography variant="h4" sx={{ mb: 3 }}>협력업체 목록</Typography>
 
       {/* 상단 버튼 영역 */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-        {/* 승인 관리 버튼 (좌측) */}
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={() => navigate("/supplier-approval")}
-          sx={{ borderRadius: 2 }}
-        >
-          가입 승인 관리
-        </Button>
-
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
         {/* 협력업체 등록 버튼 (우측) */}
         <Button
           variant="contained"
           color="primary"
-          onClick={() => navigate("/supplier-registrations/new")}
+          onClick={() => navigate("/supplier/registrations")}
           sx={{ borderRadius: 2 }}
         >
           협력업체 등록
@@ -171,7 +161,7 @@ const SupplierList = () => {
                       variant="text"
                       color="primary"
                       onClick={() =>
-                        navigate(`/supplier-review/${s.id}`, { state: { from: "/supplier-registrations", data: s } })
+                        navigate(`/supplier/review/${s.id}`, { state: { from: "/supplier", data: s } }) // ✅ "/supplier"로 변경
                       }
                     >
                       {s.supplierName}
