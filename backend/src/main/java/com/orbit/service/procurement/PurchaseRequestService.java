@@ -85,17 +85,31 @@ public class PurchaseRequestService {
     private void processAttachments(PurchaseRequest purchaseRequest, MultipartFile[] files) {
         for (MultipartFile file : files) {
             try {
-                String fileName = StringUtils.cleanPath(file.getOriginalFilename());
-                Path targetDir = Paths.get(uploadPath, "pr_" + purchaseRequest.getId());
+                // 파일명 정제 - 특수 문자 제거
+                String fileName = StringUtils.cleanPath(file.getOriginalFilename())
+                        .replaceAll("[^a-zA-Z0-9.-]", "_");  // 안전한 파일명으로 변경
+
+                // 절대 경로 생성
+                Path baseDir = Paths.get(uploadPath).toAbsolutePath();
+                String subDir = "pr_" + purchaseRequest.getId();
+                Path targetDir = baseDir.resolve(subDir);
+
+                // 디렉토리 존재 확인 및 생성
                 Files.createDirectories(targetDir);
 
+                // 고유한 파일명 생성
                 String uniqueFileName = System.currentTimeMillis() + "_" + fileName;
                 Path targetPath = targetDir.resolve(uniqueFileName);
+
+                // 파일 복사
                 Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+                // 상대 경로로 저장 (백슬래시를 슬래시로 변경)
+                String relativePath = Paths.get(subDir, uniqueFileName).toString().replace("\\", "/");
 
                 PurchaseRequestAttachment attachment = PurchaseRequestAttachment.builder()
                         .fileName(fileName)
-                        .filePath(targetPath.toString())
+                        .filePath(relativePath)  // 상대 경로 사용
                         .fileType(file.getContentType())
                         .fileSize(file.getSize())
                         .purchaseRequest(purchaseRequest)
@@ -104,8 +118,8 @@ public class PurchaseRequestService {
                 attachmentRepository.save(attachment);
 
             } catch (IOException e) {
-                log.error("파일 저장 실패: {}", e.getMessage());
-                throw new RuntimeException("파일 처리 중 오류 발생");
+                log.error("파일 저장 실패: {}", e.getMessage(), e);
+                throw new RuntimeException("파일 처리 중 오류 발생", e);
             }
         }
     }
@@ -396,5 +410,22 @@ public class PurchaseRequestService {
         }
         purchaseRequestRepository.deleteById(id);
         return true;
+    }
+
+    /**
+     * 기존 구매 요청에 첨부 파일 추가
+     * @param id 구매 요청 ID
+     * @param files 추가할 파일 배열
+     * @return 업데이트된 구매 요청 DTO
+     */
+    public PurchaseRequestDTO addAttachmentsToPurchaseRequest(Long id, MultipartFile[] files) {
+        PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Purchase request not found with id: " + id));
+
+        if (files != null && files.length > 0) {
+            processAttachments(purchaseRequest, files);
+        }
+
+        return convertToDto(purchaseRequest);
     }
 }
