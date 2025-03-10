@@ -31,6 +31,12 @@ public class PurchaseRequest {
     private String requestNumber;
 
     /**
+     *  첨부파일
+     */
+    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PurchaseRequestAttachment> attachments = new ArrayList<>();
+
+    /**
      * 구매 요청 상태 (PURCHASE_REQUEST-REQUESTED 형식)
      */
     @Embedded
@@ -134,11 +140,11 @@ public class PurchaseRequest {
     @Column(name = "project_content", length = 2000)
     private String projectContent;
 
-    /**
-     * 구매 요청에 첨부된 파일들의 정보
-     */
-    @Column(name = "attachments")
-    private String attachments;
+//    /**
+//     * 구매 요청에 첨부된 파일들의 정보
+//     */
+//    @Column(name = "attachments")
+//    private String attachments;
 
     /**
      * 구매 요청이 속한 프로젝트
