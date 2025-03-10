@@ -42,7 +42,7 @@ public class PurchaseRequestDTO {
 
     private String projectContent; // 사업 내용
 
-    private String attachments; // 첨부 파일 목록
+    private List<PurchaseRequestAttachmentDTO> attachments; // 첨부 파일 목록
 
     private List<PurchaseRequestItemDTO> purchaseRequestItemDTOs; // 구매 요청 아이템 목록
 }
