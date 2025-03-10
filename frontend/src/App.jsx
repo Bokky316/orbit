@@ -21,7 +21,9 @@ import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
 import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
 import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
 import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
-
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
+import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
+import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
 function AppContent() {
   const { isLoggedIn } = useSelector((state) => state.auth);
 
@@ -73,6 +75,12 @@ function AppContent() {
               <Route path="/inspections" element={<InspectionsListPage />} />
               <Route path="/inspections/:id" element={<InspectionDetailPage />} />
               <Route path="/inspections/:id/edit" element={<InspectionFormPage />} />
+
+              {/* 송장 관리 */}
+              <Route path="/invoices" element={<InvoicesListPage />} />
+              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="/invoices/:id/edit" element={<InvoiceEditPage />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
