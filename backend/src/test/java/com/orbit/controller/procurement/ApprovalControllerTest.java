@@ -1,45 +1,45 @@
 package com.orbit.controller.procurement;
 
-import java.time.Duration;
-import java.time.LocalDate;
-import java.util.Collection;
-import java.util.UUID;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orbit.dto.procurement.ApprovalDTO;
+import com.orbit.entity.member.Member;
+import com.orbit.entity.procurement.Approval;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.Project;
+import com.orbit.repository.member.MemberRepository;
+import com.orbit.service.procurement.ApprovalService;
+import com.orbit.config.jwt.TokenProvider;
+import com.orbit.service.RedisService;
+import com.orbit.repository.procurement.ApprovalRepository;
+import com.orbit.repository.procurement.PurchaseRequestRepository;
+import com.orbit.repository.procurement.ProjectRepository;
+import com.orbit.constant.SupplierStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockCookie;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.mock.web.MockCookie;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.orbit.config.jwt.TokenProvider;
-import com.orbit.dto.procurement.ApprovalDTO;
-import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.Approval;
-import com.orbit.entity.procurement.Project;
-import com.orbit.entity.procurement.PurchaseRequest;
-import com.orbit.repository.member.MemberRepository;
-import com.orbit.repository.procurement.ApprovalRepository;
-import com.orbit.repository.procurement.ProjectRepository;
-import com.orbit.repository.procurement.PurchaseRequestRepository;
-import com.orbit.service.RedisService;
-import com.orbit.service.procurement.ApprovalService;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.Collection;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * ApprovalController에 대한 통합 테스트 클래스
