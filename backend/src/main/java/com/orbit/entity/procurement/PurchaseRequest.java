@@ -34,10 +34,15 @@ public abstract class PurchaseRequest {
     @Column(name = "request_number", unique = true)
     private String requestNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
-    private Project project;
+    /**
+     *  첨부파일
+     */
+    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PurchaseRequestAttachment> attachments = new ArrayList<>();
 
+    /**
+     * 구매 요청 상태 (PURCHASE_REQUEST-REQUESTED 형식)
+     */
     @Embedded
     private SystemStatus status;
 
@@ -66,6 +71,40 @@ public abstract class PurchaseRequest {
     @Column(name = "manager_phone_number")
     private String managerPhoneNumber;
 
+    /**
+     * 관련 프로젝트의 시작 날짜
+     */
+    @Column(name = "project_start_date")
+    private LocalDate projectStartDate;
+
+    /**
+     * 관련 프로젝트의 종료 예정 날짜
+     */
+    @Column(name = "project_end_date")
+    private LocalDate projectEndDate;
+
+    /**
+     * 구매 요청과 관련된 프로젝트의 상세 내용
+     */
+    @Column(name = "project_content", length = 2000)
+    private String projectContent;
+
+//    /**
+//     * 구매 요청에 첨부된 파일들의 정보
+//     */
+//    @Column(name = "attachments")
+//    private String attachments;
+
+    /**
+     * 구매 요청이 속한 프로젝트
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private Project project;
+
+    /**
+     * 구매 요청을 생성한 회원
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
     private Member member;
