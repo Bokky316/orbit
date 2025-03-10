@@ -90,51 +90,29 @@ function AppContent() {
     <BrowserRouter>
       <div className="App">
         <Routes>
-          {/* 로그인/회원가입 페이지는 로그인 여부와 상관없이 접근 가능 */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<RegisterMember />} />
-
           {isLoggedIn ? (
             <Route element={<Home />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
+
               {/* 입찰 관리 */}
               <Route path="/biddings" element={<BiddingListPage />} />
-              <Route path="/biddings/:id" element={<BiddingDetailPage />} />
               <Route
                 path="/biddings/new"
                 element={<BiddingFormPage mode="create" />}
               />
               <Route
-                path="/biddings/:id/edit"
+                path="/biddings/edit/:id"
                 element={<BiddingFormPage mode="edit" />}
               />
-              {/* 평가 페이지 */}
               <Route
-                path="/biddings/evaluations"
-                element={<BiddingEvaluationListPage />}
+                path="/biddings/price-test"
+                element={<BiddingPriceTestPage />}
               />
-              {/* 평가 상세 페이지 */}
-              <Route
-                path="/biddings/evaluations/:id"
-                element={<BiddingEvaluationDetailPage />}
-              />
-              {/* 계약 목록 페이지 */}
-              <Route path="" element={<ContractsListPage />} />
-              {/* 계약 생성 페이지 */}
-              <Route path="" element={<ContractCreatePage />} />
-              {/* 주문 목록 페이지 */}
-              <Route path="/biddings/orders" element={<BiddingOrderPage />} />
-              {/* 주문 상세 페이지 */}
-              <Route
-                path="/biddings/orders/:id"
-                element={<BiddingOrderDetail />}
-              />
+
               {/* 프로젝트 관리 */}
               <Route path="/projects" element={<ProjectListPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
-              <Route path="/projects/new" element={<ProjectCreatePage />} />
-              <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
 
               {/* 구매 요청 관리 */}
               <Route
@@ -142,77 +120,30 @@ function AppContent() {
                 element={<PurchaseRequestListPage />}
               />
               <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
+              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />}/>
               <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
-              <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />}/>
 
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
-              <Route path="/approval-management" element={<ApprovalManagementPage />} /> {/* 추가 */}
 
-                {/* 검수 관리 */}
-                <Route path="/inspections" element={<InspectionsListPage />} />
-                <Route path="/inspections/:id" element={<InspectionDetailPage />} />
-                <Route path="/inspections/:id/edit" element={<InspectionFormPage />} />
-
-                {/* 송장 관리 */}
-                <Route path="/invoices" element={<InvoicesListPage />} />
-                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
-                <Route path="/payments" element={<PaymentListPage />} />
-                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
-
-              <Route path="/projects" element={<ProjectListPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailPage />} />
-              <Route path="/projects/new" element={<ProjectCreatePage />} />
-              {/* 구매 요청 관리 */}
-              <Route
-                path="/purchase-requests"
-                element={<PurchaseRequestListPage />}
-              />
-              <Route
-                path="/purchase-requests/:id"
-                element={<PurchaseRequestDetailPage />}
-              />
-              <Route
-                path="/purchase-requests/:id"
-                element={<PurchaseRequestDetailPage />}
-              />
-              <Route
-                path="/purchase-requests/new"
-                element={<PurchaseRequestCreatePage />}
-              />
-              {/* 승인 관리 */}
-              <Route path="/approvals" element={<ApprovalListPage />} />
-              <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
-              <Route
-                path="/approval-management"
-                element={<ApprovalManagementPage />}
-              />{" "}
-              {/* 추가 */}
               {/* 검수 관리 */}
               <Route path="/inspections" element={<InspectionsListPage />} />
-              <Route
-                path="/inspections/:id"
-                element={<InspectionDetailPage />}
-              />
-              <Route
-                path="/inspections/:id/edit"
-                element={<InspectionFormPage />}
-              />
+              <Route path="/inspections/:id" element={<InspectionDetailPage />} />
+              <Route path="/inspections/:id/edit" element={<InspectionFormPage />} />
+
               {/* 송장 관리 */}
               <Route path="/invoices" element={<InvoicesListPage />} />
-              <Route path="/invoices/create" element={<InvoiceCreatePage />} />
-              <Route path="/payments" element={<PaymentListPage />} />
-              <Route
-                path="/payments/:invoiceId"
-                element={<PaymentProcessPage />}
-              />
+              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="/invoices/:id/edit" element={<InvoiceEditPage />} />
+
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>
           ) : (
             <>
-              {/* 로그인하지 않은 상태에서 대부분의 페이지는 로그인 페이지로 리다이렉트 */}
+              <Route path="/login" element={<Login />} />
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
           )}
