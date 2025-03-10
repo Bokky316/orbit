@@ -4,19 +4,17 @@ import {
   Container, Typography, Grid, TextField, Select, MenuItem, Button,
   Table, TableHead, TableBody, TableRow, TableCell, FormControl, InputLabel,
   Box, Chip, IconButton, Tooltip, Alert, CircularProgress,
-  Card, CardContent, Divider, InputAdornment, Tabs, Tab, Badge
+  Card, CardContent, Divider, InputAdornment, Pagination
 } from "@mui/material";
 
 // 아이콘 임포트
 import SearchIcon from "@mui/icons-material/Search";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import WarningIcon from "@mui/icons-material/Warning";
 import HistoryIcon from "@mui/icons-material/History";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 
@@ -34,14 +32,17 @@ const InspectionsListPage = () => {
   const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [expandedFilters, setExpandedFilters] = useState(false);
-  const [currentTab, setCurrentTab] = useState(0);
 
   // 검색 및 필터링 상태
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
+
+  // 페이지네이션 상태
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // 페이지 로드 시 오늘 날짜로부터 30일 전으로 시작일 설정
   useEffect(() => {
@@ -56,6 +57,8 @@ const InspectionsListPage = () => {
   // 필터 리셋 함수
   const resetFilters = () => {
     setSearchTerm("");
+    setStatusFilter("");
+    setSortOrder("desc");
 
     const today = new Date();
     const thirtyDaysAgo = new Date(today);
@@ -63,7 +66,6 @@ const InspectionsListPage = () => {
 
     setEndDate(today.toISOString().split('T')[0]);
     setStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
-    setSortOrder("desc");
   };
 
   // 검수 목록 로드
@@ -162,11 +164,8 @@ const InspectionsListPage = () => {
   // 검색 및 필터링 로직
   const filteredInspections = inspections
     .filter((insp) => {
-      // 탭 필터링
-      if (currentTab === 1 && insp.result !== "검수대기") return false;
-      if (currentTab === 2 && insp.result !== "합격") return false;
-      if (currentTab === 3 && insp.result !== "불합격") return false;
-      if (currentTab === 4 && insp.result !== "재검수요청" && insp.result !== "반품요청") return false;
+      // 상태 필터링
+      const statusCheck = statusFilter ? insp.result === statusFilter : true;
 
       // 검색어 필터링
       const searchCheck = searchTerm
@@ -181,7 +180,7 @@ const InspectionsListPage = () => {
         (!startDate || new Date(insp.inspection_date) >= new Date(startDate)) &&
         (!endDate || new Date(insp.inspection_date) <= new Date(endDate));
 
-      return searchCheck && dateCheck;
+      return searchCheck && statusCheck && dateCheck;
     })
     .sort((a, b) => {
       return sortOrder === "desc"
@@ -189,13 +188,19 @@ const InspectionsListPage = () => {
         : new Date(a.inspection_date) - new Date(b.inspection_date);
     });
 
-  // 상태별 건수 계산
-  const pendingCount = inspections.filter(item => item.result === "검수대기").length;
-  const passedCount = inspections.filter(item => item.result === "합격").length;
-  const failedCount = inspections.filter(item => item.result === "불합격").length;
-  const requestCount = inspections.filter(item =>
-    item.result === "재검수요청" || item.result === "반품요청"
-  ).length;
+  // 현재 페이지에 표시할 항목들
+  const paginatedInspections = filteredInspections.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  // 페이지 변경 시 처리
+  useEffect(() => {
+    // 필터링된 결과가 현재 페이지보다 적으면 첫 페이지로 이동
+    if (filteredInspections.length <= page * rowsPerPage && page > 0) {
+      setPage(0);
+    }
+  }, [filteredInspections.length, page, rowsPerPage]);
 
   // 테이블 행 클릭 처리
   const handleRowClick = (id) => {
@@ -206,63 +211,13 @@ const InspectionsListPage = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>검수 관리</Typography>
 
-      {/* 상태별 탭 */}
-      <Tabs
-        value={currentTab}
-        onChange={(e, newValue) => setCurrentTab(newValue)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
-      >
-        <Tab label={
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Badge badgeContent={inspections.length} color="primary" sx={{ mr: 1 }}>
-              <FilterListIcon />
-            </Badge>
-            전체
-          </Box>
-        } />
-        <Tab label={
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Badge badgeContent={pendingCount} color="default" sx={{ mr: 1 }}>
-              <HistoryIcon />
-            </Badge>
-            검수대기
-          </Box>
-        } />
-        <Tab label={
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Badge badgeContent={passedCount} color="success" sx={{ mr: 1 }}>
-              <CheckCircleIcon />
-            </Badge>
-            합격
-          </Box>
-        } />
-        <Tab label={
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Badge badgeContent={failedCount} color="error" sx={{ mr: 1 }}>
-              <ErrorIcon />
-            </Badge>
-            불합격
-          </Box>
-        } />
-        <Tab label={
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Badge badgeContent={requestCount} color="warning" sx={{ mr: 1 }}>
-              <RefreshIcon />
-            </Badge>
-            요청사항
-          </Box>
-        } />
-      </Tabs>
-
       {/* 검색 및 필터 카드 */}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent sx={{ pb: 2 }}>
-          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', flexWrap: 'wrap' }}>
             {/* 검색창 */}
             <TextField
-              placeholder="검색어 입력 (검수 ID, 계약 번호, 공급업체명 등)"
+              placeholder="검색어 입력"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -273,73 +228,68 @@ const InspectionsListPage = () => {
                 )
               }}
               size="small"
-              sx={{ flexGrow: 1, mr: 2 }}
+              sx={{ flex: '1 1 150px', minWidth: '120px' }}
             />
 
-            {/* 필터 버튼 */}
-            <Button
-              variant="outlined"
-              startIcon={<FilterListIcon />}
-              onClick={() => setExpandedFilters(!expandedFilters)}
-              size="medium"
-            >
-              필터
-            </Button>
+            {/* 상태 필터 */}
+            <FormControl size="small" sx={{ width: '130px', flex: '0 0 auto' }}>
+              <InputLabel>검수 상태</InputLabel>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                label="검수 상태"
+              >
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="검수대기">검수대기</MenuItem>
+                <MenuItem value="합격">합격</MenuItem>
+                <MenuItem value="불합격">불합격</MenuItem>
+                <MenuItem value="재검수요청">재검수요청</MenuItem>
+                <MenuItem value="반품요청">반품요청</MenuItem>
+              </Select>
+            </FormControl>
 
-            {/* 리셋 버튼 */}
+            {/* 정렬 필터 */}
+            <FormControl size="small" sx={{ width: '130px', flex: '0 0 auto' }}>
+              <InputLabel>정렬</InputLabel>
+              <Select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                label="정렬"
+              >
+                <MenuItem value="desc">최신순</MenuItem>
+                <MenuItem value="asc">오래된순</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* 기간 검색 */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
+              <CalendarTodayIcon sx={{ color: 'text.secondary' }} fontSize="small" />
+              <TextField
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                size="small"
+                sx={{ width: '140px' }}
+                InputLabelProps={{ shrink: true }}
+              />
+              <Typography sx={{ mx: 0.5 }}>~</Typography>
+              <TextField
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                size="small"
+                sx={{ width: '140px' }}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+
+            {/* 초기화 버튼 */}
             <Tooltip title="필터 초기화">
-              <IconButton onClick={resetFilters} sx={{ ml: 1 }}>
+              <IconButton onClick={resetFilters} size="small" sx={{ ml: 'auto' }}>
                 <RestartAltIcon />
               </IconButton>
             </Tooltip>
           </Box>
-
-          {/* 확장된 필터 영역 */}
-          {expandedFilters && (
-            <>
-              <Divider sx={{ my: 2 }} />
-
-              <Grid container spacing={2} alignItems="center">
-                {/* 정렬 필터 */}
-                <Grid item xs={12} sm={4}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>정렬</InputLabel>
-                    <Select
-                      value={sortOrder}
-                      onChange={(e) => setSortOrder(e.target.value)}
-                      label="정렬"
-                    >
-                      <MenuItem value="desc">검수일(최신순)</MenuItem>
-                      <MenuItem value="asc">검수일(오래된순)</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                {/* 기간 검색 */}
-                <Grid item xs={12} sm={8}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CalendarTodayIcon sx={{ mr: 1, color: 'text.secondary' }} fontSize="small" />
-                    <TextField
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      size="small"
-                      sx={{ mr: 1 }}
-                      InputLabelProps={{ shrink: true }}
-                    />
-                    <Typography sx={{ mx: 1 }}>~</Typography>
-                    <TextField
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      size="small"
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  </Box>
-                </Grid>
-              </Grid>
-            </>
-          )}
         </CardContent>
       </Card>
 
@@ -349,15 +299,6 @@ const InspectionsListPage = () => {
           <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
             검수 목록 ({filteredInspections.length}건)
           </Typography>
-
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate("/inspections/new")}
-            size="small"
-          >
-            검수 등록
-          </Button>
         </Box>
 
         {error ? (
@@ -369,74 +310,140 @@ const InspectionsListPage = () => {
         ) : filteredInspections.length === 0 ? (
           <Alert severity="info" sx={{ m: 2 }}>검색 조건에 맞는 검수 내역이 없습니다.</Alert>
         ) : (
-          <Box sx={{ overflowX: 'auto' }}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'background.default' }}>
-                  <TableCell>검수 ID</TableCell>
-                  <TableCell>계약 번호</TableCell>
-                  <TableCell>공급업체명</TableCell>
-                  <TableCell>품목명</TableCell>
-                  <TableCell align="center">수량</TableCell>
-                  <TableCell align="center">결과</TableCell>
-                  <TableCell>검수일자</TableCell>
-                  <TableCell>검수자</TableCell>
-                  <TableCell align="center">작업</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredInspections.map((insp) => {
-                  const statusInfo = resultStatusMap[insp.result] || resultStatusMap["검수대기"];
+          <>
+            <Box sx={{ overflowX: 'auto' }}>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'background.default' }}>
+                    <TableCell>검수 ID</TableCell>
+                    <TableCell>계약 번호</TableCell>
+                    <TableCell>공급업체명</TableCell>
+                    <TableCell>품목명</TableCell>
+                    <TableCell align="center">수량</TableCell>
+                    <TableCell align="center">결과</TableCell>
+                    <TableCell>검수일자</TableCell>
+                    <TableCell>검수자</TableCell>
+                    <TableCell align="center">작업</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedInspections.map((insp) => {
+                    const statusInfo = resultStatusMap[insp.result] || resultStatusMap["검수대기"];
 
-                  return (
-                    <TableRow
-                      key={insp.id}
-                      hover
-                      sx={{
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' }
-                      }}
-                      onClick={() => handleRowClick(insp.id)}
-                    >
-                      <TableCell sx={{ color: 'primary.main', fontWeight: 'medium' }}>
-                        {insp.id}
-                      </TableCell>
-                      <TableCell>{insp.contractId}</TableCell>
-                      <TableCell>{insp.supplierName}</TableCell>
-                      <TableCell>{insp.productName}</TableCell>
-                      <TableCell align="center">{insp.quantity.toLocaleString()}</TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          size="small"
-                          label={statusInfo.text}
-                          color={statusInfo.color}
-                          icon={statusInfo.icon}
-                        />
-                      </TableCell>
-                      <TableCell>{insp.inspection_date || "-"}</TableCell>
-                      <TableCell>{insp.inspectorName || "-"}</TableCell>
-                      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
-                        {insp.result === "검수대기" && (
-                          <Tooltip title="검수하기">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/inspections/${insp.id}/edit`);
-                              }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Box>
+                    return (
+                      <TableRow
+                        key={insp.id}
+                        hover
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                        onClick={() => handleRowClick(insp.id)}
+                      >
+                        <TableCell sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+                          {insp.id}
+                        </TableCell>
+                        <TableCell>{insp.contractId}</TableCell>
+                        <TableCell>{insp.supplierName}</TableCell>
+                        <TableCell>{insp.productName}</TableCell>
+                        <TableCell align="center">{insp.quantity.toLocaleString()}</TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            size="small"
+                            label={statusInfo.text}
+                            color={statusInfo.color}
+                            icon={statusInfo.icon}
+                          />
+                        </TableCell>
+                        <TableCell>{insp.inspection_date || "-"}</TableCell>
+                        <TableCell>{insp.inspectorName || "-"}</TableCell>
+                        <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                          {(insp.result === "검수대기" || insp.result === "재검수요청") && (
+                            <Tooltip title="검수하기">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/inspections/${insp.id}/edit`);
+                                }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Box>
+
+            {/* 페이지네이션 컨트롤 */}
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              px: 2,
+              py: 1.5,
+              borderTop: '1px solid',
+              borderColor: 'divider'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  페이지당 행:
+                </Typography>
+                <Select
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(e.target.value)}
+                  size="small"
+                  sx={{ minWidth: 80 }}
+                >
+                  <MenuItem value={5}>5</MenuItem>
+                  <MenuItem value={10}>10</MenuItem>
+                  <MenuItem value={20}>20</MenuItem>
+                  <MenuItem value={50}>50</MenuItem>
+                </Select>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                  {`${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredInspections.length)} / ${filteredInspections.length}`}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPage(0)}
+                    disabled={page === 0}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>«</Box>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 0}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>‹</Box>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page >= Math.ceil(filteredInspections.length / rowsPerPage) - 1}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>›</Box>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPage(Math.ceil(filteredInspections.length / rowsPerPage) - 1)}
+                    disabled={page >= Math.ceil(filteredInspections.length / rowsPerPage) - 1}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>»</Box>
+                  </IconButton>
+                </Box>
+              </Box>
+            </Box>
+          </>
         )}
       </Card>
     </Container>
