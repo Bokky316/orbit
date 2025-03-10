@@ -1080,4 +1080,19 @@ public class PurchaseRequestService {
 
         return convertToDto(purchaseRequest);
     }
+
+    // 파일 다운로드 기능 추가
+    public Resource downloadAttachment(Long attachmentId) {
+        PurchaseRequestAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found with id " + attachmentId));
+
+        Path file = Paths.get(uploadPath).resolve(attachment.getFilePath());
+        Resource resource = new FileSystemResource(file);
+
+        if (resource.exists() || resource.isReadable()) {
+            return resource;
+        } else {
+            throw new ResourceNotFoundException("Could not download file: " + attachment.getFileName());
+        }
+    }
 }

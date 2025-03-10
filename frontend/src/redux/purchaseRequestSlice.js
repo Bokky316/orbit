@@ -84,8 +84,8 @@ export const deletePurchaseRequest = createAsyncThunk(
             return rejectWithValue(error.message);
         }
     }
+  }
 );
-
 
 
 /**
