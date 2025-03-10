@@ -17,7 +17,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.util.UriUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -28,7 +27,6 @@ import java.util.Map;
 /**
  * 구매 요청 관련 RESTful API 컨트롤러 (파일 업로드 기능 포함)
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/purchase-requests")
 public class PurchaseRequestController {
