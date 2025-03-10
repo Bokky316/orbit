@@ -11,6 +11,7 @@ import com.orbit.config.jwt.TokenProvider;
 
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.repository.procurement.ProjectRepository;
+import com.orbit.constant.SupplierStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -138,16 +140,16 @@ public class ApprovalControllerTest {
         projectRepository.save(project);
 
         // 테스트 구매 요청 생성 및 저장
-////        PurchaseRequest purchaseRequest = new PurchaseRequest();
-//        purchaseRequest.setRequestName("Test Purchase Request"); // title -> requestName
-////        purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
-////        purchaseRequest.setProject(project);
-////        purchaseRequest.setMember(testMember); // Requester -> Member
-//////        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
-////        purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
-////        purchaseRequest.setRequestDate(LocalDate.now());
-////        purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
-//        purchaseRequestRepository.save(purchaseRequest);
+        PurchaseRequest purchaseRequest = new PurchaseRequest();
+        purchaseRequest.setRequestName("Test Purchase Request"); // title -> requestName
+        purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
+        purchaseRequest.setProject(project);
+        purchaseRequest.setMember(testMember); // Requester -> Member
+//        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
+        purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
+        purchaseRequest.setRequestDate(LocalDate.now());
+        purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
+        purchaseRequestRepository.save(purchaseRequest);
 
         // 테스트 결재 생성 및 저장
 //        ApprovalLine approval =
