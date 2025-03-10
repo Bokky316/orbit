@@ -1,7 +1,9 @@
 package com.orbit.dto.procurement;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,10 +37,14 @@ public class PurchaseRequestDTO {
 
     private String specialNotes; // 특이 사항
 
-    private String managerPhoneNumber; // 담당자 핸드폰 번호
+    // 숫자 필드 검증
+    @PositiveOrZero(message = "0 이상의 숫자 입력 필요")
+    @Digits(integer=15, fraction=2, message = "최대 15자리 정수")
+    private BigDecimal businessBudget;
 
-    @PositiveOrZero(message = "사업예산은 0 이상이어야 합니다.")
-    private BigDecimal businessBudget; // Long → BigDecimal 변경
+    // 전화번호 검증
+    @Pattern(regexp = "^[0-9]{10,11}$", message = "숫자만 입력해주세요")
+    private String managerPhoneNumber;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate projectStartDate;
