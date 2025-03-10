@@ -1,46 +1,28 @@
 // PurchaseRequestService.java
 package com.orbit.service.procurement;
 
-import com.orbit.dto.approval.ApprovalLineCreateDTO;
-import com.orbit.dto.approval.DepartmentDTO;
-import com.orbit.dto.item.CategoryDTO;
-import com.orbit.dto.item.ItemDTO;
-import com.orbit.dto.member.MemberDTO;
-import com.orbit.dto.procurement.*;
-import com.orbit.entity.approval.Department;
-import com.orbit.entity.procurement.*;
-import com.orbit.entity.commonCode.ParentCode;
-import com.orbit.entity.commonCode.ChildCode;
-import com.orbit.entity.commonCode.SystemStatus;
-import com.orbit.entity.item.Item;
-import com.orbit.entity.member.Member;
-import com.orbit.entity.project.Project;
-import com.orbit.exception.ResourceNotFoundException;
-import com.orbit.repository.approval.DepartmentRepository;
-import com.orbit.repository.commonCode.ChildCodeRepository;
-import com.orbit.repository.commonCode.ParentCodeRepository;
-import com.orbit.repository.item.CategoryRepository;
-import com.orbit.repository.item.ItemRepository;
+import com.orbit.dto.procurement.PurchaseRequestDTO;
+import com.orbit.dto.procurement.PurchaseRequestItemDTO;
+import com.orbit.dto.procurement.PurchaseRequestResponseDTO;
+import com.orbit.entity.procurement.Item;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.PurchaseRequestAttachment;
+import com.orbit.entity.procurement.PurchaseRequestItem;
 import com.orbit.repository.member.MemberRepository;
-import com.orbit.repository.procurement.ProjectRepository;
+import com.orbit.repository.procurement.ItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
-import com.orbit.entity.item.Category;
+import com.orbit.repository.procurement.PurchaseRequestItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.security.dto.MemberSecurityDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -50,6 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 구매 요청 관련 비즈니스 로직 처리 (파일 업로드 기능 포함)
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -58,201 +43,108 @@ public class PurchaseRequestService {
 
     private final PurchaseRequestRepository purchaseRequestRepository;
     private final ItemRepository itemRepository;
-    private final ParentCodeRepository parentCodeRepository;
-    private final ChildCodeRepository childCodeRepository;
-    private final PurchaseRequestAttachmentRepository attachmentRepository;
-    private final CategoryRepository categoryRepository;
-    private final MemberRepository memberRepository;
-    private final ProjectRepository projectRepository;
-    private final DepartmentRepository departmentRepository;
-    private final ApprovalLineService approvalLineService;
+    private final PurchaseRequestAttachmentRepository attachmentRepository; // [추가] 첨부파일 Repository
 
-
-    @Value("${uploadPath}")
+    @Value("${uploadPath}") // WebConfig와 동일한 설정
     private String uploadPath;
 
     /**
-     * 구매 요청 생성 (핵심 로직)
+     * 구매 요청 생성 (파일 업로드 포함)
+     * @param purchaseRequestDTO 요청 정보
+     * @param files 업로드 파일 배열 (nullable)
      */
-    public PurchaseRequestDTO createPurchaseRequest(PurchaseRequestDTO purchaseRequestDTO, MultipartFile[] files) {
-        // 1. DTO -> Entity 변환
+    public PurchaseRequestResponseDTO createPurchaseRequest(
+            PurchaseRequestDTO purchaseRequestDTO,
+            MultipartFile[] files) {
+
+        // 1. 엔티티 변환 (기존 로직)
         PurchaseRequest purchaseRequest = convertToEntity(purchaseRequestDTO);
         purchaseRequest.setRequestDate(LocalDate.now());
 
-        // 2. 초기 상태 설정
-        setInitialStatus(purchaseRequest);
-
-        // 3. 요청자(회원) 정보 설정 - DTO에서 전달받은 memberId 사용
-        if (purchaseRequestDTO.getMemberId() != null) {
-            Member member = memberRepository.findById(purchaseRequestDTO.getMemberId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ID " + purchaseRequestDTO.getMemberId() + "에 해당하는 사용자가 없습니다."));
-            purchaseRequest.setMember(member);
+        // 2. 파일 처리 (신규 로직)
+        if (files != null && files.length > 0) {
+            processAttachments(purchaseRequest, files); // 첨부파일 처리
         }
 
-        // 4. 프로젝트 정보 설정
-        if (purchaseRequestDTO.getProjectId() != null && !purchaseRequestDTO.getProjectId().isEmpty()) {
-            try {
-                Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
-                Project project = projectRepository.findById(projectId)
-                        .orElseThrow(() -> new ResourceNotFoundException("ID " + projectId + "에 해당하는 프로젝트가 없습니다."));
-                purchaseRequest.setProject(project);
-            } catch (NumberFormatException e) {
-                log.error("프로젝트 ID 변환 실패: {}", e.getMessage());
-                throw new IllegalArgumentException("유효하지 않은 프로젝트 ID 형식입니다: " + purchaseRequestDTO.getProjectId());
-            }
-        }
+        // 3. DB 저장
+        PurchaseRequest savedPurchaseRequest = purchaseRequestRepository.save(purchaseRequest);
 
-        // 5. 저장 및 첨부 파일 처리
-        PurchaseRequest savedRequest = purchaseRequestRepository.save(purchaseRequest);
-        processAttachments(savedRequest, files);
-
-        // 6. 물품 요청 시 품목 처리
-        if (savedRequest instanceof GoodsRequest && purchaseRequestDTO instanceof GoodsRequestDTO) {
-            processGoodsRequestItems((GoodsRequest) savedRequest, (GoodsRequestDTO) purchaseRequestDTO);
-        }
-
-        approvalLineService.createAutoApprovalLine(
-                ApprovalLineCreateDTO.builder()
-                        .purchaseRequestId(savedRequest.getId())
-                        .build()
-        );
-
-        return convertToDto(savedRequest);
-    }
-
-    /**
-     * 현재 인증된 사용자 정보 가져오기
-     */
-    private Member getCurrentMember() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof MemberSecurityDto) {
-            MemberSecurityDto memberSecurityDto = (MemberSecurityDto) authentication.getPrincipal();
-            return memberRepository.findById(memberSecurityDto.getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ID " + memberSecurityDto.getId() + "에 해당하는 사용자가 없습니다."));
-        }
-        throw new RuntimeException("인증된 사용자 정보를 찾을 수 없습니다.");
-    }
-
-    /**
-     * 구매 요청 업데이트
-     */
-    public PurchaseRequestDTO updatePurchaseRequest(Long id, PurchaseRequestDTO purchaseRequestDTO) {
-        // 1. ID로 기존 엔티티 조회
-        PurchaseRequest existingRequest = purchaseRequestRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 구매 요청이 없습니다."));
-
-        // 2. 엔티티 업데이트 (updateEntity 메서드 활용)
-        updateEntity(existingRequest, purchaseRequestDTO);
-
-        // 3. 프로젝트 정보 업데이트
-        if (purchaseRequestDTO.getProjectId() != null && !purchaseRequestDTO.getProjectId().isEmpty()) {
-            try {
-                Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
-                Project project = projectRepository.findById(projectId)
-                        .orElseThrow(() -> new ResourceNotFoundException("ID " + projectId + "에 해당하는 프로젝트가 없습니다."));
-                existingRequest.setProject(project);
-            } catch (NumberFormatException e) {
-                log.error("프로젝트 ID 변환 실패: {}", e.getMessage());
-                throw new IllegalArgumentException("유효하지 않은 프로젝트 ID 형식입니다: " + purchaseRequestDTO.getProjectId());
-            }
-        }
-
-        // 4. 저장 후 DTO 변환
-        PurchaseRequest updatedRequest = purchaseRequestRepository.save(existingRequest);
-        return convertToDto(updatedRequest);
-    }
-
-    /**
-     * 구매 요청 삭제
-     */
-    public boolean deletePurchaseRequest(Long id) {
-        // 1. ID로 기존 엔티티 조회 (존재 여부 확인)
-        PurchaseRequest existingRequest = purchaseRequestRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 구매 요청이 없습니다."));
-
-        // 2. 삭제
-        purchaseRequestRepository.delete(existingRequest);
-        return true;
-    }
-
-    /**
-     * 특정 ID의 구매 요청 조회
-     */
-    @Transactional(readOnly = true)
-    public PurchaseRequestDTO getPurchaseRequestById(Long id) {
-        PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 구매 요청이 없습니다."));
-
-        PurchaseRequestDTO dto = convertToDto(purchaseRequest);
-
-        // GOODS 타입이고 items가 null인 경우 빈 리스트로 초기화
-        if ("GOODS".equals(dto.getBusinessType()) && dto.getItems() == null) {
-            dto.setItems(new ArrayList<>());
-        }
-
-        return dto;
-    }
-
-    /**
-     * 모든 구매 요청 조회
-     */
-    @Transactional(readOnly = true)
-    public List<PurchaseRequestDTO> getAllPurchaseRequests() {
-        return purchaseRequestRepository.findAll().stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 첨부 파일 추가
-     */
-    public PurchaseRequestDTO addAttachmentsToPurchaseRequest(Long id, MultipartFile[] files) {
-        // 1. 구매 요청 조회
-        PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 구매 요청이 없습니다."));
-
-        // 2. 첨부 파일 처리
-        processAttachments(purchaseRequest, files);
-        return convertToDto(purchaseRequest);
-    }
-
-    /**
-     * 첨부 파일 다운로드
-     */
-    public Resource downloadAttachment(Long attachmentId) {
-        // 1. 첨부 파일 조회
-        PurchaseRequestAttachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("ID " + attachmentId + "에 해당하는 첨부 파일이 없습니다."));
-
-        // 2. 파일 경로 확인 및 Resource 생성
-        Path file = Paths.get(uploadPath).resolve(attachment.getFilePath());
-        Resource resource = new FileSystemResource(file);
-
-        if (!resource.exists() || !resource.isReadable()) {
-            throw new ResourceNotFoundException("파일을 다운로드할 수 없습니다: " + attachment.getFileName());
+        // 4. 아이템 처리 (기존 로직)
+        List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
+        if (purchaseRequestDTO.getPurchaseRequestItemDTOs() != null) {
+            purchaseRequestItems = purchaseRequestDTO.getPurchaseRequestItemDTOs().stream()
+                    .map(itemDto -> convertToEntity(itemDto, savedPurchaseRequest))
+                    .collect(Collectors.toList());
+            purchaseRequestItemRepository.saveAll(purchaseRequestItems);
+            savedPurchaseRequest.setPurchaseRequestItems(purchaseRequestItems);
         }
 
         return resource;
     }
 
     /**
-     * 엔티티를 DTO로 변환 (핵심)
+     * 첨부파일 처리 메서드 (신규)
+     * @param purchaseRequest 요청 엔티티
+     * @param files 파일 배열
      */
-    private PurchaseRequestDTO convertToDto(PurchaseRequest entity) {
-        PurchaseRequestDTO dto;
+    private void processAttachments(PurchaseRequest purchaseRequest, MultipartFile[] files) {
+        for (MultipartFile file : files) {
+            try {
+                // 1. 파일 정보 추출 및 저장 경로 설정
+                String fileName = StringUtils.cleanPath(file.getOriginalFilename());
+                String filePath = uploadPath + "/pr_" + purchaseRequest.getId() + "/" + System.currentTimeMillis() + "_" + fileName;
 
-        // 1. 타입에 따라 DTO 생성 및 초기화
-        if (entity instanceof SIRequest) {
-            dto = convertToSiDto((SIRequest) entity);
-        } else if (entity instanceof MaintenanceRequest) {
-            dto = convertToMaintenanceDto((MaintenanceRequest) entity);
-        } else if (entity instanceof GoodsRequest) {
-            dto = convertToGoodsDto((GoodsRequest) entity);
-        } else {
-            throw new IllegalArgumentException("잘못된 PurchaseRequest 타입");
+                // 2. 디렉토리 생성 및 파일 저장
+                Path targetLocation = Paths.get(filePath).toAbsolutePath().normalize();
+                Files.createDirectories(targetLocation.getParent());
+                Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+                // 3. 첨부파일 엔티티 생성 및 저장
+                PurchaseRequestAttachment attachment = new PurchaseRequestAttachment();
+                attachment.setFileName(fileName);
+                attachment.setFilePath(filePath);
+                attachment.setFileType(file.getContentType());
+                attachment.setFileSize(file.getSize());
+                attachment.setPurchaseRequest(purchaseRequest); // 연관관계 설정
+
+                attachmentRepository.save(attachment); // 첨부파일 DB에 저장
+
+            } catch (IOException ex) {
+                throw new RuntimeException("파일 저장 실패: " + ex.getMessage());
+            }
         }
+    }
 
-        // 2. 공통 속성 설정
+    /**
+     * 기존 엔티티 변환 로직 (수정)
+     * @param dto 요청 DTO
+     * @return PurchaseRequest 엔티티
+     */
+    private PurchaseRequest convertToEntity(PurchaseRequestDTO dto) {
+        PurchaseRequest entity = new PurchaseRequest();
+        entity.setRequestName(dto.getRequestName());
+        entity.setRequestDate(dto.getRequestDate() != null ? dto.getRequestDate() : LocalDate.now());
+        entity.setCustomer(dto.getCustomer());
+        entity.setBusinessDepartment(dto.getBusinessDepartment());
+        entity.setBusinessManager(dto.getBusinessManager());
+        entity.setBusinessType(dto.getBusinessType());
+        entity.setBusinessBudget(dto.getBusinessBudget());
+        entity.setSpecialNotes(dto.getSpecialNotes());
+        entity.setManagerPhoneNumber(dto.getManagerPhoneNumber());
+        entity.setProjectStartDate(dto.getProjectStartDate());
+        entity.setProjectEndDate(dto.getProjectEndDate());
+        entity.setProjectContent(dto.getProjectContent());
+        // entity.setAttachments(dto.getAttachments()); // [삭제] DTO에서 직접 설정 X
+        return entity;
+    }
+
+    /**
+     * 기존 DTO 변환 로직 (수정)
+     * @param entity PurchaseRequest 엔티티
+     * @return PurchaseRequestResponseDTO 응답 DTO
+     */
+    private PurchaseRequestResponseDTO convertToDto(PurchaseRequest entity) {
+        PurchaseRequestResponseDTO dto = new PurchaseRequestResponseDTO();
         dto.setId(entity.getId());
         dto.setRequestName(entity.getRequestName());
         dto.setRequestNumber(entity.getRequestNumber());
@@ -270,34 +162,43 @@ public class PurchaseRequestService {
         dto.setBusinessBudget(entity.getBusinessBudget());
         dto.setSpecialNotes(entity.getSpecialNotes());
         dto.setManagerPhoneNumber(entity.getManagerPhoneNumber());
-
-        // 3. 프로젝트 정보 설정
-        if (entity.getProject() != null) {
-            dto.setProjectId(entity.getProject().getId().toString());
-            dto.setProjectName(entity.getProject().getProjectName());
-        }
-
-        // 4. 요청자(회원) 정보 설정
-        if (entity.getMember() != null) {
-            dto.setMemberId(entity.getMember().getId());
-            dto.setMemberName(entity.getMember().getName());
-            dto.setMemberCompany(entity.getMember().getCompanyName());
-        }
-
-        if (entity.getStatus() != null) {
-            dto.setStatus(entity.getStatus().getFullCode());
-        }
-
-        // 5. 첨부 파일 설정
-        dto.setAttachments(entity.getAttachments().stream()
-                .map(this::convertAttachmentToDto)
-                .collect(Collectors.toList()));
+        dto.setProjectStartDate(entity.getProjectStartDate());
+        dto.setProjectEndDate(entity.getProjectEndDate());
+        dto.setProjectContent(entity.getProjectContent());
+        // dto.setAttachments(entity.getAttachments()); // [삭제] 더 이상 사용 X
 
         return dto;
     }
 
     /**
-     * DTO를 엔티티로 변환 (핵심)
+     * 기존 아이템 변환 로직 (수정 없음)
+     * @param itemDTO 아이템 DTO
+     * @param purchaseRequest 구매 요청 엔티티
+     * @return PurchaseRequestItem 엔티티
+     */
+    private PurchaseRequestItem convertToEntity(PurchaseRequestItemDTO itemDTO, PurchaseRequest purchaseRequest) {
+        PurchaseRequestItem entity = new PurchaseRequestItem();
+
+        // Item 엔티티 조회
+        Item item = itemRepository.findById(itemDTO.getItemId())
+                .orElseThrow(() -> new EntityNotFoundException("Item not found with id: " + itemDTO.getItemId()));
+        entity.setItem(item); // Item 엔티티 설정
+
+        entity.setQuantity(itemDTO.getQuantity());
+        entity.setUnitPrice(itemDTO.getUnitPrice());
+        entity.setSupplyPrice(itemDTO.getSupplyPrice());
+        entity.setVat(itemDTO.getVat());
+        entity.setDeliveryRequestDate(itemDTO.getDeliveryRequestDate());
+        entity.setDeliveryLocation(itemDTO.getDeliveryLocation());
+        entity.setPurchaseRequest(purchaseRequest); // PurchaseRequest 설정
+
+        return entity;
+    }
+
+    /**
+     * 기존 update 로직 (수정 없음)
+     * @param entity 업데이트 대상 엔티티
+     * @param dto 요청 DTO
      */
     private PurchaseRequest convertToEntity(PurchaseRequestDTO dto) {
         PurchaseRequest entity;
@@ -379,7 +280,65 @@ public class PurchaseRequestService {
         entity.setProjectStartDate(dto.getProjectStartDate());
         entity.setProjectEndDate(dto.getProjectEndDate());
         entity.setProjectContent(dto.getProjectContent());
-        return entity;
+        // entity.setAttachments(dto.getAttachments()); // [삭제] 더 이상 사용 X
+    }
+
+    // [기존 로직 유지] ====================================================
+
+    /**
+     * 모든 구매 요청 조회
+     * @return 구매 요청 목록
+     */
+    @Transactional(readOnly = true)
+    public List<PurchaseRequestResponseDTO> getAllPurchaseRequests() {
+        return purchaseRequestRepository.findAll().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * ID로 구매 요청 조회
+     * @param id 요청 ID
+     * @return 구매 요청 (Optional)
+     */
+    @Transactional(readOnly = true)
+    public Optional<PurchaseRequestResponseDTO> getPurchaseRequestById(Long id) {
+        return purchaseRequestRepository.findById(id)
+                .map(this::convertToDto);
+    }
+
+    /**
+     * 구매 요청 정보 업데이트
+     * @param id 업데이트 대상 ID
+     * @param purchaseRequestDTO 업데이트 정보
+     * @return 업데이트된 구매 요청
+     * @throws EntityNotFoundException 해당 ID의 요청이 없을 경우
+     */
+    public PurchaseRequestResponseDTO updatePurchaseRequest(Long id, PurchaseRequestDTO purchaseRequestDTO) {
+        // 1. ID로 기존 PurchaseRequest 엔티티 조회
+        PurchaseRequest existingPurchaseRequest = purchaseRequestRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Purchase request not found with id: " + id));
+
+        // 2. DTO에서 받은 값으로 기존 엔티티 업데이트
+        updateEntity(existingPurchaseRequest, purchaseRequestDTO);
+
+        // 3. 업데이트된 엔티티 DB에 저장
+        PurchaseRequest updatedPurchaseRequest = purchaseRequestRepository.save(existingPurchaseRequest);
+
+        return convertToDto(updatedPurchaseRequest);
+    }
+
+    /**
+     * 구매 요청 삭제
+     * @param id 삭제할 ID
+     * @return 삭제 성공 여부
+     */
+    public boolean deletePurchaseRequest(Long id) {
+        if (!purchaseRequestRepository.existsById(id)) {
+            return false;
+        }
+        purchaseRequestRepository.deleteById(id);
+        return true;
     }
 
     /**

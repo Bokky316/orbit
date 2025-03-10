@@ -63,10 +63,7 @@ public abstract class PurchaseRequestDTO {
 
     private String projectContent; // 사업 내용
 
-    // 사용자 정보 (응답용 필드)
-    private Long memberId; // 요청자 ID
-    private String memberName; // 요청자 이름
-    private String memberCompany; // 요청자 회사
+    private List<PurchaseRequestAttachmentDTO> attachments; // 첨부 파일 목록
 
     // 응답용 필드 추가
     private List<PurchaseRequestAttachmentDTO> attachments; // 첨부 파일 목록
