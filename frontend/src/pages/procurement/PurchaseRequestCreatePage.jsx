@@ -11,6 +11,8 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
+import { API_URL } from '@/utils/constants';
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
 const initItem = {
     itemName: '',
@@ -86,72 +88,99 @@ function PurchaseRequestCreatePage() {
       }
     };
 
-
     /**
      * 폼 제출 핸들러
      */
-    // handleSubmit 함수 수정
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         // 공통 데이터
         let requestData = {
-            businessType, // 사업 구분
+            businessType,
             requestName,
-            requestDate: requestDate.format('YYYY-MM-DD'), // 날짜 포맷 일치화
+            requestDate: requestDate.format('YYYY-MM-DD'),
             customer,
             businessDepartment,
             businessManager,
-            businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0, // 숫자 포맷 정리
+            businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0,
             specialNotes,
-            managerPhoneNumber: managerPhoneNumber.replace(/[^0-9]/g, '') // 숫자만 추출
+            managerPhoneNumber: '01044737122',
+
+            // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
+            prStatusParent: 'PURCHASE_REQUEST',
+            prStatusChild: 'REQUESTED'
         };
 
         // 사업 구분별 데이터 추가
         if (businessType === 'SI') {
-            requestData = {
-                ...requestData,
-                projectStartDate: projectStartDate?.format('YYYY-MM-DD'),
-                projectEndDate: projectEndDate?.format('YYYY-MM-DD'),
-                projectContent
-            };
+            requestData.projectStartDate = projectStartDate ? projectStartDate.format('YYYY-MM-DD') : null;
+            requestData.projectEndDate = projectEndDate ? projectEndDate.format('YYYY-MM-DD') : null;
+            requestData.projectContent = projectContent;
         } else if (businessType === 'MAINTENANCE') {
-            requestData = {
-                ...requestData,
-                contractStartDate: contractStartDate?.format('YYYY-MM-DD'),
-                contractEndDate: contractEndDate?.format('YYYY-MM-DD'),
-                contractAmount: parseFloat(contractAmount.replace(/,/g, '')) || 0,
-                contractDetails
-            };
+            requestData.contractStartDate = contractStartDate ? contractStartDate.format('YYYY-MM-DD') : null;
+            requestData.contractEndDate = contractEndDate ? contractEndDate.format('YYYY-MM-DD') : null;
+            requestData.contractAmount = parseFloat(contractAmount.replace(/,/g, '')) || 0;
+            requestData.contractDetails = contractDetails;
         } else if (businessType === 'GOODS') {
             requestData.items = items.map(item => ({
-                ...item,
+                itemName: item.itemName,
+                specification: item.specification,
+                unit: item.unit,
                 quantity: parseInt(item.quantity) || 0,
                 unitPrice: parseFloat(item.unitPrice.replace(/,/g, '')) || 0,
-                totalPrice: parseFloat(item.totalPrice.replace(/,/g, '')) || 0,
-                deliveryRequestDate: item.deliveryRequestDate ? item.deliveryRequestDate.format('YYYY-MM-DD') : null
+                totalPrice: parseFloat(item.totalPrice) || 0,
+                deliveryRequestDate: item.deliveryRequestDate ? item.deliveryRequestDate.format('YYYY-MM-DD') : null,
+                deliveryLocation: item.deliveryLocation
             }));
         }
 
-        // FormData 생성 및 전송
-        const formPayload = new FormData();
-        formPayload.append(
-            'purchaseRequestDTO',
-            new Blob([JSON.stringify(requestData)], { type: 'application/json' })
-        );
-
-        attachments.forEach((file, index) => {
-            formPayload.append(`files[${index}]`, file);
-        });
-
         try {
-            await dispatch(createPurchaseRequest(formPayload)).unwrap();
-            alert('구매 요청이 성공적으로 생성되었습니다.');
+            console.log('JSON 요청 전송:', JSON.stringify(requestData, null, 2));
+
+            const response = await fetchWithAuth(`${API_URL}purchase-requests`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            if (response.ok) {
+                const createdRequest = await response.json();
+                alert('구매 요청이 성공적으로 생성되었습니다.');
+
+                // 파일 첨부가 있는 경우 처리
+                if (attachments.length > 0) {
+                    const fileFormData = new FormData();
+
+                    attachments.forEach(file => {
+                        fileFormData.append('files', file);
+                    });
+
+                    try {
+                        const fileResponse = await fetchWithAuth(`${API_URL}purchase-requests/${createdRequest.id}/attachments`, {
+                            method: 'POST',
+                            body: fileFormData
+                        });
+
+                        if (fileResponse.ok) {
+                            alert('첨부 파일이 성공적으로 업로드되었습니다.');
+                        } else {
+                            const errorMsg = await fileResponse.text();
+                            alert(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                        }
+                    } catch (fileError) {
+                        alert(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
+                    }
+                }
+            } else {
+                const errorData = await response.text();
+                alert(`오류 발생: ${errorData}`);
+            }
         } catch (error) {
             alert(`오류 발생: ${error.message}`);
         }
     };
-
 
     /**
      * 동적 필드 렌더링 함수
