@@ -34,8 +34,10 @@ function PurchaseRequestDetailPage() {
             }
             const purchaseRequestData = await purchaseRequestResponse.json();
             setRequest(purchaseRequestData); // 구매 요청 정보 설정
+
         } catch (error) {
             console.error('구매 요청 상세 정보 로딩 중 오류 발생:', error);
+            // 에러 처리 로직 (예: 사용자에게 알림)
         }
     };
 
@@ -44,11 +46,13 @@ function PurchaseRequestDetailPage() {
     }
 
     return (
-        <Box sx={{ p: 4 }}>
-            {/* 구매 요청 기본 정보 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>구매 요청 정보</Typography>
-                {/* 변경된 API 응답 구조에 맞게 데이터 표시 */}
+        <Box sx={{ padding: 3 }}>
+            <Typography variant="h5" gutterBottom>
+                구매 요청 정보
+            </Typography>
+            <Paper sx={{ padding: 2 }}>
+                {/* 구매 요청 기본 정보 */}
+                <Typography variant="h6">구매 요청 정보</Typography>
                 <Typography>요청번호: {request.id}</Typography>
                 <Typography>요청명: {request.requestName}</Typography>
                 <Typography>상태: {request.status}</Typography>
@@ -64,17 +68,11 @@ function PurchaseRequestDetailPage() {
                 <Typography>사업종료일: {request.projectEndDate}</Typography>
                 <Typography>사업내용: {request.projectContent}</Typography>
                 <Typography>첨부파일: {request.attachments}</Typography>
-            </Paper>
 
-            {/* 액션 버튼 */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button variant="contained" color="primary">
-                    수정
-                </Button>
-                <Button variant="contained" color="primary">
-                    결재 요청
-                </Button>
-            </Box>
+                {/* 액션 버튼 */}
+                <Button variant="contained" color="primary">수정</Button>
+                <Button variant="contained" color="success">결재 요청</Button>
+            </Paper>
         </Box>
     );
 }

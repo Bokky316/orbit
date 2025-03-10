@@ -52,28 +52,27 @@ public class PurchaseRequestService {
      * @param files 업로드 파일 배열 (nullable)
      * @return 생성된 요청 DTO
      */
+    /**
+     * 구매 요청 생성 (파일 업로드 포함)
+     * @param purchaseRequestDTO 요청 정보
+     * @param files 업로드 파일 배열 (nullable)
+     * @return 생성된 요청 DTO
+     */
     public PurchaseRequestDTO createPurchaseRequest(
             PurchaseRequestDTO purchaseRequestDTO,
             MultipartFile[] files) {
-
-        // 1. 엔티티 변환
         PurchaseRequest purchaseRequest = convertToEntity(purchaseRequestDTO);
         purchaseRequest.setRequestDate(LocalDate.now());
-
-        // 2. 1차 저장 (ID 생성 목적)
         PurchaseRequest savedPurchaseRequest = purchaseRequestRepository.save(purchaseRequest);
 
-        // 3. 첨부파일 처리
         if (files != null) {
             processAttachments(savedPurchaseRequest, files);
         }
 
-        // 4. 품목 정보 처리 (GoodsRequest인 경우)
         if (savedPurchaseRequest instanceof GoodsRequest && purchaseRequestDTO instanceof GoodsRequestDTO) {
             processGoodsRequestItems((GoodsRequest) savedPurchaseRequest, (GoodsRequestDTO) purchaseRequestDTO);
         }
 
-        // 5. 최종 DTO 변환 및 반환
         return convertToDto(savedPurchaseRequest);
     }
 
@@ -140,19 +139,26 @@ public class PurchaseRequestService {
         switch (dto.getBusinessType()) {
             case "SI":
                 purchaseRequest = new SIRequest();
-                ((SIRequest) purchaseRequest).setProjectStartDate(((SIRequestDTO) dto).getProjectStartDate());
-                ((SIRequest) purchaseRequest).setProjectEndDate(((SIRequestDTO) dto).getProjectEndDate());
-                ((SIRequest) purchaseRequest).setProjectContent(((SIRequestDTO) dto).getProjectContent());
+                SIRequestDTO siDto = (SIRequestDTO) dto;
+                ((SIRequest) purchaseRequest).setProjectStartDate(siDto.getProjectStartDate());
+                ((SIRequest) purchaseRequest).setProjectEndDate(siDto.getProjectEndDate());
+                ((SIRequest) purchaseRequest).setProjectContent(siDto.getProjectContent());
                 break;
             case "MAINTENANCE":
                 purchaseRequest = new MaintenanceRequest();
-                ((MaintenanceRequest) purchaseRequest).setContractStartDate(((MaintenanceRequestDTO) dto).getContractStartDate());
-                ((MaintenanceRequest) purchaseRequest).setContractEndDate(((MaintenanceRequestDTO) dto).getContractEndDate());
-                ((MaintenanceRequest) purchaseRequest).setContractAmount(((MaintenanceRequestDTO) dto).getContractAmount());
-                ((MaintenanceRequest) purchaseRequest).setContractDetails(((MaintenanceRequestDTO) dto).getContractDetails());
+                MaintenanceRequestDTO maintenanceDto = (MaintenanceRequestDTO) dto;
+                ((MaintenanceRequest) purchaseRequest).setContractStartDate(maintenanceDto.getContractStartDate());
+                ((MaintenanceRequest) purchaseRequest).setContractEndDate(maintenanceDto.getContractEndDate());
+                ((MaintenanceRequest) purchaseRequest).setContractAmount(maintenanceDto.getContractAmount());
+                ((MaintenanceRequest) purchaseRequest).setContractDetails(maintenanceDto.getContractDetails());
                 break;
             case "GOODS":
                 purchaseRequest = new GoodsRequest();
+                GoodsRequestDTO goodsDto = (GoodsRequestDTO) dto;
+                List<PurchaseRequestItem> items = goodsDto.getItems().stream()
+                        .map(this::convertToItemEntity)
+                        .collect(Collectors.toList());
+                ((GoodsRequest) purchaseRequest).setItems(items);
                 break;
             default:
                 throw new IllegalArgumentException("잘못된 Business Type: " + dto.getBusinessType());
@@ -169,6 +175,19 @@ public class PurchaseRequestService {
 
         return purchaseRequest;
     }
+
+    private PurchaseRequestItem convertToItemEntity(PurchaseRequestItemDTO itemDto) {
+        PurchaseRequestItem item = new PurchaseRequestItem();
+        item.setItemName(itemDto.getItemName());
+        item.setSpecification(itemDto.getSpecification());
+        item.setUnit(itemDto.getUnit());
+        item.setQuantity(itemDto.getQuantity());
+        item.setUnitPrice(itemDto.getUnitPrice());
+        item.setDeliveryRequestDate(itemDto.getDeliveryRequestDate());
+        item.setDeliveryLocation(itemDto.getDeliveryLocation());
+        return item;
+    }
+
 
     /**
      * PurchaseRequestItemDTO -> PurchaseRequestItem 엔티티 변환
@@ -195,22 +214,26 @@ public class PurchaseRequestService {
      * @return PurchaseRequestDTO
      */
     private PurchaseRequestDTO convertToDto(PurchaseRequest entity) {
-        PurchaseRequestDTO dto = null;
+        PurchaseRequestDTO dto;
 
+        // 타입별로 DTO 생성 및 필드 설정
         if (entity instanceof SIRequest) {
             dto = new SIRequestDTO();
-            ((SIRequestDTO) dto).setProjectStartDate(((SIRequest) entity).getProjectStartDate());
-            ((SIRequestDTO) dto).setProjectEndDate(((SIRequest) entity).getProjectEndDate());
-            ((SIRequestDTO) dto).setProjectContent(((SIRequest) entity).getProjectContent());
+            SIRequest siEntity = (SIRequest) entity;
+            ((SIRequestDTO) dto).setProjectStartDate(siEntity.getProjectStartDate());
+            ((SIRequestDTO) dto).setProjectEndDate(siEntity.getProjectEndDate());
+            ((SIRequestDTO) dto).setProjectContent(siEntity.getProjectContent());
         } else if (entity instanceof MaintenanceRequest) {
             dto = new MaintenanceRequestDTO();
-            ((MaintenanceRequestDTO) dto).setContractStartDate(((MaintenanceRequest) entity).getContractStartDate());
-            ((MaintenanceRequestDTO) dto).setContractEndDate(((MaintenanceRequest) entity).getContractEndDate());
-            ((MaintenanceRequestDTO) dto).setContractAmount(((MaintenanceRequest) entity).getContractAmount());
-            ((MaintenanceRequestDTO) dto).setContractDetails(((MaintenanceRequest) entity).getContractDetails());
+            MaintenanceRequest maintenanceEntity = (MaintenanceRequest) entity;
+            ((MaintenanceRequestDTO) dto).setContractStartDate(maintenanceEntity.getContractStartDate());
+            ((MaintenanceRequestDTO) dto).setContractEndDate(maintenanceEntity.getContractEndDate());
+            ((MaintenanceRequestDTO) dto).setContractAmount(maintenanceEntity.getContractAmount());
+            ((MaintenanceRequestDTO) dto).setContractDetails(maintenanceEntity.getContractDetails());
         } else if (entity instanceof GoodsRequest) {
             dto = new GoodsRequestDTO();
-            ((GoodsRequestDTO) dto).setItems(((GoodsRequest) entity).getItems().stream()
+            GoodsRequest goodsEntity = (GoodsRequest) entity;
+            ((GoodsRequestDTO) dto).setItems(goodsEntity.getItems().stream()
                     .map(this::convertToItemDto)
                     .collect(Collectors.toList()));
         } else {
@@ -231,26 +254,28 @@ public class PurchaseRequestService {
         dto.setSpecialNotes(entity.getSpecialNotes());
         dto.setManagerPhoneNumber(entity.getManagerPhoneNumber());
 
-        dto.setAttachments(entity.getAttachments().stream()
-                .map(this::convertAttachmentToDto)
-                .collect(Collectors.toList()));
+        // 첨부 파일 설정
+        if (entity.getAttachments() != null && !entity.getAttachments().isEmpty()) {
+            dto.setAttachments(entity.getAttachments().stream()
+                    .map(this::convertAttachmentToDto)
+                    .collect(Collectors.toList()));
+        }
 
         return dto;
     }
 
     /**
-     * PurchaseRequestAttachment -> PurchaseRequestAttachmentDTO
+     * PurchaseRequestAttachment -> PurchaseRequestAttachmentDTO 변환
      * @param attachment PurchaseRequestAttachment 엔티티
      * @return PurchaseRequestAttachmentDTO
      */
     private PurchaseRequestAttachmentDTO convertAttachmentToDto(PurchaseRequestAttachment attachment) {
-        PurchaseRequestAttachmentDTO attachmentDto = PurchaseRequestAttachmentDTO.builder()
-                .fileName(attachment.getFileName()) // 필드명과 일치
-                .filePath(attachment.getFilePath()) // 필드명과 일치
-                .fileType(attachment.getFileType()) // 필드명과 일치
-                .fileSize(attachment.getFileSize()) // 필드명과 일치
+        return PurchaseRequestAttachmentDTO.builder()
+                .fileName(attachment.getFileName())
+                .filePath(attachment.getFilePath())
+                .fileType(attachment.getFileType())
+                .fileSize(attachment.getFileSize())
                 .build();
-        return attachmentDto;
     }
 
     /**
@@ -260,14 +285,24 @@ public class PurchaseRequestService {
      */
     private PurchaseRequestItemDTO convertToItemDto(PurchaseRequestItem item) {
         PurchaseRequestItemDTO itemDto = new PurchaseRequestItemDTO();
+        itemDto.setId(item.getId());
         itemDto.setItemName(item.getItemName());
         itemDto.setSpecification(item.getSpecification());
         itemDto.setUnit(item.getUnit());
         itemDto.setQuantity(item.getQuantity());
         itemDto.setUnitPrice(item.getUnitPrice());
-        itemDto.setTotalPrice(item.getTotalPrice());
+
+        // 총액 계산 (단가 * 수량)
+        if (item.getQuantity() != null && item.getUnitPrice() != null) {
+            BigDecimal totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            itemDto.setTotalPrice(totalPrice);
+        } else {
+            itemDto.setTotalPrice(BigDecimal.ZERO);
+        }
+
         itemDto.setDeliveryRequestDate(item.getDeliveryRequestDate());
         itemDto.setDeliveryLocation(item.getDeliveryLocation());
+
         return itemDto;
     }
 
