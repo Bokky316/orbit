@@ -1,8 +1,7 @@
-package com.orbit.service;
+package com.orbit.service.bidding;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -130,23 +129,38 @@ public class BiddingService {
      * @return 생성된 입찰 공고 DTO
      */
     @Transactional
-    public BiddingDto createBidding(BiddingDto biddingDto) {
-        // 입찰 번호 생성 (예: BID-년도-일련번호)
-        String bidNumber = "BID-" + LocalDateTime.now().getYear() + "-" 
-                         + String.format("%04d", biddingRepository.count() + 1);
-        biddingDto.setBidNumber(bidNumber);
-        
-        // 가격제안 방식일 경우 금액 계산
-        if (biddingDto.getBidMethod() == BidMethod.가격제안) {
-            calculateBiddingPrices(biddingDto);
-        }
-        
-        Bidding bidding = biddingDto.toEntity();
-        bidding = biddingRepository.save(bidding);
-        
-        return BiddingDto.fromEntity(bidding);
+public BiddingDto createBidding(BiddingDto biddingDto) {
+    // 입찰 번호 생성 (예: BID-년도-일련번호)
+    String bidNumber = "BID-" + LocalDateTime.now().getYear() + "-" 
+                     + String.format("%04d", biddingRepository.count() + 1);
+    biddingDto.setBidNumber(bidNumber);
+    
+    // 필드명 매핑 처리
+    if (biddingDto.getBiddingConditions() != null) {
+        biddingDto.setConditions(biddingDto.getBiddingConditions());
     }
     
+    // 가격제안 방식일 경우 금액 계산
+    if (biddingDto.getBidMethod() == BidMethod.PRICE_SUGGESTION) {
+        calculateBiddingPrices(biddingDto);
+    }
+    
+    // 다중 공급자 정보 처리
+    if (biddingDto.getSupplierIds() != null && !biddingDto.getSupplierIds().isEmpty()) {
+        // description 필드에 공급자 정보 저장 (임시 방법)
+        // 실제로는 별도 테이블을 생성하는 것이 좋음
+        biddingDto.setDescription("공급자 ID: " + String.join(", ", 
+            biddingDto.getSupplierIds().stream()
+                .map(Object::toString)
+                .collect(Collectors.toList())));
+    }
+    
+    Bidding bidding = biddingDto.toEntity();
+    bidding = biddingRepository.save(bidding);
+    
+    return BiddingDto.fromEntity(bidding);
+}
+
     /**
      * 입찰 공고 수정
      * 
@@ -168,7 +182,7 @@ public class BiddingService {
         bidding.setConditions(biddingDto.getConditions());
         bidding.setInternalNote(biddingDto.getInternalNote());
         
-        if (biddingDto.getBidMethod() == BidMethod.가격제안) {
+        if (biddingDto.getBidMethod() == BidMethod.PRICE_SUGGESTION) {
             calculateBiddingPrices(biddingDto);
             bidding.setUnitPrice(biddingDto.getUnitPrice());
             bidding.setSupplyPrice(biddingDto.getSupplyPrice());
@@ -213,7 +227,7 @@ public class BiddingService {
         BiddingParticipation participation = participationDto.toEntity();
         
         // 가격제안 방식 검증 및 금액 계산
-        if (bidding.getBidMethod() == BidMethod.가격제안) {
+        if (bidding.getBidMethod() == BidMethod.PRICE_SUGGESTION) {
             calculateParticipationPrices(participation);
         }
         
@@ -264,7 +278,7 @@ public class BiddingService {
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + participation.getBiddingId()));
         
         // 이미 마감된 입찰인지 확인
-        if (bidding.getStatus() == BiddingStatus.마감 || bidding.getStatus() == BiddingStatus.취소) {
+        if (bidding.getStatus() == BiddingStatus.CLOSED || bidding.getStatus() == BiddingStatus.CANCELED) {
             throw new IllegalStateException("이미 마감되었거나 취소된 입찰입니다.");
         }
         
@@ -280,85 +294,10 @@ public class BiddingService {
         }
     }
 
-    /**
-     * 입찰 평가
-     * 
-     * @param evaluationDto 입찰 평가 DTO
-     * @return 생성된 입찰 평가 DTO
-     * @throws EntityNotFoundException 입찰 참여 정보를 찾을 수 없는 경우
-     */
-    @Transactional
-    public BiddingEvaluationDto evaluateBidding(BiddingEvaluationDto evaluationDto) {
-        BiddingParticipation participation = participationRepository.findById(evaluationDto.getBiddingParticipationId())
-                .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + evaluationDto.getBiddingParticipationId()));
-        
-        // 평가 점수 계산
-        int totalScore = calculateEvaluationScore(evaluationDto);
-        evaluationDto.setTotalScore(totalScore);
-        
-        BiddingEvaluation evaluation = evaluationDto.toEntity();
-        // 변경: setParticipation 대신 ID 설정
-        evaluation.setBiddingParticipationId(evaluationDto.getBiddingParticipationId());
-        
-        evaluation = evaluationRepository.save(evaluation);
-        
-        return BiddingEvaluationDto.fromEntity(evaluation);
-    }
+   
     
-    /**
-     * 입찰 평가 목록 조회
-     * 
-     * @param participationId 입찰 참여 ID
-     * @return 입찰 평가 DTO 목록
-     */
-    @Transactional(readOnly = true)
-    public List<BiddingEvaluationDto> getBiddingEvaluations(Long participationId) {
-        List<BiddingEvaluation> evaluations = evaluationRepository.findByBiddingParticipationId(participationId);
-        
-        return evaluations.stream()
-                .map(BiddingEvaluationDto::fromEntity)
-                .collect(Collectors.toList());
-    }
-    
-    /**
-     * 입찰별 평가 목록 조회
-     * 
-     * @param biddingId 입찰 공고 ID
-     * @return 입찰 평가 DTO 목록
-     */
-    @Transactional(readOnly = true)
-    public List<BiddingEvaluationDto> getEvaluationsByBiddingId(Long biddingId) {
-        // 1. 해당 입찰에 참여한 모든 참여 ID 조회
-        List<Long> participationIds = participationRepository.findByBiddingId(biddingId)
-                .stream()
-                .map(BiddingParticipation::getId)
-                .collect(Collectors.toList());
-        
-        // 2. 참여 ID로 평가 조회
-        List<BiddingEvaluation> evaluations = new ArrayList<>();
-        if (!participationIds.isEmpty()) {
-            evaluations = evaluationRepository.findByBiddingParticipationIdInOrderByTotalScoreDesc(participationIds);
-        }
-        
-        // 3. DTO 변환 및 반환
-        return evaluations.stream()
-                .map(BiddingEvaluationDto::fromEntity)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 평가 점수 계산
-     * 
-     * @param evaluation 입찰 평가 DTO
-     * @return 계산된 총점
-     */
-    private int calculateEvaluationScore(BiddingEvaluationDto evaluation) {
-        return (evaluation.getPriceScore() +
-                evaluation.getQualityScore() +
-                evaluation.getDeliveryScore() +
-                evaluation.getReliabilityScore()) / 4;
-    }
-    
+   
+   
     /**
      * 낙찰자 선정
      * 
@@ -421,7 +360,7 @@ public class BiddingService {
         contract = contractRepository.save(contract);
         
         // 입찰 상태 변경
-        bidding.setStatus(BiddingStatus.마감);
+        bidding.setStatus(BiddingStatus.CLOSED);
         biddingRepository.save(bidding);
         
         return SimplifiedContractDto.fromEntity(contract);
