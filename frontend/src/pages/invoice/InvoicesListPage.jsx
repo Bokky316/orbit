@@ -202,6 +202,39 @@ const InvoiceListPage = () => {
     setSearchTerm(event.target.value);
   };
 
+// ✅ 정렬 상태 추가
+const [issueSort, setIssueSort] = useState('desc'); // 기본: 발행일 최신순
+const [dueSort, setDueSort] = useState('desc'); // 기본: 마감일 최신순
+
+// ✅ 정렬 옵션 리스트
+const sortOptions = [
+  { value: 'desc', label: '최신순' },
+  { value: 'asc', label: '오래된순' }
+];
+
+// ✅ 정렬 변경 핸들러
+const handleIssueSortChange = (event) => {
+  setIssueSort(event.target.value);
+};
+
+const handleDueSortChange = (event) => {
+  setDueSort(event.target.value);
+};
+
+// ✅ 정렬된 데이터 생성
+const sortedInvoices = [...filteredInvoices]
+  .sort((a, b) => {
+    const valueA = new Date(a.issueDate);
+    const valueB = new Date(b.issueDate);
+    return issueSort === 'asc' ? valueA - valueB : valueB - valueA;
+  })
+  .sort((a, b) => {
+    const valueA = new Date(a.dueDate);
+    const valueB = new Date(b.dueDate);
+    return dueSort === 'asc' ? valueA - valueB : valueB - valueA;
+  });
+
+
   // 필터 다이얼로그 열기/닫기 핸들러
   const handleFilterDialogOpen = () => {
     setOpenFilterDialog(true);
@@ -481,26 +514,35 @@ const InvoiceListPage = () => {
               </Select>
             </FormControl>
           </Grid>
+
+           {/* 📅 발행일 정렬 (드롭다운) */}
           <Grid item xs={6} md={2}>
-            <TextField
-              label="시작일"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
+            <FormControl fullWidth>
+              <InputLabel>발행일 정렬</InputLabel>
+              <Select value={issueSort} onChange={handleIssueSortChange} label="발행일 정렬">
+                {sortOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    발행일 ({option.label})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
+
+          {/* 📅 마감일 정렬 (드롭다운) */}
           <Grid item xs={6} md={2}>
-            <TextField
-              label="종료일"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
+            <FormControl fullWidth>
+              <InputLabel>마감일 정렬</InputLabel>
+              <Select value={dueSort} onChange={handleDueSortChange} label="마감일 정렬">
+                {sortOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    마감일 ({option.label})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
+
         </Grid>
       </Paper>
 
@@ -555,6 +597,22 @@ const InvoiceListPage = () => {
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+
+                        {/* 💳 결제 페이지로 이동하는 버튼 */}
+                        {invoice.status === STATUS_TYPES.WAITING && (
+                          <Tooltip title="결제하기">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation(); // 행 클릭과 구분
+                                navigate(`/payments/${invoice.id}`);
+                              }}
+                            >
+                              <PaymentIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
 
                         {/* 💳 결제 처리 버튼 */}
                         {invoice.status === STATUS_TYPES.WAITING && (
