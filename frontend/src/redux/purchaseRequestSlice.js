@@ -33,41 +33,6 @@ export const fetchPurchaseRequests = createAsyncThunk(
   }
 );
 
-// 아이템 목록 조회 액션
-export const fetchItems = createAsyncThunk(
-  'purchaseRequest/fetchItems',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await fetchWithAuth(`${API_URL}purchase-requests/items`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '아이템 조회 실패');
-      }
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-// 카테고리 목록 조회 액션 추가
-export const fetchCategories = createAsyncThunk(
-  'purchaseRequest/fetchCategories',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await fetchWithAuth(`${API_URL}purchase-requests/categories`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '카테고리 조회 실패');
-      }
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-
 
 /**
  * 구매 요청을 생성하는 비동기 액션
