@@ -48,35 +48,56 @@ export const fetchPurchaseRequests = createAsyncThunk(
  * @throws {Error} 구매 요청을 생성하는 데 실패한 경우
  */
 export const createPurchaseRequest = createAsyncThunk(
-    'purchaseRequest/createPurchaseRequest', // 액션 타입 정의
-    async (requestData, { rejectWithValue }) => {
-        try {
-            // API_URL/purchase-requests 엔드포인트로 POST 요청을 보냄 (JWT 인증 사용)
-            const response = await fetchWithAuth(`${API_URL}purchase-requests`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json' // 요청 본문의 Content-Type 설정
-                },
-                body: JSON.stringify(requestData) // 요청 본문을 JSON 문자열로 변환
-            });
+  'purchaseRequest/create',
+  async (formData, { rejectWithValue }) => { // FormData 직접 처리
+    try {
+      const response = await fetchWithAuth(`${API_URL}purchase-requests`, {
+        method: 'POST',
+        body: formData, // 헤더 설정 제거 (브라우저가 자동 설정)
+      });
 
-            // 응답이 성공적인지 확인
-            if (!response.ok) {
-                // 응답이 실패하면 에러 메시지를 포함한 에러 객체를 생성하고 rejectWithValue를 호출
-                const errorText = await response.text();
-                throw new Error(`Failed to create purchase request: ${response.status} - ${errorText}`);
-            }
-
-            // 응답이 성공하면 JSON 형태로 파싱하여 반환
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            // 에러가 발생하면 콘솔에 로깅하고 rejectWithValue를 호출하여 에러를 반환
-            console.error('Error creating purchase request:', error);
-            return rejectWithValue(error.message);
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '생성 실패');
+      }
+      return await response.json();
+    } catch (error) {
+      return rejectWithValue(error.toString());
     }
+  }
 );
+
+/**
+ * [신규 추가] 실시간 상태 업데이트 웹소켓 미들웨어
+ */
+const createWebsocketMiddleware = () => {
+  let socket = null;
+
+  return ({ dispatch }) => next => action => {
+    switch (action.type) {
+      case 'WS_CONNECT':
+        if (!socket) {
+          socket = new WebSocket(`${API_URL.replace('http', 'ws')}purchase-requests/updates`);
+
+          socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            dispatch({ type: 'purchaseRequest/wsUpdate', payload: data });
+          };
+        }
+        break;
+
+      case 'WS_DISCONNECT':
+        if (socket) {
+          socket.close();
+          socket = null;
+        }
+        break;
+
+      default:
+        return next(action);
+    }
+  };
+};
 
 /**
  * 구매 요청을 수정하는 비동기 액션
@@ -133,14 +154,16 @@ export const updatePurchaseRequest = createAsyncThunk(
  * @property {string | null} error - 에러 메시지
  */
 const initialState = {
-    purchaseRequests: [],
-    filters: {
-        searchTerm: '',
-        requestDate: '',
-        status: ''
-    },
-    loading: false,
-    error: null
+  purchaseRequests: [],
+  currentRequest: null,  // 단일 조회 데이터
+  websocketStatus: 'disconnected',  // 웹소켓 연결 상태
+  loading: false,
+  error: null,
+  filters: {
+    searchTerm: '',
+    requestDate: '',
+    status: ''
+  }
 };
 
 /**
@@ -170,6 +193,10 @@ const purchaseRequestSlice = createSlice({
         setSearchTerm: (state, action) => {
             state.filters.searchTerm = action.payload;
         },
+        // webSocket
+        setWebsocketStatus: (state, action) => {
+            state.websocketStatus = action.payload;
+          },
         /**
          * 요청일 설정 액션
          *
@@ -233,14 +260,28 @@ const purchaseRequestSlice = createSlice({
             .addCase(updatePurchaseRequest.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
-            });
+            })
+            .addCase('purchaseRequest/wsUpdate', (state, action) => {
+                    const updated = action.payload;
+                    state.purchaseRequests = state.purchaseRequests.map(request =>
+                      request.id === updated.id ? updated : request
+                    );
+                    if (state.currentRequest?.id === updated.id) {
+                      state.currentRequest = updated;
+                    }
+                  });
     },
 });
 
+// [신규] 웹소켓 미들웨어 내보내기
+export const websocketMiddleware = createWebsocketMiddleware();
+
+// 기존 액션 및 리듀서 유지
 export const {
-    setSearchTerm,
-    setRequestDate,
-    setStatus
+  setSearchTerm,
+  setRequestDate,
+  setStatus,
+  setWebsocketStatus
 } = purchaseRequestSlice.actions;
 
 export default purchaseRequestSlice.reducer;
