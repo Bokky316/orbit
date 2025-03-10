@@ -112,92 +112,18 @@ public class PurchaseRequestController {
         return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
+    // 파일만 업로드하는 별도 엔드포인트 추가
     @PostMapping("/{id}/attachments")
     public ResponseEntity<PurchaseRequestDTO> addAttachmentsToPurchaseRequest(
             @PathVariable Long id,
             @RequestParam("files") MultipartFile[] files) {
+
+        Optional<PurchaseRequestDTO> requestOpt = purchaseRequestService.getPurchaseRequestById(id);
+        if (requestOpt.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
         PurchaseRequestDTO updatedRequest = purchaseRequestService.addAttachmentsToPurchaseRequest(id, files);
         return new ResponseEntity<>(updatedRequest, HttpStatus.OK);
-    }
-
-    @GetMapping("/attachments/{attachmentId}/download")
-    public ResponseEntity<Resource> downloadAttachment(
-            @PathVariable Long attachmentId,
-            @RequestHeader(value = "User-Agent", required = false) String userAgent) {
-
-        Resource resource = purchaseRequestService.downloadAttachment(attachmentId);
-
-        try {
-            String filename = resource.getFilename();
-            String encodedFilename;
-
-            if (userAgent != null && (userAgent.contains("Trident") || userAgent.contains("MSIE"))) {
-                encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8.name())
-                        .replaceAll("\\+", "%20");
-            } else {
-                encodedFilename = UriUtils.encode(filename, StandardCharsets.UTF_8);
-            }
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + encodedFilename + "\"; " +
-                                    "filename*=UTF-8''" + encodedFilename)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
-                    .body(resource);
-
-        } catch (UnsupportedEncodingException e) {
-            log.error("파일명 인코딩 실패: {}", e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @GetMapping("/items")
-    public ResponseEntity<List<ItemDTO>> getAllItems() {
-        List<ItemDTO> items = purchaseRequestService.getAllItems();
-        return new ResponseEntity<>(items, HttpStatus.OK);
-    }
-
-    @GetMapping("/categories")
-    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
-        List<CategoryDTO> categories = purchaseRequestService.getAllCategories();
-        return new ResponseEntity<>(categories, HttpStatus.OK);
-    }
-
-    // ======== 새로 추가된 부서/담당자 관련 API 엔드포인트 ========
-
-    /**
-     * 모든 부서 목록을 조회하는 API
-     */
-    @GetMapping("/departments")
-    public ResponseEntity<List<DepartmentDTO>> getAllDepartments() {
-        List<DepartmentDTO> departments = purchaseRequestService.getAllDepartments();
-        return ResponseEntity.ok(departments);
-    }
-
-    /**
-     * 특정 부서 정보를 조회하는 API
-     */
-    @GetMapping("/departments/{id}")
-    public ResponseEntity<DepartmentDTO> getDepartmentById(@PathVariable Long id) {
-        DepartmentDTO department = purchaseRequestService.getDepartmentById(id);
-        return ResponseEntity.ok(department);
-    }
-
-    /**
-     * 모든 사용자 목록을 조회하는 API
-     */
-    @GetMapping("/members")
-    public ResponseEntity<List<MemberDTO>> getAllMembers() {
-        List<MemberDTO> members = purchaseRequestService.getAllMembers();
-        return ResponseEntity.ok(members);
-    }
-
-    /**
-     * 특정 부서에 속한 사용자 목록을 조회하는 API
-     */
-    @GetMapping("/members/department/{departmentId}")
-    public ResponseEntity<List<MemberDTO>> getMembersByDepartment(@PathVariable Long departmentId) {
-        List<MemberDTO> members = purchaseRequestService.getMembersByDepartment(departmentId);
-        return ResponseEntity.ok(members);
     }
 }
