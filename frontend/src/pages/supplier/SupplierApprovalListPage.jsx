@@ -1,174 +1,164 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { fetchSuppliers } from '../../redux/supplier/supplierSlice';
 import {
   Box,
   Typography,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Button,
+  Container,
+  CircularProgress,
+  Alert,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-} from "@mui/material";
-import { useNavigate } from "react-router-dom";
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Chip
+} from '@mui/material';
+import { Visibility as VisibilityIcon } from '@mui/icons-material';
 
 const SupplierApprovalListPage = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [suppliers, setSuppliers] = useState([]);
-  const [filteredSuppliers, setFilteredSuppliers] = useState([]);
+
+  // 안전하게 상태 접근
+  const supplierState = useSelector((state) => state.supplier) || { suppliers: [], loading: false, error: null };
+  const { suppliers = [], loading = false, error = null } = supplierState;
+
+  // 안전하게 사용자 정보 접근
+  const authState = useSelector((state) => state.auth) || { user: null };
+  const { user = null } = authState;
+
   const [openModal, setOpenModal] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // ADMIN 권한 체크
+  const isAdmin = user && user.role === 'ADMIN';
+
+  // 승인 대기 중인 협력업체만 필터링 (안전하게)
+  const pendingSuppliers = Array.isArray(suppliers)
+    ? suppliers.filter(supplier => supplier.status === 'PENDING')
+    : [];
 
   useEffect(() => {
-    // ✅ `SupplierListPage` 데이터와 동일한 형식 + 진행 상태 유지
-    const dummyData = [
-      {
-        id: 1,
-        supplierName: "서버마스터",
-        businessNo: "123-45-67890",
-        businessType: "제조업",
-        businessCategory: "기타서버",
-        sourcingCategory: "하드웨어",
-        sourcingSubCategory: "서버",
-        sourcingMinorCategory: "기타서버",
-        ceoName: "김대표",
-        status: "검토대기",
-        rejectReason: "",
-      },
-      {
-        id: 2,
-        supplierName: "소프트웨어솔루션",
-        businessNo: "234-56-78901",
-        businessType: "서비스업",
-        businessCategory: "개발툴",
-        sourcingCategory: "소프트웨어",
-        sourcingSubCategory: "소프트웨어",
-        sourcingMinorCategory: "개발툴",
-        ceoName: "박대표",
-        status: "반려",
-        rejectReason: "서류 미비로 인해 반려되었습니다.",
-      },
-    ];
-    setSuppliers(dummyData);
-    setFilteredSuppliers(dummyData);
-  }, []);
+    // 실행은 하되, ADMIN 체크는 재차 확인
+    try {
+      dispatch(fetchSuppliers('PENDING'));
+    } catch (err) {
+      console.error('Error fetching pending suppliers:', err);
+    }
+  }, [dispatch]);
 
-  const handleRejectReasonClick = (supplier) => {
-    setSelectedSupplier(supplier);
+  const handleShowRejectionReason = (reason) => {
+    setRejectionReason(reason);
     setOpenModal(true);
   };
 
-  const handleReviewClick = (supplier) => {
-    navigate(`/supplier/review/${supplier.id}`, { state: { from: "/supplier/approval", data: supplier } });
-  };
-
-  // ✅ 목록으로 버튼 클릭 시 `/supplier-registrations`로 이동
-  const handleGoToList = () => {
-      navigate("/supplier");
-  };
+  // 로딩 표시
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
 
   return (
-    <Box sx={{ width: "95%", margin: "20px auto", textAlign: "center" }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        가입 승인 대기 & 승인 검토
-      </Typography>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5">승인 대기 협력업체 목록</Typography>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/supplier')}
+          >
+            전체 목록으로
+          </Button>
+        </Box>
 
-      <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
-        <Table stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell align="center">번호</TableCell>
-              <TableCell align="center">소싱대분류</TableCell>
-              <TableCell align="center">소싱중분류</TableCell>
-              <TableCell align="center">소싱소분류</TableCell>
-              <TableCell align="center">업체명</TableCell>
-              <TableCell align="center">업태</TableCell>
-              <TableCell align="center">업종</TableCell>
-              <TableCell align="center">사업자등록번호</TableCell>
-              <TableCell align="center">진행 상태</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredSuppliers.length > 0 ? (
-              filteredSuppliers.map((s, index) => (
-                <TableRow key={s.id}>
-                  <TableCell align="center">{index + 1}</TableCell>
-                  <TableCell align="center">{s.sourcingCategory}</TableCell>
-                  <TableCell align="center">{s.sourcingSubCategory}</TableCell>
-                  <TableCell align="center">{s.sourcingMinorCategory}</TableCell>
-                  <TableCell align="center">
-                    <Button
-                      variant="text"
-                      color="primary"
-                      onClick={() =>
-                        navigate(`/supplier/review/${s.id}`, { state: { from: "/supplier/approval", data: s } })
-                      }
-                    >
-                      {s.supplierName}
-                    </Button>
-                  </TableCell>
-                  <TableCell align="center">{s.businessType}</TableCell>
-                  <TableCell align="center">{s.businessCategory}</TableCell>
-                  <TableCell align="center">{s.businessNo}</TableCell>
-                  <TableCell align="center">
-                    {s.status === "검토대기" ? (
-                      <Box>
-                        {s.status}{" "}
-                        <Button
-                          variant="contained"
-                          size="small"
-                          color="primary"
-                          onClick={() => handleReviewClick(s)}
-                          sx={{ ml: 1 }}
-                        >
-                          검토하기
-                        </Button>
-                      </Box>
-                    ) : s.status === "반려" ? (
-                      <Box>
-                        {s.status}{" "}
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          color="error"
-                          onClick={() => handleRejectReasonClick(s)}
-                          sx={{ ml: 1 }}
-                        >
-                          반려사유확인
-                        </Button>
-                      </Box>
-                    ) : (
-                      s.status
-                    )}
-                  </TableCell>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            데이터를 불러오는 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.
+          </Alert>
+        )}
+
+        {!Array.isArray(suppliers) || pendingSuppliers.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="subtitle1">승인 대기 중인 협력업체가 없습니다.</Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>No</TableCell>
+                  <TableCell>업체명</TableCell>
+                  <TableCell>사업자등록번호</TableCell>
+                  <TableCell>대표자명</TableCell>
+                  <TableCell>등록일</TableCell>
+                  <TableCell>상태</TableCell>
+                  <TableCell>관리</TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={9} align="center">검색된 업체가 없습니다.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              </TableHead>
+              <TableBody>
+                {pendingSuppliers.map((supplier, index) => (
+                  <TableRow key={supplier.id || index} hover>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>
+                      <Link
+                        to={`/supplier/review/${supplier.id}`}
+                        style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 'bold' }}
+                      >
+                        {supplier.supplierName || '이름 없음'}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{supplier.businessNo || '-'}</TableCell>
+                    <TableCell>{supplier.ceoName || '-'}</TableCell>
+                    <TableCell>{supplier.registrationDate || '-'}</TableCell>
+                    <TableCell>
+                      <Chip label="대기중" color="warning" size="small" />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<VisibilityIcon />}
+                        onClick={() => navigate(`/supplier/review/${supplier.id}`)}
+                      >
+                        상세보기
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
 
-      {/* 반려 사유 모달 */}
+      {/* 반려 사유 확인 모달 */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)}>
         <DialogTitle>반려 사유</DialogTitle>
         <DialogContent>
-          <Typography>업체명: {selectedSupplier?.supplierName}</Typography>
-          <Typography sx={{ mt: 2, color: "red" }}>{selectedSupplier?.rejectReason || "반려 사유 없음"}</Typography>
+          <DialogContentText>
+            {rejectionReason || '반려 사유가 입력되지 않았습니다.'}
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenModal(false)}>닫기</Button>
+          <Button onClick={() => setOpenModal(false)} color="primary">
+            확인
+          </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 

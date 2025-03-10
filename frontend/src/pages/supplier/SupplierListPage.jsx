@@ -1,208 +1,419 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { fetchSuppliers } from '../../redux/supplier/supplierSlice';
 import {
   Box,
   Typography,
+  Button,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Button,
+  FormControl,
+  Select,
+  MenuItem,
   Dialog,
-  DialogTitle,
+  DialogActions,
   DialogContent,
-  DialogActions
-} from "@mui/material";
-import { useNavigate } from "react-router-dom";
+  DialogContentText,
+  DialogTitle,
+  CircularProgress,
+  Chip,
+  Container,
+  InputLabel,
+  TextField,
+  Grid,
+  IconButton,
+  Divider
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon
+} from '@mui/icons-material';
 
-const SupplierList = () => {
+const SupplierListPage = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [suppliers, setSuppliers] = useState([]);
-  const [searchName, setSearchName] = useState("");
-  const [filteredSuppliers, setFilteredSuppliers] = useState([]);
-  const [openModal, setOpenModal] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
 
-  useEffect(() => {
-    const dummyData = [
-      {
-        id: 1,
-        supplierName: "서버마스터",
-        businessNo: "123-45-67890",
-        businessType: "제조업",
-        businessCategory: "기타서버",
-        sourcingCategory: "하드웨어",
-        sourcingSubCategory: "서버",
-        sourcingMinorCategory: "기타서버",
-        ceoName: "김대표",
-        managerName: "이담당",
-        managerPosition: "과장",
-        managerPhone: "02-1234-5678",
-        managerMobile: "010-9876-5432",
-        managerEmail: "manager@servermaster.com",
-        zipCode: "12345",
-        address: "서울특별시 강남구",
-        detailAddress: "테헤란로 123",
-        businessCert: "첨부됨",
-        comments: "서버 전문 업체",
-        status: "승인완료",
-        rejectReason: ""
-      },
-      {
-        id: 2,
-        supplierName: "소프트웨어솔루션",
-        businessNo: "234-56-78901",
-        businessType: "서비스업",
-        businessCategory: "개발툴",
-        sourcingCategory: "소프트웨어",
-        sourcingSubCategory: "소프트웨어",
-        sourcingMinorCategory: "개발툴",
-        ceoName: "박대표",
-        managerName: "최담당",
-        managerPosition: "팀장",
-        managerPhone: "031-5678-1234",
-        managerMobile: "010-2345-6789",
-        managerEmail: "manager@swsolution.com",
-        zipCode: "54321",
-        address: "경기도 성남시 분당구",
-        detailAddress: "판교로 45",
-        businessCert: "첨부됨",
-        comments: "소프트웨어 개발 솔루션 제공",
-        status: "반려",
-        rejectReason: "서류 미비로 인해 반려되었습니다."
-      },
-      {
-        id: 3,
-        supplierName: "스마트테크",
-        businessNo: "345-67-89012",
-        businessType: "도소매업",
-        businessCategory: "전자기기",
-        sourcingCategory: "전자제품",
-        sourcingSubCategory: "스마트폰",
-        sourcingMinorCategory: "전자기기",
-        ceoName: "이대표",
-        managerName: "강담당",
-        managerPosition: "부장",
-        managerPhone: "051-8765-4321",
-        managerMobile: "010-6789-0123",
-        managerEmail: "manager@smarttech.com",
-        zipCode: "67890",
-        address: "부산광역시 해운대구",
-        detailAddress: "센텀로 89",
-        businessCert: "미첨부",
-        comments: "스마트 디바이스 유통",
-        status: "승인대기",
-        rejectReason: ""
-      }
-    ];
-    setSuppliers(dummyData);
-  }, []);
-
-  useEffect(() => {
-    filterSuppliers();
-  }, [searchName, suppliers]);
-
-  const filterSuppliers = () => {
-    let filtered = suppliers.filter((s) =>
-      s.supplierName.toLowerCase().includes(searchName.toLowerCase())
-    );
-    setFilteredSuppliers(filtered);
+  // 안전하게 상태 접근
+  const supplierState = useSelector((state) => state.supplier) || {
+    suppliers: [],
+    loading: false,
+    error: null,
+    sourcingCategories: [],
+    sourcingSubCategories: {},
+    sourcingDetailCategories: {}
   };
 
-  const handleRejectClick = (supplier) => {
-    setSelectedSupplier(supplier);
+  const {
+    suppliers = [],
+    loading = false,
+    error = null,
+    sourcingCategories = [],
+    sourcingSubCategories = {},
+    sourcingDetailCategories = {}
+  } = supplierState;
+
+  // 안전하게 사용자 정보 접근
+  const authState = useSelector((state) => state.auth) || { user: null };
+  const { user = null } = authState;
+
+  // 필터 상태
+  const [filters, setFilters] = useState({
+    status: '',
+    sourcingCategory: '',
+    sourcingSubCategory: '',
+    sourcingDetailCategory: '',
+    supplierName: ''
+  });
+
+  // 모달 상태
+  const [openModal, setOpenModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // 사용 가능한 소싱 중분류 및 소분류 옵션
+  const [availableSubCategories, setAvailableSubCategories] = useState([]);
+  const [availableDetailCategories, setAvailableDetailCategories] = useState([]);
+
+  useEffect(() => {
+    // API 호출 시 필터 적용
+    try {
+      dispatch(fetchSuppliers(filters));
+    } catch (err) {
+      console.error('Error fetching suppliers:', err);
+    }
+  }, [dispatch, filters]);
+
+  // 대분류 변경 시 중분류 옵션 업데이트
+  useEffect(() => {
+    if (filters.sourcingCategory) {
+      setAvailableSubCategories(sourcingSubCategories[filters.sourcingCategory] || []);
+      setAvailableDetailCategories([]);
+
+      // 기존 상태와 비교하여 필요할 때만 업데이트
+      setFilters(prev => {
+        if (prev.sourcingSubCategory !== '' || prev.sourcingDetailCategory !== '') {
+          return { ...prev, sourcingSubCategory: '', sourcingDetailCategory: '' };
+        }
+        return prev;
+      });
+    } else {
+      setAvailableSubCategories([]);
+    }
+  }, [filters.sourcingCategory]); // ✅ `sourcingSubCategories` 제외
+
+  // 중분류 변경 시 소분류 옵션 업데이트
+  useEffect(() => {
+    if (filters.sourcingSubCategory) {
+      setAvailableDetailCategories(sourcingDetailCategories[filters.sourcingSubCategory] || []);
+
+      setFilters(prev => {
+        if (prev.sourcingDetailCategory !== '') {
+          return { ...prev, sourcingDetailCategory: '' };
+        }
+        return prev;
+      });
+    } else {
+      setAvailableDetailCategories([]);
+    }
+  }, [filters.sourcingSubCategory]); // ✅ `sourcingDetailCategories` 제외
+
+
+
+  // 필터 변경 핸들러
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // 필터 초기화 핸들러
+  const handleClearFilters = () => {
+    setFilters({
+      status: '',
+      sourcingCategory: '',
+      sourcingSubCategory: '',
+      sourcingDetailCategory: '',
+      supplierName: ''
+    });
+  };
+
+  // 반려 사유 모달 핸들러
+  const handleShowRejectionReason = (reason) => {
+    setRejectionReason(reason);
     setOpenModal(true);
   };
 
-  return (
-    <Box sx={{ width: "95%", margin: "20px auto", textAlign: "center" }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>협력업체 목록</Typography>
+  const isAdmin = user && user.role === 'ADMIN';
 
-      {/* 상단 버튼 영역 */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        {/* 협력업체 등록 버튼 (우측) */}
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => navigate("/supplier/registrations")}
-          sx={{ borderRadius: 2 }}
-        >
-          협력업체 등록
-        </Button>
+  // 상태에 따른 Chip 색상 설정
+  const getStatusChip = (status) => {
+    switch(status) {
+      case 'APPROVED':
+        return <Chip label="승인됨" color="success" size="small" />;
+      case 'PENDING':
+        return <Chip label="대기중" color="warning" size="small" />;
+      case 'REJECTED':
+        return <Chip label="반려됨" color="error" size="small" />;
+      default:
+        return <Chip label="미확인" size="small" />;
+    }
+  };
+
+  // 에러 표시
+  if (error) {
+    console.error('Error in supplier list:', error);
+  }
+
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          협력업체 목록
+        </Typography>
+        {!isAdmin && (
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/supplier/registrations')}
+          >
+            신규 협력업체 등록
+          </Button>
+        )}
       </Box>
 
-      <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
-        <Table stickyHeader>
-          <TableHead>
-            <TableRow>
-              <TableCell align="center">번호</TableCell>
-              <TableCell align="center">소싱대분류</TableCell>
-              <TableCell align="center">소싱중분류</TableCell>
-              <TableCell align="center">소싱소분류</TableCell>
-              <TableCell align="center">업체명</TableCell>
-              <TableCell align="center">업태</TableCell>
-              <TableCell align="center">업종</TableCell>
-              <TableCell align="center">사업자등록번호</TableCell>
-              <TableCell align="center">진행 상태</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredSuppliers.length > 0 ? (
-              filteredSuppliers.map((s, index) => (
-                <TableRow key={s.id}>
-                  <TableCell align="center">{index + 1}</TableCell>
-                  <TableCell align="center">{s.sourcingCategory}</TableCell>
-                  <TableCell align="center">{s.sourcingSubCategory}</TableCell>
-                  <TableCell align="center">{s.sourcingMinorCategory}</TableCell>
-                  <TableCell align="center">
-                    <Button
-                      variant="text"
-                      color="primary"
-                      onClick={() =>
-                        navigate(`/supplier/review/${s.id}`, { state: { from: "/supplier", data: s } }) // ✅ "/supplier"로 변경
-                      }
+      {/* 필터 섹션 */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2}>
+          {/* 첫 번째 줄: 소싱 분류 필터 */}
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>소싱대분류</InputLabel>
+              <Select
+                name="sourcingCategory"
+                value={filters.sourcingCategory}
+                onChange={handleFilterChange}
+                label="소싱대분류"
+              >
+                <MenuItem value="">전체</MenuItem>
+                {sourcingCategories.map(category => (
+                  <MenuItem key={category.value} value={category.value}>
+                    {category.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small" disabled={!filters.sourcingCategory}>
+              <InputLabel>소싱중분류</InputLabel>
+              <Select
+                name="sourcingSubCategory"
+                value={filters.sourcingSubCategory}
+                onChange={handleFilterChange}
+                label="소싱중분류"
+              >
+                <MenuItem value="">전체</MenuItem>
+                {availableSubCategories.map(category => (
+                  <MenuItem key={category.value} value={category.value}>
+                    {category.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small" disabled={!filters.sourcingSubCategory}>
+              <InputLabel>소싱소분류</InputLabel>
+              <Select
+                name="sourcingDetailCategory"
+                value={filters.sourcingDetailCategory}
+                onChange={handleFilterChange}
+                label="소싱소분류"
+              >
+                <MenuItem value="">전체</MenuItem>
+                {availableDetailCategories.map(category => (
+                  <MenuItem key={category.value} value={category.value}>
+                    {category.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* 두 번째 줄: 업체명 및 상태 필터 */}
+          <Grid item xs={12} md={5}>
+            <TextField
+              fullWidth
+              size="small"
+              label="업체명"
+              name="supplierName"
+              value={filters.supplierName}
+              onChange={handleFilterChange}
+              InputProps={{
+                endAdornment: filters.supplierName ? (
+                  <IconButton
+                    size="small"
+                    onClick={() => setFilters(prev => ({ ...prev, supplierName: '' }))}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                ) : (
+                  <SearchIcon color="action" fontSize="small" />
+                )
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={5}>
+            <FormControl fullWidth size="small">
+              <InputLabel>상태</InputLabel>
+              <Select
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+                label="상태"
+              >
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="APPROVED">승인됨</MenuItem>
+                <MenuItem value="PENDING">대기중</MenuItem>
+                <MenuItem value="REJECTED">반려됨</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={2} sx={{ display: 'flex', alignItems: 'center' }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleClearFilters}
+              startIcon={<ClearIcon />}
+            >
+              필터 초기화
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {error && (
+        <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff9c4' }}>
+          <Typography color="error">데이터를 불러오는 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.</Typography>
+        </Paper>
+      )}
+
+      <TableContainer component={Paper}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : !Array.isArray(suppliers) || suppliers.length === 0 ? (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="subtitle1">등록된 협력업체가 없습니다.</Typography>
+          </Box>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>No</TableCell>
+                <TableCell>업체명</TableCell>
+                <TableCell>사업자등록번호</TableCell>
+                <TableCell>대표자명</TableCell>
+                <TableCell>소싱분류</TableCell>
+                <TableCell>담당자</TableCell>
+                <TableCell>등록일</TableCell>
+                <TableCell>상태</TableCell>
+                <TableCell>관리</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {suppliers.map((supplier, index) => (
+                <TableRow key={supplier.id || index} hover>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>
+                    <Link
+                      to={`/supplier/review/${supplier.id}`}
+                      style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 'bold' }}
                     >
-                      {s.supplierName}
-                    </Button>
+                      {supplier.supplierName || '이름 없음'}
+                    </Link>
                   </TableCell>
-                  <TableCell align="center">{s.businessType}</TableCell>
-                  <TableCell align="center">{s.businessCategory}</TableCell>
-                  <TableCell align="center">{s.businessNo}</TableCell>
-                  <TableCell align="center">
-                    {s.status === "반려" ? (
-                      <Button color="error" onClick={() => handleRejectClick(s)}>
-                        반려
-                      </Button>
-                    ) : (
-                      s.status
+                  <TableCell>{supplier.businessNo || '-'}</TableCell>
+                  <TableCell>{supplier.ceoName || '-'}</TableCell>
+                  <TableCell>
+                    {supplier.sourcingCategory && (
+                      <Box>
+                        <Typography variant="caption" component="div">
+                          {supplier.sourcingCategory}
+                          {supplier.sourcingSubCategory && ` > ${supplier.sourcingSubCategory}`}
+                          {supplier.sourcingDetailCategory && ` > ${supplier.sourcingDetailCategory}`}
+                        </Typography>
+                      </Box>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {supplier.contactPerson && (
+                      <Box>
+                        <Typography variant="body2">{supplier.contactPerson}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {supplier.contactPhone || supplier.contactEmail || '-'}
+                        </Typography>
+                      </Box>
+                    )}
+                  </TableCell>
+                  <TableCell>{supplier.registrationDate || '-'}</TableCell>
+                  <TableCell>{getStatusChip(supplier.status)}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => navigate(`/supplier/review/${supplier.id}`)}
+                      >
+                        상세
+                      </Button>
+                      {supplier.status === 'REJECTED' && supplier.rejectionReason && (
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                        >
+                          반려사유
+                        </Button>
+                      )}
+                    </Box>
+                  </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={9} align="center">검색된 업체가 없습니다.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </TableContainer>
 
       {/* 반려 사유 모달 */}
-      <Dialog open={openModal} onClose={() => setOpenModal(false)}>
-        <DialogTitle>반려 사유</DialogTitle>
+      <Dialog
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        aria-labelledby="rejection-dialog-title"
+      >
+        <DialogTitle id="rejection-dialog-title">반려 사유</DialogTitle>
         <DialogContent>
-          <Typography>업체명: {selectedSupplier?.supplierName}</Typography>
-          <Typography sx={{ mt: 2, color: "red" }}>{selectedSupplier?.rejectReason || "반려 사유 없음"}</Typography>
+          <DialogContentText>{rejectionReason || '반려 사유가 입력되지 않았습니다.'}</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenModal(false)}>닫기</Button>
+          <Button onClick={() => setOpenModal(false)} color="primary">
+            확인
+          </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 
-export default SupplierList;
+export default SupplierListPage;

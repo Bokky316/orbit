@@ -8,7 +8,7 @@ import projectReducer from "./projectSlice";
 import purchaseRequestReducer from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
 import authReducer from "./authSlice"; // authSlice 추가
-import supplierRegistrationReducer from "./supplier/supplierRegistrationSlice";
+import supplierReducer from "./supplier/supplierSlice";
 
 /**
  * Redux Persist의 설정을 정의합니다.
@@ -19,7 +19,7 @@ import supplierRegistrationReducer from "./supplier/supplierRegistrationSlice";
 const persistConfig = {
     key: "root",
     storage,
-    whitelist: ["project", "purchaseRequest", "approval", "auth", "supplierRegistration"], // auth 리듀서 추가
+    whitelist: ["project", "purchaseRequest", "approval", "auth", "supplier"], // auth 리듀서 추가
 };
 
 /**
@@ -32,7 +32,7 @@ const rootReducer = combineReducers({
     purchaseRequest: purchaseRequestReducer,
     approval: approvalReducer,
     auth: authReducer, // auth 리듀서 추가
-    supplierRegistration: supplierRegistrationReducer,
+    supplier: supplierReducer,
 });
 
 /**
