@@ -2,6 +2,7 @@ package com.orbit.dto.bidding;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.orbit.entity.bidding.Bidding;
 
@@ -33,6 +34,7 @@ public class BiddingDto {
     private BigDecimal supplyPrice;
     private BigDecimal vat;
     private BigDecimal totalAmount;
+    private List<Long> supplierIds;  // 다중 공급자 정보를 저장할 필드 추가
     private Bidding.BiddingStatus status;
     private String filePath;
     private LocalDateTime createdAt;
@@ -41,6 +43,15 @@ public class BiddingDto {
     private Long updatedBy;
   
     
+    // 필드명 불일치 해결을 위한 변환 메서드 추가
+    public void setBiddingConditions(String biddingConditions) {
+        this.conditions = biddingConditions;
+    }
+
+    public String getBiddingConditions() {
+        return this.conditions;
+    }
+
     // Entity -> DTO 변환
     public static BiddingDto fromEntity(Bidding entity) {
         return BiddingDto.builder()

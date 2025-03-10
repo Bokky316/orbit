@@ -8,14 +8,17 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "@/pages/Home";
 import Login from "@/pages/member/Login";
 import BiddingListPage from "@/pages/bidding/BiddingListPage";
+import BiddingDetailPage from "./pages/bidding/BiddingDetailPage";
 import BiddingFormPage from "@/pages/bidding/BiddingFormPage";
-import BiddingPriceTestPage from "@/pages/bidding/BiddingPriceTestPage";
+import BiddingEvaluationListPage from "./pages/bidding/BiddingEvaluationListPage";
+import BiddingEvaluationDetailPage from "./pages/bidding/BiddingEvaluationDetailPage";
+import BiddingOrderList from "./pages/bidding/BiddingOrderList";
+import BiddingOrderDetail from "./pages/bidding/BiddingOrderDetail";
 import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
-import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
 import SupplierListPage from "@/pages/supplier/SupplierListPage";
@@ -24,6 +27,10 @@ import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
 
 
+/**
+ * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
+ * @returns {JSX.Element} - 전체 앱 콘텐츠
+ */
 function AppContent() {
   const { isLoggedIn } = useSelector((state) => state.auth);
 
@@ -41,6 +48,7 @@ function AppContent() {
 
               {/* 입찰 관리 */}
               <Route path="/biddings" element={<BiddingListPage />} />
+              <Route path="/biddings/:id" element={<BiddingDetailPage />} />
               <Route
                 path="/biddings/new"
                 element={<BiddingFormPage mode="create" />}
@@ -50,8 +58,17 @@ function AppContent() {
                 element={<BiddingFormPage mode="edit" />}
               />
               <Route
-                path="/biddings/price-test"
-                element={<BiddingPriceTestPage />}
+                path="/biddings/evaluations"
+                element={<BiddingEvaluationListPage />}
+              />
+              <Route
+                path="/biddings/evaluations/:id"
+                element={<BiddingEvaluationDetailPage />}
+              />
+              <Route path="/biddings/orders" element={<BiddingOrderList />} />
+              <Route
+                path="/biddings/orders/:id"
+                element={<BiddingOrderDetail />}
               />
 
               {/* 프로젝트 관리 */}
@@ -63,9 +80,10 @@ function AppContent() {
                 path="/purchase-requests"
                 element={<PurchaseRequestListPage />}
               />
-              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />}/>
-              <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
+              <Route
+                path="/purchase-requests/:id"
+                element={<PurchaseRequestDetailPage />}
+              />
 
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />

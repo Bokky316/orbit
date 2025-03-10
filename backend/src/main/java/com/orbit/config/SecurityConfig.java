@@ -160,6 +160,9 @@ public class SecurityConfig {
                 // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
 
+                // 입찰 공고 관리 (BUYER 및 ADMIN 역할만 접근 가능)
+                .requestMatchers("/api/biddings/**").hasAnyRole("BUYER", "ADMIN")
+
                 // 정적 리소스는 모두 허용
                 .requestMatchers(
                         "/images/**",
