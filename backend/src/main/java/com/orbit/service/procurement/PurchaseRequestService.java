@@ -1,13 +1,10 @@
 // PurchaseRequestService.java
 package com.orbit.service.procurement;
 
-import com.orbit.dto.procurement.PurchaseRequestDTO;
-import com.orbit.dto.procurement.PurchaseRequestItemDTO;
-import com.orbit.dto.procurement.PurchaseRequestResponseDTO;
-import com.orbit.entity.procurement.Item;
-import com.orbit.entity.procurement.PurchaseRequest;
-import com.orbit.entity.procurement.PurchaseRequestAttachment;
-import com.orbit.entity.procurement.PurchaseRequestItem;
+import com.orbit.dto.procurement.*;
+import com.orbit.entity.procurement.*;
+import com.orbit.entity.state.SystemStatus;
+import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
@@ -17,6 +14,8 @@ import com.orbit.security.dto.MemberSecurityDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -289,12 +287,42 @@ public class PurchaseRequestService {
     /**
      * SIRequestDTO -> SIRequest 변환
      */
-    private SIRequest convertToSiEntity(SIRequestDTO dto) {
-        SIRequest entity = new SIRequest();
-        entity.setProjectStartDate(dto.getProjectStartDate());
-        entity.setProjectEndDate(dto.getProjectEndDate());
-        entity.setProjectContent(dto.getProjectContent());
-        // entity.setAttachments(dto.getAttachments()); // [삭제] 더 이상 사용 X
+    private PurchaseRequestAttachmentDTO convertAttachmentToDto(PurchaseRequestAttachment attachment) {
+        return PurchaseRequestAttachmentDTO.builder()
+                .id(attachment.getId())
+                .fileName(attachment.getFileName())
+                .filePath(attachment.getFilePath())
+                .fileType(attachment.getFileType())
+                .fileSize(attachment.getFileSize())
+                .build();
+    }
+
+    /**
+     * PurchaseRequestItem -> PurchaseRequestItemDTO 변환
+     * @param item PurchaseRequestItem 엔티티
+     * @return PurchaseRequestItemDTO
+     */
+    private PurchaseRequestItemDTO convertToItemDto(PurchaseRequestItem item) {
+        PurchaseRequestItemDTO itemDto = new PurchaseRequestItemDTO();
+        itemDto.setId(item.getId());
+        itemDto.setItemName(item.getItemName());
+        itemDto.setSpecification(item.getSpecification());
+        itemDto.setUnit(item.getUnit());
+        itemDto.setQuantity(item.getQuantity());
+        itemDto.setUnitPrice(item.getUnitPrice());
+
+        // 총액 계산 (단가 * 수량)
+        if (item.getQuantity() != null && item.getUnitPrice() != null) {
+            BigDecimal totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            itemDto.setTotalPrice(totalPrice);
+        } else {
+            itemDto.setTotalPrice(BigDecimal.ZERO);
+        }
+
+        itemDto.setDeliveryRequestDate(item.getDeliveryRequestDate());
+        itemDto.setDeliveryLocation(item.getDeliveryLocation());
+
+        return itemDto;
     }
 
     // [기존 로직 유지] ====================================================
@@ -370,5 +398,20 @@ public class PurchaseRequestService {
         }
 
         return convertToDto(purchaseRequest);
+    }
+
+    // 파일 다운로드 기능 추가
+    public Resource downloadAttachment(Long attachmentId) {
+        PurchaseRequestAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found with id " + attachmentId));
+
+        Path file = Paths.get(uploadPath).resolve(attachment.getFilePath());
+        Resource resource = new FileSystemResource(file);
+
+        if (resource.exists() || resource.isReadable()) {
+            return resource;
+        } else {
+            throw new ResourceNotFoundException("Could not download file: " + attachment.getFileName());
+        }
     }
 }
