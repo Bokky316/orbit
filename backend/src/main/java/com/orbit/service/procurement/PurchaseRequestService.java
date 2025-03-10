@@ -1,46 +1,28 @@
 // PurchaseRequestService.java
 package com.orbit.service.procurement;
 
-import com.orbit.dto.approval.ApprovalLineCreateDTO;
-import com.orbit.dto.approval.DepartmentDTO;
-import com.orbit.dto.item.CategoryDTO;
-import com.orbit.dto.item.ItemDTO;
-import com.orbit.dto.member.MemberDTO;
-import com.orbit.dto.procurement.*;
-import com.orbit.entity.approval.Department;
-import com.orbit.entity.procurement.*;
-import com.orbit.entity.commonCode.ParentCode;
-import com.orbit.entity.commonCode.ChildCode;
-import com.orbit.entity.commonCode.SystemStatus;
-import com.orbit.entity.item.Item;
-import com.orbit.entity.member.Member;
-import com.orbit.entity.project.Project;
-import com.orbit.exception.ResourceNotFoundException;
-import com.orbit.repository.approval.DepartmentRepository;
-import com.orbit.repository.commonCode.ChildCodeRepository;
-import com.orbit.repository.commonCode.ParentCodeRepository;
-import com.orbit.repository.item.CategoryRepository;
-import com.orbit.repository.item.ItemRepository;
+import com.orbit.dto.procurement.PurchaseRequestDTO;
+import com.orbit.dto.procurement.PurchaseRequestItemDTO;
+import com.orbit.dto.procurement.PurchaseRequestResponseDTO;
+import com.orbit.entity.procurement.Item;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.PurchaseRequestAttachment;
+import com.orbit.entity.procurement.PurchaseRequestItem;
 import com.orbit.repository.member.MemberRepository;
-import com.orbit.repository.procurement.ProjectRepository;
+import com.orbit.repository.procurement.ItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
-import com.orbit.entity.item.Category;
+import com.orbit.repository.procurement.PurchaseRequestItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.security.dto.MemberSecurityDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -63,7 +45,9 @@ public class PurchaseRequestService {
     private String uploadPath;
 
     /**
-     * 구매 요청 생성 (핵심 로직)
+     * 구매 요청 생성 (파일 업로드 포함)
+     * @param purchaseRequestDTO 요청 정보
+     * @param files 업로드 파일 배열 (nullable)
      */
     // createPurchaseRequest 메소드 수정
     @Transactional
@@ -74,28 +58,13 @@ public class PurchaseRequestService {
         // 요청 날짜 설정
         purchaseRequest.setRequestDate(LocalDate.now());
 
-        // 2. 초기 상태 설정
-        setInitialStatus(purchaseRequest);
-
-        // 3. 요청자(회원) 정보 설정 - DTO에서 전달받은 memberId 사용
-        if (purchaseRequestDTO.getMemberId() != null) {
-            Member member = memberRepository.findById(purchaseRequestDTO.getMemberId())
-                    .orElseThrow(() -> new ResourceNotFoundException("ID " + purchaseRequestDTO.getMemberId() + "에 해당하는 사용자가 없습니다."));
-            purchaseRequest.setMember(member);
+        // 2. 파일 처리 (신규 로직)
+        if (files != null && files.length > 0) {
+            processAttachments(purchaseRequest, files); // 첨부파일 처리
         }
 
-        // 4. 프로젝트 정보 설정
-        if (purchaseRequestDTO.getProjectId() != null && !purchaseRequestDTO.getProjectId().isEmpty()) {
-            try {
-                Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
-                Project project = projectRepository.findById(projectId)
-                        .orElseThrow(() -> new ResourceNotFoundException("ID " + projectId + "에 해당하는 프로젝트가 없습니다."));
-                purchaseRequest.setProject(project);
-            } catch (NumberFormatException e) {
-                log.error("프로젝트 ID 변환 실패: {}", e.getMessage());
-                throw new IllegalArgumentException("유효하지 않은 프로젝트 ID 형식입니다: " + purchaseRequestDTO.getProjectId());
-            }
-        }
+        // 3. DB 저장
+        PurchaseRequest savedPurchaseRequest = purchaseRequestRepository.save(purchaseRequest);
 
         // 5. 종합적인 유효성 검증 추가
         validatePurchaseRequest(purchaseRequest);
@@ -246,23 +215,68 @@ public class PurchaseRequestService {
     }
 
     /**
-     * 엔티티를 DTO로 변환 (핵심)
+     * 첨부파일 처리 메서드 (신규)
+     * @param purchaseRequest 요청 엔티티
+     * @param files 파일 배열
      */
-    private PurchaseRequestDTO convertToDto(PurchaseRequest entity) {
-        PurchaseRequestDTO dto;
+    private void processAttachments(PurchaseRequest purchaseRequest, MultipartFile[] files) {
+        for (MultipartFile file : files) {
+            try {
+                // 1. 파일 정보 추출 및 저장 경로 설정
+                String fileName = StringUtils.cleanPath(file.getOriginalFilename());
+                String filePath = uploadPath + "/pr_" + purchaseRequest.getId() + "/" + System.currentTimeMillis() + "_" + fileName;
 
-        // 1. 타입에 따라 DTO 생성 및 초기화
-        if (entity instanceof SIRequest) {
-            dto = convertToSiDto((SIRequest) entity);
-        } else if (entity instanceof MaintenanceRequest) {
-            dto = convertToMaintenanceDto((MaintenanceRequest) entity);
-        } else if (entity instanceof GoodsRequest) {
-            dto = convertToGoodsDto((GoodsRequest) entity);
-        } else {
-            throw new IllegalArgumentException("잘못된 PurchaseRequest 타입");
+                // 2. 디렉토리 생성 및 파일 저장
+                Path targetLocation = Paths.get(filePath).toAbsolutePath().normalize();
+                Files.createDirectories(targetLocation.getParent());
+                Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+                // 3. 첨부파일 엔티티 생성 및 저장
+                PurchaseRequestAttachment attachment = new PurchaseRequestAttachment();
+                attachment.setFileName(fileName);
+                attachment.setFilePath(filePath);
+                attachment.setFileType(file.getContentType());
+                attachment.setFileSize(file.getSize());
+                attachment.setPurchaseRequest(purchaseRequest); // 연관관계 설정
+
+                attachmentRepository.save(attachment); // 첨부파일 DB에 저장
+
+            } catch (IOException ex) {
+                throw new RuntimeException("파일 저장 실패: " + ex.getMessage());
+            }
         }
+    }
 
-        // 2. 공통 속성 설정
+    /**
+     * 기존 엔티티 변환 로직 (수정)
+     * @param dto 요청 DTO
+     * @return PurchaseRequest 엔티티
+     */
+    private PurchaseRequest convertToEntity(PurchaseRequestDTO dto) {
+        PurchaseRequest entity = new PurchaseRequest();
+        entity.setRequestName(dto.getRequestName());
+        entity.setRequestDate(dto.getRequestDate() != null ? dto.getRequestDate() : LocalDate.now());
+        entity.setCustomer(dto.getCustomer());
+        entity.setBusinessDepartment(dto.getBusinessDepartment());
+        entity.setBusinessManager(dto.getBusinessManager());
+        entity.setBusinessType(dto.getBusinessType());
+        entity.setBusinessBudget(dto.getBusinessBudget());
+        entity.setSpecialNotes(dto.getSpecialNotes());
+        entity.setManagerPhoneNumber(dto.getManagerPhoneNumber());
+        entity.setProjectStartDate(dto.getProjectStartDate());
+        entity.setProjectEndDate(dto.getProjectEndDate());
+        entity.setProjectContent(dto.getProjectContent());
+        // entity.setAttachments(dto.getAttachments()); // [삭제] DTO에서 직접 설정 X
+        return entity;
+    }
+
+    /**
+     * 기존 DTO 변환 로직 (수정)
+     * @param entity PurchaseRequest 엔티티
+     * @return PurchaseRequestResponseDTO 응답 DTO
+     */
+    private PurchaseRequestResponseDTO convertToDto(PurchaseRequest entity) {
+        PurchaseRequestResponseDTO dto = new PurchaseRequestResponseDTO();
         dto.setId(entity.getId());
         dto.setRequestName(entity.getRequestName());
         dto.setRequestNumber(entity.getRequestNumber());
@@ -274,28 +288,10 @@ public class PurchaseRequestService {
         dto.setBusinessBudget(entity.getBusinessBudget());
         dto.setSpecialNotes(entity.getSpecialNotes());
         dto.setManagerPhoneNumber(entity.getManagerPhoneNumber());
-
-        // 3. 프로젝트 정보 설정
-        if (entity.getProject() != null) {
-            dto.setProjectId(entity.getProject().getId().toString());
-            dto.setProjectName(entity.getProject().getProjectName());
-        }
-
-        // 4. 요청자(회원) 정보 설정
-        if (entity.getMember() != null) {
-            dto.setMemberId(entity.getMember().getId());
-            dto.setMemberName(entity.getMember().getName());
-            dto.setMemberCompany(entity.getMember().getCompanyName());
-        }
-
-        if (entity.getStatus() != null) {
-            dto.setStatus(entity.getStatus().getFullCode());
-        }
-
-        // 5. 첨부 파일 설정
-        dto.setAttachments(entity.getAttachments().stream()
-                .map(this::convertAttachmentToDto)
-                .collect(Collectors.toList()));
+        dto.setProjectStartDate(entity.getProjectStartDate());
+        dto.setProjectEndDate(entity.getProjectEndDate());
+        dto.setProjectContent(entity.getProjectContent());
+        // dto.setAttachments(entity.getAttachments()); // [삭제] 더 이상 사용 X
 
         return dto;
     }
