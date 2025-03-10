@@ -1,9 +1,12 @@
 package com.orbit.dto.procurement;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -30,19 +33,20 @@ public class PurchaseRequestDTO {
 
     private String businessType; // 사업 구분
 
-    private Long businessBudget; // 사업 예산
-
     private String specialNotes; // 특이 사항
 
     private String managerPhoneNumber; // 담당자 핸드폰 번호
 
-    private LocalDate projectStartDate; // 사업 기간 (시작일)
+    @PositiveOrZero(message = "사업예산은 0 이상이어야 합니다.")
+    private BigDecimal businessBudget; // Long → BigDecimal 변경
 
-    private LocalDate projectEndDate; // 사업 기간 (종료일)
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate projectStartDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate projectEndDate;
 
     private String projectContent; // 사업 내용
-
-    private List<PurchaseRequestAttachmentDTO> attachments; // 첨부 파일 목록
 
     private List<PurchaseRequestItemDTO> purchaseRequestItemDTOs; // 구매 요청 아이템 목록
 }
