@@ -13,6 +13,7 @@ import com.orbit.service.RedisService;
 import com.orbit.repository.procurement.ApprovalRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.repository.procurement.ProjectRepository;
+import com.orbit.constant.SupplierStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
