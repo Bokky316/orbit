@@ -1,14 +1,10 @@
 package com.orbit.dto.procurement;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter
-@Setter
-@Builder
+@Getter @Setter
 public class PurchaseRequestAttachmentDTO {
-    private Long id;
     private String fileName;
     private String filePath;
     private String fileType;
