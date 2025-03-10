@@ -7,12 +7,19 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자 추가 (필수)
+@AllArgsConstructor // 전체 필드 생성자 추가 (선택)
 public class PurchaseRequestAttachment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

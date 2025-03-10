@@ -1,13 +1,10 @@
 // PurchaseRequestService.java
 package com.orbit.service.procurement;
 
-import com.orbit.dto.procurement.PurchaseRequestDTO;
-import com.orbit.dto.procurement.PurchaseRequestItemDTO;
-import com.orbit.dto.procurement.PurchaseRequestResponseDTO;
-import com.orbit.entity.procurement.Item;
-import com.orbit.entity.procurement.PurchaseRequest;
-import com.orbit.entity.procurement.PurchaseRequestAttachment;
-import com.orbit.entity.procurement.PurchaseRequestItem;
+import com.orbit.dto.procurement.*;
+import com.orbit.entity.procurement.*;
+import com.orbit.entity.state.SystemStatus;
+import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
@@ -17,6 +14,8 @@ import com.orbit.security.dto.MemberSecurityDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
