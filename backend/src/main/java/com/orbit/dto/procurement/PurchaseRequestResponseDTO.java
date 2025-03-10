@@ -3,6 +3,7 @@ package com.orbit.dto.procurement;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -30,7 +31,7 @@ public class PurchaseRequestResponseDTO {
 
     private String businessType; // 사업 구분
 
-    private Long businessBudget; // 사업 예산
+    private BigDecimal businessBudget; // 사업 예산
 
     private String specialNotes; // 특이 사항
 

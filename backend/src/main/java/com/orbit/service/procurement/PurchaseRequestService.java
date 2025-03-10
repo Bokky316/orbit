@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -136,7 +137,11 @@ public class PurchaseRequestService {
         entity.setProjectStartDate(dto.getProjectStartDate());
         entity.setProjectEndDate(dto.getProjectEndDate());
         entity.setProjectContent(dto.getProjectContent());
-        // entity.setAttachments(dto.getAttachments()); // [삭제] DTO에서 직접 설정 X
+        if(dto.getBusinessBudget() != null) {
+            entity.setBusinessBudget(dto.getBusinessBudget());
+        } else {
+            entity.setBusinessBudget(BigDecimal.ZERO);
+        }
         return entity;
     }
 
@@ -161,7 +166,6 @@ public class PurchaseRequestService {
         dto.setProjectStartDate(entity.getProjectStartDate());
         dto.setProjectEndDate(entity.getProjectEndDate());
         dto.setProjectContent(entity.getProjectContent());
-        // dto.setAttachments(entity.getAttachments()); // [삭제] 더 이상 사용 X
 
         return dto;
     }

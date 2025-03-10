@@ -5,9 +5,11 @@ import com.orbit.entity.member.Member;
 import com.orbit.entity.state.StatusHistory;
 import com.orbit.entity.state.SystemStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -107,8 +109,9 @@ public class PurchaseRequest {
     /**
      * 구매에 할당된 사업 예산
      */
-    @Column(name = "business_budget")
-    private Long businessBudget;
+    @Column(precision = 19, scale = 2) // DB 컬럼 설정 추가
+    @PositiveOrZero(message = "사업예산은 0 이상이어야 합니다.")
+    private BigDecimal businessBudget; // Long → BigDecimal 변경
 
     /**
      * 구매 요청에 대한 특별 참고 사항
