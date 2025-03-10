@@ -164,7 +164,11 @@ public class PurchaseRequestService {
                 MaintenanceRequestDTO maintenanceDto = (MaintenanceRequestDTO) dto;
                 ((MaintenanceRequest) purchaseRequest).setContractStartDate(maintenanceDto.getContractStartDate());
                 ((MaintenanceRequest) purchaseRequest).setContractEndDate(maintenanceDto.getContractEndDate());
-                ((MaintenanceRequest) purchaseRequest).setContractAmount(maintenanceDto.getContractAmount());
+                // 기본값 처리 추가
+                BigDecimal contractAmount = maintenanceDto.getContractAmount() != null
+                        ? maintenanceDto.getContractAmount()
+                        : BigDecimal.ZERO;
+                ((MaintenanceRequest) purchaseRequest).setContractAmount(contractAmount);
                 ((MaintenanceRequest) purchaseRequest).setContractDetails(maintenanceDto.getContractDetails());
                 break;
             case "GOODS":
@@ -202,26 +206,34 @@ public class PurchaseRequestService {
         item.setItemName(itemDto.getItemName());
         item.setSpecification(itemDto.getSpecification());
         item.setUnit(itemDto.getUnit());
-        item.setQuantity(itemDto.getQuantity());
+
+        // quantity로 통일
+        if (itemDto.getQuantity() == null || itemDto.getQuantity() == 0) {
+            item.setQuantity(1);
+        } else {
+            item.setQuantity(itemDto.getQuantity());
+        }
+
         item.setUnitPrice(itemDto.getUnitPrice());
         item.setDeliveryRequestDate(itemDto.getDeliveryRequestDate());
         item.setDeliveryLocation(itemDto.getDeliveryLocation());
         return item;
     }
 
-
-    /**
-     * PurchaseRequestItemDTO -> PurchaseRequestItem 엔티티 변환
-     * @param itemDTO PurchaseRequestItemDTO
-     * @param goodsRequest GoodsRequest
-     * @return PurchaseRequestItem
-     */
+    // 오버로딩된 메서드에도 동일하게 적용
     private PurchaseRequestItem convertToItemEntity(PurchaseRequestItemDTO itemDTO, GoodsRequest goodsRequest) {
         PurchaseRequestItem item = new PurchaseRequestItem();
         item.setItemName(itemDTO.getItemName());
         item.setSpecification(itemDTO.getSpecification());
         item.setUnit(itemDTO.getUnit());
-        item.setQuantity(itemDTO.getQuantity());
+
+        // 수량이 null이거나 0이면 1로 설정
+        if (itemDTO.getQuantity() == null || itemDTO.getQuantity() == 0) {
+            item.setQuantity(1);
+        } else {
+            item.setQuantity(itemDTO.getQuantity());
+        }
+
         item.setUnitPrice(itemDTO.getUnitPrice());
         item.setDeliveryRequestDate(itemDTO.getDeliveryRequestDate());
         item.setDeliveryLocation(itemDTO.getDeliveryLocation());
