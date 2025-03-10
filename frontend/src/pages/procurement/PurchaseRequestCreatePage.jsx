@@ -158,8 +158,10 @@ function PurchaseRequestCreatePage() {
                     });
 
                     try {
-                        const fileResponse = await fetchWithAuth(`${API_URL}purchase-requests/${createdRequest.id}/attachments`, {
+                        // 기본 fetch API 사용 (Content-Type 헤더 생략)
+                        const fileResponse = await fetch(`${API_URL}purchase-requests/${createdRequest.id}/attachments`, {
                             method: 'POST',
+                            credentials: 'include', // 쿠키 포함
                             body: fileFormData
                         });
 

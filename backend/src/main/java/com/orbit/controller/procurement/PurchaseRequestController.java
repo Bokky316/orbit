@@ -72,4 +72,19 @@ public class PurchaseRequestController {
         boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id);
         return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+
+    // 파일만 업로드하는 별도 엔드포인트 추가
+    @PostMapping("/{id}/attachments")
+    public ResponseEntity<PurchaseRequestDTO> addAttachmentsToPurchaseRequest(
+            @PathVariable Long id,
+            @RequestParam("files") MultipartFile[] files) {
+
+        Optional<PurchaseRequestDTO> requestOpt = purchaseRequestService.getPurchaseRequestById(id);
+        if (requestOpt.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        PurchaseRequestDTO updatedRequest = purchaseRequestService.addAttachmentsToPurchaseRequest(id, files);
+        return new ResponseEntity<>(updatedRequest, HttpStatus.OK);
+    }
 }
