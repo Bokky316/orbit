@@ -108,31 +108,6 @@ const createWebsocketMiddleware = () => {
   };
 };
 
-// 상태 변경 액션 추가
-export const changePurchaseRequestStatus = createAsyncThunk(
-  'purchaseRequest/changeStatus',
-  async ({ id, fromStatus, toStatus }, { rejectWithValue }) => {
-    try {
-      const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ fromStatus, toStatus })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '상태 변경 실패');
-      }
-
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
 // 파일 다운로드 액션 추가
 export const downloadAttachment = createAsyncThunk(
   'purchaseRequest/downloadAttachment',

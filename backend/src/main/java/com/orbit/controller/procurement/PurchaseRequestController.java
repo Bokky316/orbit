@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -27,6 +28,7 @@ import java.util.Map;
 /**
  * 구매 요청 관련 RESTful API 컨트롤러 (파일 업로드 기능 포함)
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/purchase-requests")
 public class PurchaseRequestController {
@@ -126,5 +128,38 @@ public class PurchaseRequestController {
 
         PurchaseRequestDTO updatedRequest = purchaseRequestService.addAttachmentsToPurchaseRequest(id, files);
         return new ResponseEntity<>(updatedRequest, HttpStatus.OK);
+    }
+
+    // 7. 첨부파일 다운로드 엔드포인트 추가
+    @GetMapping("/attachments/{attachmentId}/download")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable Long attachmentId,
+            @RequestHeader(value = "User-Agent", required = false) String userAgent) {
+
+        Resource resource = purchaseRequestService.downloadAttachment(attachmentId);
+
+        try {
+            // 파일명 인코딩 처리
+            String filename = resource.getFilename();
+            String encodedFilename;
+
+            if (userAgent != null && (userAgent.contains("Trident") || userAgent.contains("MSIE"))) {
+                encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8.name())
+                        .replaceAll("\\+", "%20");
+            } else {
+                encodedFilename = UriUtils.encode(filename, StandardCharsets.UTF_8);
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + encodedFilename + "\"; " +
+                                    "filename*=UTF-8''" + encodedFilename)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                    .body(resource);
+
+        } catch (UnsupportedEncodingException e) {
+            log.error("파일명 인코딩 실패: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
