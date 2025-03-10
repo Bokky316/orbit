@@ -25,8 +25,7 @@ import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
 import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
 import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
 import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
-import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
-import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
+import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -97,9 +96,7 @@ function AppContent() {
 
                 {/* 송장 관리 */}
                 <Route path="/invoices" element={<InvoicesListPage />} />
-                <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-                <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-                <Route path="/invoices/:id/edit" element={<InvoiceEditPage />} />
+                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
