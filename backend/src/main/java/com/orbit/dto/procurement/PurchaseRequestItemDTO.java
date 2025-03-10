@@ -1,38 +1,36 @@
 package com.orbit.dto.procurement;
 
-import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * 구매 요청 항목 DTO
- */
-@Getter
-@Setter
+@Getter @Setter
 public class PurchaseRequestItemDTO {
 
-    @NotNull(message = "품목 ID는 필수 입력 값입니다.")
-    private Long itemId; // 품목 ID
+    private Long id;
 
-    @NotNull(message = "수량은 필수 입력 값입니다.")
-    private Integer quantity; // 수량
+    @Size(max = 255, message = "품목명은 최대 255자까지 입력 가능합니다.")
+    private String itemName;
 
-    @NotNull(message = "단가는 필수 입력 값입니다.")
-    private Double unitPrice; // 단가
+    private String specification;
 
-    private Double supplyPrice; // 공급가액 (선택적)
+    private String unit;
 
-    private Double vat; // 부가세 (선택적)
+    @Positive(message = "수량은 0보다 커야 합니다.")
+    private Integer quantity;
 
-    private String itemName; // 품목명
+    @Positive(message = "단가는 0보다 커야 합니다.")
+    private BigDecimal unitPrice;
 
-    private String specification; // 사양
+    private BigDecimal totalPrice;
 
-    private String unit; // 단위
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate deliveryRequestDate;
 
-    private LocalDate deliveryRequestDate; // 납품 요청일
-
-    private String deliveryLocation; // 납품 장소
+    private String deliveryLocation;
 }

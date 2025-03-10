@@ -1,5 +1,6 @@
 package com.orbit.entity.procurement;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.constant.PurchaseRequestStatus;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.state.StatusHistory;
@@ -101,7 +102,7 @@ public class PurchaseRequest {
     private String businessManager;
 
     /**
-     * 사업의 유형 (예: SI, SM 등)
+     * 사업의 유형
      */
     @Column(name = "business_type")
     private String businessType;
@@ -126,47 +127,36 @@ public class PurchaseRequest {
     private String managerPhoneNumber;
 
     /**
-     * 관련 프로젝트의 시작 날짜
-     */
-    @Column(name = "project_start_date")
-    private LocalDate projectStartDate;
-
-    /**
-     * 관련 프로젝트의 종료 예정 날짜
-     */
-    @Column(name = "project_end_date")
-    private LocalDate projectEndDate;
-
-    /**
-     * 구매 요청과 관련된 프로젝트의 상세 내용
-     */
-    @Column(name = "project_content", length = 2000)
-    private String projectContent;
-
-//    /**
-//     * 구매 요청에 첨부된 파일들의 정보
-//     */
-//    @Column(name = "attachments")
-//    private String attachments;
-
-    /**
-     * 구매 요청이 속한 프로젝트
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
-    private Project project;
-
-    /**
      * 구매 요청을 생성한 회원
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
     private Member member;
 
-    /**
-     * 이 구매 요청에 포함된 개별 아이템들의 목록
-     */
-    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
+    //    /**
+//     * 관련 프로젝트의 시작 날짜
+//     */
+//    @Column(name = "project_start_date")
+//    private LocalDate projectStartDate;
+//
+//    /**
+//     * 관련 프로젝트의 종료 예정 날짜
+//     */
+//    @Column(name = "project_end_date")
+//    private LocalDate projectEndDate;
+//
+//    /**
+//     * 구매 요청과 관련된 프로젝트의 상세 내용
+//     */
+//    @Column(name = "project_content", length = 2000)
+//    private String projectContent;
+//
+//    /**
+//     * 구매 요청이 속한 프로젝트
+//     */
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "project_id")
+//    private Project project;
+
 
 }

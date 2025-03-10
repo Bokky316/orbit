@@ -1,10 +1,10 @@
 package com.orbit.dto.procurement;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.PositiveOrZero;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,47 +12,58 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * 구매 요청 DTO
- */
-@Getter
-@Setter
-public class PurchaseRequestDTO {
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        property = "businessType",
+        visible = true
+)
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = SIRequestDTO.class, name = "SI"),
+        @JsonSubTypes.Type(value = MaintenanceRequestDTO.class, name = "MAINTENANCE"),
+        @JsonSubTypes.Type(value = GoodsRequestDTO.class, name = "GOODS")
+})
+@Getter @Setter
+public abstract class PurchaseRequestDTO {
 
-    @NotBlank(message = "요청명은 필수 입력 값입니다.")
+    private Long id; // 구매 요청 ID
+
     private String requestName; // 요청명
 
-    private LocalDate requestDate; // 요청일 (자동 생성)
+    private String requestNumber; // 요청 번호
 
-    @NotBlank(message = "고객사는 필수 입력 값입니다.")
+    private String status; // 진행 상태
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate requestDate; // 요청일
+
     private String customer; // 고객사
 
-    @NotBlank(message = "사업 부서는 필수 입력 값입니다.")
     private String businessDepartment; // 사업 부서
 
-    @NotBlank(message = "사업 담당자는 필수 입력 값입니다.")
     private String businessManager; // 사업 담당자
 
     private String businessType; // 사업 구분
 
+    @PositiveOrZero @Digits(integer=15, fraction=2)
+    private BigDecimal businessBudget; // 사업 예산
+
     private String specialNotes; // 특이 사항
 
-    // 숫자 필드 검증
-    @PositiveOrZero(message = "0 이상의 숫자 입력 필요")
-    @Digits(integer=15, fraction=2, message = "최대 15자리 정수")
-    private BigDecimal businessBudget;
-
-    // 전화번호 검증
-    @Pattern(regexp = "^[0-9]{10,11}$", message = "숫자만 입력해주세요")
-    private String managerPhoneNumber;
+    @Pattern(regexp = "^01[0-9]{8,9}$")
+    private String managerPhoneNumber; // 담당자 핸드폰 번호
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate projectStartDate;
+    private LocalDate projectStartDate; // 사업 기간 (시작일)
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate projectEndDate;
+    private LocalDate projectEndDate; // 사업 기간 (종료일)
 
     private String projectContent; // 사업 내용
 
-    private List<PurchaseRequestItemDTO> purchaseRequestItemDTOs; // 구매 요청 아이템 목록
+    // 응답용 필드 추가
+    private List<PurchaseRequestAttachmentDTO> attachments; // 첨부 파일 목록
+
+    @Valid // GoodsRequestDTO에서만 사용
+    private List<PurchaseRequestItemDTO> items; // 품목 목록 (GoodsRequestDTO에서만 사용)
 }
