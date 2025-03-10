@@ -36,11 +36,12 @@ public class PurchaseRequestController {
         this.purchaseRequestService = purchaseRequestService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<PurchaseRequestDTO>> getAllPurchaseRequests() {
-        List<PurchaseRequestDTO> purchaseRequests = purchaseRequestService.getAllPurchaseRequests();
-        return new ResponseEntity<>(purchaseRequests, HttpStatus.OK);
-    }
+
+    /**
+     * ID로 구매 요청 조회
+     * @param id 구매 요청 ID
+     * @return 구매 요청 (Optional)
+     */
 
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseRequestDTO> getPurchaseRequestById(@PathVariable Long id) {

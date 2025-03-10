@@ -53,9 +53,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Slf4j
-@Service
-@RequiredArgsConstructor
+
 @Transactional
 public class PurchaseRequestService {
 
@@ -392,38 +390,38 @@ public class PurchaseRequestService {
         entity.setProjectStartDate(dto.getProjectStartDate());
         entity.setProjectEndDate(dto.getProjectEndDate());
         entity.setProjectContent(dto.getProjectContent());
+
         return entity;
+
+        // entity.setAttachments(dto.getAttachments()); // [삭제] 더 이상 사용 X
+    }
+
+    // [기존 로직 유지] ====================================================
+
+    /**
+     * 모든 구매 요청 조회
+     * @return 구매 요청 목록
+     */
+    @Transactional(readOnly = true)
+    public List<PurchaseRequestResponseDTO> getAllPurchaseRequests() {
+        return purchaseRequestRepository.findAll().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
     /**
-     * MaintenanceRequestDTO -> MaintenanceRequest 변환
+     * ID로 구매 요청 조회
+     * @param id 요청 ID
+     * @return 구매 요청 (Optional)
      */
-    private MaintenanceRequest convertToMaintenanceEntity(MaintenanceRequestDTO dto) {
-        MaintenanceRequest entity = new MaintenanceRequest();
-        entity.setContractStartDate(dto.getContractStartDate());
-        entity.setContractEndDate(dto.getContractEndDate());
-        entity.setContractAmount(dto.getContractAmount() != null ? dto.getContractAmount() : BigDecimal.ZERO);
-        entity.setContractDetails(dto.getContractDetails());
-        return entity;
+    @Transactional(readOnly = true)
+    public Optional<PurchaseRequestResponseDTO> getPurchaseRequestById(Long id) {
+        return purchaseRequestRepository.findById(id)
+                .map(this::convertToDto);
     }
 
     /**
-     * GoodsRequestDTO -> GoodsRequest 변환
-     */
-    private GoodsRequest convertToGoodsEntity(GoodsRequestDTO dto) {
-        GoodsRequest goodsRequest = new GoodsRequest();
-
-        // 아이템 처리
-        List<PurchaseRequestItem> items = dto.getItems().stream()
-                .map(itemDto -> {
-                    // 아이템 존재 여부 확인
-                    Item item = itemRepository.findById(itemDto.getItemId().toString())
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "Item ID " + itemDto.getItemId() + "에 해당하는 품목이 없습니다."
-                            ));
-
-                    PurchaseRequestItem pri = new PurchaseRequestItem();
-                    pri.setItem(item);
+     * @param id 업데이트 대상 ID
                     pri.setQuantity(itemDto.getQuantity());
                     pri.setUnitPrice(item.getStandardPrice()); // ✅ standardPrice 사용
                     pri.setTotalPrice(item.getStandardPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity())));
