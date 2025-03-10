@@ -12,31 +12,33 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth';
  * @throws {Error} 구매 요청 목록을 가져오는 데 실패한 경우
  */
 export const fetchPurchaseRequests = createAsyncThunk(
-    'purchaseRequest/fetchPurchaseRequests', // 액션 타입 정의
-    async (_, { rejectWithValue }) => {
-        try {
-            // API_URL/purchase-requests 엔드포인트로 GET 요청을 보냄 (JWT 인증 사용)
-            const response = await fetchWithAuth(`${API_URL}purchase-requests`, {
-                method: 'GET',
-            });
+  'purchaseRequest/fetchPurchaseRequests',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}purchase-requests`);
 
-            // 응답이 성공적인지 확인
-            if (!response.ok) {
-                // 응답이 실패하면 에러 메시지를 포함한 에러 객체를 생성하고 rejectWithValue를 호출
-                const errorText = await response.text();
-                throw new Error(`Failed to fetch purchase requests: ${response.status} - ${errorText}`);
-            }
+      // HTML 응답 방지 처리
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
 
-            // 응답이 성공하면 JSON 형태로 파싱하여 반환
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            // 에러가 발생하면 콘솔에 로깅하고 rejectWithValue를 호출하여 에러를 반환
-            console.error('Error fetching purchase requests:', error);
-            return rejectWithValue(error.message);
-        }
+      if (!response.ok) {
+        const errorData = await response.json(); // JSON 파싱 시도
+        throw new Error(errorData.message || 'Unknown error');
+      }
+
+      return await response.json();
+    } catch (error) {
+      // HTML 응답 시 별도 처리
+      if (error.message.includes('Invalid content type')) {
+        return rejectWithValue('서버 응답 형식 오류');
+      }
+      return rejectWithValue(error.message);
     }
+  }
 );
+
 
 /**
  * 구매 요청을 생성하는 비동기 액션
@@ -98,6 +100,37 @@ const createWebsocketMiddleware = () => {
     }
   };
 };
+
+// 파일 다운로드 액션 추가
+export const downloadAttachment = createAsyncThunk(
+  'purchaseRequest/downloadAttachment',
+  async (attachmentId, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}purchase-requests/attachments/${attachmentId}/download`,
+        { responseType: 'blob' }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`서버 응답 오류 (${response.status}): ${error}`);
+      }
+
+      // 헤더에서 파일명 추출
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileName = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : 'unnamed_file';
+
+      return {
+        blob: await response.blob(),
+        fileName: decodeURIComponent(fileName)
+      };
+    } catch (error) {
+      return rejectWithValue(error.toString());
+    }
+  }
+);
 
 /**
  * 구매 요청을 수정하는 비동기 액션

@@ -30,6 +30,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.orbit.constant.Role.BUYER;
+
 /**
  * Spring Security 설정 파일
  * - 인증, 권한 설정
@@ -136,6 +138,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/purchase-requests/**").hasAnyRole("BUYER", "ADMIN")
                 .requestMatchers("/api/approvals/**").hasAnyRole("BUYER", "ADMIN")
                 .requestMatchers("/api/projects/**").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/purchase-requests/attachments/{attachmentId}/download").hasAnyRole("BUYER", "ADMIN")
 
                 // 계약 관리 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/contracts/**").hasRole("ADMIN")

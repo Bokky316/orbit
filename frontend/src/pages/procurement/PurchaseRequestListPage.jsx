@@ -1,32 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import {
+    Box, Typography, Paper, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, TextField, Button,
+    Grid, FormControl, InputLabel, Select, MenuItem, Link
+} from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import moment from 'moment';
+import { styled } from '@mui/material/styles';
+
+// Redux 액션 및 선택자 임포트
 import {
     fetchPurchaseRequests,
     setSearchTerm,
     setRequestDate,
     setStatus
-} from '@/redux/purchaseRequestSlice';
-import {
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TextField,
-    Button,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Box,
-    Typography,
-    Grid,
-    Checkbox,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
+} from '@/redux/purchaseRequestSlice'; // Correct import path
+import { API_URL } from '@/utils/constants';
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
     maxHeight: 440,
@@ -35,267 +29,185 @@ const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
         top: 0,
         backgroundColor: theme.palette.background.paper,
         zIndex: 1,
-    }
+    },
 }));
 
-/**
- * 구매 요청 목록 페이지 컴포넌트
- * @returns {JSX.Element}
- */
 function PurchaseRequestListPage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const purchaseRequests = useSelector(state => state.purchaseRequest.purchaseRequests);
-    const filters = useSelector(state => state.purchaseRequest.filters);
-    const [localFilters, setLocalFilters] = useState(filters);
 
-    // 검색어 상태
-    const [requestNameSearchTerm, setRequestNameSearchTerm] = useState('');
-    const [requestNumberSearchTerm, setRequestNumberSearchTerm] = useState('');
-    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-    const [businessManagerSearchTerm, setBusinessManagerSearchTerm] = useState('');
+    // Redux 상태에서 데이터 가져오기
+    const { purchaseRequests, filters } = useSelector(state => state.purchaseRequest);
 
     useEffect(() => {
-        // 컴포넌트 마운트 시 구매 요청 목록 데이터 로딩
+        // 컴포넌트 마운트 시 구매 요청 목록 가져오기
         dispatch(fetchPurchaseRequests());
     }, [dispatch]);
 
-    /**
-     * 검색 및 필터링된 구매 요청 목록을 반환합니다.
-     * @returns {array} 필터링된 구매 요청 목록
-     */
-    const getFilteredPurchaseRequests = () => {
-        return purchaseRequests.filter(request => {
-            const requestNameMatch = String(request.requestName)?.includes(requestNameSearchTerm);
-            const requestNumberMatch = String(request.id)?.includes(requestNumberSearchTerm);
-            const customerMatch = String(request.customer)?.includes(customerSearchTerm);
-            const businessManagerMatch = String(request.businessManager)?.includes(businessManagerSearchTerm);
+    // 필터링된 구매 요청 목록 계산
+    const filteredRequests = purchaseRequests.filter(request => {
+        const searchTermLower = filters.searchTerm.toLowerCase();
+        const searchMatch = [
+            request.requestName?.toLowerCase(),
+            String(request.id),
+            request.customer?.toLowerCase(),
+            request.businessManager?.toLowerCase(),
+        ].some(field => field?.includes(searchTermLower));
 
-            const requestDateMatch = !localFilters.requestDate || request.requestDate === localFilters.requestDate;
-            const statusMatch = !localFilters.status || request.status === localFilters.status;
+        const dateMatch = !filters.requestDate ||
+            (request.requestDate && moment(request.requestDate).isSame(filters.requestDate, 'day'));
 
-            return requestNameMatch && requestNumberMatch && customerMatch && businessManagerMatch && requestDateMatch && statusMatch;
-        });
+        const statusMatch = !filters.status || request.prStatusChild === filters.status;
+
+        return searchMatch && dateMatch && statusMatch;
+    });
+
+    // 필터 변경 핸들러
+    const handleFilterChange = (type, value) => {
+        switch (type) {
+            case 'searchTerm':
+                dispatch(setSearchTerm(value));
+                break;
+            case 'requestDate':
+                dispatch(setRequestDate(value));
+                break;
+            case 'status':
+                dispatch(setStatus(value));
+                break;
+            default:
+                break;
+        }
     };
 
-    /**
-     * 각 검색어 변경 핸들러
-     */
-    const handleRequestNameSearchTermChange = (event) => {
-        setRequestNameSearchTerm(event.target.value);
-    };
+    const downloadFile = async (attachment) => {
+        try {
+            const response = await fetchWithAuth(`${API_URL}attachments/${attachment.id}/download`, {
+                method: 'GET',
+                responseType: 'blob', // Blob 형태로 받기
+            });
 
-    const handleRequestNumberSearchTermChange = (event) => {
-        setRequestNumberSearchTerm(event.target.value);
-    };
-
-    const handleCustomerSearchTermChange = (event) => {
-        setCustomerSearchTerm(event.target.value);
-    };
-
-    const handleBusinessManagerSearchTermChange = (event) => {
-        setBusinessManagerSearchTerm(event.target.value);
-    };
-
-    /**
-     * 요청일 변경 핸들러
-     * @param {object} event - 이벤트 객체
-     */
-    const handleRequestDateChange = (event) => {
-        setLocalFilters({ ...localFilters, requestDate: event.target.value });
-    };
-
-    /**
-     * 상태 변경 핸들러
-     * @param {object} event - 이벤트 객체
-     */
-    const handleStatusChange = (event) => {
-        setLocalFilters({ ...localFilters, status: event.target.value });
-    };
-
-    /**
-     * 필터 적용 핸들러
-     */
-    const handleApplyFilters = () => {
-        dispatch(setSearchTerm({
-            requestName: requestNameSearchTerm,
-            requestNumber: requestNumberSearchTerm,
-            customer: customerSearchTerm,
-            businessManager: businessManagerSearchTerm
-        }));
-        dispatch(setRequestDate(localFilters.requestDate));
-        dispatch(setStatus(localFilters.status));
-    };
-
-    /**
-     * 상세보기 핸들러
-     * @param {string} id - 구매 요청 ID
-     */
-    const handleViewDetail = (id) => {
-        navigate(`/purchase-requests/${id}`); // 구매 요청 상세 페이지로 이동
-    };
-
-    /**
-     * 새 구매 요청 생성 핸들러
-     */
-    const handleCreatePurchaseRequest = () => {
-        navigate('/purchase-requests/new'); // 구매 요청 생성 페이지로 이동
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = attachment.originalName; // 파일 이름 설정
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                console.error('파일 다운로드 실패:', response.status);
+            }
+        } catch (error) {
+            console.error('파일 다운로드 중 오류 발생:', error);
+        }
     };
 
     return (
-        <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
-                구매 요청 목록
-            </Typography>
-            {/* 검색 및 필터 섹션 */}
-            <Paper elevation={2} sx={{ padding: 2, marginBottom: 2 }}>
+        <Box sx={{ p: 3 }}>
+            <Typography variant="h4" gutterBottom>구매 요청 목록</Typography>
+
+            {/* 필터 섹션 */}
+            <Paper sx={{ p: 2, mb: 2 }}>
                 <Grid container spacing={2} alignItems="center">
-                    {/* 요청명 검색 필드 */}
-                    <Grid item xs={12} sm={3}>
+                    <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             fullWidth
-                            label="요청명"
-                            value={requestNameSearchTerm}
-                            onChange={handleRequestNameSearchTermChange}
+                            label="검색"
+                            value={filters.searchTerm}
+                            onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                            variant="outlined"
                         />
                     </Grid>
-                    {/* 요청번호 검색 필드 */}
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="요청번호"
-                            value={requestNumberSearchTerm}
-                            onChange={handleRequestNumberSearchTermChange}
-                        />
+                    <Grid item xs={12} sm={6} md={3}>
+                        <LocalizationProvider dateAdapter={AdapterMoment}>
+                            <DatePicker
+                                label="요청일"
+                                    value={moment(filters.requestDate)} // moment 객체로 변환
+                                    onChange={(date) => handleFilterChange('requestDate', date)}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
+                            />
+                        </LocalizationProvider>
                     </Grid>
-                    {/* 고객사 검색 필드 */}
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="고객사"
-                            value={customerSearchTerm}
-                            onChange={handleCustomerSearchTermChange}
-                        />
-                    </Grid>
-                    {/* 사업담당자 필터 */}
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="사업담당자"
-                            value={businessManagerSearchTerm}
-                            onChange={handleBusinessManagerSearchTermChange}
-                        />
-                    </Grid>
-                    {/* 요청일 검색 필드 (DatePicker 대신 텍스트 필드 사용) */}
-                    <Grid item xs={12} sm={3}>
-                        <TextField
-                            fullWidth
-                            label="요청일"
-                            value={localFilters.requestDate || ''}
-                            onChange={handleRequestDateChange}
-                        />
-                    </Grid>
-                    {/* 진행상태 필터 */}
-                    <Grid item xs={12} sm={3}>
-                        <FormControl fullWidth>
-                            <InputLabel id="status-select-label">진행상태</InputLabel>
+                    <Grid item xs={12} sm={6} md={3}>
+                        <FormControl fullWidth variant="outlined">
+                            <InputLabel>진행상태</InputLabel>
                             <Select
-                                labelId="status-select-label"
-                                id="status-select"
-                                value={localFilters.status || ''}
+                                value={filters.status || ''}
+                                onChange={(e) => handleFilterChange('status', e.target.value)}
                                 label="진행상태"
-                                onChange={handleStatusChange}
                             >
                                 <MenuItem value="">전체</MenuItem>
-                                <MenuItem value="초안">초안</MenuItem>
-                                <MenuItem value="제출">제출</MenuItem>
-                                <MenuItem value="승인">승인</MenuItem>
-                                <MenuItem value="거절">거절</MenuItem>
-                                <MenuItem value="완료">완료</MenuItem>
+                                <MenuItem value="REQUESTED">요청</MenuItem>
+                                <MenuItem value="APPROVED">승인</MenuItem>
+                                <MenuItem value="REJECTED">거절</MenuItem>
+                                <MenuItem value="COMPLETED">완료</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
-                    {/* 조회 버튼 */}
-                    <Grid item xs={12} sm={3}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleApplyFilters}
-                            fullWidth
-                        >
-                            조회
-                        </Button>
-                    </Grid>
-                    {/* 신규, 수정, 삭제 버튼 */}
-                    <Grid item xs={12} sm={3} container justifyContent="flex-end">
-                        {/* "신규" 버튼 클릭 시 새 구매 요청 생성 페이지로 이동 */}
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={handleCreatePurchaseRequest} // 이 부분을 수정
-                            sx={{ mr: 1 }}
-                        >
-                            신규
-                        </Button>
-                        <Button variant="contained" color="info" onClick={handleCreatePurchaseRequest} sx={{ mr: 1 }}>
-                            수정
-                        </Button>
-                        <Button variant="contained" color="error" onClick={handleCreatePurchaseRequest}>
-                            삭제
-                        </Button>
-                    </Grid>
                 </Grid>
             </Paper>
+
             {/* 구매 요청 목록 테이블 */}
             <StyledTableContainer component={Paper}>
                 <Table stickyHeader aria-label="sticky table">
                     <TableHead>
                         <TableRow>
-                            <TableCell><Checkbox /></TableCell>
                             <TableCell>진행상태</TableCell>
                             <TableCell>요청제목</TableCell>
                             <TableCell>요청번호</TableCell>
                             <TableCell>고객사</TableCell>
                             <TableCell>요청일</TableCell>
                             <TableCell>사업부서</TableCell>
-                            <TableCell>사업담당자</TableCell>
+                            <TableCell>첨부파일</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {getFilteredPurchaseRequests().map(request => (
-                            <TableRow key={request.id} hover>
-                                <TableCell><Checkbox /></TableCell>
-                                <TableCell>{request.status}</TableCell>
-                                {/* 요청제목 클릭 시 상세보기 이동 */}
-                                <TableCell>
-                                    <Typography
-                                        component="a"
-                                        href="#"
-                                        onClick={(e) => {
-                                            e.preventDefault(); // 기본 링크 동작 방지
-                                            handleViewDetail(request.id); // 상세보기 핸들러 호출
-                                        }}
-                                        sx={{
-                                            textDecoration: 'none',
-                                            color: 'blue',
-                                            '&:hover': {
-                                                textDecoration: 'underline',
-                                            },
-                                        }}
-                                    >
-                                        {request.requestName}
-                                    </Typography>
-                                </TableCell>
+                        {filteredRequests.map(request => (
+                            <TableRow
+                                key={request.id}
+                                hover
+                                onClick={() => navigate(`/purchase-requests/${request.id}`)}
+                                sx={{ cursor: 'pointer' }}
+                            >
+                                <TableCell>{request.prStatusChild}</TableCell>
+                                <TableCell>{request.requestName}</TableCell>
                                 <TableCell>{request.id}</TableCell>
                                 <TableCell>{request.customer}</TableCell>
-                                <TableCell>{request.requestDate}</TableCell>
+                                <TableCell>{moment(request.requestDate).format('YYYY-MM-DD')}</TableCell>
                                 <TableCell>{request.businessDepartment}</TableCell>
-                                <TableCell>{request.businessManager}</TableCell>
+                                <TableCell>
+                                    {request.attachments && request.attachments.length > 0 ? (
+                                        request.attachments.map(attachment => (
+                                            <Link
+                                                key={attachment.id}
+                                                component="button"
+                                                variant="body2"
+                                                onClick={() => downloadFile(attachment)}
+                                            >
+                                                {attachment.originalName}
+                                            </Link>
+                                        ))
+                                    ) : '-'}
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </StyledTableContainer>
+
+            {/* 신규 생성 버튼 */}
+            <Button
+                variant="contained"
+                onClick={() => navigate('/purchase-requests/new')}
+                sx={{ mt: 2 }}
+            >
+                신규 생성
+            </Button>
         </Box>
     );
 }
