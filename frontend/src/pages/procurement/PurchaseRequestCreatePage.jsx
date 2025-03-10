@@ -78,22 +78,18 @@ function PurchaseRequestCreatePage() {
         // setRequestDate(`${year}-${month}-${day}`);
     }, []);
 
+    // 숫자 포맷팅 함수 강화 (hyphen 제거 추가)
     const formatNumberInput = (value) => {
-        // 1. 모든 비숫자 문자 제거 (소수점 허용)
-        let numericValue = value.replace(/[^0-9.]/g, '');
+      // 허용 문자: 숫자, 소수점만 + hyphen 제거
+      let numericValue = value.replace(/[^0-9.]/g, '')
+                              .replace(/-/g, ''); // 추가된 코드
 
-        // 2. 선행 0 제거 (예: 0123 → 123)
-        if (numericValue.startsWith('0') && numericValue.length > 1 && !numericValue.startsWith('0.')) {
-          numericValue = numericValue.substring(1);
-        }
+      // 선행 소수점 방지 (예: .123 → 0.123)
+      if (numericValue.startsWith('.')) {
+        numericValue = '0' + numericValue;
+      }
 
-        // 3. 최대 2자리 소수점 제한
-        const parts = numericValue.split('.');
-        if (parts.length > 1) {
-          numericValue = `${parts[0]}.${parts[1].slice(0, 2)}`;
-        }
-
-        return numericValue;
+      return numericValue;
     };
 
     // 폼 제출 핸들러
@@ -128,7 +124,6 @@ function PurchaseRequestCreatePage() {
         }
 
         // 폼 데이터 객체 생성
-        // 폼 데이터 생성 부분 수정
         const purchaseRequestData = {
           requestName,
           requestDate: requestDate.format('YYYY-MM-DD'), // 날짜 포맷팅
@@ -271,20 +266,21 @@ function PurchaseRequestCreatePage() {
         newItems[index].deliveryRequestDate = date;
         setItems(newItems);
     };
-    // 숫자 입력 핸들러
+
+    // 모든 숫자 입력 필드에 적용 ▼
     const handleBusinessBudgetChange = (e) => {
-        const rawValue = e.target.value;
-        const formatted = formatNumberInput(rawValue);
+      const formatted = formatNumberInput(e.target.value);
+      setBusinessBudget(formatted);
+      e.target.value = new Intl.NumberFormat().format(formatted); // 포맷팅 표시
+    };
 
-        // 입력값 업데이트
-        setBusinessBudget(formatted);
-
-        // 실시간 포맷팅 표시
-        e.target.value = new Intl.NumberFormat('ko-KR', {
-          style: 'decimal',
-          maximumFractionDigits: 2
-        }).format(Number(formatted));
-      };
+    // 물품 금액 필드 핸들러 추가 ▼
+    const handleTotalPriceChange = (e, index) => {
+      const formatted = formatNumberInput(e.target.value);
+      const list = [...items];
+      list[index].totalPrice = formatted;
+      setItems(list);
+    };
       // 물품 단가/수량 핸들러
     const handleNumericItemChange = (e, index) => {
         const { name, value } = e.target;
