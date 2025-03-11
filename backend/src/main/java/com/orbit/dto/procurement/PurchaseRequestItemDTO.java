@@ -26,6 +26,12 @@ public class PurchaseRequestItemDTO {
 
     private String unitChildCode; // 단위 자식 코드
 
+    private String categoryName; // 카테고리명 추가
+
+    private String unitParentCode; // 단위 부모 코드
+
+    private String unitChildCode; // 단위 자식 코드
+
     private String specification;
 
     @Positive(message = "수량은 0보다 커야 합니다.")

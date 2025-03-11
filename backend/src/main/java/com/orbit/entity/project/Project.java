@@ -1,8 +1,10 @@
 package com.orbit.entity.project;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.commonCode.StatusHistory;
-import com.orbit.entity.commonCode.SystemStatus;
+import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.member.Member;
+import com.orbit.entity.procurement.PurchaseRequest;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
@@ -44,14 +46,6 @@ public class Project extends BaseEntity {
     // 프로젝트 유형 (기존 사업 구분)
     @Column(name = "business_category", length = 50)
     private String businessCategory;
-
-    // 고객사
-    @Column(name = "client_company", length = 200)
-    private String clientCompany;
-
-    // 계약 유형
-    @Column(name = "contract_type", length = 100)
-    private String contractType;
 
     // 요청 부서
     @Column(name = "request_department", length = 100)
