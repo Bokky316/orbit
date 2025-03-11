@@ -53,7 +53,7 @@ public class StatusCode {
     // 기본 상태 코드 재정의
     public static final Map<String, List<StatusCode>> DEFAULT_CODES = Map.of(
             // 프로젝트 기본 상태
-            "PROJECT", List.of(
+             "PROJECT", List.of(
                     new StatusCode("PROJECT", "REGISTERED", "등록완료", SystemType.PROJECT, 1, false, false),
                     new StatusCode("PROJECT", "TERMINATED", "중도종결", SystemType.PROJECT, 2, true, false),
                     new StatusCode("PROJECT", "AMENDED", "정정등록", SystemType.PROJECT, 3, false, true)

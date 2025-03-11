@@ -1,12 +1,13 @@
-package com.orbit.repository.procurement;
+package com.orbit.repository.item;
 
 import com.orbit.entity.item.Item;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import com.orbit.entity.item.Category;
+import java.util.List;
 
-/**
- * Item 엔티티에 대한 JPA Repository 인터페이스
- */
 @Repository
 public interface ItemRepository extends JpaRepository<Item, Long> {
+    List<Item> findByCategory(Category category);
+
 }
