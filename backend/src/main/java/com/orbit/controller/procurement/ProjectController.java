@@ -44,9 +44,8 @@ public class ProjectController {
     @PutMapping("/{id}")
     public ResponseEntity<ProjectResponseDTO> updateProject(
             @PathVariable Long id,
-            @Valid @RequestBody ProjectRequestDTO dto,
-            @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(projectService.updateProject(id, dto, convertToMember(user)));
+            @Valid @RequestBody ProjectRequestDTO dto) {
+        return ResponseEntity.ok(projectService.updateProject(id, dto));
     }
 
     @DeleteMapping("/{id}")

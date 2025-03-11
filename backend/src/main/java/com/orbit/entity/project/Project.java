@@ -47,6 +47,14 @@ public class Project extends BaseEntity {
     @Column(name = "business_category", length = 50)
     private String businessCategory;
 
+    // 고객사
+    @Column(name = "client_company", length = 200)
+    private String clientCompany;
+
+    // 계약 유형
+    @Column(name = "contract_type", length = 100)
+    private String contractType;
+
     // 요청 부서
     @Column(name = "request_department", length = 100)
     private String requestDepartment;

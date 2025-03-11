@@ -7,6 +7,12 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ChildCodeRepository extends JpaRepository<ChildCode, Long> {
+    // 기존 메서드 유지
     ChildCode findByParentCodeAndCodeValue(ParentCode parentCode, String codeValue);
-    ChildCode findByCode(String code);
+
+    // 코드 값으로 조회
+    ChildCode findByCodeValue(String codeValue);
+
+    // 코드 이름으로 조회
+    ChildCode findByCodeName(String codeName);
 }
