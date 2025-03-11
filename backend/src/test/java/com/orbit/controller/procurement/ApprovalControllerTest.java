@@ -3,15 +3,18 @@ package com.orbit.controller.procurement;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbit.dto.approval.ApprovalDTO;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.Project;
+import com.orbit.entity.approval.ApprovalLine;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.project.Project;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.service.procurement.ApprovalLineService;
+import com.orbit.config.jwt.TokenProvider;
 import com.orbit.service.RedisService;
 import com.orbit.service.procurement.ApprovalLineService;
 import com.orbit.config.jwt.TokenProvider;
 
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.repository.procurement.ProjectRepository;
-import com.orbit.constant.SupplierStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +24,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -152,15 +154,15 @@ public class ApprovalControllerTest {
         purchaseRequestRepository.save(purchaseRequest);
 
         // 테스트 결재 생성 및 저장
-//        ApprovalLine approval =
-//                ApprovalLine.builder()
-//                        .purchaseRequest(purchaseRequest)
-//                        .approver(testMember)
-//                        .approvalDate(LocalDate.now())
-//                        .status(ApprovalLine.ApprovalStatus.승인)
-//                        .comments("Test Approval")
-//                        .build();
-//        approvalRepository.save(approval);
+        ApprovalLine approval =
+                ApprovalLine.builder()
+                        .purchaseRequest(purchaseRequest)
+                        .approver(testMember)
+                        .approvalDate(LocalDate.now())
+                        .status(ApprovalLine.ApprovalStatus.승인)
+                        .comments("Test Approval")
+                        .build();
+        approvalRepository.save(approval);
     }
 
     /**
