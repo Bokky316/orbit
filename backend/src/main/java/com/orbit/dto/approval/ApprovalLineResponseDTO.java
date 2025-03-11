@@ -1,20 +1,24 @@
 package com.orbit.dto.approval;
 
-import com.orbit.entity.approval.ApprovalLine;
-import lombok.Builder;
-import lombok.Data;
+import com.orbit.entity.commonCode.ChildCode;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ApprovalLineResponseDTO {
     private Long id;
     private String approverName;
     private String department;
     private Integer step;
-    private ApprovalLine.ApprovalStatus status;
+
+    // ChildCode로 변경
+    private ChildCode status;
+
     private LocalDateTime approvedAt;
     private String comment;
 }
-
