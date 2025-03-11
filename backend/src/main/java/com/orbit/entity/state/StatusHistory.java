@@ -1,6 +1,6 @@
 package com.orbit.entity.state;
 
-import com.orbit.entity.procurement.Project;
+import com.orbit.entity.project.Project;
 import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
