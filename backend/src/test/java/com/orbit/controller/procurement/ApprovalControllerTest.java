@@ -1,7 +1,7 @@
 package com.orbit.controller.procurement;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.orbit.dto.procurement.ApprovalDTO;
+import com.orbit.dto.approval.ApprovalDTO;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.approval.ApprovalLine;
 import com.orbit.entity.procurement.PurchaseRequest;

@@ -16,8 +16,7 @@ public class PurchaseRequestItemDTO {
 
     private Long id;
 
-    // itemId 타입을 String으로 변경 (UUID 대응)
-    private String itemId; // Item ID
+    private Long itemId; // Item ID 추가
 
     private String itemName;
 
