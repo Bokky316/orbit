@@ -1,10 +1,13 @@
 package com.orbit.entity.item;
 
-import com.orbit.entity.commonCode.CommonCode;
+import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.commonCode.ChildCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,6 +17,8 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Item {
     @Id
     @Column(name = "item_id", length = 20)
@@ -32,9 +37,14 @@ public class Item {
     @Column(length = 500)
     private String specification;
 
+    // 단위 코드를 ParentCode와 ChildCode로 변경
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unit_code", nullable = false)
-    private CommonCode unit;
+    @JoinColumn(name = "unit_parent_code")
+    private ParentCode unitParentCode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_child_code")
+    private ChildCode unitChildCode;
 
     @Column(name = "standard_price", precision = 15, scale = 2)
     private BigDecimal standardPrice;

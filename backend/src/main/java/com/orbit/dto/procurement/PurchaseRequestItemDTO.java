@@ -14,12 +14,17 @@ public class PurchaseRequestItemDTO {
 
     private Long id;
 
-    @Size(max = 255, message = "품목명은 최대 255자까지 입력 가능합니다.")
+    private Long itemId; // Item ID 추가
+
     private String itemName;
 
-    private String specification;
+    private String categoryName; // 카테고리명 추가
 
-    private String unit;
+    private String unitParentCode; // 단위 부모 코드
+
+    private String unitChildCode; // 단위 자식 코드
+
+    private String specification;
 
     @Positive(message = "수량은 0보다 커야 합니다.")
     private Integer quantity;
