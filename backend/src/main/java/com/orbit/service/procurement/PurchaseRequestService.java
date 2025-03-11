@@ -402,7 +402,7 @@ public class PurchaseRequestService {
     private PurchaseRequestItemDTO convertToItemDto(PurchaseRequestItem item) {
         PurchaseRequestItemDTO itemDto = new PurchaseRequestItemDTO();
         itemDto.setId(item.getId());
-        itemDto.setItemId(item.getItem().getId());
+        itemDto.setItemId(Long.valueOf(item.getItem().getId()));
         itemDto.setItemName(item.getItem().getName());
 
         // 단위 코드 설정
@@ -429,13 +429,13 @@ public class PurchaseRequestService {
         PurchaseRequestItem item = new PurchaseRequestItem();
 
         // 품목 조회
-        Item foundItem = itemRepository.findById(itemDto.getItemId())
+        Item foundItem = itemRepository.findById(itemDto.getItemId().toString())
                 .orElseThrow(() -> new EntityNotFoundException("Item not found"));
         item.setItem(foundItem);
 
         // 단위 코드 조회
-        ParentCode unitParentCode = parentCodeRepository.findByCodeValue(itemDto.getUnitParentCode());
-        ChildCode unitChildCode = childCodeRepository.findByCodeValue(itemDto.getUnitChildCode());
+        ParentCode unitParentCode = parentCodeRepository.findByCodeName(itemDto.getUnitParentCode());
+        ChildCode unitChildCode = childCodeRepository.findByParentCodeAndCodeValue(unitParentCode, itemDto.getUnitChildCode());
         item.setUnitParentCode(unitParentCode);
         item.setUnitChildCode(unitChildCode);
 

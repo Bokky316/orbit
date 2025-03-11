@@ -35,4 +35,8 @@ public class ParentCode {
     // 사용 여부
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    public String getCodeValue() {
+        return this.entityType + "-" + this.codeGroup;
+    }
 }

@@ -82,13 +82,11 @@ public class ApprovalLineService {
 
         switch (dto.getAction().toUpperCase()) {
             case "APPROVE":
-                line.approve(dto.getComment());
-                line.setStatus(nextStatus);
+                line.approve(dto.getComment(), nextStatus); // nextStatus 전달
                 advanceToNextStep(line, parentCode);
                 break;
             case "REJECT":
-                line.reject(dto.getComment());
-                line.setStatus(nextStatus);
+                line.reject(dto.getComment(), nextStatus); // nextStatus 전달
                 cancelRemainingSteps(line, parentCode);
                 break;
             default:
