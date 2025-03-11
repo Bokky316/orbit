@@ -1,56 +1,66 @@
+// ProjectRequestDTO.java
 package com.orbit.dto.procurement;
-
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter @Setter
 public class ProjectRequestDTO {
 
-    // 기본 정보
-    @NotBlank(message = "프로젝트명은 필수입니다")
+    @NotBlank @Size(max = 200)
     private String projectName;
 
+    @Size(max = 50)
     private String businessCategory;
-    private Long totalBudget;
-    private String clientCompany;
-    private String contractType;
-    private String requestDepartment;
-    private String budgetCode;
-    private String remarks;
 
-    // 상태 정보
+    @Pattern(regexp = "^[A-Z]+-[A-Z_]+$")
     private String basicStatus;
 
-    // 프로젝트 기간
-    @NotNull(message = "프로젝트 기간은 필수입니다")
-    @Valid
-    private PeriodInfo projectPeriod;
+    @Pattern(regexp = "^[A-Z]+-[A-Z_]+$")
+    private String procurementStatus;
 
-    // 업데이트 요청자 (업데이트 시 사용)
-    private String updatedBy;
+    @Valid @NotNull
+    private ManagerDTO projectManager;
 
-    // 첨부파일 (Multipart 요청 시 사용)
-    private MultipartFile[] files;
+    @Valid @NotNull
+    private PeriodDTO projectPeriod;
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class PeriodInfo {
-        @NotNull(message = "시작일은 필수입니다")
+    @NotNull
+    private Long totalBudget;
+
+    @Size(max = 100)
+    private String clientCompany;
+
+    @Size(max = 50)
+    private String contractType;
+
+    @Getter @Setter
+    public static class ManagerDTO {
+        @NotBlank @Size(max = 50)
+        private String name;
+
+        @Size(max = 20)
+        private String contact;
+
+        @Email @Size(max = 100)
+        private String email;
+    }
+
+    @Getter @Setter
+    public static class PeriodDTO {
+        @NotNull
         private LocalDate startDate;
 
-        @NotNull(message = "종료일은 필수입니다")
+        @NotNull
         private LocalDate endDate;
     }
 }
+

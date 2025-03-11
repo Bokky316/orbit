@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.orbit.dto.bidding.BiddingEvaluationDto;
+import com.orbit.entity.member.Member;
+import com.orbit.repository.member.MemberRepository;
 import com.orbit.service.bidding.BiddingEvaluationService;
 
 import jakarta.validation.Valid;
@@ -21,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/biddings/evaluations")
+@RequestMapping("/api/evaluations")
 @RequiredArgsConstructor
 public class BiddingEvaluationController {
     private final BiddingEvaluationService evaluationService;

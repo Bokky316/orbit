@@ -15,16 +15,18 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
     
     List<BiddingOrder> findByBiddingId(Long biddingId);
     
-    boolean existsByBiddingId(Long biddingId);
-    
-    boolean existsByBiddingParticipationId(Long participationId);
-    
+    /**
+     * 특정 공급사의 발주 목록 조회
+     */
     List<BiddingOrder> findBySupplierId(Long supplierId);
     
     List<BiddingOrder> findBySupplierIdAndIsSelectedBidderTrue(Long supplierId);
 
     
-    List<BiddingOrder> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+    /**
+     * 승인되지 않은 발주 목록 조회
+     */
+    List<BiddingOrder> findByApprovedAtIsNull();
     
     
 }

@@ -3,6 +3,7 @@ package com.orbit.service.bidding;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -17,7 +18,10 @@ import com.orbit.entity.bidding.BiddingParticipation;
 import com.orbit.repository.bidding.BiddingEvaluationRepository;
 import com.orbit.repository.bidding.BiddingOrderRepository;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
-import com.orbit.repository.bidding.BiddingRepository;
+import com.orbit.repository.commonCode.ChildCodeRepository;
+import com.orbit.repository.commonCode.ParentCodeRepository;
+import com.orbit.repository.member.MemberRepository;
+import com.orbit.util.BiddingNumberUtil;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +88,29 @@ public class BiddingOrderService {
      * 전체 발주 목록 조회
      */
     public List<BiddingOrderDto> getAllOrders() {
-        List<BiddingOrder> orders = biddingOrderRepository.findAll();
+        List<BiddingOrder> orders = orderRepository.findAll();
+        return orders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 특정 입찰 공고의 발주 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getOrdersByBiddingId(Long biddingId) {
+        List<BiddingOrder> orders = orderRepository.findByBiddingId(biddingId);
+        return orders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 특정 공급사의 발주 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getOrdersBySupplierId(Long supplierId) {
+        List<BiddingOrder> orders = orderRepository.findBySupplierId(supplierId);
         return orders.stream()
                     .map(this::convertToDto)
                     .collect(Collectors.toList());

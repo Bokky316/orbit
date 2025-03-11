@@ -8,7 +8,6 @@ import org.springframework.stereotype.Repository;
 
 import com.orbit.entity.bidding.BiddingParticipation;
 
-@Repository
 public interface BiddingParticipationRepository extends JpaRepository<BiddingParticipation, Long> {
     /**
      * 특정 입찰 공고의 모든 참여 목록 조회

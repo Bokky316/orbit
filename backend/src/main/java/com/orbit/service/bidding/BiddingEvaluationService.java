@@ -3,17 +3,20 @@ package com.orbit.service.bidding;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.orbit.dto.bidding.BiddingEvaluationDto;
+import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.BiddingEvaluation;
 import com.orbit.entity.bidding.BiddingParticipation;
+import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.bidding.BiddingEvaluationRepository;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
+import com.orbit.repository.bidding.BiddingRepository;
+import com.orbit.repository.member.MemberRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,9 @@ import lombok.extern.slf4j.Slf4j;
 public class BiddingEvaluationService {
     private final BiddingEvaluationRepository evaluationRepository;
     private final BiddingParticipationRepository participationRepository;
+    private final BiddingRepository biddingRepository;
+    private final MemberRepository memberRepository;
+    private final NotificationRepository notificationRepository;
 
     @Transactional(readOnly = true)
     public List<BiddingEvaluationDto> getEvaluationsBySupplierName(String supplierName) {

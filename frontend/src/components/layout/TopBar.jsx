@@ -28,6 +28,11 @@ function TopBar() {
       { label: "입찰공고리스트", path: "/biddings" },
       { label: "협력사평가리스트", path: "/biddings/evaluations" },
       { label: "발주리스트", path: "/biddings/orders" }
+      { label: "협력사평가리스트", path: "/biddings/evaluations" },
+      { label: "발주리스트", path: "/biddings/orders" }
+    ],
+    "/biddings/contracts": [
+      { label: "계약리스트", path: "/biddings/contracts" }
     ],
     "/biddings/contracts": [
       { label: "계약리스트", path: "/biddings/contracts" }
