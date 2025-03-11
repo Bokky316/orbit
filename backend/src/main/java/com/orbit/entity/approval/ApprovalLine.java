@@ -1,9 +1,8 @@
 package com.orbit.entity.approval;
 
 import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
-import jdk.jfr.BooleanFlag;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
