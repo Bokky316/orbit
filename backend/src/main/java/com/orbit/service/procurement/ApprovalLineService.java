@@ -4,26 +4,19 @@ import com.orbit.dto.approval.ApprovalLineCreateDTO;
 import com.orbit.dto.approval.ApprovalLineResponseDTO;
 import com.orbit.dto.approval.ApprovalProcessDTO;
 import com.orbit.entity.approval.ApprovalLine;
-import com.orbit.entity.commonCode.ChildCode;
-import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.ApprovalLineRepository;
-import com.orbit.repository.commonCode.ChildCodeRepository;
-import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,8 +26,6 @@ public class ApprovalLineService {
     private final ApprovalLineRepository approvalLineRepo;
     private final PurchaseRequestRepository purchaseRequestRepo;
     private final MemberRepository memberRepo;
-    private final ParentCodeRepository parentCodeRepository;
-    private final ChildCodeRepository childCodeRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     // 결재선 생성
@@ -203,11 +194,6 @@ public class ApprovalLineService {
                     ? childCodeRepository.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW")
                     : childCodeRepository.findByParentCodeAndCodeValue(parentCode, "PENDING");
 
-            // 첫 번째 라인은 IN_REVIEW, 나머지는 PENDING 상태
-            ChildCode lineStatus = step == 1
-                    ? childCodeRepository.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW")
-                    : childCodeRepository.findByParentCodeAndCodeValue(parentCode, "PENDING");
-
             ApprovalLine line = ApprovalLine.builder()
                     .purchaseRequest(request)
                     .approver(approvers.get(step - 2))
@@ -306,14 +292,11 @@ public class ApprovalLineService {
         ChildCode inReviewStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW");
         ChildCode pendingStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "PENDING");
 
-        ChildCode inReviewStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW");
-        ChildCode pendingStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "PENDING");
-
         lines.stream()
                 .filter(l -> l.getStep() > currentLine.getStep())
                 .findFirst()
                 .ifPresent(nextLine -> {
-                    nextLine.setStatus(inReviewStatus);
+                    nextLine.setStatus(ApprovalStatus.IN_REVIEW);
                     approvalLineRepo.save(nextLine);
                     sendApprovalNotification(nextLine);
                 });
@@ -327,7 +310,7 @@ public class ApprovalLineService {
                 .stream()
                 .filter(l -> l.getStep() > rejectedLine.getStep())
                 .forEach(l -> {
-                    l.setStatus(rejectedStatus);
+                    l.setStatus(ApprovalStatus.REJECTED);
                     approvalLineRepo.save(l);
                 });
     }
@@ -352,8 +335,7 @@ public class ApprovalLineService {
     // 결재선 조회
     @Transactional(readOnly = true)
     public List<ApprovalLineResponseDTO> getApprovalLines(Long requestId) {
-        // findAllByRequestId를 사용하여 모든 결재선을 단계 순서대로 조회
-        return approvalLineRepo.findAllByRequestId(requestId)
+        return approvalLineRepo.findByPurchaseRequestIdOrderByStepAsc(requestId)
                 .stream()
                 .map(this::convertToDTO)
                 .toList();
@@ -363,7 +345,6 @@ public class ApprovalLineService {
     private ApprovalLineResponseDTO convertToDTO(ApprovalLine line) {
         return ApprovalLineResponseDTO.builder()
                 .id(line.getId())
-                .purchaseRequestId(line.getPurchaseRequest().getId()) // 추가
                 .approverName(line.getApprover().getName())
                 .department(line.getApprover().getDepartment().getName())
                 .step(line.getStep())
