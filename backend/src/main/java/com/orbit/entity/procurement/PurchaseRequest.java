@@ -1,13 +1,16 @@
 package com.orbit.entity.procurement;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.constant.PurchaseRequestStatus;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.state.StatusHistory;
 import com.orbit.entity.state.SystemStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +32,12 @@ public class PurchaseRequest {
 
     @Column(name = "request_number", unique = true)
     private String requestNumber;
+
+    /**
+     *  첨부파일
+     */
+    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PurchaseRequestAttachment> attachments = new ArrayList<>();
 
     /**
      * 구매 요청 상태 (PURCHASE_REQUEST-REQUESTED 형식)
@@ -93,7 +102,7 @@ public class PurchaseRequest {
     private String businessManager;
 
     /**
-     * 사업의 유형 (예: SI, SM 등)
+     * 사업의 유형
      */
     @Column(name = "business_type")
     private String businessType;
@@ -101,8 +110,9 @@ public class PurchaseRequest {
     /**
      * 구매에 할당된 사업 예산
      */
-    @Column(name = "business_budget")
-    private Long businessBudget;
+    @Column(precision = 19, scale = 2) // DB 컬럼 설정 추가
+    @PositiveOrZero(message = "사업예산은 0 이상이어야 합니다.")
+    private BigDecimal businessBudget; // Long → BigDecimal 변경
 
     /**
      * 구매 요청에 대한 특별 참고 사항
@@ -117,47 +127,36 @@ public class PurchaseRequest {
     private String managerPhoneNumber;
 
     /**
-     * 관련 프로젝트의 시작 날짜
-     */
-    @Column(name = "project_start_date")
-    private LocalDate projectStartDate;
-
-    /**
-     * 관련 프로젝트의 종료 예정 날짜
-     */
-    @Column(name = "project_end_date")
-    private LocalDate projectEndDate;
-
-    /**
-     * 구매 요청과 관련된 프로젝트의 상세 내용
-     */
-    @Column(name = "project_content", length = 2000)
-    private String projectContent;
-
-    /**
-     * 구매 요청에 첨부된 파일들의 정보
-     */
-    @Column(name = "attachments")
-    private String attachments;
-
-    /**
-     * 구매 요청이 속한 프로젝트
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
-    private Project project;
-
-    /**
      * 구매 요청을 생성한 회원
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
     private Member member;
 
-    /**
-     * 이 구매 요청에 포함된 개별 아이템들의 목록
-     */
-    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
+    //    /**
+//     * 관련 프로젝트의 시작 날짜
+//     */
+//    @Column(name = "project_start_date")
+//    private LocalDate projectStartDate;
+//
+//    /**
+//     * 관련 프로젝트의 종료 예정 날짜
+//     */
+//    @Column(name = "project_end_date")
+//    private LocalDate projectEndDate;
+//
+//    /**
+//     * 구매 요청과 관련된 프로젝트의 상세 내용
+//     */
+//    @Column(name = "project_content", length = 2000)
+//    private String projectContent;
+//
+//    /**
+//     * 구매 요청이 속한 프로젝트
+//     */
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "project_id")
+//    private Project project;
+
 
 }
