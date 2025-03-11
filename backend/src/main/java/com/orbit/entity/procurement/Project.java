@@ -28,16 +28,16 @@ import java.util.Random;
 @Builder
 public class Project extends BaseEntity {
 
-    // ██ 시스템 식별자 (PK) ██████████████████████████████████████████████████████████████████
+    //시스템 식별자 (PK)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ██ 비즈니스 식별자 █████████████████████████████████████████████████████████████████████
+    // 비즈니스 식별자
     @Column(name = "project_identifier", nullable = false, length = 20, updatable = false)
     private String projectIdentifier;
 
-    // ██ 기본 정보 ███████████████████████████████████████████████████████████████████████████
+    // 기본 정보
     @Column(name = "project_name", nullable = false, length = 200)
     private String projectName;
 
@@ -59,7 +59,7 @@ public class Project extends BaseEntity {
     @Column(name = "contract_type", length = 50)
     private String contractType;
 
-    // ██ 상태 관리 시스템 ████████████████████████████████████████████████████████████████████
+    //상태 관리 시스템
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "parentCode", column = @Column(name = "basic_status_parent")),
@@ -74,7 +74,7 @@ public class Project extends BaseEntity {
     })
     private SystemStatus procurementStatus;
 
-    // ██ 상태 변경 이력 (양방향 1:N) █████████████████████████████████████████████████████████
+    // 상태 변경 이력 (양방향 1:N)
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StatusHistory> statusHistories = new ArrayList<>();
 
@@ -98,7 +98,7 @@ public class Project extends BaseEntity {
         this.statusHistories.add(history);
     }
 
-    // ██ 임베디드 타입 ██████████████████████████████████████████████████████████████████████
+    // 임베디드 타입
 
     /** 프로젝트 기간 */
     @Embeddable

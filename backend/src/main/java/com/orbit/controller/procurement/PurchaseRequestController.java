@@ -1,92 +1,131 @@
 package com.orbit.controller.procurement;
 
 import com.orbit.dto.procurement.PurchaseRequestDTO;
-import com.orbit.dto.procurement.PurchaseRequestResponseDTO;
 import com.orbit.service.procurement.PurchaseRequestService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriUtils;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * 구매 요청 관련 RESTful API를 처리하는 컨트롤러 클래스
+ * 구매 요청 관련 RESTful API 컨트롤러 (파일 업로드 기능 포함)
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/purchase-requests")
 public class PurchaseRequestController {
 
     private final PurchaseRequestService purchaseRequestService;
 
-    /**
-     * 생성자를 통한 의존성 주입
-     *
-     * @param purchaseRequestService 구매 요청 서비스
-     */
     public PurchaseRequestController(PurchaseRequestService purchaseRequestService) {
         this.purchaseRequestService = purchaseRequestService;
     }
 
-    /**
-     * 모든 구매 요청을 조회합니다.
-     *
-     * @return 구매 요청 목록
-     */
+    // 1. 전체 조회 (PurchaseRequestDTO로 통일)
     @GetMapping
-    public ResponseEntity<List<PurchaseRequestResponseDTO>> getAllPurchaseRequests() {
-        List<PurchaseRequestResponseDTO> purchaseRequests = purchaseRequestService.getAllPurchaseRequests();
+    public ResponseEntity<List<PurchaseRequestDTO>> getAllPurchaseRequests() {
+        List<PurchaseRequestDTO> purchaseRequests = purchaseRequestService.getAllPurchaseRequests();
         return new ResponseEntity<>(purchaseRequests, HttpStatus.OK);
     }
 
-    /**
-     * 구매 요청 ID로 구매 요청을 조회합니다.
-     *
-     * @param id 구매 요청 ID
-     * @return 조회된 구매 요청 (존재하지 않으면 404 상태 코드 반환)
-     */
+    // 2. 단건 조회 (PurchaseRequestDTO로 통일)
     @GetMapping("/{id}")
-    public ResponseEntity<PurchaseRequestResponseDTO> getPurchaseRequestById(@PathVariable Long id) {
-        Optional<PurchaseRequestResponseDTO> purchaseRequest = purchaseRequestService.getPurchaseRequestById(id);
+    public ResponseEntity<PurchaseRequestDTO> getPurchaseRequestById(@PathVariable Long id) {
+        Optional<PurchaseRequestDTO> purchaseRequest = purchaseRequestService.getPurchaseRequestById(id);
         return purchaseRequest.map(response -> new ResponseEntity<>(response, HttpStatus.OK))
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    /**
-     * 새로운 구매 요청을 생성합니다.
-     *
-     * @param purchaseRequestDTO 생성할 구매 요청 정보
-     * @return 생성된 구매 요청 (201 상태 코드 반환)
-     */
-    @PostMapping
-    public ResponseEntity<PurchaseRequestResponseDTO> createPurchaseRequest(@Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestResponseDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO);
+    // 3. JSON 요청 생성 (파일 없음)
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PurchaseRequestDTO> createPurchaseRequest(
+            @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
+        PurchaseRequestDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, null);
         return new ResponseEntity<>(createdPurchaseRequest, HttpStatus.CREATED);
     }
 
-    /**
-     * 구매 요청 정보를 업데이트합니다.
-     *
-     * @param id               업데이트할 구매 요청 ID
-     * @param purchaseRequestDTO 업데이트할 구매 요청 정보
-     * @return 업데이트된 구매 요청
-     */
+    // 4. Multipart 요청 생성 (파일 포함)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PurchaseRequestDTO> createPurchaseRequestWithFiles(
+            @Valid @RequestPart("purchaseRequestDTO") PurchaseRequestDTO purchaseRequestDTO, // ★★★ 필드명 변경 X
+            @RequestPart(value = "files", required = false) MultipartFile[] files) {
+        PurchaseRequestDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, files);
+        return new ResponseEntity<>(createdPurchaseRequest, HttpStatus.CREATED);
+    }
+
+    // 5. 업데이트
     @PutMapping("/{id}")
-    public ResponseEntity<PurchaseRequestResponseDTO> updatePurchaseRequest(@PathVariable Long id, @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestResponseDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO);
+    public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
+        PurchaseRequestDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO);
         return new ResponseEntity<>(updatedPurchaseRequest, HttpStatus.OK);
     }
 
-    /**
-     * 구매 요청을 삭제합니다.
-     *
-     * @param id 삭제할 구매 요청 ID
-     * @return 삭제 성공 여부 (성공 시 204, 실패 시 404)
-     */
+    // 6. 삭제
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePurchaseRequest(@PathVariable Long id) {
         boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id);
         return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+
+    // 파일만 업로드하는 별도 엔드포인트 추가
+    @PostMapping("/{id}/attachments")
+    public ResponseEntity<PurchaseRequestDTO> addAttachmentsToPurchaseRequest(
+            @PathVariable Long id,
+            @RequestParam("files") MultipartFile[] files) {
+
+        Optional<PurchaseRequestDTO> requestOpt = purchaseRequestService.getPurchaseRequestById(id);
+        if (requestOpt.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        PurchaseRequestDTO updatedRequest = purchaseRequestService.addAttachmentsToPurchaseRequest(id, files);
+        return new ResponseEntity<>(updatedRequest, HttpStatus.OK);
+    }
+
+    // 7. 첨부파일 다운로드 엔드포인트 추가
+    @GetMapping("/attachments/{attachmentId}/download")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable Long attachmentId,
+            @RequestHeader(value = "User-Agent", required = false) String userAgent) {
+
+        Resource resource = purchaseRequestService.downloadAttachment(attachmentId);
+
+        try {
+            // 파일명 인코딩 처리
+            String filename = resource.getFilename();
+            String encodedFilename;
+
+            if (userAgent != null && (userAgent.contains("Trident") || userAgent.contains("MSIE"))) {
+                encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8.name())
+                        .replaceAll("\\+", "%20");
+            } else {
+                encodedFilename = UriUtils.encode(filename, StandardCharsets.UTF_8);
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + encodedFilename + "\"; " +
+                                    "filename*=UTF-8''" + encodedFilename)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                    .body(resource);
+
+        } catch (UnsupportedEncodingException e) {
+            log.error("파일명 인코딩 실패: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

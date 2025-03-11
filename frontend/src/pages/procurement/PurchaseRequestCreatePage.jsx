@@ -1,229 +1,417 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { createPurchaseRequest } from '@/redux/purchaseRequestSlice';
 import {
-    Box,
-    Typography,
-    Paper,
-    TextField,
-    Button,
-    Grid,
-    Alert, // Alert 컴포넌트 추가
+    Box, Typography, Paper, TextField, Button, Grid, Alert,
+    IconButton, List, ListItem, ListItemAvatar, ListItemText,
+    Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
+import { Delete as DeleteIcon, AttachFile as AttachFileIcon, Add as AddIcon } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import moment from 'moment';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
+const initItem = {
+    itemName: '',
+    specification: '',
+    unit: '',
+    quantity: '',
+    unitPrice: '',
+    totalPrice: 0,
+    deliveryRequestDate: null,
+    deliveryLocation: ''
+};
+
 /**
  * 구매 요청 생성 페이지 컴포넌트
- * @returns {JSX.Element}
  */
 function PurchaseRequestCreatePage() {
     const dispatch = useDispatch();
-    const navigate = useNavigate();
 
-    // 상태 변수 정의 (이미지, OCR 정보 기반)
-    const [requestName, setRequestName] = useState(''); // 사업명 (요청명)
-    const [requestDate, setRequestDate] = useState(''); // 요청일
-    const [customer, setCustomer] = useState(''); // 고객사
-    const [businessDepartment, setBusinessDepartment] = useState(''); // 사업부서
-    const [businessManager, setBusinessManager] = useState(''); // 사업담당자
-    const [businessType, setBusinessType] = useState(''); // 사업구분
-    const [businessBudget, setBusinessBudget] = useState(''); // 사업예산
-    const [specialNotes, setSpecialNotes] = useState(''); // 특기사항
-    const [managerPhoneNumber, setManagerPhoneNumber] = useState(''); // 담당자 핸드폰
-    const [projectStartDate, setProjectStartDate] = useState(''); // 납품요청일
-    const [projectEndDate, setProjectEndDate] = useState(''); //
-    const [projectContent, setProjectContent] = useState(''); //
-    const [attachments, setAttachments] = useState(''); // 첨부파일
-    const [items, setItems] = useState([{ //품목, 사양, 단위, 수량, 단가, 금액, 납품요청일, 납품장소
-        itemName: '',
-        specification: '',
-        unit: '',
-        quantity: '',
-        unitPrice: '',
-        totalPrice: '',
-        deliveryRequestDate: '',
-        deliveryLocation: ''
-    }]);
+    // 공통 필드 상태
+    const [businessType, setBusinessType] = useState('');
+    const [requestName, setRequestName] = useState('');
+    const [requestDate, setRequestDate] = useState(moment());
+    const [customer, setCustomer] = useState('');
+    const [businessDepartment, setBusinessDepartment] = useState('');
+    const [businessManager, setBusinessManager] = useState('');
+    const [businessBudget, setBusinessBudget] = useState('');
+    const [specialNotes, setSpecialNotes] = useState('');
+    const [managerPhoneNumber, setManagerPhoneNumber] = useState('');
 
-    // 에러 상태 변수 정의
-    const [requestNameError, setRequestNameError] = useState('');
-    const [businessDepartmentError, setBusinessDepartmentError] = useState(''); // 사업 부서 에러 상태
-    const [businessManagerError, setBusinessManagerError] = useState(''); // 사업 담당자 에러 상태
-    const [requestError, setRequestError] = useState(''); // 요청 에러 상태 추가
+    // SI 필드 상태
+    const [projectStartDate, setProjectStartDate] = useState(null);
+    const [projectEndDate, setProjectEndDate] = useState(null);
+    const [projectContent, setProjectContent] = useState('');
 
-    // 현재 로그인한 사용자 정보 가져오기 (Redux 스토어에서)
-    const currentUser = useSelector(state => state.auth.user);
+    // 유지보수 필드 상태
+    const [contractStartDate, setContractStartDate] = useState(null);
+    const [contractEndDate, setContractEndDate] = useState(null);
+    const [contractAmount, setContractAmount] = useState('');
+    const [contractDetails, setContractDetails] = useState('');
 
-    useEffect(() => {
-        // 컴포넌트 마운트 시 요청일 자동 생성
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        setRequestDate(`${year}-${month}-${day}`);
+    // 물품 필드 상태
+    const [items, setItems] = useState([initItem]);
 
-        // 현재 사용자 정보가 있으면 등록자 설정
-        if (currentUser) {
-            // setRequesterId(currentUser.id); // 더 이상 필요 없음
-        }
-    }, [currentUser]);
+    // 첨부 파일 상태
+    const [attachments, setAttachments] = useState([]);
 
-    // 폼 제출 핸들러
-    const handleSubmit = async (event) => {
-        event.preventDefault();
+    // 품목 필드 변경 핸들러
+    const handleItemChange = (index, fieldName, value) => {
+      const newItems = [...items];
+      newItems[index][fieldName] = value;
 
-        // 유효성 검사
-        let isValid = true;
-        if (!requestName) {
-            setRequestNameError('요청명은 필수 입력 값입니다.');
-            isValid = false;
-        } else {
-            setRequestNameError('');
-        }
-        if (!businessDepartment) {
-            setBusinessDepartmentError('사업 부서는 필수 입력 값입니다.');
-            isValid = false;
-        } else {
-            setBusinessDepartmentError('');
-        }
-        if (!businessManager) {
-            setBusinessManagerError('사업 담당자는 필수 입력 값입니다.');
-            isValid = false;
-        } else {
-            setBusinessManagerError('');
-        }
+      // 수량/단가 변경 시 총액 자동 계산
+      if (fieldName === 'quantity' || fieldName === 'unitPrice') {
+        const quantity = Number(newItems[index].quantity) || 0;
+        const unitPrice = Number(newItems[index].unitPrice) || 0;
+        newItems[index].totalPrice = quantity * unitPrice;
+      }
 
-        if (!isValid) {
-            return;
-        }
+      setItems(newItems);
+    };
 
-        // 폼 데이터 객체 생성
-        const formData = {
+    // 숫자 입력 핸들러
+    const handleNumericItemChange = (index, fieldName) => (e) => {
+      const value = e.target.value.replace(/[^0-9]/g, '');
+      handleItemChange(index, fieldName, value);
+    };
+
+    // 품목 삭제 핸들러
+    const handleRemoveItem = (index) => {
+      if (items.length > 1) {
+        const newItems = items.filter((_, i) => i !== index);
+        setItems(newItems);
+      }
+    };
+
+    /**
+     * 폼 제출 핸들러
+     */
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        // 공통 데이터
+        let requestData = {
+            businessType,
             requestName,
-            requestDate,
+            requestDate: requestDate.format('YYYY-MM-DD'),
             customer,
             businessDepartment,
             businessManager,
-            businessType,
-            businessBudget,
+            businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0,
             specialNotes,
-            managerPhoneNumber,
-            projectStartDate,
-            projectEndDate,
-            projectContent,
-            attachments,
-            purchaseRequestItemDTOs: [], // PurchaseRequestItemDTO 목록 추가 (빈 배열로 초기화)
+            managerPhoneNumber: '01044737122',
+
+            // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
+            prStatusParent: 'PURCHASE_REQUEST',
+            prStatusChild: 'REQUESTED'
         };
 
+        // 사업 구분별 데이터 추가
+        if (businessType === 'SI') {
+            requestData.projectStartDate = projectStartDate ? projectStartDate.format('YYYY-MM-DD') : null;
+            requestData.projectEndDate = projectEndDate ? projectEndDate.format('YYYY-MM-DD') : null;
+            requestData.projectContent = projectContent;
+        } else if (businessType === 'MAINTENANCE') {
+            requestData.contractStartDate = contractStartDate ? contractStartDate.format('YYYY-MM-DD') : null;
+            requestData.contractEndDate = contractEndDate ? contractEndDate.format('YYYY-MM-DD') : null;
+            requestData.contractAmount = parseFloat(contractAmount.replace(/,/g, '')) || 0;
+            requestData.contractDetails = contractDetails;
+        } else if (businessType === 'GOODS') {
+            requestData.items = items.map(item => ({
+                itemName: item.itemName,
+                specification: item.specification,
+                unit: item.unit,
+                quantity: parseInt(item.quantity) || 0,
+                unitPrice: parseFloat(item.unitPrice.replace(/,/g, '')) || 0,
+                totalPrice: parseFloat(item.totalPrice) || 0,
+                deliveryRequestDate: item.deliveryRequestDate ? item.deliveryRequestDate.format('YYYY-MM-DD') : null,
+                deliveryLocation: item.deliveryLocation
+            }));
+        }
+
         try {
-            // Redux 액션 디스패치
-            await dispatch(createPurchaseRequest(formData)).unwrap();
+            console.log('JSON 요청 전송:', JSON.stringify(requestData, null, 2));
 
-            // 구매 요청 목록 페이지로 이동
-            navigate('/purchase-requests');
+            const response = await fetchWithAuth(`${API_URL}purchase-requests`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            if (response.ok) {
+                const createdRequest = await response.json();
+                alert('구매 요청이 성공적으로 생성되었습니다.');
+
+                // 파일 첨부가 있는 경우 처리
+                if (attachments.length > 0) {
+                    const fileFormData = new FormData();
+
+                    attachments.forEach(file => {
+                        fileFormData.append('files', file);
+                    });
+
+                    try {
+                        // 기본 fetch API 사용 (Content-Type 헤더 생략)
+                        const fileResponse = await fetch(`${API_URL}purchase-requests/${createdRequest.id}/attachments`, {
+                            method: 'POST',
+                            credentials: 'include', // 쿠키 포함
+                            body: fileFormData
+                        });
+
+                        if (fileResponse.ok) {
+                            alert('첨부 파일이 성공적으로 업로드되었습니다.');
+                        } else {
+                            const errorMsg = await fileResponse.text();
+                            alert(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                        }
+                    } catch (fileError) {
+                        alert(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
+                    }
+                }
+            } else {
+                const errorData = await response.text();
+                alert(`오류 발생: ${errorData}`);
+            }
         } catch (error) {
-            console.error("Failed to create purchase request:", error);
-            setRequestError("구매 요청 등록에 실패했습니다. 다시 시도해주세요."); // 에러 메시지 설정
+            alert(`오류 발생: ${error.message}`);
         }
     };
 
-
-    // 폼 필드 변경 핸들러
-    const handleChange = (event) => {
-        const { name, value } = event.target;
-        switch (name) {
-            case 'requestName':
-                setRequestName(value);
-                break;
-            case 'requestDate':
-                setRequestDate(value);
-                break;
-            case 'customer':
-                setCustomer(value);
-                break;
-            case 'businessDepartment':
-                setBusinessDepartment(value);
-                break;
-            case 'businessManager':
-                setBusinessManager(value);
-                break;
-            case 'businessType':
-                setBusinessType(value);
-                break;
-            case 'businessBudget':
-                setBusinessBudget(value);
-                break;
-            case 'specialNotes':
-                setSpecialNotes(value);
-                break;
-            case 'managerPhoneNumber':
-                setManagerPhoneNumber(value);
-                break;
-            case 'projectStartDate':
-                setProjectStartDate(value);
-                break;
-            case 'projectEndDate':
-                setProjectEndDate(value);
-                break;
-            case 'projectContent':
-                setProjectContent(value);
-                break;
-            case 'attachments':
-                setAttachments(value);
-                break;
-            default:
-                break;
-        }
-    };
-     const handleItemChange = (e, index) => {
-        const { name, value } = e.target;
-        const list = [...items];
-        list[index][name] = value;
-        setItems(list);
-    };
-
-      const handleRemoveItem = index => {
-        setItems(items.filter((s, i) => i !== index));
-    };
-
-    const handleAddItem = () => {
-        setItems([...items, { itemName: '', specification: '', unit: '', quantity: '', unitPrice: '', totalPrice: '', deliveryRequestDate: '', deliveryLocation: '' }]);
-    };
-
-    return (
-        <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
-                구매 요청 생성
-            </Typography>
-            <Paper elevation={2} sx={{ padding: 3 }}>
-                <form onSubmit={handleSubmit}>
-                    <Grid container spacing={3}>
-                         {/* 요청명 입력 필드 추가 */}
+    /**
+     * 동적 필드 렌더링 함수
+     */
+    const renderDynamicFields = () => {
+        switch (businessType) {
+            case 'SI':
+                return (
+                    <>
+                        <Grid item xs={6}>
+                            <DatePicker
+                                label="프로젝트 시작일"
+                                value={projectStartDate}
+                                onChange={setProjectStartDate}
+                                renderInput={(params) => <TextField {...params} fullWidth />}
+                            />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <DatePicker
+                                label="프로젝트 종료일"
+                                value={projectEndDate}
+                                onChange={setProjectEndDate}
+                                renderInput={(params) => <TextField {...params} fullWidth />}
+                            />
+                        </Grid>
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                label="사업명 (요청명)"
-                                name="requestName"
-                                value={requestName}
-                                onChange={handleChange}
-                                error={!!requestNameError}
-                                helperText={requestNameError}
-                                required // 필수 입력 필드 지정
+                                label="프로젝트 내용"
+                                multiline
+                                rows={4}
+                                value={projectContent}
+                                onChange={(e) => setProjectContent(e.target.value)}
                             />
                         </Grid>
-
+                    </>
+                );
+            case 'MAINTENANCE':
+                return (
+                    <>
+                        <Grid item xs={6}>
+                            <DatePicker
+                                label="계약 시작일"
+                                value={contractStartDate}
+                                onChange={setContractStartDate}
+                                renderInput={(params) => <TextField {...params} fullWidth />}
+                            />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <DatePicker
+                                label="계약 종료일"
+                                value={contractEndDate}
+                                onChange={setContractEndDate}
+                                renderInput={(params) => <TextField {...params} fullWidth />}
+                            />
+                        </Grid>
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="요청일"
-                                name="requestDate"
-                                value={requestDate}
+                                label="계약 금액"
+                                value={contractAmount}
+                                onChange={(e) => setContractAmount(e.target.value.replace(/[^0-9]/g, ''))}
                                 InputProps={{
-                                    readOnly: true,
+                                    startAdornment: <InputAdornment position="start">₩</InputAdornment>,
+                                    inputProps: { maxLength: 15 }
                                 }}
-                                onChange={handleChange}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                label="계약 상세 내용"
+                                multiline
+                                rows={4}
+                                value={contractDetails}
+                                onChange={(e) => setContractDetails(e.target.value)}
+                            />
+                        </Grid>
+                    </>
+                );
+            case 'GOODS':
+                return (
+                    <>
+                        {items.map((item, index) => (
+                            <Grid container spacing={2} key={index} alignItems="center" sx={{ mb: 2 }}>
+                                {/* 품목명 */}
+                                <Grid item xs={3}>
+                                    <TextField
+                                        fullWidth
+                                        label="품목명 *"
+                                        value={item.itemName}
+                                        onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
+                                        required
+                                    />
+                                </Grid>
+
+                                {/* 사양 */}
+                                <Grid item xs={2}>
+                                    <TextField
+                                        fullWidth
+                                        label="사양"
+                                        value={item.specification}
+                                        onChange={(e) => handleItemChange(index, 'specification', e.target.value)}
+                                    />
+                                </Grid>
+
+                                {/* 단위 */}
+                                <Grid item xs={1}>
+                                    <TextField
+                                        fullWidth
+                                        label="단위"
+                                        value={item.unit}
+                                        onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                                    />
+                                </Grid>
+
+                                {/* 수량 */}
+                                <Grid item xs={1}>
+                                    <TextField
+                                        fullWidth
+                                        label="수량 *"
+                                        value={item.quantity}
+                                        onChange={(e) => handleNumericItemChange(index, 'quantity')(e)}
+                                        required
+                                    />
+                                </Grid>
+
+                                {/* 단가 */}
+                                <Grid item xs={2}>
+                                    <TextField
+                                        fullWidth
+                                        label="단가 *"
+                                        value={item.unitPrice}
+                                        onChange={(e) => handleNumericItemChange(index, 'unitPrice')(e)}
+                                        InputProps={{
+                                            startAdornment: <InputAdornment position="start">₩</InputAdornment>,
+                                            inputProps: { maxLength: 15 }
+                                        }}
+                                        required
+                                    />
+                                </Grid>
+
+                                {/* 총액 (자동 계산) */}
+                                <Grid item xs={2}>
+                                    <TextField
+                                        fullWidth
+                                        label="총액"
+                                        value={item.totalPrice.toLocaleString()}
+                                        InputProps={{
+                                            readOnly: true,
+                                            startAdornment: <InputAdornment position="start">₩</InputAdornment>
+                                        }}
+                                    />
+                                </Grid>
+
+                                {/* 납품 요청일 */}
+                                <Grid item xs={2}>
+                                    <DatePicker
+                                        label="납품 요청일"
+                                        value={item.deliveryRequestDate}
+                                        onChange={(date) => handleItemChange(index, 'deliveryRequestDate', date)}
+                                        renderInput={(params) => <TextField {...params} fullWidth />}
+                                    />
+                                </Grid>
+
+                                {/* 납품 장소 */}
+                                <Grid item xs={2}>
+                                    <TextField
+                                        fullWidth
+                                        label="납품 장소"
+                                        value={item.deliveryLocation}
+                                        onChange={(e) => handleItemChange(index, 'deliveryLocation', e.target.value)}
+                                    />
+                                </Grid>
+
+                                {/* 삭제 버튼 */}
+                                <Grid item xs={1}>
+                                    <IconButton
+                                        aria-label="delete"
+                                        onClick={() => handleRemoveItem(index)}
+                                        color="error"
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Grid>
+                            </Grid>
+                        ))}
+
+                        {/* 품목 추가 버튼 */}
+                        <Button
+                            variant="outlined"
+                            onClick={() => setItems([...items, initItem])}
+                            startIcon={<AddIcon />}
+                        >
+                            품목 추가
+                        </Button>
+                    </>
+                );
+
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <LocalizationProvider dateAdapter={AdapterMoment}>
+            <Box component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
+                <Typography variant="h5" gutterBottom>
+                    구매 요청 생성
+                </Typography>
+                <Paper sx={{ p: 2 }}>
+                    <Grid container spacing={3}>
+                        {/* 공통 필드 */}
+                        <Grid item xs={6}>
+                            <TextField
+                                fullWidth
+                                label="요청명 *"
+                                name="requestName"
+                                value={requestName}
+                                onChange={(e) => setRequestName(e.target.value)}
+                                required
+                            />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <DatePicker
+                                label="요청일 *"
+                                value={requestDate}
+                                onChange={(date) => setRequestDate(date)}
+                                renderInput={(params) => <TextField {...params} fullWidth />}
                             />
                         </Grid>
                         <Grid item xs={6}>
@@ -232,49 +420,55 @@ function PurchaseRequestCreatePage() {
                                 label="고객사"
                                 name="customer"
                                 value={customer}
-                                onChange={handleChange}
+                                onChange={(e) => setCustomer(e.target.value)}
                             />
                         </Grid>
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="사업부서"
+                                label="사업 부서 *"
                                 name="businessDepartment"
                                 value={businessDepartment}
-                                onChange={handleChange}
+                                onChange={(e) => setBusinessDepartment(e.target.value)}
                                 required
-                                error={!!businessDepartmentError}
-                                helperText={businessDepartmentError}
                             />
                         </Grid>
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="사업담당자"
+                                label="사업 담당자 *"
                                 name="businessManager"
                                 value={businessManager}
-                                onChange={handleChange}
+                                onChange={(e) => setBusinessManager(e.target.value)}
                                 required
-                                error={!!businessManagerError}
-                                helperText={businessManagerError}
                             />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <FormControl fullWidth>
+                                <InputLabel id="business-type-label">사업 구분 *</InputLabel>
+                                <Select
+                                    labelId="business-type-label"
+                                    value={businessType}
+                                    onChange={(e) => setBusinessType(e.target.value)}
+                                    required
+                                >
+                                    <MenuItem value="SI">SI</MenuItem>
+                                    <MenuItem value="MAINTENANCE">유지보수</MenuItem>
+                                    <MenuItem value="GOODS">물품</MenuItem>
+                                </Select>
+                            </FormControl>
                         </Grid>
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="사업구분"
-                                name="businessType"
-                                value={businessType}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="사업예산"
+                                label="사업 예산"
                                 name="businessBudget"
                                 value={businessBudget}
-                                onChange={handleChange}
+                                onChange={(e) => setBusinessBudget(e.target.value.replace(/[^0-9]/g, ''))}
+                                InputProps={{
+                                    startAdornment: <InputAdornment position="start">₩</InputAdornment>,
+                                    inputProps: { maxLength: 15 }
+                                }}
                             />
                         </Grid>
                         <Grid item xs={6}>
@@ -283,163 +477,82 @@ function PurchaseRequestCreatePage() {
                                 label="담당자 핸드폰"
                                 name="managerPhoneNumber"
                                 value={managerPhoneNumber}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="사업 시작일"
-                                name="projectStartDate"
-                                value={projectStartDate}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="사업 종료일"
-                                name="projectEndDate"
-                                value={projectEndDate}
-                                onChange={handleChange}
+                                onChange={(e) => setManagerPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
                             />
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                label="사업내용"
-                                name="projectContent"
-                                multiline
-                                rows={4}
-                                value={projectContent}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="첨부파일"
-                                name="attachments"
-                                value={attachments}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="특기사항"
+                                label="특이 사항"
                                 name="specialNotes"
                                 multiline
                                 rows={4}
                                 value={specialNotes}
-                                onChange={handleChange}
+                                onChange={(e) => setSpecialNotes(e.target.value)}
                             />
                         </Grid>
-                        {/* 물품 정보 입력 필드 추가 */}
+
+                        {/* 동적 필드 렌더링 */}
+                        {renderDynamicFields()}
+
+                        {/* 파일 첨부 */}
                         <Grid item xs={12}>
-                            <Typography variant="h6">물품 정보</Typography>
-                            {items.map((item, index) => (
-                                <Grid container spacing={2} key={index} alignItems="center">
-                                    <Grid item xs={2}>
-                                        <TextField
-                                            fullWidth
-                                            label="품목"
-                                            name="itemName"
-                                            value={item.itemName}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={2}>
-                                        <TextField
-                                            fullWidth
-                                            label="사양"
-                                            name="specification"
-                                            value={item.specification}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={1}>
-                                        <TextField
-                                            fullWidth
-                                            label="단위"
-                                            name="unit"
-                                            value={item.unit}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={1}>
-                                        <TextField
-                                            fullWidth
-                                            label="수량"
-                                            name="quantity"
-                                            value={item.quantity}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={2}>
-                                        <TextField
-                                            fullWidth
-                                            label="단가"
-                                            name="unitPrice"
-                                            value={item.unitPrice}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={2}>
-                                        <TextField
-                                            fullWidth
-                                            label="금액"
-                                            name="totalPrice"
-                                            value={item.totalPrice}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={2}>
-                                        <TextField
-                                            fullWidth
-                                            label="납품요청일"
-                                            name="deliveryRequestDate"
-                                            value={item.deliveryRequestDate}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={2}>
-                                        <TextField
-                                            fullWidth
-                                            label="납품장소"
-                                            name="deliveryLocation"
-                                            value={item.deliveryLocation}
-                                            onChange={e => handleItemChange(e, index)}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={1}>
-                                        <Button variant="contained" color="secondary" onClick={() => handleRemoveItem(index)}>
-                                            삭제
-                                        </Button>
-                                    </Grid>
-                                </Grid>
-                            ))}
-                            <Button variant="contained" color="primary" onClick={handleAddItem}>
-                                물품 추가
-                            </Button>
+                            <input
+                                type="file"
+                                multiple
+                                onChange={(e) => setAttachments(Array.from(e.target.files))}
+                                id="file-upload"
+                                style={{ display: 'none' }}
+                            />
+                            <label htmlFor="file-upload">
+                                <Button variant="outlined" component="span" startIcon={<AttachFileIcon />}>
+                                    파일 첨부
+                                </Button>
+                            </label>
+                            {attachments.length > 0 && (
+                              <>
+                                  {attachments.map((file, index) => (
+                                      <List key={index} sx={{ mt: 2 }}>
+                                          <ListItem>
+                                              <ListItemAvatar>
+                                                  <Avatar><AttachFileIcon /></Avatar>
+                                              </ListItemAvatar>
+                                              <ListItemText
+                                                  primary={file.name}
+                                                  secondary={`${(file.size / 1024).toFixed(2)} KB`}
+                                              />
+                                              {/* 삭제 버튼 */}
+                                              <IconButton edge="end" aria-label="delete" onClick={() => {
+                                                  const newFiles = [...attachments];
+                                                  newFiles.splice(index, 1);
+                                                  setAttachments(newFiles);
+                                              }}>
+                                                  <DeleteIcon />
+                                              </IconButton>
+                                          </ListItem>
+                                      </List>
+                                  ))}
+                              </>
+                            )}
                         </Grid>
-                        <Grid item xs={12}>
+
+                        {/* 제출 버튼 */}
+                        <Grid item xs={12} sx={{ textAlign: 'right' }}>
                             <Button
-                                variant="contained"
-                                color="primary"
-                                type="submit"
+                              type="submit"
+                              variant="contained"
+                              color="primary"
+                              size="large"
+                              sx={{ mt: 2 }}
                             >
-                                저장
+                              제출하기
                             </Button>
                         </Grid>
+
                     </Grid>
-                </form>
-                {/* 요청 실패 시 에러 메시지 표시 */}
-                {requestError && (
-                    <Alert severity="error">{requestError}</Alert>
-                )}
-            </Paper>
-        </Box>
+                </Paper>
+            </Box>
+        </LocalizationProvider>
     );
 }
 
