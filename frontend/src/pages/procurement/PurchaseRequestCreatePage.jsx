@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { createPurchaseRequest } from '@/redux/purchaseRequestSlice';
+import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Paper, TextField, Button, Grid, Alert,
     IconButton, List, ListItem, ListItemAvatar, ListItemText,
@@ -13,6 +13,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
+import { fetchProjects } from '@/redux/projectSlice'; // 프로젝트 목록 액션 추가
 
 const initItem = {
     itemName: '',
@@ -30,6 +31,11 @@ const initItem = {
  */
 function PurchaseRequestCreatePage() {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+    // 프로젝트 목록 상태
+    const [projects, setProjects] = useState([]);
+    const [selectedProjectId, setSelectedProjectId] = useState('');
 
     // 공통 필드 상태
     const [businessType, setBusinessType] = useState('');
@@ -59,6 +65,28 @@ function PurchaseRequestCreatePage() {
     // 첨부 파일 상태
     const [attachments, setAttachments] = useState([]);
 
+   useEffect(() => {
+        // 컴포넌트 마운트 시 프로젝트 목록 가져오기
+        const fetchAllProjects = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}projects`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`프로젝트 목록을 가져오는데 실패했습니다: ${response.status}`);
+                }
+                const projectsData = await response.json();
+                setProjects(projectsData);
+            } catch (error) {
+                alert(`프로젝트 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
+            }
+        };
+
+        fetchAllProjects();
+    }, []);
     // 품목 필드 변경 핸들러
     const handleItemChange = (index, fieldName, value) => {
       const newItems = [...items];
@@ -105,6 +133,7 @@ function PurchaseRequestCreatePage() {
             businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0,
             specialNotes,
             managerPhoneNumber: '01044737122',
+             projectId: selectedProjectId,
 
             // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
             prStatusParent: 'PURCHASE_REQUEST',
@@ -192,6 +221,7 @@ function PurchaseRequestCreatePage() {
             case 'SI':
                 return (
                     <>
+
                         <Grid item xs={6}>
                             <DatePicker
                                 label="프로젝트 시작일"
@@ -223,6 +253,7 @@ function PurchaseRequestCreatePage() {
             case 'MAINTENANCE':
                 return (
                     <>
+
                         <Grid item xs={6}>
                             <DatePicker
                                 label="계약 시작일"
@@ -266,6 +297,7 @@ function PurchaseRequestCreatePage() {
             case 'GOODS':
                 return (
                     <>
+
                         {items.map((item, index) => (
                             <Grid container spacing={2} key={index} alignItems="center" sx={{ mb: 2 }}>
                                 {/* 품목명 */}
@@ -395,6 +427,25 @@ function PurchaseRequestCreatePage() {
                 </Typography>
                 <Paper sx={{ p: 2 }}>
                     <Grid container spacing={3}>
+                         <Grid item xs={6}>
+                            <FormControl fullWidth>
+                                <InputLabel id="project-select-label">프로젝트 선택</InputLabel>
+                                <Select
+                                    labelId="project-select-label"
+                                    id="project-select"
+                                    value={selectedProjectId}
+                                    label="프로젝트 선택"
+                                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                                    required
+                                >
+                                    {projects.map((project) => (
+                                        <MenuItem key={project.id} value={project.id}>
+                                            {project.projectName}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
                         {/* 공통 필드 */}
                         <Grid item xs={6}>
                             <TextField
