@@ -3,8 +3,8 @@ package com.orbit.service.procurement;
 import com.orbit.dto.procurement.*;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.project.Project;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.StatusHistory;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.exception.ProjectNotFoundException;
 import com.orbit.repository.procurement.ProjectRepository;
 

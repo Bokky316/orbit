@@ -1,4 +1,4 @@
-package com.orbit.entity.state;
+package com.orbit.entity.commonCode;
 
 import jakarta.persistence.*;
 import lombok.Getter;

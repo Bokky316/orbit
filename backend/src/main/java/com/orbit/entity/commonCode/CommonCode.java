@@ -1,43 +1,34 @@
-package com.orbit.entity.item;
+package com.orbit.entity.commonCode;
 
-import com.orbit.entity.commonCode.CommonCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "item")
+@Table(name = "common_code")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Item {
+public class CommonCode {
     @Id
-    @Column(name = "item_id", length = 20)
+    @Column(name = "code_id", length = 20)
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
-    private Category category;
+    @JoinColumn(name = "group_id", nullable = false)
+    private CommonCodeGroup group;
 
-    @Column(name = "item_name", length = 100, nullable = false)
+    @Column(name = "code_name", length = 100, nullable = false)
     private String name;
 
-    @Column(name = "item_code", length = 50, nullable = false, unique = true)
-    private String code;
+    @Column(name = "code_value", length = 100)
+    private String value;
 
-    @Column(length = 500)
-    private String specification;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unit_code", nullable = false)
-    private CommonCode unit;
-
-    @Column(name = "standard_price", precision = 15, scale = 2)
-    private BigDecimal standardPrice;
+    @Column(name = "sort_order")
+    private Integer sortOrder = 0;
 
     @Column(length = 500)
     private String description;

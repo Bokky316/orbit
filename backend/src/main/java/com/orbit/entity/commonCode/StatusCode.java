@@ -1,12 +1,10 @@
-package com.orbit.entity.state;
+package com.orbit.entity.commonCode;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
