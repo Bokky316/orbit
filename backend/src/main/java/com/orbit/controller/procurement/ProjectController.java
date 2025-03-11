@@ -5,13 +5,11 @@ import com.orbit.dto.procurement.ProjectDTO;
 import com.orbit.service.procurement.ProjectService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
@@ -23,6 +21,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/projects")
+@RequiredArgsConstructor
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -151,12 +150,13 @@ public class ProjectController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
-        // Spring Security Context에서 인증 정보 가져오기
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUserName = authentication.getName();
+        projectService.deleteProject(id);
+        return ResponseEntity.noContent().build();
+    }
 
-        projectService.deleteProject(id, currentUserName);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    private Member convertToMember(User user) {
+        // 실제 구현시 사용자 정보 조회 로직 추가
+        return new Member();
     }
 
     /**

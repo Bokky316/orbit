@@ -1,11 +1,27 @@
 package com.orbit.entity.state;
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> fe585ea (멤버 재정리. 결재선 관련 정리)
+>>>>>>> 5f3b1b09 (멤버 재정리. 결재선 관련 정리)
 import java.time.LocalDateTime;
 
 import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.BiddingContract;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.Project;
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+=======
+import com.orbit.entity.project.Project;
+>>>>>>> 92122d8 (멤버 재정리. 결재선 관련 정리)
+>>>>>>> fe585ea (멤버 재정리. 결재선 관련 정리)
+>>>>>>> 5f3b1b09 (멤버 재정리. 결재선 관련 정리)
 import com.orbit.entity.procurement.PurchaseRequest;
 
 import jakarta.persistence.AttributeOverride;

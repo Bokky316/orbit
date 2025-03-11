@@ -15,7 +15,7 @@ import java.util.List;
 @RequestMapping("/api/approvals")
 public class ApprovalController {
 
-    private final ApprovalLineService approvalLineService;
+    private final ApprovalLineService approvalService;
 
     public ApprovalController(ApprovalLineService approvalLineService) {
         this.approvalLineService = approvalLineService;

@@ -258,6 +258,70 @@ public class BiddingService {
             biddings = biddingRepository.findByStartDateGreaterThanEqualAndEndDateLessThanEqual(startDate, endDate);
         }
         
+        if (statusCode != null) {
+            // 상태 코드로 필터링
+            // ParentCode 객체 먼저 찾기
+            Optional<ParentCode> parentCode = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
+            if (parentCode.isEmpty()) {
+                throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
+            }
+            
+            Optional<ChildCode> status = childCodeRepository.findByParentCodeAndCodeValue(parentCode.get(), statusCode);
+            if (status.isEmpty()) {
+                throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + statusCode);
+            }
+            
+            biddings = biddingRepository.findByStatusChildAndStartDateGreaterThanEqualAndEndDateLessThanEqual(status.get(), startDate, endDate);
+        } else {
+            biddings = biddingRepository.findByStartDateGreaterThanEqualAndEndDateLessThanEqual(startDate, endDate);
+        }
+        
+        return biddings.stream()
+                .map(BiddingDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 특정 상태의 입찰 공고 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingDto> getBiddingsByStatus(String status) {
+        // ParentCode 객체 먼저 찾기
+        Optional<ParentCode> parentCode = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
+        if (parentCode.isEmpty()) {
+            throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
+        }
+        
+        Optional<ChildCode> statusCode = childCodeRepository.findByParentCodeAndCodeValue(parentCode.get(), status);
+        if (statusCode.isEmpty()) {
+            throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + status);
+        }
+        
+        List<Bidding> biddings = biddingRepository.findByStatusChild(statusCode.get());
+        return biddings.stream()
+                .map(BiddingDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 특정 공급사가 초대된 입찰 공고 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingDto> getBiddingsInvitedSupplier(Long supplierId) {
+        List<Bidding> biddings = biddingRepository.findBiddingsInvitedSupplier(supplierId);
+        return biddings.stream()
+                .map(BiddingDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 특정 공급사가 참여한 입찰 공고 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingDto> getBiddingsParticipatedBySupplier(Long supplierId) {
+        List<Bidding> biddings = biddingRepository.findBiddingsParticipatedBySupplier(supplierId);
         return biddings.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
@@ -638,6 +702,9 @@ public class BiddingService {
                 participation.setCompanyName(supplier.getCompanyName());
             }
         }
+        
+        // 가격 계산
+        calculateParticipationPrices(participation, bidding.getQuantity());
         
         // 가격 계산
         calculateParticipationPrices(participation, bidding.getQuantity());
