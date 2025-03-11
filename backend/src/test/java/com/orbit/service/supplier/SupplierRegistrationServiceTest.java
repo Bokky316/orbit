@@ -1,7 +1,7 @@
 package com.orbit.service.supplier;
 
-import com.orbit.constant.SupplierStatus;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.state.SystemStatus;
 import com.orbit.entity.supplier.SupplierRegistration;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.supplier.SupplierRegistrationRepository;
@@ -65,7 +65,9 @@ public class SupplierRegistrationServiceTest {
 
         // Then
         assertNotNull(registration);
-        assertEquals(SupplierStatus.PENDING, registration.getStatus());
+        SystemStatus expectedStatus = new SystemStatus("SUPPLIER", "PENDING");
+        assertEquals(expectedStatus.getParentCode(), registration.getStatus().getParentCode());
+        assertEquals(expectedStatus.getChildCode(), registration.getStatus().getChildCode());
         assertEquals("ABC Company", registration.getSupplier().getCompanyName());
         assertEquals("홍길동", registration.getCeoName());
         assertEquals("전자기기 판매", registration.getBusinessType());
