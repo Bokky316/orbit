@@ -1,8 +1,8 @@
 package com.orbit.entity.project;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.StatusHistory;
+import com.orbit.entity.commonCode.SystemStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
