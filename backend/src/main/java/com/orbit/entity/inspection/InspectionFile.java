@@ -5,37 +5,44 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * 📎 검수 파일(InspectionFile) 엔티티
+ * - 검수(`Inspection`)와 연결된 파일 정보 저장
+ */
 @Entity
-@Table(name = "inspection_files") // "inspection_files" 테이블과 매핑
+@Table(name = "inspection_files")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class InspectionFile {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 ID
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id; // 파일 ID
 
-    @ManyToOne(fetch = FetchType.LAZY) // 검수 엔티티와 연관 (지연 로딩)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inspection_id", nullable = false)
-    private Inspections inspection;  // 검수 ID 참조 (검수에 속함)
+    private Inspection inspection; // 연결된 검수
 
-    @Column(nullable = false, length = 255) // 파일 경로 (필수)
-    private String filePath;
+    @Column(name = "file_path", nullable = false)
+    private String filePath; // 파일 저장 경로
 
-    @Column(length = 255) // 원본 파일명 (선택)
-    private String fileName;
+    @Column(name = "file_name")
+    private String fileName; // 원본 파일명
 
-    @Column(length = 50) // 파일 유형 (ex: PDF, JPG 등)
-    private String fileType;
+    @Column(name = "file_type")
+    private String fileType; // 파일 유형
 
+    @Column(name = "file_size")
     private Long fileSize; // 파일 크기 (bytes)
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime uploadDate = LocalDateTime.now(); // 업로드 일시 (자동 설정)
+    @Column(name = "upload_date", updatable = false)
+    private LocalDateTime uploadDate; // 업로드 일시
 
-    @Column(columnDefinition = "TEXT") // 파일 설명 (긴 문자열 허용)
-    private String description;
+    @Column(name = "description")
+    private String description; // 파일 설명
+
+    @PrePersist
+    protected void onCreate() {
+        uploadDate = LocalDateTime.now();
+    }
 }
