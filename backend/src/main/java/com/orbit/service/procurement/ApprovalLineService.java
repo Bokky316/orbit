@@ -54,7 +54,6 @@ public class ApprovalLineService {
     public ApprovalLineResponseDTO createApprovalLine(ApprovalLineCreateDTO dto) {
         // 구매 요청 조회
         PurchaseRequest request = purchaseRequestRepo.findById(dto.getPurchaseRequestId())
-                .orElseThrow(() -> new ResourceNotFoundException("구매요청을 찾을 수 없습니다. ID: " + dto.getPurchaseRequestId()));
 
         // 상위 상태 코드 조회
         ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
@@ -343,40 +342,6 @@ public class ApprovalLineService {
             ChildCode lineStatus = step == 1
                     ? findChildCode(parentCode, "IN_REVIEW")
                     : findChildCode(parentCode, "PENDING");
-
-            ApprovalLine line = ApprovalLine.builder()
-                    .purchaseRequest(request)
-                    .approver(approver)
-                    .step(step++)
-                    .status(lineStatus)
-                    .build();
-
-            lines.add(line);
-        }
-
-        return lines;
-    }
-
-    // 헬퍼 메서드들
-    private ParentCode findParentCode(String entityType, String codeGroup) {
-        return parentCodeRepo.findByEntityTypeAndCodeGroup(entityType, codeGroup)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "ParentCode를 찾을 수 없습니다: " + entityType + "-" + codeGroup));
-    }
-
-    private ChildCode findChildCode(ParentCode parentCode, String codeValue) {
-        return childCodeRepo.findByParentCodeAndCodeValue(parentCode, codeValue)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "ChildCode를 찾을 수 없습니다: " + codeValue));
-    }
-
-    private Member findMember(Long approverId) {
-        return memberRepo.findById(approverId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "결재자를 찾을 수 없습니다. ID: " + approverId));
-    }
-
-    // 실시간 업데이트 및 DTO 변환 메서드
     private void sendRealTimeUpdate(Long requestId) {
         List<ApprovalLineResponseDTO> lines = getApprovalLines(requestId);
         messagingTemplate.convertAndSend("/topic/approvals/" + requestId, lines);

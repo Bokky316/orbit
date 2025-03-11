@@ -1,4 +1,4 @@
-package com.orbit.entity.procurement;
+package com.orbit.entity.project;
 
 import org.hibernate.HibernateException;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;

@@ -1,4 +1,4 @@
-package com.orbit.entity.procurement;
+package com.orbit.entity.project;
 
 import com.orbit.entity.BaseEntity;
 import com.orbit.entity.approval.Department;

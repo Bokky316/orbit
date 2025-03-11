@@ -39,4 +39,7 @@ public class Position {
         this.members.add(member);
         member.setPosition(this);
     }
+
 }
+
+

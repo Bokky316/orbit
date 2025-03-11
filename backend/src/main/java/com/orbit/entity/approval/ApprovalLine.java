@@ -21,9 +21,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Table(name = "approval_lines")
 public class ApprovalLine {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -47,13 +44,3 @@ public class ApprovalLine {
     // 결재 처리 메서드
     public void approve(String comment, ChildCode approvedStatus) {
         this.status = approvedStatus;
-        this.approvedAt = LocalDateTime.now();
-        this.comment = comment;
-    }
-
-    public void reject(String comment, ChildCode rejectedStatus) {
-        this.status = rejectedStatus;
-        this.approvedAt = LocalDateTime.now();
-        this.comment = comment;
-    }
-}
