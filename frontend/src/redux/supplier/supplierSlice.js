@@ -17,7 +17,10 @@ const dummySuppliers = [
     headOfficeAddress: "서울특별시 강남구 테헤란로 123",
     comments: "반도체 부품 전문 제조업체입니다.",
     businessFile: "dummy-file-1.pdf",
-    status: "APPROVED",
+    status: {
+      parentCode: "SUPPLIER",
+      childCode: "APPROVED"
+    },
     registrationDate: "2023-01-15",
     contactPerson: "김담당",
     contactEmail: "contact@ganada.com",
@@ -37,7 +40,10 @@ const dummySuppliers = [
     headOfficeAddress: "서울특별시 영등포구 여의도로 456",
     comments: "금속 원자재 전문 공급업체입니다.",
     businessFile: "dummy-file-2.pdf",
-    status: "PENDING",
+    status: {
+      parentCode: "SUPPLIER",
+      childCode: "PENDING"
+    },
     registrationDate: "2023-03-22",
     contactPerson: "이담당",
     contactEmail: "contact@lamaba.com",
@@ -57,7 +63,10 @@ const dummySuppliers = [
     headOfficeAddress: "서울특별시 서초구 강남대로 789",
     comments: "소프트웨어 개발 전문 기업입니다.",
     businessFile: "dummy-file-3.pdf",
-    status: "REJECTED",
+    status: {
+      parentCode: "SUPPLIER",
+      childCode: "REJECTED"
+    },
     rejectionReason: "등록 서류 미비. 사업자등록증 확인이 필요합니다.",
     registrationDate: "2023-02-10",
     contactPerson: "박담당",
@@ -78,7 +87,10 @@ const dummySuppliers = [
     headOfficeAddress: "경기도 화성시 산업로 101",
     comments: "자동차 부품 제조 전문 기업입니다.",
     businessFile: "dummy-file-4.pdf",
-    status: "APPROVED",
+    status: {
+      parentCode: "SUPPLIER",
+      childCode: "APPROVED"
+    },
     registrationDate: "2023-04-05",
     contactPerson: "최담당",
     contactEmail: "contact@chakata.com",
@@ -98,13 +110,65 @@ const dummySuppliers = [
     headOfficeAddress: "서울특별시 강남구 삼성로 555",
     comments: "경영 컨설팅 및 조직관리 전문 기업입니다.",
     businessFile: "dummy-file-5.pdf",
-    status: "PENDING",
+    status: {
+      parentCode: "SUPPLIER",
+      childCode: "PENDING"
+    },
     registrationDate: "2023-05-18",
     contactPerson: "정담당",
     contactEmail: "contact@paha.com",
     contactPhone: "010-5678-9012"
+  },
+  {
+    id: 6,
+    supplierName: "블랙리스트업체(주)",
+    businessNo: "678-90-12345",
+    ceoName: "한대표",
+    businessType: "제조업",
+    businessCategory: "금속",
+    sourcingCategory: "원료",
+    sourcingSubCategory: "금속",
+    sourcingDetailCategory: "알루미늄",
+    phoneNumber: "02-6789-0123",
+    headOfficeAddress: "경기도 안산시 산업로 202",
+    comments: "알루미늄 제조 전문업체입니다.",
+    businessFile: "dummy-file-6.pdf",
+    status: {
+      parentCode: "SUPPLIER",
+      childCode: "BLACKLIST"
+    },
+    rejectionReason: "품질 불량 문제 및 납기 지연 반복",
+    registrationDate: "2023-01-05",
+    contactPerson: "한담당",
+    contactEmail: "contact@blacklist.com",
+    contactPhone: "010-6789-0123"
+  },
+  {
+    id: 7,
+    supplierName: "일시정지물산(주)",
+    businessNo: "789-01-23456",
+    ceoName: "노사장",
+    businessType: "도매업",
+    businessCategory: "화학",
+    sourcingCategory: "원료",
+    sourcingSubCategory: "화학",
+    sourcingDetailCategory: "",
+    phoneNumber: "02-7890-1234",
+    headOfficeAddress: "충청남도 천안시 공단로 303",
+    comments: "화학 원료 공급업체입니다.",
+    businessFile: "dummy-file-7.pdf",
+    status: {
+      parentCode: "SUPPLIER",
+      childCode: "SUSPENDED"
+    },
+    suspensionReason: "업체 내부 점검으로 인한 일시적 거래 중단",
+    registrationDate: "2023-02-20",
+    contactPerson: "노담당",
+    contactEmail: "contact@suspended.com",
+    contactPhone: "010-7890-1234"
   }
 ];
+
 
 // 협력업체 목록 조회
 export const fetchSuppliers = createAsyncThunk(
@@ -149,7 +213,7 @@ export const fetchSuppliers = createAsyncThunk(
 
       if (filters.status) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
-          supplier.status === filters.status
+          supplier.status.childCode === filters.status
         );
       }
 
@@ -242,7 +306,10 @@ export const registerSupplier = createAsyncThunk(
         contactPerson: contactPerson || '담당자',
         contactEmail: contactEmail || 'contact@example.com',
         contactPhone: contactPhone || '010-0000-0000',
-        status: 'PENDING',
+        status: {
+          parentCode: "SUPPLIER",
+          childCode: "PENDING"
+        },
         businessFile: 'dummy-new-file.pdf',
         registrationDate: new Date().toISOString().split('T')[0]
       };
@@ -413,7 +480,12 @@ const supplierSlice = createSlice({
         // 상태 업데이트
         const updatedSupplier = state.suppliers.find(supplier => supplier.id === action.payload.id);
         if (updatedSupplier) {
-          updatedSupplier.status = action.payload.status;
+          if (!updatedSupplier.status) {
+            updatedSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.status };
+          } else {
+            updatedSupplier.status.childCode = action.payload.status;
+          }
+
           if (action.payload.rejectionReason) {
             updatedSupplier.rejectionReason = action.payload.rejectionReason;
           }
@@ -421,14 +493,34 @@ const supplierSlice = createSlice({
 
         // 현재 선택된 공급자인 경우 해당 정보도 업데이트
         if (state.currentSupplier && state.currentSupplier.id === action.payload.id) {
-          state.currentSupplier.status = action.payload.status;
+          if (!state.currentSupplier.status) {
+            state.currentSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.status };
+          } else {
+            state.currentSupplier.status.childCode = action.payload.status;
+          }
+
           if (action.payload.rejectionReason) {
             state.currentSupplier.rejectionReason = action.payload.rejectionReason;
           }
         }
 
-        state.message = action.payload.status === 'APPROVED' ?
-          '협력업체가 승인되었습니다.' : '협력업체가 거절되었습니다.';
+        // 상태에 따른 메시지 설정
+        switch(action.payload.status) {
+          case 'APPROVED':
+            state.message = '협력업체가 승인되었습니다.';
+            break;
+          case 'REJECTED':
+            state.message = '협력업체가 거절되었습니다.';
+            break;
+          case 'SUSPENDED':
+            state.message = '협력업체가 일시정지되었습니다.';
+            break;
+          case 'BLACKLIST':
+            state.message = '협력업체가 블랙리스트에 등록되었습니다.';
+            break;
+          default:
+            state.message = '협력업체 상태가 변경되었습니다.';
+        }
       })
       .addCase(updateSupplierStatus.rejected, (state, action) => {
         state.loading = false;

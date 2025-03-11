@@ -45,13 +45,14 @@ const SupplierApprovalListPage = () => {
 
   // 승인 대기 중인 협력업체만 필터링 (안전하게)
   const pendingSuppliers = Array.isArray(suppliers)
-    ? suppliers.filter(supplier => supplier.status === 'PENDING')
+    ? suppliers.filter(supplier =>
+        supplier.status?.childCode === 'PENDING' || supplier.status === 'PENDING')
     : [];
 
   useEffect(() => {
     // 실행은 하되, ADMIN 체크는 재차 확인
     try {
-      dispatch(fetchSuppliers('PENDING'));
+      dispatch(fetchSuppliers({ status: 'PENDING' }));
     } catch (err) {
       console.error('Error fetching pending suppliers:', err);
     }
@@ -124,7 +125,7 @@ const SupplierApprovalListPage = () => {
                     <TableCell>{supplier.ceoName || '-'}</TableCell>
                     <TableCell>{supplier.registrationDate || '-'}</TableCell>
                     <TableCell>
-                      <Chip label="대기중" color="warning" size="small" />
+                      <Chip label="심사대기" color="warning" size="small" />
                     </TableCell>
                     <TableCell>
                       <Button
@@ -144,12 +145,12 @@ const SupplierApprovalListPage = () => {
         )}
       </Paper>
 
-      {/* 반려 사유 확인 모달 */}
+      {/* 거절 사유 확인 모달 */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)}>
-        <DialogTitle>반려 사유</DialogTitle>
+        <DialogTitle>거절 사유</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {rejectionReason || '반려 사유가 입력되지 않았습니다.'}
+            {rejectionReason || '거절 사유가 입력되지 않았습니다.'}
           </DialogContentText>
         </DialogContent>
         <DialogActions>

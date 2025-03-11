@@ -90,7 +90,7 @@ public class StatusCode {
             "SUPPLIER", List.of(
                     new StatusCode("SUPPLIER", "PENDING", "심사대기", SystemType.SUPPLIER, 1, false, true),
                     new StatusCode("SUPPLIER", "APPROVED", "승인", SystemType.SUPPLIER, 2, true, false),
-                    new StatusCode("SUPPLIER", "REJECTED", "거절됨", SystemType.SUPPLIER, 3, false, false),
+                    new StatusCode("SUPPLIER", "REJECTED", "반려", SystemType.SUPPLIER, 3, false, false),
                     new StatusCode("SUPPLIER", "SUSPENDED", "일시정지", SystemType.SUPPLIER, 4, false, true),
                     new StatusCode("SUPPLIER", "BLACKLIST", "블랙리스트", SystemType.SUPPLIER, 5, true, false)
             )

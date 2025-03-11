@@ -186,7 +186,16 @@ const SupplierRegistrationPage = () => {
 
     const data = new FormData();
 
-    Object.entries(formData).forEach(([key, value]) => {
+    // 폼 데이터 처리 - 백엔드 API 필드명에 맞게 조정
+    const formDataCopy = { ...formData };
+
+    // companyPhoneNumber를 phoneNumber로 변경 (백엔드 API에 맞게)
+    if (formDataCopy.companyPhoneNumber) {
+      formDataCopy.phoneNumber = formDataCopy.companyPhoneNumber;
+      delete formDataCopy.companyPhoneNumber;
+    }
+
+    Object.entries(formDataCopy).forEach(([key, value]) => {
       if (value) {
         data.append(key, value);
       }

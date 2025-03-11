@@ -125,13 +125,20 @@ const SupplierReviewPage = () => {
 
   // 상태에 따른 Chip 색상 설정
   const getStatusChip = (status) => {
-    switch(status) {
+    // status가 객체인 경우 childCode를 사용
+    const statusCode = status?.childCode || status;
+
+    switch(statusCode) {
       case 'APPROVED':
-        return <Chip label="승인됨" color="success" variant="outlined" />;
+        return <Chip label="승인" color="success" variant="outlined" />;
       case 'PENDING':
-        return <Chip label="대기중" color="warning" variant="outlined" />;
+        return <Chip label="심사대기" color="warning" variant="outlined" />;
       case 'REJECTED':
-        return <Chip label="반려됨" color="error" variant="outlined" />;
+        return <Chip label="거절됨" color="error" variant="outlined" />;
+      case 'SUSPENDED':
+        return <Chip label="일시정지" color="default" variant="outlined" />;
+      case 'BLACKLIST':
+        return <Chip label="블랙리스트" color="error" variant="outlined" />;
       default:
         return <Chip label="미확인" variant="outlined" />;
     }

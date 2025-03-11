@@ -155,13 +155,20 @@ const SupplierListPage = () => {
 
   // 상태에 따른 Chip 색상 설정
   const getStatusChip = (status) => {
-    switch(status) {
+    // status가 객체인 경우 childCode를 사용
+    const statusCode = status?.childCode || status;
+
+    switch(statusCode) {
       case 'APPROVED':
-        return <Chip label="승인됨" color="success" size="small" />;
+        return <Chip label="승인" color="success" size="small" />;
       case 'PENDING':
-        return <Chip label="대기중" color="warning" size="small" />;
+        return <Chip label="심사대기" color="warning" size="small" />;
       case 'REJECTED':
-        return <Chip label="반려됨" color="error" size="small" />;
+        return <Chip label="반려" color="error" size="small" />;
+      case 'SUSPENDED':
+        return <Chip label="일시정지" color="default" size="small" />;
+      case 'BLACKLIST':
+        return <Chip label="블랙리스트" color="error" size="small" />;
       default:
         return <Chip label="미확인" size="small" />;
     }
@@ -283,8 +290,10 @@ const SupplierListPage = () => {
               >
                 <MenuItem value="">전체</MenuItem>
                 <MenuItem value="APPROVED">승인됨</MenuItem>
-                <MenuItem value="PENDING">대기중</MenuItem>
-                <MenuItem value="REJECTED">반려됨</MenuItem>
+                <MenuItem value="PENDING">심사대기</MenuItem>
+                <MenuItem value="REJECTED">거절됨</MenuItem>
+                <MenuItem value="SUSPENDED">일시정지</MenuItem>
+                <MenuItem value="BLACKLIST">블랙리스트</MenuItem>
               </Select>
             </FormControl>
           </Grid>
