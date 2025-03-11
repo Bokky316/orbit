@@ -215,11 +215,11 @@ public class Member implements UserDetails {
     /**
      * 사용자가 결재자로 지정된 결재선 조회
      */
-//    public List<ApprovalLine> getPendingApprovals() {
-//        return this.approvalLines.stream()
-//                .filter(line -> line.getStatus() == ApprovalLine.ApprovalStatus.IN_REVIEW)
-//                .toList();
-//    }
+    public List<ApprovalLine> getPendingApprovals() {
+        return this.approvalLines.stream()
+                .filter(line -> line.getStatus() == ApprovalLine.ApprovalStatus.IN_REVIEW)
+                .toList();
+    }
 
     /**
      * 결재 권한 여부 확인

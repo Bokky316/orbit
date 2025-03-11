@@ -1,16 +1,19 @@
 package com.orbit.dto.approval;
 
-import lombok.*;
-
 import java.util.List;
 
-@Getter
-@Setter
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
+import lombok.Data;
+
+@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class ApprovalLineCreateDTO {
+    @NotNull
     private Long purchaseRequestId;
-    private List<Long> approverIds;
-    private String initialStatusCode;
+
+    @NotEmpty
+    private List<Long> approverIds; // 결재자 ID 목록 (순서대로)
 }
+

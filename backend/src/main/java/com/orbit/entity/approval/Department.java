@@ -1,9 +1,5 @@
 package com.orbit.entity.approval;
 
-import com.orbit.entity.member.Member;
-import jakarta.persistence.*;
-import lombok.*;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,8 +22,6 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Department {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,25 +33,8 @@ public class Department {
     @Column(length = 20, unique = true)
     private String code;
 
-    @Column(length = 200)
-    private String description;
-
-    // 직급 레벨 관련 필드 추가
-    @Column(nullable = false)
-    private int teamLeaderLevel;
-
-    @Column(nullable = false)
-    private int middleManagerLevel;
-
-    @Column(nullable = false)
-    private int upperManagerLevel;
-
-    @Column(nullable = false)
-    private int executiveLevel;
-
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<Member> members = new ArrayList<>();
+    private List<Member> members = new ArrayList<>(); // Employee → Member로 변경
 
     // 연관 관계 편의 메서드
     public void addMember(Member member) {
