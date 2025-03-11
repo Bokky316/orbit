@@ -2,6 +2,7 @@ package com.orbit.entity.supplier;
 
 import com.orbit.constant.SupplierStatus;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.state.SystemStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -32,9 +33,9 @@ public class SupplierRegistration {
     @Column(name = "registration_date")
     private LocalDate registrationDate; // 등록 요청일
 
-    @Column(name = "status", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private SupplierStatus status = SupplierStatus.PENDING; // 상태 (대기중, 승인, 거절)
+    // status 필드 수정
+    @Embedded
+    private SystemStatus status = new SystemStatus("SUPPLIER", "PENDING"); // 상태 (대기중, 승인, 거절)
 
     @Column(name = "business_no", nullable = false, unique = true, length = 20)
     private String businessNo; // 사업자등록번호

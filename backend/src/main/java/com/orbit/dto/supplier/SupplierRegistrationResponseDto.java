@@ -1,6 +1,6 @@
 package com.orbit.dto.supplier;
 
-import com.orbit.constant.SupplierStatus;
+import com.orbit.entity.state.SystemStatus;
 import com.orbit.entity.supplier.SupplierRegistration;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,7 +25,7 @@ public class SupplierRegistrationResponseDto {
 
     private String businessFile; // 사업자등록증 파일 경로
 
-    private SupplierStatus status; // 상태
+    private SystemStatus status; // 상태 (SystemStatus 타입으로 변경)
 
     private LocalDate registrationDate; // 등록 요청일
 
@@ -43,6 +43,14 @@ public class SupplierRegistrationResponseDto {
 
     private String comments; // 의견
 
+    // 상태 코드 및 이름 조회 편의 메서드 (클라이언트 표시용)
+    private String getStatusCode() {
+        return status != null ? status.getChildCode() : null;
+    }
+
+    private String getStatusFullCode() {
+        return status != null ? status.getFullCode() : null;
+    }
 
     /**
      * Entity -> DTO 변환 메서드

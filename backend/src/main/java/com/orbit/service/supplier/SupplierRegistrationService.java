@@ -2,6 +2,7 @@ package com.orbit.service.supplier;
 
 import com.orbit.constant.SupplierStatus;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.state.SystemStatus;
 import com.orbit.entity.supplier.SupplierRegistration;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.supplier.SupplierRegistrationRepository;
@@ -22,16 +23,16 @@ public class SupplierRegistrationService {
     private final FileStorageService fileStorageService;
 
     // 협력업체 목록 조회
-    public List<SupplierRegistration> getSuppliers(SupplierStatus status) {
-        System.out.println("🔍 SupplierStatus: " + status);
+    public List<SupplierRegistration> getSuppliers(String statusCode) {
+        System.out.println("🔍 StatusCode: " + statusCode);
 
-        if (status == null) {
+        if (statusCode == null) {
             List<SupplierRegistration> allSuppliers = supplierRegistrationRepository.findAll();
             System.out.println("✅ 전체 조회, 총 개수: " + allSuppliers.size());
             return allSuppliers;
         }
 
-        List<SupplierRegistration> filteredSuppliers = supplierRegistrationRepository.findByStatus(status);
+        List<SupplierRegistration> filteredSuppliers = supplierRegistrationRepository.findByStatusChildCode(statusCode);
         System.out.println("✅ 상태별 조회, 총 개수: " + filteredSuppliers.size());
 
         return filteredSuppliers;
@@ -75,7 +76,7 @@ public class SupplierRegistrationService {
         registration.setHeadOfficeAddress(headOfficeAddress);
         registration.setComments(comments);
         registration.setBusinessFile(storedFileName); // 저장된 파일명만 DB에 저장
-        registration.setStatus(SupplierStatus.PENDING);
+        registration.setStatus(new SystemStatus("SUPPLIER", "PENDING")); // 대기중 상태로 설정
         registration.setRegistrationDate(LocalDate.now());
 
         return supplierRegistrationRepository.save(registration);
@@ -84,13 +85,27 @@ public class SupplierRegistrationService {
     // 협력업체 승인
     public void approveSupplier(Long id) {
         SupplierRegistration registration = getSupplierById(id);
-        registration.setStatus(SupplierStatus.APPROVED);
+        registration.setStatus(new SystemStatus("SUPPLIER", "APPROVED"));
     }
 
     // 협력업체 거절
     public void rejectSupplier(Long id, String reason) {
         SupplierRegistration registration = getSupplierById(id);
-        registration.setStatus(SupplierStatus.REJECTED);
+        registration.setStatus(new SystemStatus("SUPPLIER", "REJECTED"));
         registration.setRejectionReason(reason);
+    }
+
+    // 협력업체 일시정지
+    public void suspendSupplier(Long id, String reason) {
+        SupplierRegistration registration = getSupplierById(id);
+        registration.setStatus(new SystemStatus("SUPPLIER", "SUSPENDED"));
+        // 필요시 정지 사유 필드 추가
+    }
+
+    // 협력업체 블랙리스트 등록
+    public void blacklistSupplier(Long id, String reason) {
+        SupplierRegistration registration = getSupplierById(id);
+        registration.setStatus(new SystemStatus("SUPPLIER", "BLACKLIST"));
+        // 필요시 블랙리스트 사유 필드 추가
     }
 }

@@ -12,8 +12,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SupplierApprovalDto {
-    @NotBlank(message = "승인 상태는 필수입니다.")
-    private SupplierStatus status;
+    @NotBlank(message = "상태 코드는 필수입니다.")
+    private String statusCode; // PENDING, APPROVED, REJECTED, SUSPENDED, BLACKLIST
 
     private String rejectionReason; // 거절 사유 (승인 시에는 null)
 }

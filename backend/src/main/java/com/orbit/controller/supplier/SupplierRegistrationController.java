@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,14 +36,11 @@ public class SupplierRegistrationController {
                 System.out.println("✅ status 값 없음 → 전체 데이터 조회");
                 suppliers = supplierRegistrationService.getSuppliers(null);
             } else {
-                SupplierStatus supplierStatus;
-                try {
-                    supplierStatus = SupplierStatus.valueOf(status.toUpperCase());
-                    System.out.println("✅ 변환된 상태 값: " + supplierStatus);
-                } catch (IllegalArgumentException e) {
-                    return ResponseEntity.badRequest().body("❌ 잘못된 상태 값입니다. (PENDING, APPROVED, REJECTED 중 하나여야 함)");
+                // 유효한 status 값 검증 (PENDING, APPROVED, REJECTED, SUSPENDED, BLACKLIST)
+                if (!Arrays.asList("PENDING", "APPROVED", "REJECTED", "SUSPENDED", "BLACKLIST").contains(status.toUpperCase())) {
+                    return ResponseEntity.badRequest().body("❌ 잘못된 상태 값입니다. (PENDING, APPROVED, REJECTED, SUSPENDED, BLACKLIST 중 하나여야 함)");
                 }
-                suppliers = supplierRegistrationService.getSuppliers(supplierStatus);
+                suppliers = supplierRegistrationService.getSuppliers(status.toUpperCase());
             }
 
             System.out.println("✅ 조회된 협력업체 수: " + suppliers.size());
@@ -95,10 +93,21 @@ public class SupplierRegistrationController {
     @PutMapping("/{id}/status")
     public ResponseEntity<Void> updateSupplierStatus(@PathVariable Long id,
                                                      @Valid @RequestBody SupplierApprovalDto requestDto) {
-        if (requestDto.getStatus() == SupplierStatus.REJECTED) {
-            supplierRegistrationService.rejectSupplier(id, requestDto.getRejectionReason());
-        } else {
-            supplierRegistrationService.approveSupplier(id);
+        switch(requestDto.getStatusCode().toUpperCase()) {
+            case "REJECTED":
+                supplierRegistrationService.rejectSupplier(id, requestDto.getRejectionReason());
+                break;
+            case "APPROVED":
+                supplierRegistrationService.approveSupplier(id);
+                break;
+            case "SUSPENDED":
+                supplierRegistrationService.suspendSupplier(id, requestDto.getRejectionReason());
+                break;
+            case "BLACKLIST":
+                supplierRegistrationService.blacklistSupplier(id, requestDto.getRejectionReason());
+                break;
+            default:
+                throw new IllegalArgumentException("지원하지 않는 상태 코드입니다.");
         }
         return ResponseEntity.ok().build();
     }

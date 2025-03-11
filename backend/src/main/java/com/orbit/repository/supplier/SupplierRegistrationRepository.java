@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface SupplierRegistrationRepository extends JpaRepository<SupplierRegistration, Long> {
-    List<SupplierRegistration> findByStatus(SupplierStatus status);
+    List<SupplierRegistration> findByStatusChildCode(String childCode);
 
     Optional<SupplierRegistration> findByBusinessNo(String businessNo);
 }

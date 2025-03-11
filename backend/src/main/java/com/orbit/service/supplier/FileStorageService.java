@@ -21,19 +21,26 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 public class FileStorageService {
-    @Value("${itemImgLocation}") // 기존 properties 설정 값 사용
-    private String uploadDir;
-
-    @Value("${uploadPath}") // 업로드된 파일을 URL로 접근할 때 사용할 경로
+    // application-properties에 있는 uploadPath만 사용하도록 변경
+    @Value("${uploadPath}")
     private String uploadPath;
+
+    // 비즈니스 인증서를 저장할 디렉토리 경로
+    private String businessCertDir = "business-certificates";
+
+    // 업로드 디렉토리 전체 경로
+    private String getUploadDir() {
+        return uploadPath + businessCertDir + "/";
+    }
 
     @PostConstruct
     public void init() {
-        File directory = new File(uploadDir);
+        // 전체 경로를 사용하여 디렉토리 생성
+        File directory = new File(getUploadDir());
         if (!directory.exists()) {
             boolean created = directory.mkdirs();
             if (created) {
-                log.info("✅ 파일 저장 디렉토리 생성됨: {}", uploadDir);
+                log.info("✅ 파일 저장 디렉토리 생성됨: {}", getUploadDir());
             } else {
                 log.error("❌ 파일 저장 디렉토리 생성 실패!");
             }
@@ -55,7 +62,7 @@ public class FileStorageService {
             String newFileName = UUID.randomUUID().toString() + "." + extension;
 
             // 저장할 파일 경로
-            Path targetLocation = Paths.get(uploadDir).resolve(newFileName);
+            Path targetLocation = Paths.get(getUploadDir()).resolve(newFileName);
 
             // 파일 저장
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
@@ -71,7 +78,7 @@ public class FileStorageService {
     // 파일 삭제 메서드
     public void deleteFile(String fileName) {
         try {
-            Path filePath = Paths.get(uploadDir).resolve(fileName);
+            Path filePath = Paths.get(getUploadDir()).resolve(fileName);
             Files.deleteIfExists(filePath);
             log.info("🗑 파일 삭제 완료: {}", fileName);
         } catch (IOException e) {
@@ -81,6 +88,6 @@ public class FileStorageService {
 
     // 파일 URL 반환 메서드 (프론트에서 접근 가능하도록)
     public String getFileUrl(String fileName) {
-        return uploadPath + fileName;
+        return uploadPath + businessCertDir + "/" + fileName;
     }
 }

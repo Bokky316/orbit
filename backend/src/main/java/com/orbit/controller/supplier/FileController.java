@@ -2,6 +2,7 @@ package com.orbit.controller.supplier;
 
 import com.orbit.service.supplier.FileStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -23,10 +24,16 @@ import java.nio.file.Paths;
 public class FileController {
     private final FileStorageService fileStorageService;
 
+    @Value("${uploadPath}")
+    private String uploadPath;
+
+    private final String businessCertDir = "business-certificates";
+
     @GetMapping("/{fileName:.+}")
     public ResponseEntity<Resource> getFile(@PathVariable String fileName) {
         try {
-            Path filePath = Paths.get("uploads/business-certificates").resolve(fileName);
+            // 전체 경로 구성
+            Path filePath = Paths.get(uploadPath + businessCertDir).resolve(fileName);
             Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
