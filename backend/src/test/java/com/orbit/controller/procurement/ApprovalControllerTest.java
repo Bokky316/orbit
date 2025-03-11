@@ -3,17 +3,16 @@ package com.orbit.controller.procurement;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbit.dto.procurement.ApprovalDTO;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.Approval;
+import com.orbit.entity.approval.ApprovalLine;
 import com.orbit.entity.procurement.PurchaseRequest;
-import com.orbit.entity.procurement.Project;
+import com.orbit.entity.project.Project;
 import com.orbit.repository.member.MemberRepository;
-import com.orbit.service.procurement.ApprovalService;
+import com.orbit.service.procurement.ApprovalLineService;
 import com.orbit.config.jwt.TokenProvider;
 import com.orbit.service.RedisService;
 import com.orbit.repository.procurement.ApprovalRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.repository.procurement.ProjectRepository;
-import com.orbit.constant.SupplierStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +22,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.Collection;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -55,7 +52,7 @@ public class ApprovalControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private ApprovalService approvalService;
+    private ApprovalLineService approvalService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -155,12 +152,12 @@ public class ApprovalControllerTest {
         purchaseRequestRepository.save(purchaseRequest);
 
         // 테스트 결재 생성 및 저장
-        Approval approval =
-                Approval.builder()
+        ApprovalLine approval =
+                ApprovalLine.builder()
                         .purchaseRequest(purchaseRequest)
                         .approver(testMember)
                         .approvalDate(LocalDate.now())
-                        .status(Approval.ApprovalStatus.승인)
+                        .status(ApprovalLine.ApprovalStatus.승인)
                         .comments("Test Approval")
                         .build();
         approvalRepository.save(approval);

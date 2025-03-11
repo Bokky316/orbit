@@ -2,7 +2,7 @@ package com.orbit.controller.procurement;
 
 import com.orbit.dto.procurement.ApprovalDTO;
 import com.orbit.dto.procurement.ApprovalResponseDTO;
-import com.orbit.service.procurement.ApprovalService;
+import com.orbit.service.procurement.ApprovalLineService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,13 +18,13 @@ import java.util.Optional;
 @RequestMapping("/api/approvals")
 public class ApprovalController {
 
-    private final ApprovalService approvalService;
+    private final ApprovalLineService approvalService;
 
     /**
      * 생성자를 통한 의존성 주입
      * @param approvalService 결재 서비스
      */
-    public ApprovalController(ApprovalService approvalService) {
+    public ApprovalController(ApprovalLineService approvalService) {
         this.approvalService = approvalService;
     }
 
