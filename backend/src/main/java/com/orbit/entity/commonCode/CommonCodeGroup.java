@@ -1,43 +1,26 @@
-package com.orbit.entity.item;
+package com.orbit.entity.commonCode;
 
-import com.orbit.entity.commonCode.CommonCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "item")
+@Table(name = "common_code_group")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Item {
+public class CommonCodeGroup {
     @Id
-    @Column(name = "item_id", length = 20)
+    @Column(name = "group_id", length = 20)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
-    private Category category;
-
-    @Column(name = "item_name", length = 100, nullable = false)
+    @Column(name = "group_name", length = 100, nullable = false)
     private String name;
-
-    @Column(name = "item_code", length = 50, nullable = false, unique = true)
-    private String code;
-
-    @Column(length = 500)
-    private String specification;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unit_code", nullable = false)
-    private CommonCode unit;
-
-    @Column(name = "standard_price", precision = 15, scale = 2)
-    private BigDecimal standardPrice;
 
     @Column(length = 500)
     private String description;
@@ -56,6 +39,15 @@ public class Item {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommonCode> codes = new ArrayList<>();
+
+    // 연관관계 편의 메서드
+    public void addCode(CommonCode code) {
+        this.codes.add(code);
+        code.setGroup(this);
+    }
 
     @PrePersist
     public void prePersist() {

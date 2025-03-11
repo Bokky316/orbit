@@ -2,7 +2,7 @@ package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.*;
 import com.orbit.entity.procurement.*;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ItemRepository;

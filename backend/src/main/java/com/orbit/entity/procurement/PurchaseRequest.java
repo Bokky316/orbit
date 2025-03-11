@@ -1,10 +1,8 @@
 package com.orbit.entity.procurement;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.orbit.constant.PurchaseRequestStatus;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.StatusHistory;
+import com.orbit.entity.commonCode.SystemStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
