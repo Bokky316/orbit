@@ -17,7 +17,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -38,9 +37,8 @@ public class PurchaseRequestController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseRequestDTO> getPurchaseRequestById(@PathVariable Long id) {
-        Optional<PurchaseRequestDTO> purchaseRequest = purchaseRequestService.getPurchaseRequestById(id);
-        return purchaseRequest.map(response -> new ResponseEntity<>(response, HttpStatus.OK))
-                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        PurchaseRequestDTO purchaseRequest = purchaseRequestService.getPurchaseRequestById(id);
+        return new ResponseEntity<>(purchaseRequest, HttpStatus.OK);
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
