@@ -17,7 +17,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockCookie;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -153,15 +152,15 @@ public class ApprovalControllerTest {
         purchaseRequestRepository.save(purchaseRequest);
 
         // 테스트 결재 생성 및 저장
-//        ApprovalLine approval =
-//                ApprovalLine.builder()
-//                        .purchaseRequest(purchaseRequest)
-//                        .approver(testMember)
-//                        .approvalDate(LocalDate.now())
-//                        .status(ApprovalLine.ApprovalStatus.승인)
-//                        .comments("Test Approval")
-//                        .build();
-//        approvalRepository.save(approval);
+        ApprovalLine approval =
+                ApprovalLine.builder()
+                        .purchaseRequest(purchaseRequest)
+                        .approver(testMember)
+                        .approvalDate(LocalDate.now())
+                        .status(ApprovalLine.ApprovalStatus.승인)
+                        .comments("Test Approval")
+                        .build();
+        approvalRepository.save(approval);
     }
 
     /**
