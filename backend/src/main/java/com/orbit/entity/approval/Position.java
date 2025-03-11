@@ -1,5 +1,11 @@
 package com.orbit.entity.approval;
 
+import com.orbit.entity.member.Member;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.List;
 
