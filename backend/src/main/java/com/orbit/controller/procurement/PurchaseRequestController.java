@@ -37,6 +37,7 @@ public class PurchaseRequestController {
 
     /**
      * 생성자를 통한 의존성 주입
+     *
      * @param purchaseRequestService 구매 요청 서비스
      */
     public PurchaseRequestController(PurchaseRequestService purchaseRequestService) {
@@ -51,9 +52,10 @@ public class PurchaseRequestController {
      */
 
     /**
-     * ID로 구매 요청 조회
+     * 구매 요청 ID로 구매 요청을 조회합니다.
+     *
      * @param id 구매 요청 ID
-     * @return 구매 요청 (Optional)
+     * @return 조회된 구매 요청 (존재하지 않으면 404 상태 코드 반환)
      */
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseRequestDTO> getPurchaseRequestById(@PathVariable Long id) {
@@ -74,37 +76,35 @@ public class PurchaseRequestController {
     }
 
     /**
-     * 구매 요청 생성 (Multipart 요청 - 파일 업로드)
-     * @param purchaseRequestDTO 요청 정보
-     * @param files 업로드 파일 배열
-     * @return 생성된 구매 요청
+     * 새로운 구매 요청을 생성합니다.
+     *
+     * @param purchaseRequestDTO 생성할 구매 요청 정보
+     * @return 생성된 구매 요청 (201 상태 코드 반환)
      */
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<PurchaseRequestResponseDTO> createPurchaseRequestWithFiles(
-            @Valid @RequestPart("purchaseRequestDTO") PurchaseRequestDTO purchaseRequestDTO,
-            @RequestPart(value = "files", required = false) MultipartFile[] files) {
-        PurchaseRequestResponseDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, files);
+    @PostMapping
+    public ResponseEntity<PurchaseRequestResponseDTO> createPurchaseRequest(@Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
+        PurchaseRequestResponseDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO);
         return new ResponseEntity<>(createdPurchaseRequest, HttpStatus.CREATED);
     }
 
     /**
-     * 구매 요청 정보 업데이트
-     * @param id 업데이트 대상 ID
-     * @param purchaseRequestDTO 업데이트 정보
+     * 구매 요청 정보를 업데이트합니다.
+     *
+     * @param id               업데이트할 구매 요청 ID
+     * @param purchaseRequestDTO 업데이트할 구매 요청 정보
      * @return 업데이트된 구매 요청
      */
     @PutMapping("/{id}")
-    public ResponseEntity<PurchaseRequestResponseDTO> updatePurchaseRequest(
-            @PathVariable Long id,
-            @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
+    public ResponseEntity<PurchaseRequestResponseDTO> updatePurchaseRequest(@PathVariable Long id, @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
         PurchaseRequestResponseDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO);
         return new ResponseEntity<>(updatedPurchaseRequest, HttpStatus.OK);
     }
 
     /**
-     * 구매 요청 삭제
-     * @param id 삭제 대상 ID
-     * @return 삭제 성공 여부
+     * 구매 요청을 삭제합니다.
+     *
+     * @param id 삭제할 구매 요청 ID
+     * @return 삭제 성공 여부 (성공 시 204, 실패 시 404)
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePurchaseRequest(@PathVariable Long id) {

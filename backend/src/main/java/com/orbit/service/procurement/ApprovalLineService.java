@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -190,11 +189,6 @@ public class ApprovalLineService {
                     ? findChildCode(parentCode, "IN_REVIEW")
                     : findChildCode(parentCode, "PENDING");
 
-            // 첫 번째 라인은 IN_REVIEW, 나머지는 PENDING 상태
-            ChildCode lineStatus = step == 1
-                    ? childCodeRepository.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW")
-                    : childCodeRepository.findByParentCodeAndCodeValue(parentCode, "PENDING");
-
             ApprovalLine line = ApprovalLine.builder()
                     .purchaseRequest(request)
                     .approver(approvers.get(step - 2))
@@ -289,9 +283,6 @@ public class ApprovalLineService {
     private void advanceToNextStep(ApprovalLine currentLine, ParentCode parentCode) {
         List<ApprovalLine> lines = approvalLineRepo.findAllByRequestId(currentLine.getPurchaseRequest().getId());
         ChildCode inReviewStatus = findChildCode(parentCode, "IN_REVIEW");
-
-        ChildCode inReviewStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW");
-        ChildCode pendingStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "PENDING");
 
         lines.stream()
                 .filter(l -> l.getStep() > currentLine.getStep())

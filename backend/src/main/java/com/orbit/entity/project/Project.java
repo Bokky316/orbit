@@ -7,7 +7,6 @@ import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -29,10 +28,12 @@ import java.util.Random;
 @Builder
 public class Project extends BaseEntity {
 
+    // ██ 시스템 식별자 (PK) ██████████████████████████████████████████████████████████████████
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ██ 비즈니스 식별자 █████████████████████████████████████████████████████████████████████
     @Column(name = "project_identifier", nullable = false, length = 20, updatable = false)
     private String projectIdentifier;
 
@@ -77,17 +78,14 @@ public class Project extends BaseEntity {
     @JoinColumn(name = "basic_status_parent_id")
     private ParentCode basicStatusParent;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "basic_status_child_id")
-    private ChildCode basicStatusChild;
+    @Embedded
+    private ProjectManager projectManager;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "procurement_status_parent_id")
-    private ParentCode procurementStatusParent;
+    @Column(name = "total_budget")
+    private Long totalBudget;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "procurement_status_child_id")
-    private ChildCode procurementStatusChild;
+    @Column(name = "client_company", length = 100)
+    private String clientCompany;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseRequest> purchaseRequests = new ArrayList<>();
@@ -96,8 +94,7 @@ public class Project extends BaseEntity {
     private List<ProjectAttachment> attachments = new ArrayList<>();
 
     /**
-     * 프로젝트 식별자를 자동으로 생성합니다.
-     * 형식: PRJ-YYMM-XXX (YY: 년도, MM: 월, XXX: 랜덤 3자리 숫자)
+     * 프로젝트 식별자 자동 생성 (PRJ-YYMM-XXX 형식)
      */
     @PrePersist
     public void generateProjectIdentifier() {
@@ -112,9 +109,9 @@ public class Project extends BaseEntity {
      * 구매 요청을 프로젝트에 추가합니다.
      * @param purchaseRequest 추가할 구매 요청
      */
-    public void addPurchaseRequest(PurchaseRequest purchaseRequest) {
-        purchaseRequest.setProject(this);
-        this.purchaseRequests.add(purchaseRequest);
+    public void addStatusHistory(StatusHistory history) {
+        history.setProject(this); // ✅ 반드시 호출해야 함
+        this.statusHistories.add(history);
     }
 
     /**
@@ -138,13 +135,23 @@ public class Project extends BaseEntity {
         @Column(name = "end_date", nullable = false)
         private LocalDate endDate;
 
-        /**
-         * 프로젝트 기간의 유효성을 검사합니다.
-         * @return 종료일이 시작일 이후인 경우 true, 그렇지 않으면 false
-         */
         @AssertTrue(message = "종료일은 시작일 이후여야 합니다")
         public boolean isPeriodValid() {
             return endDate.isAfter(startDate);
         }
+    }
+
+    /** 프로젝트 담당자 */
+    @Embeddable
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ProjectManager {
+        @Column(name = "manager_name", nullable = false, length = 50)
+        private String name;
+
+        @Column(name = "manager_contact", length = 20)
+        private String contact;
+
+        @Column(name = "manager_email", length = 100)
+        private String email;
     }
 }

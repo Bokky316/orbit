@@ -2,6 +2,7 @@ package com.orbit.entity.member;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -45,6 +46,16 @@ import lombok.Setter;
  * - 활성화/비활성화 상태 관리
  * - 주소 정보 포함
  */
+/**
+ * 시스템 사용자 정보 및 권한 관리를 위한 핵심 엔티티
+ * 결재선 관리 기능 확장을 위해 ApprovalLine과의 연관 관계 추가
+ *
+ * 주요 특징:
+ * - Spring Security의 UserDetails 구현체
+ * - 부서/직급/결재선 3중 연관 관계
+ * - 활성화/비활성화 상태 관리
+ * - 주소 정보 포함
+ */
 @Entity
 @Table(name = "members")
 @Getter
@@ -55,19 +66,23 @@ import lombok.Setter;
 public class Member implements UserDetails {
 
     // ============== 기본 정보 필드 ==============
+    // ============== 기본 정보 필드 ==============
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "username", length = 50, nullable = false, unique = true)
     private String username; // 로그인 ID
+    private String username; // 로그인 ID
 
     @Column(name = "name", length = 50, nullable = false)
+    private String name; // 실명
     private String name; // 실명
 
     @Column(name = "password", length = 255, nullable = false)
     private String password;
 
+    // ============== 연락처 및 주소 정보 ==============
     // ============== 연락처 및 주소 정보 ==============
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
@@ -85,6 +100,7 @@ public class Member implements UserDetails {
     private String detailAddress;
 
     // ============== 조직 관계 필드 ==============
+    // ============== 조직 관계 필드 ==============
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dept_id")
     private Department department;
@@ -99,6 +115,14 @@ public class Member implements UserDetails {
     // ============== 결재선 연관 관계 추가 ==============
     @OneToMany(mappedBy = "approver", fetch = FetchType.LAZY)
     @Builder.Default
+    private List<ApprovalLine> approvalLines = new ArrayList<>();
+
+    // ============== 보안 및 상태 필드 ==============
+    @Column(name = "company_name", length = 100, nullable = false)
+    private String companyName;
+
+    // ============== 결재선 연관 관계 추가 ==============
+    @OneToMany(mappedBy = "approver", fetch = FetchType.LAZY)
     private List<ApprovalLine> approvalLines = new ArrayList<>();
 
     // ============== 보안 및 상태 필드 ==============
@@ -149,6 +173,34 @@ public class Member implements UserDetails {
     }
 
     // ============== 생명주기 콜백 ==============
+    // ============== 연관 관계 편의 메서드 ==============
+    /**
+     * 부서 설정 시 양방향 관계 자동 관리
+     */
+    public void setDepartment(Department department) {
+        if(this.department != null) {
+            this.department.getMembers().remove(this);
+        }
+        this.department = department;
+        if(department != null && !department.getMembers().contains(this)) {
+            department.getMembers().add(this);
+        }
+    }
+
+    /**
+     * 직급 설정 시 양방향 관계 자동 관리
+     */
+    public void setPosition(Position position) {
+        if(this.position != null) {
+            this.position.getMembers().remove(this);
+        }
+        this.position = position;
+        if(position != null && !position.getMembers().contains(this)) {
+            position.getMembers().add(this);
+        }
+    }
+
+    // ============== 생명주기 콜백 ==============
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -161,6 +213,12 @@ public class Member implements UserDetails {
         updatedAt = LocalDateTime.now();
     }
 
+    // ============== 비즈니스 로직 메서드 ==============
+    /**
+     * 회원 생성 빌더 메서드
+     * @param memberFormDto 사용자 입력 데이터
+     * @param passwordEncoder 패스워드 암호화 인코더
+     */
     // ============== 비즈니스 로직 메서드 ==============
     /**
      * 회원 생성 빌더 메서드
@@ -186,12 +244,16 @@ public class Member implements UserDetails {
     /**
      * 권한 추가 메서드 (RBAC 구현용)
      */
+    /**
+     * 권한 추가 메서드 (RBAC 구현용)
+     */
     public void addAuthority(String authority) {
         if (this.role == null) {
             this.role = Role.valueOf(authority);
         }
     }
 
+    // ============== UserDetails 구현 메서드 ==============
     // ============== UserDetails 구현 메서드 ==============
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -213,6 +275,7 @@ public class Member implements UserDetails {
         return true;
     }
 
+    // ============== 상태 관리 메서드 ==============
     // ============== 상태 관리 메서드 ==============
     public void deactivateMember() {
         this.enabled = false;
