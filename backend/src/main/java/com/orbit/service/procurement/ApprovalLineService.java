@@ -99,9 +99,7 @@ public class ApprovalLineService {
 
     // 다음 단계로 진행
     private void advanceToNextStep(ApprovalLine currentLine, ParentCode parentCode) {
-        List<ApprovalLine> lines = approvalLineRepo
-                .findByPurchaseRequestIdOrderByStepAsc(currentLine.getPurchaseRequest().getId());
-
+        List<ApprovalLine> lines = approvalLineRepo.findAllByRequestId(currentLine.getPurchaseRequest().getId());
         ChildCode inReviewStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW");
         ChildCode pendingStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "PENDING");
 
@@ -119,7 +117,7 @@ public class ApprovalLineService {
     private void cancelRemainingSteps(ApprovalLine rejectedLine, ParentCode parentCode) {
         ChildCode rejectedStatus = childCodeRepository.findByParentCodeAndCodeValue(parentCode, "REJECTED");
 
-        approvalLineRepo.findByPurchaseRequestIdOrderByStepAsc(rejectedLine.getPurchaseRequest().getId())
+        approvalLineRepo.findCurrentStep(rejectedLine.getPurchaseRequest().getId())
                 .stream()
                 .filter(l -> l.getStep() > rejectedLine.getStep())
                 .forEach(l -> {
@@ -137,7 +135,7 @@ public class ApprovalLineService {
     // 결재선 조회
     @Transactional(readOnly = true)
     public List<ApprovalLineResponseDTO> getApprovalLines(Long requestId) {
-        return approvalLineRepo.findByPurchaseRequestIdOrderByStepAsc(requestId)
+        return approvalLineRepo.findCurrentStep(requestId)
                 .stream()
                 .map(this::convertToDTO)
                 .toList();
@@ -150,7 +148,7 @@ public class ApprovalLineService {
                 .approverName(line.getApprover().getName())
                 .department(line.getApprover().getDepartment().getName())
                 .step(line.getStep())
-                .status(line.getStatus())
+                .statusCode(line.getStatus().getCodeValue())
                 .approvedAt(line.getApprovedAt())
                 .comment(line.getComment())
                 .build();
