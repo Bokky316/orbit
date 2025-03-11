@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { fetchWithAuth } from '../../utils/fetchWithAuth';
 
 // 더미 데이터
 const dummySuppliers = [
@@ -265,56 +266,102 @@ export const fetchSupplierById = createAsyncThunk(
   }
 );
 
-// 협력업체 등록 요청
+// 협력업체 등록 요청 - 인증 토큰 처리 개선
 export const registerSupplier = createAsyncThunk(
   'supplier/registerSupplier',
-  async (formData, { rejectWithValue }) => {
+  async (formData, { rejectWithValue, getState }) => {
     try {
-      const response = await axios.post('/api/supplier-registrations', formData, {
+      console.log('FormData 전송 데이터:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${typeof value === 'object' ? '파일 객체' : value}`);
+      }
+
+      // 🚀 API 호출 URL 변경
+      const apiUrl = '/api/supplier-registrations/register';
+
+      // Redux 스토어에서 auth 상태 가져오기
+      const state = getState();
+      const { auth } = state;
+
+      // 로그인 상태 확인 및 디버깅
+      console.log('현재 Redux 인증 상태:', auth);
+      console.log('로그인 상태:', auth.isLoggedIn);
+
+      // 로컬 스토리지에서 토큰 가져오기 (기존 방식)
+      let token = localStorage.getItem('token');
+
+      // 토큰이 없을 경우 Redux 스토어에서 확인
+      if (!token && auth && auth.token) {
+        token = auth.token;
+        console.log('Redux 스토어에서 토큰을 가져왔습니다.');
+
+        // 토큰을 로컬 스토리지에 저장 (향후 사용을 위해)
+        localStorage.setItem('token', token);
+      }
+
+      // 토큰 디버깅
+      console.log('사용할 토큰 상태:', token ? '토큰 존재' : '토큰 없음');
+
+      // 토큰이 없는데 로그인 상태라면, 로그인한 회원 정보가 있으므로 임시 토큰 생성
+      if (!token && auth && auth.isLoggedIn && auth.user) {
+        // 개발 목적으로 임시 토큰 생성 (실제 운영에서는 사용하지 않음)
+        console.log('임시 토큰 생성 - 개발 목적');
+        token = 'dev_temp_token';
+        localStorage.setItem('token', token);
+      }
+
+      // 토큰이 없을 경우에 대한 처리
+      if (!token) {
+        console.error('토큰이 없습니다. 로그인 상태를 확인하세요.');
+        return rejectWithValue('로그인 상태가 유효하지 않습니다. 다시 로그인해주세요.');
+      }
+
+      // FormData를 위한 특수 헤더 설정 (Content-Type은 설정하지 않음)
+      const config = {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          // 🚀 Content-Type 제거
+          Authorization: `Bearer ${token}`
         }
-      });
-      return response.data;
-    } catch (error) {
-      // API 호출 실패 시 더미 응답 생성 (개발용)
-      console.log('API 호출 실패, 더미 응답 생성:', error);
-
-      // formData에서 필요한 값 추출
-      const businessNo = formData.get('businessNo');
-      const ceoName = formData.get('ceoName');
-      const businessType = formData.get('businessType');
-      const businessCategory = formData.get('businessCategory');
-      const sourcingCategory = formData.get('sourcingCategory');
-      const sourcingSubCategory = formData.get('sourcingSubCategory');
-      const sourcingDetailCategory = formData.get('sourcingDetailCategory');
-      const contactPerson = formData.get('contactPerson');
-      const contactEmail = formData.get('contactEmail');
-      const contactPhone = formData.get('contactPhone');
-
-      // 새 더미 데이터 생성
-      const newSupplier = {
-        id: dummySuppliers.length + 1,
-        supplierName: `${ceoName || '신규'}의 회사`,
-        businessNo: businessNo || '999-99-99999',
-        ceoName: ceoName || '신규 대표',
-        businessType: businessType || '제조업',
-        businessCategory: businessCategory || '기타',
-        sourcingCategory: sourcingCategory || '기타',
-        sourcingSubCategory: sourcingSubCategory || '기타',
-        sourcingDetailCategory: sourcingDetailCategory || '기타',
-        contactPerson: contactPerson || '담당자',
-        contactEmail: contactEmail || 'contact@example.com',
-        contactPhone: contactPhone || '010-0000-0000',
-        status: {
-          parentCode: "SUPPLIER",
-          childCode: "PENDING"
-        },
-        businessFile: 'dummy-new-file.pdf',
-        registrationDate: new Date().toISOString().split('T')[0]
       };
 
-      return newSupplier;
+      // 디버깅
+      console.log('API 호출 URL:', apiUrl);
+      console.log('API 호출 설정:', config);
+
+      // axios를 사용한 FormData 전송
+      const response = await axios.post(apiUrl, formData, config);
+      console.log('등록 성공 응답:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('협력업체 등록 요청 실패:', error);
+
+      // 오류 응답 처리 개선
+      let errorMessage = '협력업체 등록 요청에 실패했습니다.';
+
+      if (error.response) {
+        console.error('서버 응답 상태:', error.response.status);
+        console.error('서버 응답 데이터:', error.response.data);
+
+        // 🚀 오류 메시지 상세화
+        if (error.response.data) {
+          if (typeof error.response.data === 'string') {
+            errorMessage = error.response.data;
+          } else if (error.response.data.message) {
+            errorMessage = error.response.data.message;
+          } else if (error.response.data.error) {
+            errorMessage = `${error.response.data.error}: ${error.response.data.message || ''}`;
+          }
+        }
+
+        // 401 Unauthorized 에러 처리 - 토큰 문제일 가능성이 높음
+        if (error.response.status === 401) {
+          errorMessage = '로그인 세션이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.';
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      return rejectWithValue(errorMessage);
     }
   }
 );

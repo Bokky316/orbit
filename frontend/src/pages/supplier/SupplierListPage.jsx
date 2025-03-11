@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchSuppliers } from '../../redux/supplier/supplierSlice';
+import { fetchWithAuth } from '../../utils/fetchWithAuth'; // fetchWithAuth 임포트 추가
 import {
   Box,
   Typography,
@@ -81,8 +82,25 @@ const SupplierListPage = () => {
   const [availableDetailCategories, setAvailableDetailCategories] = useState([]);
 
   useEffect(() => {
-    // API 호출 시 필터 적용
+    // API 호출 시 권한에 맞는 API 호출
     try {
+      // fetchWithAuth를 사용하여 실제 API 호출을 할 경우를 위한 예시 코드
+      // const fetchData = async () => {
+      //   const queryParams = new URLSearchParams();
+      //   if (filters.status) queryParams.append('status', filters.status);
+      //   if (filters.supplierName) queryParams.append('supplierName', filters.supplierName);
+      //   // 추가 필터 파라미터...
+      //
+      //   const url = `/api/supplier-registrations?${queryParams.toString()}`;
+      //   const response = await fetchWithAuth(url);
+      //   if (response.ok) {
+      //     const data = await response.json();
+      //     // 데이터 처리 로직
+      //   }
+      // };
+      // fetchData();
+
+      // 현재는 supplierSlice의 fetchSuppliers를 이용
       dispatch(fetchSuppliers(filters));
     } catch (err) {
       console.error('Error fetching suppliers:', err);
@@ -123,8 +141,6 @@ const SupplierListPage = () => {
     }
   }, [filters.sourcingSubCategory]); // ✅ `sourcingDetailCategories` 제외
 
-
-
   // 필터 변경 핸들러
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -151,7 +167,10 @@ const SupplierListPage = () => {
     setOpenModal(true);
   };
 
-  const isAdmin = user && user.role === 'ADMIN';
+  // 사용자의 역할에 따른 권한 확인
+  // roles 배열에서 권한 확인 (응답 형식: {"roles":["ROLE_SUPPLIER"]} 또는 {"roles":["ROLE_ADMIN"]})
+  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
+  const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
 
   // 상태에 따른 Chip 색상 설정
   const getStatusChip = (status) => {
@@ -185,7 +204,8 @@ const SupplierListPage = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           협력업체 목록
         </Typography>
-        {!isAdmin && (
+        {/* SUPPLIER 역할일 때만 신규 등록 버튼 표시 */}
+        {isSupplier && (
           <Button
             variant="contained"
             color="primary"
@@ -197,7 +217,7 @@ const SupplierListPage = () => {
         )}
       </Box>
 
-      {/* 필터 섹션 */}
+      {/* 필터 섹션 - ADMIN과 SUPPLIER 모두 사용 가능 */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2}>
           {/* 첫 번째 줄: 소싱 분류 필터 */}
@@ -292,8 +312,13 @@ const SupplierListPage = () => {
                 <MenuItem value="APPROVED">승인됨</MenuItem>
                 <MenuItem value="PENDING">심사대기</MenuItem>
                 <MenuItem value="REJECTED">거절됨</MenuItem>
-                <MenuItem value="SUSPENDED">일시정지</MenuItem>
-                <MenuItem value="BLACKLIST">블랙리스트</MenuItem>
+                {/* ADMIN만 일시정지 및 블랙리스트 필터 표시 */}
+                {isAdmin && (
+                  <>
+                    <MenuItem value="SUSPENDED">일시정지</MenuItem>
+                    <MenuItem value="BLACKLIST">블랙리스트</MenuItem>
+                  </>
+                )}
               </Select>
             </FormControl>
           </Grid>
@@ -379,6 +404,7 @@ const SupplierListPage = () => {
                   <TableCell>{getStatusChip(supplier.status)}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
+                      {/* 상세 버튼은 ADMIN과 SUPPLIER 모두 사용 가능 */}
                       <Button
                         size="small"
                         variant="outlined"
@@ -386,7 +412,10 @@ const SupplierListPage = () => {
                       >
                         상세
                       </Button>
-                      {supplier.status === 'REJECTED' && supplier.rejectionReason && (
+
+                      {/* 반려 상태일 때만 반려사유 버튼 표시 */}
+                      {(supplier.status === 'REJECTED' || supplier.status?.childCode === 'REJECTED') &&
+                        supplier.rejectionReason && (
                         <Button
                           size="small"
                           color="error"
@@ -394,6 +423,32 @@ const SupplierListPage = () => {
                           onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
                         >
                           반려사유
+                        </Button>
+                      )}
+
+                      {/* 일시정지 상태일 때 정지사유 버튼 표시 */}
+                      {(supplier.status === 'SUSPENDED' || supplier.status?.childCode === 'SUSPENDED') &&
+                        supplier.suspensionReason && (
+                        <Button
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                          onClick={() => handleShowRejectionReason(supplier.suspensionReason)}
+                        >
+                          정지사유
+                        </Button>
+                      )}
+
+                      {/* 블랙리스트 상태일 때 블랙리스트 사유 버튼 표시 */}
+                      {(supplier.status === 'BLACKLIST' || supplier.status?.childCode === 'BLACKLIST') &&
+                        supplier.rejectionReason && (
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                        >
+                          블랙리스트 사유
                         </Button>
                       )}
                     </Box>
@@ -405,15 +460,15 @@ const SupplierListPage = () => {
         )}
       </TableContainer>
 
-      {/* 반려 사유 모달 */}
+      {/* 반려/정지/블랙리스트 사유 모달 */}
       <Dialog
         open={openModal}
         onClose={() => setOpenModal(false)}
         aria-labelledby="rejection-dialog-title"
       >
-        <DialogTitle id="rejection-dialog-title">반려 사유</DialogTitle>
+        <DialogTitle id="rejection-dialog-title">사유 확인</DialogTitle>
         <DialogContent>
-          <DialogContentText>{rejectionReason || '반려 사유가 입력되지 않았습니다.'}</DialogContentText>
+          <DialogContentText>{rejectionReason || '사유가 입력되지 않았습니다.'}</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenModal(false)} color="primary">

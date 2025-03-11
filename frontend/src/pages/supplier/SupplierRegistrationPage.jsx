@@ -33,6 +33,10 @@ const SupplierRegistrationPage = () => {
   const authState = useSelector((state) => state.auth) || { user: null };
   const { user = null } = authState;
 
+  // ROLE 확인 (응답 형식: {"roles":["ROLE_SUPPLIER"]} 또는 {"roles":["ROLE_ADMIN"]})
+  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
+  const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
+
   const [formData, setFormData] = useState({
     supplierId: '',
     businessNo: '',
@@ -55,6 +59,7 @@ const SupplierRegistrationPage = () => {
 
   const [errors, setErrors] = useState({});
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -62,6 +67,13 @@ const SupplierRegistrationPage = () => {
         ...prev,
         supplierId: user.id
       }));
+
+      // 로그인된 사용자가 있을 때 토큰 확인 및 저장
+      const token = localStorage.getItem('token');
+      if (!token && authState.token) {
+        console.log('토큰을 로컬 스토리지에 저장합니다.');
+        localStorage.setItem('token', authState.token);
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -70,13 +82,10 @@ const SupplierRegistrationPage = () => {
     }
 
     if (success) {
+      setSnackbarMessage(message || '협력업체 등록이 완료되었습니다.');
       setOpenSnackbar(true);
       const timer = setTimeout(() => {
-        try {
-          dispatch(resetSupplierState());
-        } catch (err) {
-          console.error('Error resetting supplier state:', err);
-        }
+        dispatch(resetSupplierState());
         navigate('/supplier');
       }, 2000);
       return () => clearTimeout(timer);
@@ -89,7 +98,7 @@ const SupplierRegistrationPage = () => {
         console.error('Error resetting supplier state:', err);
       }
     };
-  }, [user, success, dispatch, navigate]);
+  }, [user, success, dispatch, navigate, message, authState.token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -141,7 +150,6 @@ const SupplierRegistrationPage = () => {
     }
   };
 
-
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -177,57 +185,109 @@ const SupplierRegistrationPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+      e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
-
-    const data = new FormData();
-
-    // 폼 데이터 처리 - 백엔드 API 필드명에 맞게 조정
-    const formDataCopy = { ...formData };
-
-    // companyPhoneNumber를 phoneNumber로 변경 (백엔드 API에 맞게)
-    if (formDataCopy.companyPhoneNumber) {
-      formDataCopy.phoneNumber = formDataCopy.companyPhoneNumber;
-      delete formDataCopy.companyPhoneNumber;
-    }
-
-    Object.entries(formDataCopy).forEach(([key, value]) => {
-      if (value) {
-        data.append(key, value);
+      // 토큰 확인 및 저장 로직 추가
+      const token = localStorage.getItem('token');
+      if (!token && authState.token) {
+        console.log('폼 제출 전 토큰을 로컬 스토리지에 저장합니다.');
+        localStorage.setItem('token', authState.token);
+      } else if (!token && !authState.token && authState.isLoggedIn) {
+        console.log('토큰이 없지만 로그인 상태입니다. 임시 토큰을 설정합니다.');
+        localStorage.setItem('token', 'dev_temp_token');
+      } else if (!token && !authState.isLoggedIn) {
+        setErrors(prev => ({
+          ...prev,
+          general: '로그인 세션이 유효하지 않습니다. 다시 로그인해주세요.'
+        }));
+        setSnackbarMessage('로그인 세션이 유효하지 않습니다.');
+        setOpenSnackbar(true);
+        return;
       }
-    });
 
-    if (businessFile) {
-      data.append('businessFile', businessFile);
-    }
+      if (!validateForm()) {
+        return;
+      }
 
-    try {
-      dispatch(registerSupplier(data));
-    } catch (err) {
-      console.error('Error registering supplier:', err);
-      setErrors(prev => ({
-        ...prev,
-        general: '등록 요청 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.'
-      }));
-    }
-  };
+      const data = new FormData();
+
+      // 폼 데이터 처리
+      const formDataCopy = { ...formData };
+
+      // companyPhoneNumber를 phoneNumber로 변경 (백엔드 API에 맞게)
+      if (formDataCopy.companyPhoneNumber) {
+        formDataCopy.phoneNumber = formDataCopy.companyPhoneNumber;
+        delete formDataCopy.companyPhoneNumber;
+      }
+
+      // 디버깅: 전송 데이터 확인
+      console.log('폼 데이터 확인:', formDataCopy);
+
+      // 🚀 JSON 데이터를 Blob 형식으로 변환 후 FormData에 추가
+      data.append('data', new Blob([JSON.stringify(formDataCopy)], { type: "application/json" }));
+
+      // 사업자등록증 파일 추가
+      if (businessFile) {
+        data.append('businessFile', businessFile);
+        console.log('업로드 파일:', businessFile.name, businessFile.type, businessFile.size);
+      }
+
+      try {
+        // 디버깅: 전송 직전 데이터 확인
+        console.log('dispatch 직전 FormData 확인');
+        for (let [key, value] of data.entries()) {
+          console.log(`${key}: ${value instanceof File ? '파일 객체' : value}`);
+        }
+
+        // 등록 요청 전송 및 결과 처리
+        const resultAction = await dispatch(registerSupplier(data));
+
+        if (registerSupplier.fulfilled.match(resultAction)) {
+          // 성공 처리
+          console.log('등록 성공:', resultAction.payload);
+          setSnackbarMessage('협력업체 등록이 완료되었습니다.');
+          setOpenSnackbar(true);
+        } else if (registerSupplier.rejected.match(resultAction)) {
+          // 실패 처리
+          console.error('등록 실패:', resultAction.payload || resultAction.error);
+
+          // 문자열 처리 확인 (객체가 아닌 문자열만 처리)
+          const errorMessage = typeof resultAction.payload === 'string'
+            ? resultAction.payload
+            : '등록 요청 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.';
+
+          setErrors(prev => ({
+            ...prev,
+            general: errorMessage
+          }));
+
+          setSnackbarMessage('등록 요청에 실패했습니다.');
+          setOpenSnackbar(true);
+        }
+      } catch (err) {
+        console.error('Error registering supplier:', err);
+        setErrors(prev => ({
+          ...prev,
+          general: '등록 요청 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.'
+        }));
+        setSnackbarMessage('등록 요청에 실패했습니다.');
+        setOpenSnackbar(true);
+      }
+    };
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
   };
 
-  const isAdmin = user && user.role === 'ADMIN';
-  const showAdminWarning = isAdmin;
+  // 관리자 경고 표시 여부
+  const showAdminWarning = isAdmin && !isSupplier;
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       {showAdminWarning && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          관리자는 일반적으로 협력업체 등록을 할 수 없습니다. (개발 중이므로 계속 진행 가능)
+          관리자는 협력업체 등록을 할 수 없습니다. 공급업체 계정으로 로그인하세요.
         </Alert>
       )}
 
@@ -383,6 +443,8 @@ const SupplierRegistrationPage = () => {
                 onChange={handleChange}
                 placeholder="example@email.com"
                 disabled={loading}
+                error={!!errors.contactEmail}
+                helperText={errors.contactEmail}
               />
             </Grid>
 
@@ -443,7 +505,7 @@ const SupplierRegistrationPage = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={loading}
+                  disabled={loading || showAdminWarning}
                   startIcon={loading ? <CircularProgress size={20} /> : null}
                 >
                   {loading ? '등록 중...' : '등록하기'}
@@ -458,7 +520,7 @@ const SupplierRegistrationPage = () => {
         open={openSnackbar}
         autoHideDuration={2000}
         onClose={handleCloseSnackbar}
-        message={message || '협력업체 등록이 완료되었습니다.'}
+        message={snackbarMessage || message || '협력업체 등록이 완료되었습니다.'}
       />
     </Container>
   );
