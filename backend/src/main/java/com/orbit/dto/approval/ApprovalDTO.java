@@ -1,4 +1,4 @@
-package com.orbit.dto.procurement;
+package com.orbit.dto.approval;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -6,13 +6,11 @@ import lombok.Setter;
 import java.time.LocalDate;
 
 /**
- * 결재 응답 DTO
+ * 결재 DTO
  */
 @Getter
 @Setter
-public class ApprovalResponseDTO {
-
-    private Long id;
+public class ApprovalDTO {
 
     private Long purchaseRequestId; // 구매 요청 ID
 
