@@ -1,323 +1,442 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { API_URL } from "@/utils/constants";
+import { useNavigate } from "react-router-dom";
 import {
-    Box, Typography, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, TextField, Button,
-    Grid, FormControl, InputLabel, Select, MenuItem, Link
-} from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import moment from 'moment';
-import { styled } from '@mui/material/styles';
-import useWebSocket from '@hooks/useWebSocket';
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  Grid,
+  CircularProgress
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
-
-// Redux 액션 및 선택자 임포트
-import {
-    fetchPurchaseRequests,
-    setSearchTerm,
-    setRequestDate,
-    setStatus
-} from '@/redux/purchaseRequestSlice'; // Correct import path
-import { API_URL } from '@/utils/constants';
-import { fetchWithAuth } from '@/utils/fetchWithAuth';
-
+// 스티키 헤더를 위한 스타일링된 TableContainer
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
-    maxHeight: 440,
-    '& .MuiTableHead-root': {
-        position: 'sticky',
-        top: 0,
-        backgroundColor: theme.palette.background.paper,
-        zIndex: 1,
-    },
+  maxHeight: 440,
+  "& .MuiTableHead-root": {
+    position: "sticky",
+    top: 0,
+    backgroundColor: theme.palette.background.paper,
+    zIndex: 1
+  }
 }));
 
-function PurchaseRequestListPage() {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const { user } = useSelector((state) => state.auth);
-      useWebSocket(user);
+function BiddingListPage() {
+  // 상태 관리
+  const [biddings, setBiddings] = useState([]);
+  const [filteredBiddings, setFilteredBiddings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [totalRows, setTotalRows] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [status, setStatus] = useState("");
+  const [dateRange, setDateRange] = useState({
+    start: "",
+    end: ""
+  });
+  const [paginationModel, setPaginationModel] = useState({
+    page: 1,
+    pageSize: 10 // 페이지당 항목 수
+  });
 
-    // Redux 상태에서 데이터 가져오기
-    const { purchaseRequests, filters } = useSelector(state => state.purchaseRequest);
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        // 컴포넌트 마운트 시 구매 요청 목록 가져오기
-        dispatch(fetchPurchaseRequests());
-    }, [dispatch]);
+  // 입찰 공고 목록 가져오기
+  const fetchBiddings = async () => {
+    setLoading(true);
+    setError(null);
 
-    // 필터링된 구매 요청 목록 계산
-    const filteredRequests = purchaseRequests.filter(request => {
-        const searchTermLower = filters.searchTerm.toLowerCase();
-        const searchMatch = [
-            request.requestName?.toLowerCase(),
-            String(request.id),
-            request.customer?.toLowerCase(),
-            request.businessManager?.toLowerCase(),
-        ].some(field => field?.includes(searchTermLower));
+    try {
+      // 쿼리 파라미터 구성
+      const queryParams = new URLSearchParams({
+        page: paginationModel.page - 1,
+        size: paginationModel.pageSize
+      });
 
-        const dateMatch = !filters.requestDate ||
-            (request.requestDate && moment(request.requestDate).isSame(filters.requestDate, 'day'));
+      // 상태 필터 추가
+      if (status) {
+        queryParams.append("status", status);
+      }
 
-        const statusMatch = !filters.status || request.prStatusChild === filters.status;
+      // 날짜 필터 추가
+      if (dateRange.start) {
+        queryParams.append("startDate", dateRange.start);
+      }
+      if (dateRange.end) {
+        queryParams.append("endDate", dateRange.end);
+      }
 
-        return searchMatch && dateMatch && statusMatch;
-    });
+      // 검색어 추가
+      if (searchTerm) {
+        queryParams.append("keyword", searchTerm);
+      }
 
-    // 필터 변경 핸들러
-    const handleFilterChange = (type, value) => {
-        switch (type) {
-            case 'searchTerm':
-                dispatch(setSearchTerm(value));
-                break;
-            case 'requestDate':
-                dispatch(setRequestDate(value));
-                break;
-            case 'status':
-                dispatch(setStatus(value));
-                break;
-            default:
-                break;
-        }
-    };
+      // fetchWithAuth 함수 사용
+      const response = await fetchWithAuth(
+        `${API_URL}biddings?${queryParams.toString()}`
+      );
 
-    const downloadFile = async (attachment) => {
-        try {
-            const response = await fetchWithAuth(`${API_URL}attachments/${attachment.id}/download`, {
-                method: 'GET',
-                responseType: 'blob', // Blob 형태로 받기
-            });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `HTTP error! Status: ${response.status}, Body: ${errorText}`
+        );
+      }
 
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = attachment.originalName; // 파일 이름 설정
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            } else {
-                console.error('파일 다운로드 실패:', response.status);
+      const data = await response.json();
+      console.log("API 응답 데이터:", data);
+
+      // biddings 필드 또는 content 필드에 따라 구조 조정
+      // Spring Data JPA Page 응답 구조에 맞춤
+      const biddingList = data.content || data.biddings || data;
+      const totalElements =
+        data.totalElements || data.total || biddingList.length;
+
+      setBiddings(biddingList);
+      setFilteredBiddings(biddingList);
+      setTotalRows(totalElements);
+    } catch (error) {
+      console.error("입찰 공고 목록 가져오기 실패:", error.message);
+      setError("입찰 공고 목록을 불러오는 중 오류가 발생했습니다.");
+
+      // 개발 환경에서는 모의 데이터 표시
+      if (process.env.NODE_ENV === "development") {
+        const mockData = generateMockBiddings(20);
+        setBiddings(mockData);
+        setFilteredBiddings(mockData);
+        setTotalRows(mockData.length);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 모의 데이터 생성 함수
+  const generateMockBiddings = (count) => {
+    const mockBiddings = [];
+    const statuses = ["PENDING", "OPEN", "CLOSED", "CANCELED"];
+    const bidMethods = ["FIXED_PRICE", "PRICE_SUGGESTION"];
+
+    for (let i = 1; i <= count; i++) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30));
+
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 60) + 30);
+
+      mockBiddings.push({
+        id: i,
+        bidNumber: `BID-2023-${String(i).padStart(3, "0")}`,
+        purchaseRequestId: Math.floor(Math.random() * 5) + 1,
+        purchaseRequestItemId: Math.floor(Math.random() * 10) + 1,
+        title: `샘플 입찰 공고 ${i}`,
+        description: `이것은 샘플 입찰 공고 ${i}의 설명입니다.`,
+        bidMethod: bidMethods[i % bidMethods.length],
+        status: statuses[i % statuses.length],
+        startDate: startDate.toISOString().split("T")[0],
+        endDate: endDate.toISOString().split("T")[0],
+        quantity: 10,
+        unitPrice: 10000 * ((i % 10) + 1),
+        supplyPrice: 10000 * ((i % 10) + 1) * 10,
+        vat: 10000 * ((i % 10) + 1) * 1,
+        totalAmount: 10000 * ((i % 10) + 1) * 11,
+        createdBy: 1
+      });
+    }
+
+    return mockBiddings;
+  };
+
+  // 페이지 로드 시 데이터 가져오기
+  //   useEffect(() => {
+  //     fetchBiddings();
+  //   }, [paginationModel.page, paginationModel.pageSize]); // 페이지 변경 시 데이터 다시 가져오기
+
+  useEffect(() => {
+    // 개발 환경이면 항상 모의 데이터 사용
+    if (process.env.NODE_ENV === "development") {
+      const mockData = generateMockBiddings(20);
+      setBiddings(mockData);
+      setFilteredBiddings(mockData);
+      setTotalRows(mockData.length);
+      setLoading(false);
+    } else {
+      // 프로덕션 환경에서만 실제 API 호출
+      fetchBiddings();
+    }
+  }, [paginationModel.page, paginationModel.pageSize]);
+
+  // 필터 적용 시 데이터 다시 가져오기
+  const handleSearch = () => {
+    // 페이지를 1로 리셋하고 데이터 다시 가져오기
+    setPaginationModel((prev) => ({ ...prev, page: 1 }));
+    fetchBiddings();
+  };
+
+  // 상태 변경 핸들러
+  function handleStatusChange(event) {
+    setStatus(event.target.value);
+  }
+
+  // 날짜 변경 핸들러
+  function handleDateChange(field, event) {
+    const { value } = event.target;
+    setDateRange((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+  }
+
+  // 아이템 편집을 위한 핸들러
+  function handleEditItem(id) {
+    navigate(`/biddings/edit/${id}`);
+  }
+
+  // 상세보기 핸들러
+  function handleViewDetail(id) {
+    navigate(`/biddings/${id}`);
+  }
+
+  // 새 입찰 등록 페이지로 이동
+  function handleCreateBidding() {
+    navigate("/biddings/new");
+  }
+
+  return (
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h4" sx={{ mb: 4 }}>
+        입찰 공고 리스트
+      </Typography>
+
+      {/* 필터 영역 */}
+      <Paper elevation={2} sx={{ padding: 2, marginBottom: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              label="검색어 입력"
+              variant="outlined"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </Grid>
+
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel id="status-select-label">상태 선택</InputLabel>
+              <Select
+                labelId="status-select-label"
+                value={status}
+                label="상태 선택"
+                onChange={handleStatusChange}>
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="PENDING">대기중</MenuItem>
+                <MenuItem value="OPEN">오픈</MenuItem>
+                <MenuItem value="CLOSED">마감</MenuItem>
+                <MenuItem value="CANCELED">취소</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={2}>
+            <TextField
+              fullWidth
+              label="시작일"
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => handleDateChange("start", e)}
+              InputLabelProps={{
+                shrink: true
+              }}
+            />
+          </Grid>
+
+          <Grid item xs={12} md={2}>
+            <TextField
+              fullWidth
+              label="종료일"
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => handleDateChange("end", e)}
+              InputLabelProps={{
+                shrink: true
+              }}
+            />
+          </Grid>
+
+          <Grid
+            item
+            xs={12}
+            md={3}
+            sx={{ display: "flex", alignItems: "center" }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSearch}
+              sx={{ height: "56px", marginRight: 1 }}>
+              검색
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleCreateBidding}
+              sx={{ height: "56px" }}>
+              신규
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* 에러 메시지 */}
+      {error && (
+        <Typography color="error" sx={{ my: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      {/* 로딩 상태 */}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        /* 스티키 헤더를 사용한 테이블 영역 */
+        <Paper>
+          <StyledTableContainer>
+            <Table stickyHeader aria-label="입찰 공고 목록 테이블">
+              <TableHead>
+                <TableRow>
+                  <TableCell>구매요청번호</TableCell>
+                  <TableCell>공고번호</TableCell>
+                  <TableCell>공고명</TableCell>
+                  <TableCell>공고기간</TableCell>
+                  <TableCell>품목</TableCell>
+                  <TableCell>금액</TableCell>
+                  <TableCell>공고상태</TableCell>
+                  <TableCell>마감</TableCell>
+                  <TableCell>작업</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredBiddings.length > 0 ? (
+                  filteredBiddings.map((item) => (
+                    <TableRow key={item.id} hover>
+                      <TableCell>{item.purchaseRequestId || "-"}</TableCell>
+                      <TableCell>{item.bidNumber}</TableCell>
+                      <TableCell>
+                        <Typography
+                          component="a"
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleViewDetail(item.id);
+                          }}
+                          sx={{
+                            textDecoration: "none",
+                            color: "blue",
+                            "&:hover": {
+                              textDecoration: "underline"
+                            }
+                          }}>
+                          {item.title}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{`${item.startDate} ~ ${item.endDate}`}</TableCell>
+                      <TableCell>
+                        {item.itemName || `품목 ${item.purchaseRequestItemId}`}
+                      </TableCell>
+                      <TableCell align="right">
+                        {item.totalAmount?.toLocaleString()}원
+                      </TableCell>
+                      <TableCell>
+                        {item.status === "PENDING" && "대기중"}
+                        {item.status === "OPEN" && "오픈"}
+                        {item.status === "CLOSED" && "마감"}
+                        {item.status === "CANCELED" && "취소"}
+                      </TableCell>
+                      <TableCell>{item.endDate}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleViewDetail(item.id)}
+                          sx={{ mr: 1 }}>
+                          상세보기
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleEditItem(item.id)}>
+                          편집
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center">
+                      데이터가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </StyledTableContainer>
+        </Paper>
+      )}
+
+      {/* 페이징 정보 */}
+      <Box
+        sx={{
+          mt: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+        <Typography>
+          총 {totalRows}개 항목 중{" "}
+          {totalRows > 0
+            ? (paginationModel.page - 1) * paginationModel.pageSize + 1
+            : 0}{" "}
+          -
+          {Math.min(paginationModel.page * paginationModel.pageSize, totalRows)}
+        </Typography>
+
+        <Box>
+          <Button
+            disabled={paginationModel.page === 1}
+            onClick={() =>
+              setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }))
+            }>
+            이전
+          </Button>
+          <Button
+            disabled={
+              paginationModel.page * paginationModel.pageSize >= totalRows
             }
-        } catch (error) {
-            console.error('파일 다운로드 중 오류 발생:', error);
-        }
-    };
-
-    return (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>구매 요청 목록</Typography>
-
-            {/* 필터 섹션 */}
-            <Paper sx={{ p: 2, mb: 2 }}>
-                <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                            fullWidth
-                            label="검색"
-                            value={filters.searchTerm}
-                            onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                            variant="outlined"
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <LocalizationProvider dateAdapter={AdapterMoment}>
-                            <DatePicker
-                                label="요청일"
-                                    value={moment(filters.requestDate)} // moment 객체로 변환
-                                    onChange={(date) => handleFilterChange('requestDate', date)}
-                                    slotProps={{
-                                      textField: {
-                                        fullWidth: true,
-                                        error: false } }}
-                            />
-                        </LocalizationProvider>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <FormControl fullWidth variant="outlined">
-                            <InputLabel>진행상태</InputLabel>
-                            <Select
-                                value={filters.status || ''}
-                                onChange={(e) => handleFilterChange('status', e.target.value)}
-                                label="진행상태"
-                            >
-                                <MenuItem value="">전체</MenuItem>
-                                <MenuItem value="REQUESTED">요청</MenuItem>
-                                <MenuItem value="APPROVED">승인</MenuItem>
-                                <MenuItem value="REJECTED">거절</MenuItem>
-                                <MenuItem value="COMPLETED">완료</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                </Grid>
-            </Paper>
-
-            {/* 구매 요청 목록 테이블 */}
-            <StyledTableContainer component={Paper}>
-                <Table stickyHeader aria-label="sticky table">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>진행상태</TableCell>
-                            <TableCell>요청제목</TableCell>
-                            <TableCell>요청번호</TableCell>
-                            <TableCell>고객사</TableCell>
-                            <TableCell>요청일</TableCell>
-                            <TableCell>사업부서</TableCell>
-                            <TableCell>첨부파일</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredRequests.map(request => (
-                            <TableRow
-                                key={request.id}
-                                hover
-                                onClick={() => navigate(`/purchase-requests/${request.id}`)}
-                                sx={{ cursor: 'pointer' }}
-                            >
-                                <TableCell>{request.prStatusChild}</TableCell>
-                                <TableCell>{request.requestName}</TableCell>
-                                <TableCell>{request.id}</TableCell>
-                                <TableCell>{request.customer}</TableCell>
-                                <TableCell>{moment(request.requestDate).format('YYYY-MM-DD')}</TableCell>
-                                <TableCell>{request.businessDepartment}</TableCell>
-                                <TableCell>
-                                    {request.attachments && request.attachments.length > 0 ? (
-                                        request.attachments.map(attachment => (
-                                            <Link
-                                                key={attachment.id}
-                                                component="button"
-                                                variant="body2"
-                                                onClick={() => downloadFile(attachment)}
-                                            >
-                                                {attachment.originalName}
-                                            </Link>
-                                        ))
-                                    ) : '-'}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </StyledTableContainer>
-
-            {/* 신규 생성 버튼 */}
-            <Button
-                variant="contained"
-                onClick={() => navigate('/purchase-requests/new')}
-                sx={{ mt: 2 }}
-            >
-                신규 생성
-            </Button>
+            onClick={() =>
+              setPaginationModel((prev) => ({ ...prev, page: prev.page + 1 }))
+            }>
+            다음
+          </Button>
         </Box>
-    );
+      </Box>
+    </Box>
+  );
 }
 
-            {/* 필터 섹션 */}
-            <Paper sx={{ p: 2, mb: 2 }}>
-                <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                            fullWidth
-                            label="검색"
-                            value={filters.searchTerm}
-                            onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                            variant="outlined"
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <LocalizationProvider dateAdapter={AdapterMoment}>
-                            <DatePicker
-                                label="요청일"
-                                    value={moment(filters.requestDate)} // moment 객체로 변환
-                                    onChange={(date) => handleFilterChange('requestDate', date)}
-                                    slotProps={{
-                                      textField: {
-                                        fullWidth: true,
-                                        error: false } }}
-                            />
-                        </LocalizationProvider>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <FormControl fullWidth variant="outlined">
-                            <InputLabel>진행상태</InputLabel>
-                            <Select
-                                value={filters.status || ''}
-                                onChange={(e) => handleFilterChange('status', e.target.value)}
-                                label="진행상태"
-                            >
-                                <MenuItem value="">전체</MenuItem>
-                                <MenuItem value="REQUESTED">요청</MenuItem>
-                                <MenuItem value="APPROVED">승인</MenuItem>
-                                <MenuItem value="REJECTED">거절</MenuItem>
-                                <MenuItem value="COMPLETED">완료</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                </Grid>
-            </Paper>
-
-            {/* 구매 요청 목록 테이블 */}
-            <StyledTableContainer component={Paper}>
-                <Table stickyHeader aria-label="sticky table">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>진행상태</TableCell>
-                            <TableCell>요청제목</TableCell>
-                            <TableCell>요청번호</TableCell>
-                            <TableCell>고객사</TableCell>
-                            <TableCell>요청일</TableCell>
-                            <TableCell>사업부서</TableCell>
-                            <TableCell>첨부파일</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredRequests.map(request => (
-                            <TableRow
-                                key={request.id}
-                                hover
-                                onClick={() => navigate(`/purchase-requests/${request.id}`)}
-                                sx={{ cursor: 'pointer' }}
-                            >
-                                <TableCell>{request.prStatusChild}</TableCell>
-                                <TableCell>{request.requestName}</TableCell>
-                                <TableCell>{request.id}</TableCell>
-                                <TableCell>{request.customer}</TableCell>
-                                <TableCell>{moment(request.requestDate).format('YYYY-MM-DD')}</TableCell>
-                                <TableCell>{request.businessDepartment}</TableCell>
-                                <TableCell>
-                                    {request.attachments && request.attachments.length > 0 ? (
-                                        request.attachments.map(attachment => (
-                                            <Link
-                                                key={attachment.id}
-                                                component="button"
-                                                variant="body2"
-                                                onClick={() => downloadFile(attachment)}
-                                            >
-                                                {attachment.originalName}
-                                            </Link>
-                                        ))
-                                    ) : '-'}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </StyledTableContainer>
-
-            {/* 신규 생성 버튼 */}
-            <Button
-                variant="contained"
-                onClick={() => navigate('/purchase-requests/new')}
-                sx={{ mt: 2 }}
-            >
-                신규 생성
-            </Button>
-        </Box>
-    );
-}
-
-export default PurchaseRequestListPage;
+export default BiddingListPage;

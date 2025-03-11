@@ -1,8 +1,7 @@
 package com.orbit.controller.approval;
 
-import com.orbit.dto.approval.ApprovalLineCreateDTO;
-import com.orbit.dto.approval.ApprovalLineResponseDTO;
-import com.orbit.dto.approval.ApprovalProcessDTO;
+import com.orbit.dto.procurement.ApprovalDTO;
+import com.orbit.dto.procurement.ApprovalResponseDTO;
 import com.orbit.service.procurement.ApprovalLineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,40 +34,6 @@ public class ApprovalController {
     public ResponseEntity<List<ApprovalResponseDTO>> getAllApprovals() {
         List<ApprovalResponseDTO> approvals = approvalService.getAllApprovals();
         return new ResponseEntity<>(approvals, HttpStatus.OK);
-    }
-
-    /**
-     * 결재 ID로 결재 정보를 조회합니다.
-     * @param id 결재 ID
-     * @return 조회된 결재 정보 (존재하지 않으면 404 상태 코드 반환)
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<ApprovalResponseDTO> getApprovalById(@PathVariable Long id) {
-        Optional<ApprovalResponseDTO> approval = approvalService.getApprovalById(id);
-        return approval.map(response -> new ResponseEntity<>(response, HttpStatus.OK))
-                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
-
-    /**
-     * 새로운 결재 정보를 생성합니다.
-     * @param approvalDTO 생성할 결재 정보
-     * @return 생성된 결재 정보 (201 상태 코드 반환)
-     */
-    @PostMapping
-    public ResponseEntity<ApprovalLineResponseDTO> createApprovalLine(
-            @Valid @RequestBody ApprovalLineCreateDTO dto) {
-        ApprovalLineResponseDTO createdLine = approvalLineService.createApprovalLine(dto);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(createdLine);
-    }
-
-    @PostMapping("/{lineId}/process")
-    public ResponseEntity<ApprovalLineResponseDTO> processApproval(
-            @PathVariable Long lineId,
-            @Valid @RequestBody ApprovalProcessDTO dto) {
-        ApprovalLineResponseDTO processedLine = approvalLineService.processApproval(lineId, dto);
-        return ResponseEntity.ok(processedLine);
     }
 
     @GetMapping("/{requestId}")

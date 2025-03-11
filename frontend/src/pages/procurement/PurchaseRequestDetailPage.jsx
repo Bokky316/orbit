@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Box, Typography, Paper, Button, Link, Chip,
-    Grid, List, ListItem, ListItemText, Divider
+    Box,
+    Typography,
+    Paper,
+    Button,
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -20,49 +22,13 @@ import { styled } from '@mui/material/styles';
 import { deletePurchaseRequest } from '@/redux/purchaseRequestSlice';
 import useWebSocket from '@hooks/useWebSocket';
 
-
-// 상태 칩 스타일 커스터마이징
-const StatusChip = styled(Chip)(({ theme, statuscode }) => {
-    // statuscode 소문자로 변환하여 비교
-    const status = String(statuscode).toLowerCase();
-
-    // 상태별 색상 지정
-    let color = theme.palette.grey[500]; // 기본값
-
-    if (status.includes('approved') || status.includes('승인')) {
-        color = theme.palette.success.main;
-    } else if (status.includes('rejected') || status.includes('반려')) {
-        color = theme.palette.error.main;
-    } else if (status.includes('requested') || status.includes('요청')) {
-        color = theme.palette.info.main;
-    } else if (status.includes('in_review') || status.includes('검토')) {
-        color = theme.palette.warning.main;
-    } else if (status.includes('pending') || status.includes('대기')) {
-        color = theme.palette.primary.light;
-    }
-
-    return {
-        backgroundColor: color,
-        color: theme.palette.getContrastText(color),
-        fontWeight: 'bold'
-    };
-});
-
-const PurchaseRequestDetailPage = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
-    const currentUser = useSelector(state => state.auth.user);
-    const { sendStatusChange } = useWebSocket(currentUser);
-
-    // 로컬 상태
-    const [request, setRequest] = useState(null);
-    const [project, setProject] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [showApprovalSetup, setShowApprovalSetup] = useState(false);
-    const [approvalLines, setApprovalLines] = useState([]);
-    const [hasApprovalAuthority, setHasApprovalAuthority] = useState(false);
+/**
+ * 구매 요청 상세 페이지 컴포넌트
+ * @returns {JSX.Element}
+ */
+function PurchaseRequestDetailPage() {
+    const { id } = useParams(); // URL에서 구매 요청 ID를 가져옴
+    const [request, setRequest] = useState(null); // 구매 요청 정보 상태
 
     useEffect(() => {
         const fetchData = async () => {
@@ -108,101 +74,8 @@ const PurchaseRequestDetailPage = () => {
             } catch (error) {
                 console.error('Error:', error);
             }
-        };
-        fetchData();
-    }, [id, currentUser]);
-
-    // 결재선 설정 완료 핸들러
-    const handleApprovalSetupComplete = () => {
-        setShowApprovalSetup(false);
-
-        // 결재선 정보 다시 조회
-        const fetchApprovalLines = async () => {
-            try {
-                const response = await fetchWithAuth(`${API_URL}approvals/${id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setApprovalLines(data);
-                }
-            } catch (error) {
-                console.warn('결재선 정보를 가져오는데 실패했습니다:', error);
-            }
-        };
-
-        fetchApprovalLines();
-    };
-
-    // 결재 처리 완료 핸들러
-    const handleApprovalComplete = () => {
-        // 구매요청 정보 다시 조회
-        const fetchUpdatedData = async () => {
-            try {
-                const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setRequest(data);
-
-                    // 결재선 정보 다시 조회
-                    const approvalResponse = await fetchWithAuth(`${API_URL}approvals/${id}`);
-                    if (approvalResponse.ok) {
-                        const approvalData = await approvalResponse.json();
-                        setApprovalLines(approvalData);
-
-                        // 결재 권한 업데이트
-                        if (currentUser) {
-                            const hasAuthority = approvalData.some(line =>
-                                line.statusCode === 'IN_REVIEW' &&
-                                line.approverId === currentUser.id
-                            );
-                            setHasApprovalAuthority(hasAuthority);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('데이터 업데이트 중 오류 발생:', error);
-            }
-        };
-
-        fetchUpdatedData();
-    };
-
-    if (!request) return <Typography>Loading...</Typography>;
-
-    const statusColor = {
-        'REQUESTED': 'info',
-        'APPROVED': 'success',
-        'REJECTED': 'error',
-        'COMPLETED': 'warning'
-    }[request.prStatusChild] || 'default';
-
-    const downloadFile = async (attachment) => {
-      try {
-        console.log("[DEBUG] 첨부파일 객체 전체:", attachment); // 추가
-
-        // ID 유효성 검사 강화
-        if (!attachment?.id || typeof attachment.id !== "number") {
-          alert("유효하지 않은 첨부파일 ID입니다.");
-          return;
-        }
-
-        const response = await fetchWithAuth(
-          `${API_URL}purchase-requests/attachments/${attachment.id}/download`,
-          { method: 'GET', responseType: 'blob' }
-        );
-
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = attachment.fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            } else {
-                console.error('다운로드 실패:', await response.text());
-            }
+            const purchaseRequestData = await purchaseRequestResponse.json();
+            setRequest(purchaseRequestData); // 구매 요청 정보 설정
         } catch (error) {
             console.error('다운로드 오류:', error);
         }
@@ -287,77 +160,23 @@ const PurchaseRequestDetailPage = () => {
 
             {/* 관련 프로젝트 정보 */}
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>관련 프로젝트 정보</Typography>
-                {project ? (
-                    <Grid container spacing={2}>
-                        <Grid item xs={4}>
-                            <Typography><strong>프로젝트명:</strong> {project.projectName}</Typography>
-                            <Typography>
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{ mt: 1 }}
-                                    onClick={() => navigate(`/projects/${project.id}`)}
-                                >
-                                    프로젝트 상세보기
-                                </Button>
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={4}>
-                            <Typography><strong>고객사:</strong> {project.clientCompany || '정보 없음'}</Typography>
-                            <Typography><strong>계약 유형:</strong> {project.contractType || '정보 없음'}</Typography>
-                        </Grid>
-                        <Grid item xs={4}>
-                            <Typography><strong>기간:</strong> {
-                                project.projectPeriod ?
-                                `${moment(project.projectPeriod.startDate).format('YYYY-MM-DD')} ~
-                                ${moment(project.projectPeriod.endDate).format('YYYY-MM-DD')}` :
-                                '정보 없음'
-                            }</Typography>
-                            <Typography><strong>예산:</strong> {
-                                project.totalBudget ?
-                                `${project.totalBudget.toLocaleString()}원` :
-                                '정보 없음'
-                            }</Typography>
-                        </Grid>
-                    </Grid>
-                ) : (
-                    <Typography color="text.secondary">관련 프로젝트 정보가 없습니다.</Typography>
-                )}
-            </Paper>
-
-            {/* 기본 정보 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>기본 정보</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={4}>
-                        <Typography><strong>요청번호:</strong> {request.id}</Typography>
-                        <Typography><strong>사업구분:</strong> {request.businessType}</Typography>
-                        <Typography><strong>요청일:</strong> {moment(request.requestDate).format('YYYY-MM-DD')}</Typography>
-                    </Grid>
-                    <Grid item xs={4}>
-                        <Typography><strong>고객사:</strong> {request.customer}</Typography>
-                        <Typography><strong>사업부서:</strong> {request.businessDepartment}</Typography>
-                        <Typography><strong>담당자:</strong> {request.businessManager}</Typography>
-                    </Grid>
-                    <Grid item xs={4}>
-                        <Typography><strong>예산:</strong> {request.businessBudget ? `${request.businessBudget.toLocaleString()}원` : '정보 없음'}</Typography>
-                        <Typography><strong>연락처:</strong> {request.managerPhoneNumber || '정보 없음'}</Typography>
-                    </Grid>
-                </Grid>
-            </Paper>
-
-            {/* 요청자 정보 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>요청자 정보</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                        <Typography><strong>요청자:</strong> {request.memberName || '정보 없음'}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                        <Typography><strong>소속:</strong> {request.memberCompany || '정보 없음'}</Typography>
-                    </Grid>
-                </Grid>
+                <Typography variant="h6" sx={{ mb: 1 }}>구매 요청 정보</Typography>
+                {/* 변경된 API 응답 구조에 맞게 데이터 표시 */}
+                <Typography>요청번호: {request.id}</Typography>
+                <Typography>요청명: {request.requestName}</Typography>
+                <Typography>상태: {request.status}</Typography>
+                <Typography>요청일: {request.requestDate}</Typography>
+                <Typography>고객사: {request.customer}</Typography>
+                <Typography>사업부서: {request.businessDepartment}</Typography>
+                <Typography>사업담당자: {request.businessManager}</Typography>
+                <Typography>사업구분: {request.businessType}</Typography>
+                <Typography>사업예산: {request.businessBudget?.toLocaleString()}원</Typography>
+                <Typography>특이사항: {request.specialNotes}</Typography>
+                <Typography>담당자 핸드폰: {request.managerPhoneNumber}</Typography>
+                <Typography>사업시작일: {request.projectStartDate}</Typography>
+                <Typography>사업종료일: {request.projectEndDate}</Typography>
+                <Typography>사업내용: {request.projectContent}</Typography>
+                <Typography>첨부파일: {request.attachments}</Typography>
             </Paper>
 
             {/* 사업 구분별 상세 정보 */}

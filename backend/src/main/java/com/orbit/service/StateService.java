@@ -2,13 +2,14 @@ package com.orbit.service;
 
 
 import com.orbit.entity.member.Member;
-import com.orbit.entity.commonCode.StatusCode;
-import com.orbit.entity.commonCode.StatusHistory;
-import com.orbit.entity.commonCode.StatusTransitionRule;
-import com.orbit.entity.commonCode.SystemStatus;
+import com.orbit.entity.state.StatusCode;
+import com.orbit.entity.state.StatusHistory;
+import com.orbit.entity.state.StatusTransitionRule;
+import com.orbit.entity.state.SystemStatus;
 import com.orbit.exception.InvalidStateTransitionException;
-import com.orbit.repository.commonCode.StatusCodeRepository;
+import com.orbit.repository.StatusCodeRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.catalina.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

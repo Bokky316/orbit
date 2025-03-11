@@ -1,13 +1,10 @@
 package com.orbit.entity.project;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.commonCode.ParentCode;
-import com.orbit.entity.commonCode.ChildCode;
-import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.state.StatusHistory;
+import com.orbit.entity.state.SystemStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -17,7 +14,7 @@ import java.util.Random;
 
 /**
  * 프로젝트 마스터 엔티티
- * - 상태 관리 시스템 통합
+ * - 상태 변경 이력을 포함한 모든 프로젝트 정보 관리
  * - JPA 양방향 매핑 적용
  */
 @Entity
@@ -30,74 +27,58 @@ import java.util.Random;
 @Builder
 public class Project extends BaseEntity {
 
+    // ██ 시스템 식별자 (PK) ██████████████████████████████████████████████████████████████████
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ██ 비즈니스 식별자 █████████████████████████████████████████████████████████████████████
     @Column(name = "project_identifier", nullable = false, length = 20, updatable = false)
     private String projectIdentifier;
 
-    // 프로젝트 기본 정보
+    // ██ 기본 정보 ███████████████████████████████████████████████████████████████████████████
     @Column(name = "project_name", nullable = false, length = 200)
     private String projectName;
 
-    // 프로젝트 유형 (기존 사업 구분)
-    @Column(name = "business_category", length = 50)
-    private String businessCategory;
-
-    // 요청 부서
-    @Column(name = "request_department", length = 100)
-    private String requestDepartment;
-
-    // 요청자
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "requester_id")
-    private Member requester;
-
-    // 예산 코드
-    @Column(name = "budget_code", length = 50)
-    private String budgetCode;
-
-    // 프로젝트 예산
-    @Column(name = "total_budget")
-    private Long totalBudget;
-
-    // 비고
-    @Column(name = "remarks", length = 1000)
-    private String remarks;
-
-    // 프로젝트 기간
     @Embedded
     private ProjectPeriod projectPeriod;
 
-    // 상태 관리 시스템
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "basic_status_parent_id")
-    private ParentCode basicStatusParent;
+    @Column(name = "business_category", length = 50)
+    private String businessCategory;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "basic_status_child_id")
-    private ChildCode basicStatusChild;
+    @Embedded
+    private ProjectManager projectManager;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "procurement_status_parent_id")
-    private ParentCode procurementStatusParent;
+    @Column(name = "total_budget")
+    private Long totalBudget;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "procurement_status_child_id")
-    private ChildCode procurementStatusChild;
+    @Column(name = "client_company", length = 100)
+    private String clientCompany;
 
-    // 구매 요청 연관 관계
+    @Column(name = "contract_type", length = 50)
+    private String contractType;
+
+    // ██ 상태 관리 시스템 ████████████████████████████████████████████████████████████████████
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "parentCode", column = @Column(name = "basic_status_parent")),
+            @AttributeOverride(name = "childCode", column = @Column(name = "basic_status_child"))
+    })
+    private SystemStatus basicStatus;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "parentCode", column = @Column(name = "procurement_parent")),
+            @AttributeOverride(name = "childCode", column = @Column(name = "procurement_child"))
+    })
+    private SystemStatus procurementStatus;
+
+    // ██ 상태 변경 이력 (양방향 1:N) █████████████████████████████████████████████████████████
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PurchaseRequest> purchaseRequests = new ArrayList<>();
-
-    // 프로젝트 첨부파일 연관 관계
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProjectAttachment> attachments = new ArrayList<>();
+    private List<StatusHistory> statusHistories = new ArrayList<>();
 
     /**
-     * 프로젝트 식별자를 자동으로 생성합니다.
-     * 형식: PRJ-YYMM-XXX (YY: 년도, MM: 월, XXX: 랜덤 3자리 숫자)
+     * 프로젝트 식별자 자동 생성 (PRJ-YYMM-XXX 형식)
      */
     @PrePersist
     public void generateProjectIdentifier() {
@@ -109,33 +90,16 @@ public class Project extends BaseEntity {
     }
 
     /**
-     * 구매 요청 추가 (양방향 관계 설정)
+     * 상태 이력 추가 (양방향 관계 설정)
      */
-    public void addPurchaseRequest(PurchaseRequest purchaseRequest) {
-        purchaseRequest.setProject(this);
-        this.purchaseRequests.add(purchaseRequest);
+    public void addStatusHistory(StatusHistory history) {
+        history.setProject(this); // ✅ 반드시 호출해야 함
+        this.statusHistories.add(history);
     }
 
-    /**
-     * 첨부파일 추가 (양방향 관계 설정)
-     */
-    public void addAttachment(ProjectAttachment attachment) {
-        attachment.setProject(this);
-        this.attachments.add(attachment);
-    }
+    // ██ 임베디드 타입 ██████████████████████████████████████████████████████████████████████
 
-    /**
-     * 첨부파일을 프로젝트에 추가합니다.
-     * @param attachment 추가할 첨부파일
-     */
-    public void addAttachment(ProjectAttachment attachment) {
-        attachment.setProject(this);
-        this.attachments.add(attachment);
-    }
-
-    /**
-     * 프로젝트 기간을 나타내는 임베디드 타입 클래스
-     */
+    /** 프로젝트 기간 */
     @Embeddable
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class ProjectPeriod {
@@ -145,13 +109,23 @@ public class Project extends BaseEntity {
         @Column(name = "end_date", nullable = false)
         private LocalDate endDate;
 
-        /**
-         * 프로젝트 기간의 유효성을 검사합니다.
-         * @return 종료일이 시작일 이후인 경우 true, 그렇지 않으면 false
-         */
         @AssertTrue(message = "종료일은 시작일 이후여야 합니다")
         public boolean isPeriodValid() {
             return endDate.isAfter(startDate);
         }
+    }
+
+    /** 프로젝트 담당자 */
+    @Embeddable
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ProjectManager {
+        @Column(name = "manager_name", nullable = false, length = 50)
+        private String name;
+
+        @Column(name = "manager_contact", length = 20)
+        private String contact;
+
+        @Column(name = "manager_email", length = 100)
+        private String email;
     }
 }
