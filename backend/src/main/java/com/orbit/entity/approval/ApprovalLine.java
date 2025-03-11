@@ -2,7 +2,11 @@ package com.orbit.entity.approval;
 
 import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,7 +16,9 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "approval_lines")
 public class ApprovalLine {
     private Long id;
@@ -28,9 +34,9 @@ public class ApprovalLine {
     @Column(nullable = false)
     private Integer step; // 결재 단계 (1,2,3...)
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private ApprovalStatus status = ApprovalStatus.PENDING;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_id", nullable = false)
+    private ChildCode status;
 
     private LocalDateTime approvedAt;
     private String comment;

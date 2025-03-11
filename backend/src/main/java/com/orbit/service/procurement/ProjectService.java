@@ -8,15 +8,13 @@ import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.project.Project;
-import com.orbit.entity.commonCode.StatusHistory;
-import com.orbit.entity.commonCode.SystemStatus;
+import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.exception.ProjectNotFoundException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.DepartmentRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
-import com.orbit.repository.member.MemberRepository;
-import com.orbit.repository.procurement.ProjectAttachmentRepository;
 import com.orbit.repository.procurement.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -115,17 +113,17 @@ public class ProjectService {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
 
-        // 2. 프로젝트 업데이트
-        updateProjectDetails(project, dto);
-
-        // 3. 상태 코드 업데이트
-        setProjectStatusCodes(project, dto.getBasicStatus(), dto.getProcurementStatus());
-
-        // 4. 첨부파일 처리
-        if (dto.getFiles() != null && dto.getFiles().length > 0) {
-            Member updater = memberRepository.findByUsername(dto.getUpdatedBy())
-                    .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
-            processAttachments(project, dto.getFiles(), updater);
+        // 기본 상태 업데이트
+        if (dto.getBasicStatus() != null) {
+            String[] basicStatusParts = dto.getBasicStatus().split("-");
+            ParentCode basicStatusParent = parentCodeRepository.findByEntityTypeAndCodeGroup(
+                    "PROJECT", "STATUS"
+            );
+            ChildCode basicStatusChild = childCodeRepository.findByParentCodeAndCodeValue(
+                    basicStatusParent, basicStatusParts[2]
+            );
+            project.setBasicStatusParent(basicStatusParent);
+            project.setBasicStatusChild(basicStatusChild);
         }
 
         // 5. 저장 후 DTO 반환
@@ -284,16 +282,26 @@ public class ProjectService {
 
         // 프로젝트 기간 업데이트
         Project.ProjectPeriod projectPeriod = project.getProjectPeriod();
-        if (projectPeriod == null) {
-            projectPeriod = new Project.ProjectPeriod();
-            project.setProjectPeriod(projectPeriod);
-        }
         projectPeriod.setStartDate(dto.getProjectPeriod().getStartDate());
         projectPeriod.setEndDate(dto.getProjectPeriod().getEndDate());
+
+        // 프로젝트 저장
+        Project savedProject = projectRepository.save(project);
+        return convertToDto(savedProject);
     }
 
     /**
-     * DTO -> 엔티티 변환
+     * 프로젝트 삭제
+     */
+    @Transactional
+    public void deleteProject(Long id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ProjectNotFoundException("Project not found: " + id));
+        projectRepository.delete(project);
+    }
+
+    /**
+     * DTO를 엔티티로 변환
      */
     private Project convertToEntity(ProjectDTO dto) {
         Project project = Project.builder()
@@ -325,7 +333,7 @@ public class ProjectService {
     }
 
     /**
-     * 엔티티 -> DTO 변환
+     * 엔티티를 DTO로 변환
      */
     private ProjectDTO convertToDto(Project project) {
         ProjectDTO dto = new ProjectDTO();
@@ -340,13 +348,23 @@ public class ProjectService {
         dto.setBudgetCode(project.getBudgetCode());
         dto.setRemarks(project.getRemarks());
 
-        // 요청자 설정
-        if (project.getRequester() != null) {
-            dto.setRequesterName(project.getRequester().getUsername());
+        // 기본 상태 코드 설정
+        if (project.getBasicStatusParent() != null && project.getBasicStatusChild() != null) {
+            dto.setBasicStatus(
+                    project.getBasicStatusParent().getEntityType() + "-" +
+                            project.getBasicStatusParent().getCodeGroup() + "-" +
+                            project.getBasicStatusChild().getCodeValue()
+            );
         }
 
-        // 상태 코드 설정
-        setDtoStatusCodes(project, dto);
+        // 조달 상태 코드 설정
+        if (project.getProcurementStatusParent() != null && project.getProcurementStatusChild() != null) {
+            dto.setProcurementStatus(
+                    project.getProcurementStatusParent().getEntityType() + "-" +
+                            project.getProcurementStatusParent().getCodeGroup() + "-" +
+                            project.getProcurementStatusChild().getCodeValue()
+            );
+        }
 
         // 프로젝트 기간 설정
         ProjectDTO.PeriodInfo periodInfo = new ProjectDTO.PeriodInfo();

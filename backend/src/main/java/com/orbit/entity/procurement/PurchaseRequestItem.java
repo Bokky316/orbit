@@ -27,16 +27,13 @@ public class PurchaseRequestItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "purchase_request_item_id") // ID 컬럼 이름 변경
+    @Column(name = "item_id")
     private Long id;
 
+    // Item 연결
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id", nullable = false) // item 필드는 외래 키로 사용
+    @JoinColumn(name = "item_id", nullable = false)
     private Item item;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "goods_request_id") // 외래 키 컬럼명 지정
-    private GoodsRequest goodsRequest;
 
     // 단위 코드를 ParentCode, ChildCode로 변경
     @ManyToOne(fetch = FetchType.LAZY)
@@ -125,9 +122,5 @@ public class PurchaseRequestItem {
     public boolean isDeliveryDelayed() {
         return deliveryRequestDate != null &&
                 deliveryRequestDate.isBefore(LocalDate.now());
-    }
-
-    public void setGoodsRequest(GoodsRequest goodsRequest) {
-        this.goodsRequest = goodsRequest;
     }
 }
