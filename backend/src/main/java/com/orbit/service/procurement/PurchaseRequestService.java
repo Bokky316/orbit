@@ -53,7 +53,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 @Transactional
 public class PurchaseRequestService {
 
@@ -79,6 +78,8 @@ public class PurchaseRequestService {
     public PurchaseRequestDTO createPurchaseRequest(PurchaseRequestDTO purchaseRequestDTO, MultipartFile[] files) {
         // 1. DTO -> Entity 변환
         PurchaseRequest purchaseRequest = convertToEntity(purchaseRequestDTO);
+
+        // 요청 날짜 설정
         purchaseRequest.setRequestDate(LocalDate.now());
 
         // 2. 초기 상태 설정

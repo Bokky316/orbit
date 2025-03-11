@@ -7,6 +7,7 @@ import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -55,6 +56,16 @@ public class Project extends BaseEntity {
     @Column(name = "budget_code", length = 50)
     private String budgetCode;
 
+    // 요청자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requester_id")
+    private Member requester;
+
+    // 예산 코드
+    @Column(name = "budget_code", length = 50)
+    private String budgetCode;
+
+    // 프로젝트 예산
     @Column(name = "total_budget")
     private Long totalBudget;
 

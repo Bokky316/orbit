@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Item {
     @Id
     @Column(name = "item_id", length = 20)
