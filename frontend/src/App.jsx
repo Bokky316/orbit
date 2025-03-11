@@ -17,6 +17,7 @@ import BiddingOrderDetail from "./pages/bidding/BiddingOrderDetail";
 import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
+import ProjectCreatePage from '@/pages/procurement/ProjectCreatePage';
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
@@ -77,6 +78,7 @@ function AppContent() {
               {/* 프로젝트 관리 */}
                 <Route path="/projects" element={<ProjectListPage />} />
                 <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/projects/new" element={<ProjectCreatePage />} />
 
                 {/* 구매 요청 관리 */}
                 <Route

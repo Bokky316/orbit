@@ -49,13 +49,18 @@ public class ProjectService {
      * 프로젝트 생성
      */
     @Transactional
-    public ProjectResponseDTO createProject(ProjectRequestDTO dto, Member creator) {
+    public ProjectResponseDTO createProject(ProjectRequestDTO dto, String currentUserName) {
         Project project = convertToEntity(dto);
 
         // 1. 상태 코드 설정 (메서드 분리)
         setProjectStatusCodes(project, dto.getBasicStatus(), dto.getProcurementStatus());
 
-        // 2. 프로젝트 저장
+        // 2. 프로젝트 생성자 설정 (예시)
+        // Member creator = memberRepository.findByUsername(currentUserName)
+        //        .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
+        // project.setCreator(creator);
+
+        // 3. 프로젝트 저장
         Project savedProject = projectRepository.save(project);
         return convertToDto(savedProject);
     }
@@ -104,7 +109,7 @@ public class ProjectService {
 
         // 조달 상태 설정
         if (procurementStatus != null) {
-            setCodeForProject(project, "PROJECT", "PROCUREMENT_STATUS", procurementStatus, false);
+            setCodeForProject(project, "PROJECT", "PROCUREMENT", procurementStatus, false);
         }
     }
 
@@ -180,6 +185,8 @@ public class ProjectService {
      */
     private ProjectResponseDTO convertToDto(Project project) {
         ProjectResponseDTO dto = new ProjectResponseDTO();
+
+        // 기본 정보 설정
         dto.setId(project.getId());
         dto.setProjectIdentifier(project.getProjectIdentifier());
         dto.setProjectName(project.getProjectName());
@@ -208,19 +215,20 @@ public class ProjectService {
     private void setDtoStatusCodes(Project project, ProjectResponseDTO dto) {
         // 기본 상태 코드 설정
         if (project.getBasicStatusParent() != null && project.getBasicStatusChild() != null) {
-            dto.setBasicStatus(getStatusCode(project.getBasicStatusParent(), project.getBasicStatusChild()));
+            dto.setBasicStatus(
+                    project.getBasicStatusParent().getEntityType() + "-" +
+                            project.getBasicStatusParent().getCodeGroup() + "-" +
+                            project.getBasicStatusChild().getCodeValue()
+            );
         }
 
         // 조달 상태 코드 설정
         if (project.getProcurementStatusParent() != null && project.getProcurementStatusChild() != null) {
-            dto.setProcurementStatus(getStatusCode(project.getProcurementStatusParent(), project.getProcurementStatusChild()));
+            dto.setProcurementStatus(
+                    project.getProcurementStatusParent().getEntityType() + "-" +
+                            project.getProcurementStatusParent().getCodeGroup() + "-" +
+                            project.getProcurementStatusChild().getCodeValue()
+            );
         }
-    }
-
-    /**
-     * 상태 코드 생성 (재사용 가능)
-     */
-    private String getStatusCode(ParentCode parent, ChildCode child) {
-        return parent.getEntityType() + "-" + parent.getCodeGroup() + "-" + child.getCodeValue();
     }
 }

@@ -14,120 +14,156 @@ import {
     TableCell,
     TableHead,
     TableRow,
-    TableContainer
+    TableContainer,
+    Chip,
+    Grid
 } from '@mui/material';
-import { fetchWithAuth } from '@/utils/fetchWithAuth'; // 인증이 필요한 API 호출 함수
-import { API_URL } from '@/utils/constants';
 
-/**
- * 프로젝트 상세 페이지 컴포넌트
- * @returns {JSX.Element}
- */
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
+import { API_URL } from '@/utils/constants';
+import { formatDate } from '@/utils/dateUtils'; // 날짜 포맷 유틸리티 추가
+
+// 상태 표시용 칩 스타일
+const statusChipStyle = {
+    margin: '2px',
+    fontWeight: 'bold',
+    minWidth: '80px'
+};
+
 function ProjectDetailPage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { id } = useParams(); // URL에서 프로젝트 ID를 가져옴
-    const [project, setProject] = useState(null); // 프로젝트 정보 상태
-    const [purchaseRequests, setPurchaseRequests] = useState([]); // 구매 요청 목록 상태
+    const { id } = useParams();
+    const [project, setProject] = useState(null);
+    const [purchaseRequests, setPurchaseRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        // 컴포넌트 마운트 시 프로젝트 상세 정보 및 관련 데이터 로딩
-        fetchProjectDetail();
+        const fetchData = async () => {
+            try {
+                // 1. 프로젝트 상세 정보 조회
+                const projectRes = await fetchWithAuth(`${API_URL}projects/${id}`);
+                if (!projectRes.ok) throw new Error('프로젝트 조회 실패');
+                const projectData = await projectRes.json();
+
+                // 2. 연관 구매 요청 조회
+                const prRes = await fetchWithAuth(
+                    `${API_URL}purchase-requests?projectId=${projectData.id}`
+                );
+                if (!prRes.ok) throw new Error('구매 요청 조회 실패');
+
+                setProject(projectData);
+                setPurchaseRequests(await prRes.json());
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
     }, [id]);
 
-    /**
-     * 프로젝트 상세 정보 및 관련 데이터 API 호출 함수
-     */
-    const fetchProjectDetail = async () => {
-        try {
-            // 1. 프로젝트 상세 정보 가져오기
-            const projectResponse = await fetchWithAuth(`${API_URL}projects/${id}`);
-            if (!projectResponse.ok) {
-                throw new Error(`프로젝트 상세 정보 로딩 실패: ${projectResponse.status}`);
-            }
-            const projectData = await projectResponse.json();
-            setProject(projectData); // 프로젝트 정보 설정
-
-            // 2. 관련 구매 요청 목록 가져오기
-            const purchaseRequestsResponse = await fetchWithAuth(`${API_URL}purchase-requests?projectId=${id}`);
-            if (!purchaseRequestsResponse.ok) {
-                throw new Error(`관련 구매 요청 목록 로딩 실패: ${purchaseRequestsResponse.status}`);
-            }
-            const purchaseRequestsData = await purchaseRequestsResponse.json();
-            setPurchaseRequests(purchaseRequestsData); // 구매 요청 목록 설정
-        } catch (error) {
-            console.error('프로젝트 상세 정보 로딩 중 오류 발생:', error);
-        }
-    };
-
-    /**
-     * 수정 핸들러
-     */
-    const handleEdit = () => {
-        navigate(`/projects/edit/${id}`); // 프로젝트 수정 페이지로 이동
-    };
-
-    /**
-     * 삭제 핸들러
-     */
     const handleDelete = async () => {
+        if (!window.confirm('정말 삭제하시겠습니까?')) return;
+
         try {
-            // 프로젝트 삭제 API 호출
-            const response = await fetchWithAuth(`${API_URL}projects/${id}`, {
-                method: 'DELETE',
+            const res = await fetchWithAuth(`${API_URL}projects/${id}`, {
+                method: 'DELETE'
             });
-            if (!response.ok) {
-                throw new Error(`프로젝트 삭제 실패: ${response.status}`);
-            }
-            dispatch(deleteProject(id)); // Redux 스토어에서 프로젝트 삭제
-            navigate('/projects'); // 프로젝트 목록 페이지로 이동
-        } catch (error) {
-            console.error('프로젝트 삭제 중 오류 발생:', error);
-            alert('프로젝트 삭제 중 오류가 발생했습니다.');
+            if (!res.ok) throw new Error('삭제 실패');
+            dispatch(deleteProject(id));
+            navigate('/projects');
+        } catch (err) {
+            alert(`삭제 오류: ${err.message}`);
         }
     };
 
-    if (!project) {
-        return <Typography>Loading...</Typography>; // 데이터 로딩 중 표시
-    }
+    if (loading) return <Typography>로딩 중...</Typography>;
+    if (error) return <Typography color="error">{error}</Typography>;
 
     return (
         <Box sx={{ p: 4 }}>
-            {/* 프로젝트 기본 정보 */}
+            {/* 기본 정보 섹션 */}
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>프로젝트 정보</Typography>
-                <Typography>프로젝트 ID: {project.projectId}</Typography>
-                <Typography>프로젝트명: {project.projectName}</Typography>
-                <Typography>담당자: {project.managerName}</Typography>
-                <Typography>시작일: {project.startDate}</Typography>
-                <Typography>종료일: {project.endDate}</Typography>
-                <Typography>상태: {project.status}</Typography>
+                <Typography variant="h6" sx={{ mb: 2 }}>기본 정보</Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={4}>
+                        <Typography><strong>프로젝트 ID:</strong> {project.id}</Typography>
+                        <Typography><strong>프로젝트명:</strong> {project.projectName}</Typography>
+                        <Typography><strong>담당자:</strong> {project.businessManager}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                        <Typography><strong>시작일:</strong> {formatDate(project.projectPeriod.startDate)}</Typography>
+                        <Typography><strong>종료일:</strong> {formatDate(project.projectPeriod.endDate)}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                        <Typography><strong>기본 상태:</strong></Typography>
+                        <Chip
+                            label={project.basicStatus.split('-')[2]}
+                            sx={{...statusChipStyle, backgroundColor: '#e3f2fd'}}
+                        />
+                        <Typography sx={{ mt: 1 }}><strong>조달 상태:</strong></Typography>
+                        <Chip
+                            label={project.procurementStatus.split('-')[2]}
+                            sx={{...statusChipStyle, backgroundColor: '#f0f4c3'}}
+                        />
+                    </Grid>
+                </Grid>
             </Paper>
 
-            {/* 프로젝트 설명 */}
+            {/* 상세 정보 섹션 */}
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>프로젝트 설명</Typography>
-                <Typography>{project.description}</Typography>
+                <Typography variant="h6" sx={{ mb: 2 }}>상세 정보</Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                        <Typography><strong>고객사:</strong> {project.clientCompany}</Typography>
+                        <Typography><strong>계약 유형:</strong> {project.contractType}</Typography>
+                        <Typography><strong>총 예산:</strong> {project.totalBudget.toLocaleString()} 원</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                        <Typography><strong>특이 사항:</strong></Typography>
+                        <Typography sx={{ whiteSpace: 'pre-line' }}>
+                            {project.specialNotes || '없음'}
+                        </Typography>
+                    </Grid>
+                </Grid>
             </Paper>
 
-            {/* 관련 구매 요청 목록 */}
+            {/* 연관 구매 요청 테이블 */}
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>관련 구매 요청</Typography>
+                <Typography variant="h6" sx={{ mb: 2 }}>관련 구매 요청</Typography>
                 <TableContainer>
-                    <Table aria-label="관련 구매 요청 테이블">
+                    <Table>
                         <TableHead>
                             <TableRow>
                                 <TableCell>요청번호</TableCell>
+                                <TableCell>유형</TableCell>
                                 <TableCell>요청명</TableCell>
                                 <TableCell>상태</TableCell>
+                                <TableCell>액션</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {purchaseRequests.map(request => (
-                                <TableRow key={request.id}>
-                                    <TableCell>{request.id}</TableCell>
-                                    <TableCell>{request.title}</TableCell>
-                                    <TableCell>{request.status}</TableCell>
+                            {purchaseRequests.map(req => (
+                                <TableRow key={req.id}>
+                                    <TableCell>{req.requestNumber}</TableCell>
+                                    <TableCell>{req.businessType}</TableCell>
+                                    <TableCell>{req.requestName}</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={req.status.split('-')[2]}
+                                            sx={statusChipStyle}
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button
+                                            size="small"
+                                            onClick={() => navigate(`/purchase-requests/${req.id}`)}
+                                        >
+                                            상세보기
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -135,12 +171,19 @@ function ProjectDetailPage() {
                 </TableContainer>
             </Paper>
 
-            {/* 액션 버튼 */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button variant="contained" color="primary" onClick={handleEdit}>
+            {/* 액션 버튼 그룹 */}
+            <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+                <Button
+                    variant="contained"
+                    onClick={() => navigate(`/projects/edit/${id}`)}
+                >
                     수정
                 </Button>
-                <Button variant="outlined" color="error" onClick={handleDelete}>
+                <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleDelete}
+                >
                     삭제
                 </Button>
             </Box>

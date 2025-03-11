@@ -74,6 +74,41 @@ export const createProject = createAsyncThunk(
 );
 
 /**
+ * 단일 프로젝트 조회 비동기 액션
+ */
+export const fetchProjectById = createAsyncThunk(
+    'project/fetchProjectById',
+    async (id, { rejectWithValue }) => {
+        try {
+            const response = await fetchWithAuth(`${API_URL}projects/${id}`);
+            if (!response.ok) throw new Error('프로젝트 조회 실패');
+            return await response.json();
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+/**
+ * 프로젝트 상태 변경 액션
+ */
+export const updateProjectStatus = createAsyncThunk(
+    'project/updateStatus',
+    async ({ id, statusType, statusCode }, { rejectWithValue }) => {
+        try {
+            const response = await fetchWithAuth(`${API_URL}projects/${id}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ statusType, statusCode })
+            });
+            if (!response.ok) throw new Error('상태 업데이트 실패');
+            return await response.json();
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+/**
  * 프로젝트를 수정하는 비동기 액션
  */
 export const updateProject = createAsyncThunk(
@@ -133,7 +168,11 @@ const projectSlice = createSlice({
         },
         setStatus: (state, action) => {
             state.filters.status = action.payload;
-        }
+        },
+        resetProjectState: (state) => {
+                    state.projects = [];
+                    state.filters = initialState.filters;
+                    }
     },
     extraReducers: (builder) => {
         builder
@@ -186,6 +225,32 @@ const projectSlice = createSlice({
             .addCase(updateProject.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
+            })
+            .addCase(fetchProjectById.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchProjectById.fulfilled, (state, action) => {
+                state.loading = false;
+                const index = state.projects.findIndex(p => p.id === action.payload.id);
+                if (index === -1) {
+                    state.projects.push(action.payload);
+                } else {
+                    state.projects[index] = action.payload;
+                }
+            })
+            .addCase(fetchProjectById.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            .addCase(updateProjectStatus.fulfilled, (state, action) => {
+                const index = state.projects.findIndex(p => p.id === action.payload.id);
+                if (index !== -1) {
+                    state.projects[index] = {
+                        ...state.projects[index],
+                        ...action.payload
+                    };
+                }
             });
     },
 });
@@ -195,6 +260,7 @@ export const {
     setSearchTerm,
     setStartDate,
     setEndDate,
+    resetProjectState,
     setStatus
 } = projectSlice.actions;
 
