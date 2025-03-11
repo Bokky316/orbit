@@ -1,36 +1,44 @@
-package com.orbit.entity.commonCode;
+package com.orbit.entity.code;
 
-import jakarta.persistence.Column;
+import com.orbit.entity.commonCode.CommonCode;
+import com.orbit.entity.commonCode.CommonCodeGroup;
 import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Embeddable
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class SystemStatus {
-    @Column(name = "status_parent_code", length = 50)
     private String parentCode;
-
-    @Column(name = "status_child_code", length = 50)
     private String childCode;
 
-    // 상태 코드 조합
+    /**
+     * 전체 코드값 반환 (예: "PURCHASE_REQUEST-REQUESTED")
+     */
     public String getFullCode() {
         return parentCode + "-" + childCode;
     }
 
-    // 기본 생성자
-    public SystemStatus() {}
-
-    // 파라미터 생성자
-    public SystemStatus(String parentCode, String childCode) {
-        this.parentCode = parentCode;
-        this.childCode = childCode;
+    /**
+     * 코드값으로부터 SystemStatus 생성
+     */
+    public static SystemStatus from(String fullCode) {
+        String[] parts = fullCode.split("-");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid status code format: " + fullCode);
+        }
+        return new SystemStatus(parts[0], parts[1]);
     }
 
-    @Override
-    public String toString() {
-        return getFullCode();
+    /**
+     * CommonCode로부터 SystemStatus 생성
+     */
+    public static SystemStatus fromCommonCode(CommonCodeGroup group, CommonCode code) {
+        return new SystemStatus(group.getId(), code.getId());
     }
 }

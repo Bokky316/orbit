@@ -1,6 +1,7 @@
 package com.orbit.entity.procurement;
 
 import com.orbit.entity.member.Member;
+import com.orbit.entity.commonCode.StatusHistory;
 import com.orbit.entity.commonCode.SystemStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.PositiveOrZero;
