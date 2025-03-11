@@ -87,7 +87,6 @@ public class StatusCode {
             ),
             "PAYMENT", List.of(
                     new StatusCode("PAYMENT", "PENDING", "대기중", SystemType.PAYMENT, 1, false, true),
-                    new StatusCode("PAYMENT", "PARTIAL", "부분지급", SystemType.PAYMENT, 2, false, true),
                     new StatusCode("PAYMENT", "COMPLETED", "완료", SystemType.PAYMENT, 3, true, false),
                     new StatusCode("PAYMENT", "OVERDUE", "연체", SystemType.PAYMENT, 4, false, true)
             ),
