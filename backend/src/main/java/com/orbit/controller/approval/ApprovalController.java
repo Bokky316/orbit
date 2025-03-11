@@ -1,8 +1,7 @@
 package com.orbit.controller.approval;
 
-import com.orbit.dto.approval.ApprovalLineCreateDTO;
-import com.orbit.dto.approval.ApprovalLineResponseDTO;
-import com.orbit.dto.approval.ApprovalProcessDTO;
+import com.orbit.dto.procurement.ApprovalDTO;
+import com.orbit.dto.procurement.ApprovalResponseDTO;
 import com.orbit.service.procurement.ApprovalLineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,23 +16,24 @@ import java.util.List;
 @RequestMapping("/api/approvals")
 public class ApprovalController {
 
-    private final ApprovalLineService approvalLineService;
+    private final ApprovalLineService approvalService;
 
-    @PostMapping
-    public ResponseEntity<ApprovalLineResponseDTO> createApprovalLine(
-            @Valid @RequestBody ApprovalLineCreateDTO dto) {
-        ApprovalLineResponseDTO createdLine = approvalLineService.createApprovalLine(dto);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(createdLine);
+    /**
+     * 생성자를 통한 의존성 주입
+     * @param approvalService 결재 서비스
+     */
+    public ApprovalController(ApprovalLineService approvalService) {
+        this.approvalService = approvalService;
     }
 
-    @PostMapping("/{lineId}/process")
-    public ResponseEntity<ApprovalLineResponseDTO> processApproval(
-            @PathVariable Long lineId,
-            @Valid @RequestBody ApprovalProcessDTO dto) {
-        ApprovalLineResponseDTO processedLine = approvalLineService.processApproval(lineId, dto);
-        return ResponseEntity.ok(processedLine);
+    /**
+     * 모든 결재 정보를 조회합니다.
+     * @return 결재 정보 목록
+     */
+    @GetMapping
+    public ResponseEntity<List<ApprovalResponseDTO>> getAllApprovals() {
+        List<ApprovalResponseDTO> approvals = approvalService.getAllApprovals();
+        return new ResponseEntity<>(approvals, HttpStatus.OK);
     }
 
     @GetMapping("/{requestId}")

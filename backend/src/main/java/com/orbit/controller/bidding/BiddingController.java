@@ -1,23 +1,32 @@
 package com.orbit.controller.bidding;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.core.io.Resource;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriUtils;
 
 import com.orbit.dto.bidding.BiddingDto;
 import com.orbit.dto.bidding.BiddingFormDto;
@@ -97,14 +106,57 @@ public class BiddingController {
     }
     
     /**
+     * 특정 상태의 입찰 공고 목록 조회
+     */
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<BiddingDto>> getBiddingsByStatus(@PathVariable String status) {
+        log.info("특정 상태의 입찰 공고 목록 조회 요청 - 상태: {}", status);
+        
+        try {
+            List<BiddingDto> biddings = biddingService.getBiddingsByStatus(status);
+            return ResponseEntity.ok(biddings);
+        } catch (IllegalArgumentException e) {
+            log.error("유효하지 않은 상태 코드: {}", status);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    /**
+     * 특정 공급사가 초대된 입찰 공고 목록 조회
+     */
+    @GetMapping("/supplier/{supplierId}/invited")
+    public ResponseEntity<List<BiddingDto>> getBiddingsInvitedSupplier(@PathVariable Long supplierId) {
+        log.info("특정 공급사가 초대된 입찰 공고 목록 조회 요청 - 공급사 ID: {}", supplierId);
+        
+        List<BiddingDto> biddings = biddingService.getBiddingsInvitedSupplier(supplierId);
+        return ResponseEntity.ok(biddings);
+    }
+    
+    /**
+     * 특정 공급사가 참여한 입찰 공고 목록 조회
+     */
+    @GetMapping("/supplier/{supplierId}/participated")
+    public ResponseEntity<List<BiddingDto>> getBiddingsParticipatedBySupplier(@PathVariable Long supplierId) {
+        log.info("특정 공급사가 참여한 입찰 공고 목록 조회 요청 - 공급사 ID: {}", supplierId);
+        
+        List<BiddingDto> biddings = biddingService.getBiddingsParticipatedBySupplier(supplierId);
+        return ResponseEntity.ok(biddings);
+    }
+    
+    /**
      * 입찰 공고 상세 조회
      */
     @GetMapping("/{id}")
     public ResponseEntity<BiddingDto> getBiddingById(@PathVariable Long id) {
         log.info("입찰 공고 상세 조회 요청 - ID: {}", id);
         
-        BiddingDto bidding = biddingService.getBiddingById(id);
-        return ResponseEntity.ok(bidding);
+        try {
+            BiddingDto bidding = biddingService.getBiddingById(id);
+            return ResponseEntity.ok(bidding);
+        } catch (Exception e) {
+            log.error("입찰 공고 조회 중 오류 발생", e);
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**
@@ -199,13 +251,29 @@ public class BiddingController {
     @PostMapping("/{biddingId}/participate")
     public ResponseEntity<BiddingParticipationDto> participateInBidding(
             @PathVariable Long biddingId,
-            @RequestBody BiddingParticipationDto participation
+            @RequestBody BiddingParticipationDto participation,
+            @AuthenticationPrincipal UserDetails userDetails
     ) {
         log.info("입찰 참여 요청 - 입찰 ID: {}, 공급자 ID: {}", biddingId, participation.getSupplierId());
         
-        participation.setBiddingId(biddingId);
-        BiddingParticipationDto result = biddingService.participateInBidding(participation);
-        return new ResponseEntity<>(result, HttpStatus.CREATED);
+        try {
+            // 현재 로그인한 사용자의 공급사 ID 설정 (보안 강화)
+            if (userDetails != null) {
+                Member member = memberRepository.findByUsername(userDetails.getUsername())
+                        .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
+                participation.setSupplierId(member.getId());
+            }
+            
+            participation.setBiddingId(biddingId);
+            BiddingParticipationDto result = biddingService.participateInBidding(participation);
+            return new ResponseEntity<>(result, HttpStatus.CREATED);
+        } catch (IllegalStateException e) {
+            log.error("입찰 참여 불가: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("입찰 참여 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     /**
@@ -215,8 +283,13 @@ public class BiddingController {
     public ResponseEntity<List<BiddingParticipationDto>> getBiddingParticipations(@PathVariable Long biddingId) {
         log.info("입찰 참여 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
-        List<BiddingParticipationDto> participations = biddingService.getBiddingParticipations(biddingId);
-        return ResponseEntity.ok(participations);
+        try {
+            List<BiddingParticipationDto> participations = biddingService.getBiddingParticipations(biddingId);
+            return ResponseEntity.ok(participations);
+        } catch (Exception e) {
+            log.error("입찰 참여 목록 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     /**

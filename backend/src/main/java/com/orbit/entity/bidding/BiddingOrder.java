@@ -4,6 +4,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.orbit.entity.BaseEntity;
+import com.orbit.entity.Notification;
+import com.orbit.entity.member.Member;
+import com.orbit.repository.NotificationRepository;
+import com.orbit.repository.member.MemberRepository;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -23,8 +29,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "bidding_orders")
-@Getter
-@Setter
+@Setter @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -98,8 +103,14 @@ public class BiddingOrder {
     @Column(name = "evaluation_id")
     private Long evaluationId; // 평가 ID
     
+    @Column(name = "approval_by_id")
+    private Long approvalById; // 승인자 ID
+
+    @Column(name = "evaluation_id")
+    private Long evaluationId; // 평가 ID
+    
     @Column(name = "created_by")
-    private Long createdBy; // 생성자 ID
+    private String createdBy; // // 생성자 ID
     
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // 생성일시
@@ -107,16 +118,124 @@ public class BiddingOrder {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt; // 수정일시
     
+    
+    /**
+     * 발주 승인 + 알림 발송
+     */
+    public void approve(Member approver, NotificationRepository notificationRepo, MemberRepository memberRepository) {
+        this.approvedAt = LocalDateTime.now();
+        this.approvalById = approver.getId();
+        this.updatedAt = LocalDateTime.now();
+        
+        
+        // 알림 발송
+        if (notificationRepo != null && memberRepository != null) {
+            try {
+                // 공급자에게 알림
+                Member supplier = memberRepository.findById(this.supplierId).orElse(null);
+                if (supplier != null) {
+                    Notification notification = Notification.builder()
+                        .user(supplier)
+                        .title("발주 승인 완료")
+                        .content("발주 '" + this.orderNumber + "'이(가) 승인되었습니다.")
+                        .type(Notification.NotificationType.입찰공고)
+                        .relatedId(this.id)
+                        .isRead(false)
+                        .build();
+                    notificationRepo.save(notification);
+                }
+
+                // 생성자에게도 알림 (생성자와 승인자가 다른 경우)
+                if (!approver.getId().equals(this.createdBy)) {
+                    Member creator = memberRepository.findByUsername(this.createdBy).orElse(null);
+                    if (creator != null) {
+                        Notification notification = Notification.builder()
+                            .user(creator)
+                            .title("발주 승인 완료")
+                            .content("발주 '" + this.orderNumber + "'이(가) " + approver.getName() + "님에 의해 승인되었습니다.")
+                            .type(Notification.NotificationType.입찰공고)
+                            .relatedId(this.id)
+                            .isRead(false)
+                            .build();
+                        notificationRepo.save(notification);
+                    }
+                }
+            } catch (Exception e) {
+                // 알림 발송 실패 (로깅 필요)
+                System.err.println("발주 승인 알림 발송 실패: " + e.getMessage());
+            }
+        }
+    }
+    
+    
+    /**
+     * 납품 예정일 업데이트 + 알림 발송
+     */
+    public void updateDeliveryDate(
+        LocalDate newDeliveryDate, 
+        Member updatedBy,
+        NotificationRepository notificationRepo, 
+        MemberRepository memberRepository
+    ) {
+        LocalDate oldDeliveryDate = this.expectedDeliveryDate;
+        this.expectedDeliveryDate = newDeliveryDate;
+        this.updatedAt = LocalDateTime.now();
+        
+        // 알림 발송
+        if (notificationRepo != null && memberRepository != null) {
+            try {
+                // 공급자에게 알림
+                Member supplier = memberRepository.findById(this.supplierId).orElse(null);
+                if (supplier != null) {
+                    Notification notification = Notification.builder()
+                        .user(supplier)
+                        .title("납품 예정일 변경")
+                        .content("발주 '" + this.orderNumber + "'의 납품 예정일이 " + 
+                                oldDeliveryDate + "에서 " + newDeliveryDate + "(으)로 변경되었습니다.")
+                        .type(Notification.NotificationType.입찰공고)
+                        .relatedId(this.id)
+                        .isRead(false)
+                        .build();
+                    notificationRepo.save(notification);
+                }
+
+                // 생성자에게도 알림 (생성자와 변경자가 다른 경우)
+                if (this.createdBy != null && !updatedBy.getId().equals(this.supplierId)) {
+                    Member creator = memberRepository.findByUsername(this.createdBy).orElse(null);
+                    if (creator != null) {
+                        Notification notification = Notification.builder()
+                        .user(creator)
+                        .title("납품 예정일 변경")
+                        .content("발주 '" + this.orderNumber + "'의 납품 예정일이 " + 
+                                oldDeliveryDate + "에서 " + newDeliveryDate + "(으)로 변경되었습니다.")
+                        .type(Notification.NotificationType.입찰공고)
+                        .relatedId(this.id)
+                        .isRead(false)
+                        .build();
+                        notificationRepo.save(notification);
+                    }
+                }
+
+            } catch (Exception e) {
+                // 알림 발송 실패 (로깅 필요)
+                System.err.println("납품 예정일 변경 알림 발송 실패: " + e.getMessage());
+            }
+        }
+    }
+    
+    
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         
-        // 발주 생성 시 기본적으로 낙찰자로 설정
-        if (this.bidderSelectedAt == null) {
-            this.bidderSelectedAt = LocalDateTime.now();
+        // 발주번호 자동 생성
+        if (this.orderNumber == null) {
+            String datePart = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyMMdd"));
+            String randomPart = String.format("%03d", new java.util.Random().nextInt(1000));
+            this.orderNumber = "ORD-" + datePart + "-" + randomPart;
         }
-        this.isSelectedBidder = true;
+        
     }
     
     @PreUpdate

@@ -8,7 +8,6 @@ import org.springframework.stereotype.Repository;
 
 import com.orbit.entity.bidding.BiddingParticipation;
 
-@Repository
 public interface BiddingParticipationRepository extends JpaRepository<BiddingParticipation, Long> {
 
     List<BiddingParticipation> findByBiddingId(Long biddingId);

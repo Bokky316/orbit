@@ -1,14 +1,27 @@
 package com.orbit.service.bidding;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.orbit.dto.bidding.BiddingDto;
 import com.orbit.dto.bidding.BiddingEvaluationDto;
@@ -17,11 +30,13 @@ import com.orbit.dto.bidding.BiddingParticipationDto;
 import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.Bidding.BiddingStatus;
 import com.orbit.entity.bidding.BiddingEvaluation;
+import com.orbit.entity.bidding.BiddingOrder;
 import com.orbit.entity.bidding.BiddingParticipation;
 import com.orbit.entity.state.StatusHistory;
 import com.orbit.entity.state.SystemStatus;
 import com.orbit.repository.bidding.BiddingContractRepository;
 import com.orbit.repository.bidding.BiddingEvaluationRepository;
+import com.orbit.repository.bidding.BiddingOrderRepository;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
 import com.orbit.repository.bidding.BiddingRepository;
 import com.orbit.util.PriceCalculator;
@@ -97,6 +112,70 @@ public class BiddingService {
             biddings = biddingRepository.findBiddingsByDateRange(startDate, endDate);
         }
         
+        if (statusCode != null) {
+            // 상태 코드로 필터링
+            // ParentCode 객체 먼저 찾기
+            Optional<ParentCode> parentCode = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
+            if (parentCode.isEmpty()) {
+                throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
+            }
+            
+            Optional<ChildCode> status = childCodeRepository.findByParentCodeAndCodeValue(parentCode.get(), statusCode);
+            if (status.isEmpty()) {
+                throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + statusCode);
+            }
+            
+            biddings = biddingRepository.findByStatusChildAndStartDateGreaterThanEqualAndEndDateLessThanEqual(status.get(), startDate, endDate);
+        } else {
+            biddings = biddingRepository.findByStartDateGreaterThanEqualAndEndDateLessThanEqual(startDate, endDate);
+        }
+        
+        return biddings.stream()
+                .map(BiddingDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 특정 상태의 입찰 공고 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingDto> getBiddingsByStatus(String status) {
+        // ParentCode 객체 먼저 찾기
+        Optional<ParentCode> parentCode = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
+        if (parentCode.isEmpty()) {
+            throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
+        }
+        
+        Optional<ChildCode> statusCode = childCodeRepository.findByParentCodeAndCodeValue(parentCode.get(), status);
+        if (statusCode.isEmpty()) {
+            throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + status);
+        }
+        
+        List<Bidding> biddings = biddingRepository.findByStatusChild(statusCode.get());
+        return biddings.stream()
+                .map(BiddingDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 특정 공급사가 초대된 입찰 공고 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingDto> getBiddingsInvitedSupplier(Long supplierId) {
+        List<Bidding> biddings = biddingRepository.findBiddingsInvitedSupplier(supplierId);
+        return biddings.stream()
+                .map(BiddingDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 특정 공급사가 참여한 입찰 공고 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingDto> getBiddingsParticipatedBySupplier(Long supplierId) {
+        List<Bidding> biddings = biddingRepository.findBiddingsParticipatedBySupplier(supplierId);
         return biddings.stream()
                 .map(BiddingDto::fromEntity)
                 .collect(Collectors.toList());
@@ -218,7 +297,8 @@ private String generateBidNumber() {
         
         return BiddingDto.fromEntity(updatedBidding);
     }
-    
+
+
     /**
      * 입찰 공고 삭제
      */
@@ -245,6 +325,7 @@ private String generateBidNumber() {
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + participationDto.getBiddingId()));
         
         BiddingParticipation participation = participationDto.toEntity();
+        participation.setBidding(bidding);
         
         // 참여 정보 설정
         participation.setSubmittedAt(LocalDateTime.now());
@@ -252,7 +333,13 @@ private String generateBidNumber() {
         // 가격 계산
         calculateParticipationPrices(participation, bidding.getQuantity());
         
+        // 가격 계산
+        calculateParticipationPrices(participation, bidding.getQuantity());
+        
         participation = participationRepository.save(participation);
+        
+        // 입찰 공고에 참여 추가
+        bidding.getParticipations().add(participation);
         
         return BiddingParticipationDto.fromEntity(participation);
     }
@@ -450,14 +537,16 @@ private String generateBidNumber() {
     /**
      * 단일 낙찰자 선정 (최고 점수 기준)
      */
-    @Transactional(readOnly = true)
-    public BiddingEvaluationDto selectWinningBid(Long biddingId) {
-        List<BiddingEvaluation> evaluations = evaluationRepository.findTopByBiddingIdOrderByTotalScoreDesc(biddingId);
+    private void calculateParticipationPrices(BiddingParticipation participation, Integer quantity) {
+        BigDecimal unitPrice = participation.getUnitPrice();
+        Integer actualQuantity = quantity != null ? quantity : 1;
         
-        if (evaluations.isEmpty()) {
-            return null;
+        if (unitPrice != null) {
+            PriceResult result = PriceCalculator.calculateAll(unitPrice, actualQuantity);
+            
+            participation.setSupplyPrice(result.getSupplyPrice());
+            participation.setVat(result.getVat());
+            participation.setTotalAmount(result.getTotalAmount());
         }
-        
-        return BiddingEvaluationDto.fromEntity(evaluations.get(0));
     }
 }
