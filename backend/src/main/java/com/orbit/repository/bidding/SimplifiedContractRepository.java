@@ -16,4 +16,6 @@ public interface SimplifiedContractRepository extends JpaRepository<SimplifiedCo
     List<SimplifiedContract> findByStatus(ContractStatus status);
     
     List<SimplifiedContract> findByBiddingParticipationId(Long participationId);
+
+    List<SimplifiedContract> findAllByStatus(SimplifiedContract.ContractStatus status);
 }
