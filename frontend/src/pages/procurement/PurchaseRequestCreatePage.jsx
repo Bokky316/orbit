@@ -5,7 +5,7 @@ import {
     Box, Typography, Paper, TextField, Button, Grid, Alert,
     IconButton, List, ListItem, ListItemAvatar, ListItemText,
     Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem,
-    Chip, Divider, Autocomplete
+    Chip, Divider
 } from '@mui/material';
 import { Delete as DeleteIcon, AttachFile as AttachFileIcon, Add as AddIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -44,13 +44,6 @@ function PurchaseRequestCreatePage() {
     // 프로젝트 목록 상태
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
-
-    // 부서 및 담당자 데이터 상태
-    const [departments, setDepartments] = useState([]);
-    const [members, setMembers] = useState([]);
-    const [departmentMembers, setDepartmentMembers] = useState([]);
-    const [selectedDepartment, setSelectedDepartment] = useState(null);
-    const [selectedManager, setSelectedManager] = useState(null);
 
     // 결재선 상태
     const [showApprovalSetup, setShowApprovalSetup] = useState(false);
@@ -256,27 +249,6 @@ function PurchaseRequestCreatePage() {
             setFilteredItems(availableItems);
         }
     }, [selectedCategory, availableItems]);
-
-    // 부서 선택 시 해당 부서의 멤버 필터링
-    useEffect(() => {
-        if (selectedDepartment) {
-            const filtered = members.filter(member =>
-                member.department && member.department.id === selectedDepartment.id
-            );
-            setDepartmentMembers(filtered);
-        } else {
-            setDepartmentMembers([]);
-        }
-    }, [selectedDepartment, members]);
-
-    // 담당자 변경 시 전화번호 자동 설정
-    useEffect(() => {
-        if (selectedManager && selectedManager.contactNumber) {
-            setManagerPhoneNumber(selectedManager.contactNumber.replace(/[^0-9]/g, ''));
-        } else {
-            setManagerPhoneNumber('');
-        }
-    }, [selectedManager]);
 
     // 결재선 설정 완료 핸들러
     const handleApprovalSetupComplete = (setupData) => {

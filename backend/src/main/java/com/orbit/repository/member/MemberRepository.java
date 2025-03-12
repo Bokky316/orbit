@@ -47,16 +47,6 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
      * - `QualityControl` 부서에서 가장 적은 검수 건수를 가진 담당자를 찾음
      * - 만약 검수 담당자가 없으면 `Optional.empty()` 반환
      */
-    @Query("SELECT m FROM Member m WHERE m.department.name = 'QualityControl' " +
-            "ORDER BY (SELECT COUNT(i) FROM Inspection i WHERE i.inspectorId = m.id) ASC")
-    Optional<Member> findTopByDepartmentNameOrderByInspectionCountAsc();
-
-    /**
-     * 특정 부서에서 가장 오래된 미배정 검수 담당자 찾기
-     * - 특정 부서에서 아직 검수를 배정받지 않은 담당자를 찾음.
-     * - `ORDER BY m.id ASC`로 오래된 순서대로 조회
-     */
-    @Query("SELECT m FROM Member m WHERE m.department.name = :departmentName " +
-            "ORDER BY m.id ASC")
-    Optional<Member> findAvailableInspector(String departmentName);
+    @Query("SELECT m FROM Member m JOIN m.position p WHERE p.level >= 3")
+    List<Member> findEligibleApprovalMembers();
 }
