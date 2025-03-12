@@ -34,6 +34,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -285,8 +286,8 @@ public BiddingEvaluationDto createEvaluation(BiddingEvaluationDto dto, Long eval
     public List<BiddingEvaluationDto> getAllEvaluations() {
         List<BiddingEvaluation> evaluations = evaluationRepository.findAll();
         return evaluations.stream()
-                .map(BiddingEvaluationDto::fromEntity)
-                .collect(Collectors.toList());
+            .map(BiddingEvaluationDto::fromEntity)
+            .collect(Collectors.toList());
     }
 
     /**

@@ -2,6 +2,7 @@ package com.orbit.service.bidding;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,8 +55,8 @@ public class BiddingOrderService {
     public List<BiddingOrderDto> getAllBiddingOrders() {
         List<BiddingOrder> orders = orderRepository.findAll();
         return orders.stream()
-                .map(BiddingOrderDto::fromEntity)
-                .collect(Collectors.toList());
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
     }
 
     /**
@@ -83,7 +84,6 @@ public class BiddingOrderService {
     /**
      * 발주 상세 조회
      */
-    @Transactional(readOnly = true)
     public BiddingOrderDto getOrderById(Long id) {
         BiddingOrder order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + id));

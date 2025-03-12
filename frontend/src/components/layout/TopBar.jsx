@@ -53,6 +53,13 @@ function TopBar() {
       { label: "공통 코드 관리", path: "/common-codes" },
       { label: "기타 설정", path: "/system/settings" }
     ],
+    "/biddings/contracts": [
+      { label: "계약리스트", path: "/biddings/contracts" }
+    ],
+    "/orders": [{ label: "발주리스트", path: "/orders/list" }],
+    "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
+    "/funds": [{ label: "자금리스트", path: "/funds/list" }],
+    "/reports": [{ label: "보고서리스트", path: "/reports/list" }],
     // 기본 탭
     default: []
   };
