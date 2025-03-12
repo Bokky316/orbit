@@ -44,8 +44,8 @@ public class BiddingOrderService {
     public List<BiddingOrderDto> getAllOrders() {
         List<BiddingOrder> orders = orderRepository.findAll();
         return orders.stream()
-                .map(BiddingOrderDto::fromEntity)
-                .collect(Collectors.toList());
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
     }
     
     /**

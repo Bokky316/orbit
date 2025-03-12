@@ -84,6 +84,6 @@ public class WebConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         // React의 index.html을 기본 뷰로 매핑
         registry.addViewController("/{spring:[^\\.]*}")
-                .setViewName("forward:/student_frontend/public/index.html");
+                .setViewName("forward:/frontend/public/index.html");
     }
 }

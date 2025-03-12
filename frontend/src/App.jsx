@@ -86,9 +86,10 @@ function AppContent() {
                 element={<BiddingFormPage mode="create" />}
               />
               <Route
-                path="/biddings/edit/:id"
+                path="/biddings/:id/edit"
                 element={<BiddingFormPage mode="edit" />}
               />
+              {/* 평가 페이지 */}
               <Route
                 path="/biddings/evaluations"
                 element={<BiddingEvaluationListPage />}
