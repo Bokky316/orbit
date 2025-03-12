@@ -44,41 +44,9 @@ import ProjectCreatePage from "@/pages/procurement/ProjectCreatePage";
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
-import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
-import ApprovalListPage from "@/pages/approval/ApprovalListPage";
-import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
-import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
-import ApprovalLineAdministration from '@/pages/approval/ApprovalLineAdministration';
-import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
-import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
-import ApprovalListPage from "@/pages/approval/ApprovalListPage";
-import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
-import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
-import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
-import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
-import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
-import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
-import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
-import PaymentListPage from '@/pages/payment/PaymentListPage';
-import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
-import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
-import RegisterMember from "@/pages/member/RegisterMember";
-import CategoryListPage from "@pages/item/CategoryListPage";
-import CategoryFormPage from "@pages/item/CategoryFormPage";
-import ItemListPage from "@pages/item/ItemListPage";
-import ItemFormPage from "@pages/item/ItemFormPage";
 import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
-import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
-import InspectionsListPage from "@/pages/inspection/InspectionsListPage";
-import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage";
-import InspectionFormPage from "@/pages/inspection/InspectionFormPage";
-import InvoicesListPage from "@/pages/invoice/InvoicesListPage";
-import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage";
-import PaymentListPage from "@/pages/payment/PaymentListPage";
-import PaymentProcessPage from "@/pages/payment/PaymentProcessPage";
-import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement'; // 공통 코드 관리 페이지 추가
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리

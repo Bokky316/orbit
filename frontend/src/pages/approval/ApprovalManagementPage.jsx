@@ -19,9 +19,7 @@ import moment from 'moment';
 
 import {
   fetchApprovals,
-  processApproval,
-  fetchPendingApprovalsAction,
-  fetchCompletedApprovalsAction
+  processApproval
 } from '@/redux/approvalSlice';
 
 // 탭 패널 컴포넌트
@@ -83,13 +81,7 @@ function ApprovalManagementPage() {
   const navigate = useNavigate();
 
   // 리덕스 상태
-  const {
-    approvals,
-    pendingApprovals,
-    completedApprovals,
-    loading,
-    error
-  } = useSelector(state => state.approval);
+  const { approvals, loading, error } = useSelector(state => state.approval);
   const currentUser = useSelector(state => state.auth.user);
 
   // 로컬 상태
@@ -104,21 +96,48 @@ function ApprovalManagementPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [processing, setProcessing] = useState(false);
 
-  // 컴포넌트 마운트 시 결재 목록 조회
-  useEffect(() => {
-    dispatch(fetchApprovals());
-    dispatch(fetchPendingApprovalsAction());
-    dispatch(fetchCompletedApprovalsAction());
-  }, [dispatch]);
+  // 결재 목록 필터링
+  const filteredApprovals = approvals.filter(approval => {
+    // 검색어 필터링
+    const keywordMatch =
+      (approval.purchaseRequest?.requestName || '').includes(searchKeyword) ||
+      (approval.purchaseRequest?.requester?.name || '').includes(searchKeyword) ||
+      (approval.purchaseRequest?.customer || '').includes(searchKeyword);
+
+    // 사업 구분 필터링
+    const typeMatch = businessType === 'ALL' ||
+      approval.purchaseRequest?.businessType === businessType;
+
+    // 날짜 범위 필터링
+    const requestDate = approval.purchaseRequest?.requestDate;
+    const dateMatch = !requestDate ||
+      (moment(requestDate).isSameOrAfter(dateRange.startDate) &&
+       moment(requestDate).isSameOrBefore(dateRange.endDate));
+
+    return keywordMatch && typeMatch && dateMatch;
+  });
 
   // 결재 상태별 필터링
+  const pendingApprovals = filteredApprovals.filter(
+    approval => approval.statusCode === 'IN_REVIEW' || approval.statusCode === 'PENDING'
+  );
+
+  const completedApprovals = filteredApprovals.filter(
+    approval => approval.statusCode === 'APPROVED' || approval.statusCode === 'REJECTED'
+  );
+
+  // 페이징 처리
   const currentApprovals = tabValue === 0
     ? pendingApprovals.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
     : completedApprovals.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
-  const totalApprovals = tabValue === 0
-    ? pendingApprovals.length
-    : completedApprovals.length;
+  // 전체 결재 수
+  const totalApprovals = tabValue === 0 ? pendingApprovals.length : completedApprovals.length;
+
+  // 컴포넌트 마운트 시 결재 목록 조회
+  useEffect(() => {
+    dispatch(fetchApprovals());
+  }, [dispatch]);
 
   // 검색어 변경 핸들러
   const handleSearchChange = (e) => {
@@ -169,8 +188,6 @@ function ApprovalManagementPage() {
 
       // 결재 목록 다시 조회
       dispatch(fetchApprovals());
-      dispatch(fetchPendingApprovalsAction());
-      dispatch(fetchCompletedApprovalsAction());
       setProcessing(false);
     } catch (err) {
       console.error('결재 승인 중 오류 발생:', err);
@@ -192,8 +209,6 @@ function ApprovalManagementPage() {
 
       // 결재 목록 다시 조회
       dispatch(fetchApprovals());
-      dispatch(fetchPendingApprovalsAction());
-      dispatch(fetchCompletedApprovalsAction());
       setProcessing(false);
     } catch (err) {
       console.error('결재 반려 중 오류 발생:', err);
@@ -313,11 +328,7 @@ function ApprovalManagementPage() {
             <Button
               variant="contained"
               startIcon={<FilterListIcon />}
-              onClick={() => {
-                dispatch(fetchApprovals());
-                dispatch(fetchPendingApprovalsAction());
-                dispatch(fetchCompletedApprovalsAction());
-              }}
+              onClick={() => dispatch(fetchApprovals())}
               disabled={processing}
             >
               필터 적용
@@ -395,7 +406,7 @@ function ApprovalManagementPage() {
                             </Tooltip>
                             {approval.statusCode === 'IN_REVIEW' && (
                               <>
-                                <Tooltip title="승인">
+                                                                  <Tooltip title="승인">
                                   <IconButton
                                     size="small"
                                     color="success"
@@ -559,4 +570,4 @@ function ApprovalManagementPage() {
   );
 }
 
-export default ApprovalManagementPage;
+export default ApprovalManagementPage
