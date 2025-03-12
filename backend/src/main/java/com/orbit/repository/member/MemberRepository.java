@@ -4,6 +4,7 @@ import com.orbit.entity.member.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,6 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
      * 결재 가능한 사용자 조회 (직급 레벨 3 이상)
      * @return 결재 가능한 사용자 리스트
      */
-    @Query("SELECT m FROM Member m JOIN m.position p WHERE p.level >= 3")
-    List<Member> findEligibleApprovalMembers();
+        @Query("SELECT m FROM Member m JOIN m.position p WHERE p.level >= :level")
+        List<Member> findByPositionLevelGreaterThanEqual(@Param("level") int level);
 }
