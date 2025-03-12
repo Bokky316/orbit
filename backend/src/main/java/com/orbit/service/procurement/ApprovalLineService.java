@@ -539,4 +539,19 @@ public class ApprovalLineService {
             log.error("구매요청 접수 알림 전송 중 오류 발생: {}", e.getMessage());
         }
     }
+
+    @Transactional(readOnly = true)
+    public List<ApprovalLineResponseDTO> findEligibleApprovalMembers() {
+        List<Member> eligibleMembers = memberRepo.findEligibleApprovalMembers(); // 기존 쿼리 메서드 사용
+
+        return eligibleMembers.stream()
+                .map(member -> ApprovalLineResponseDTO.builder()
+                        .id(member.getId())
+                        .approverName(member.getName())
+                        .department(member.getDepartment().getName())
+                        .statusCode("ELIGIBLE") // 결재 가능 상태를 나타내는 임시 상태 코드
+                        .statusName("결재 가능")
+                        .build())
+                .collect(Collectors.toList());
+    }
 }
