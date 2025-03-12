@@ -21,4 +21,16 @@ public interface ApprovalLineRepository extends JpaRepository<ApprovalLine, Long
             "WHERE al.purchaseRequest.id = :requestId " +
             "ORDER BY al.step ASC")
     List<ApprovalLine> findAllByRequestId(@Param("requestId") Long requestId);
+
+    // 현재 로그인한 사용자의 결재 대기 목록 조회
+    @Query("SELECT al FROM ApprovalLine al " +
+            "WHERE al.approver.username = :username " +
+            "AND al.status.codeValue IN ('IN_REVIEW', 'PENDING')")
+    List<ApprovalLine> findPendingApprovalsByUsername(@Param("username") String username);
+
+    // 현재 로그인한 사용자의 완료된 결재 목록 조회
+    @Query("SELECT al FROM ApprovalLine al " +
+            "WHERE al.approver.username = :username " +
+            "AND al.status.codeValue IN ('APPROVED', 'REJECTED')")
+    List<ApprovalLine> findCompletedApprovalsByUsername(@Param("username") String username);
 }

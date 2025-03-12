@@ -51,4 +51,16 @@ public class ApprovalController {
         List<ApprovalLineResponseDTO> eligibleMembers = approvalLineService.findByPositionLevelGreaterThanEqual();
         return ResponseEntity.ok(eligibleMembers);
     }
+
+    @GetMapping("/pending")
+    public ResponseEntity<List<ApprovalLineResponseDTO>> getPendingApprovals() {
+        List<ApprovalLineResponseDTO> pendingApprovals = approvalLineService.getPendingApprovals();
+        return ResponseEntity.ok(pendingApprovals);
+    }
+
+    @GetMapping("/completed")
+    public ResponseEntity<List<ApprovalLineResponseDTO>> getCompletedApprovals() {
+        List<ApprovalLineResponseDTO> completedApprovals = approvalLineService.getCompletedApprovals();
+        return ResponseEntity.ok(completedApprovals);
+    }
 }
