@@ -57,6 +57,8 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
      * 결재 가능한 사용자 조회 (직급 레벨 3 이상)
      * @return 결재 가능한 사용자 리스트
      */
+
      @Query("SELECT m FROM Member m JOIN m.position p WHERE p.level >= :level")
      List<Member> findByPositionLevelGreaterThanEqual(@Param("level") int level);
 }
+
