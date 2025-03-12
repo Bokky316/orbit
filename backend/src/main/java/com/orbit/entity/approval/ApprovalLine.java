@@ -5,7 +5,11 @@ import com.orbit.entity.member.Member;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -38,7 +42,6 @@ public class ApprovalLine {
     private ChildCode status;
 
     private LocalDateTime approvedAt;
-    private LocalDateTime rejectedAt;
     private String comment;
 
     // 결재 처리 메서드
@@ -46,18 +49,11 @@ public class ApprovalLine {
         this.status = approvedStatus;
         this.approvedAt = LocalDateTime.now();
         this.comment = comment;
-        this.rejectedAt = null;
     }
 
     public void reject(String comment, ChildCode rejectedStatus) {
         this.status = rejectedStatus;
-        this.rejectedAt = LocalDateTime.now();
+        this.approvedAt = LocalDateTime.now();
         this.comment = comment;
-        this.approvedAt = null;
-    }
-
-    // 전체 코드 반환 메서드 추가
-    public String getFullStatusCode() {
-        return status.getFullCode();
     }
 }

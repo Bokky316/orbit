@@ -12,5 +12,5 @@ import java.util.List;
 public class ApprovalLineCreateDTO {
     private Long purchaseRequestId;
     private List<Long> approverIds;
-    private String initialStatusCode; // 초기 상태 코드 추가 (예: "APPROVAL-STATUS-PENDING")
+    private String initialStatusCode;
 }

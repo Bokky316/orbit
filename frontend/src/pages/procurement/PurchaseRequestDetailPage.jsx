@@ -104,11 +104,11 @@ const PurchaseRequestDetailPage = () => {
 
                         // 현재 사용자가 결재 권한이 있는지 확인
                         if (currentUser) {
-                            const hasAuthority = approvalData.some(line =>
-                                line.statusCode === 'IN_REVIEW' &&
-                                line.approverId === currentUser.id
-                            );
-                            setHasApprovalAuthority(hasAuthority);
+                          const hasAuthority = approvalData.some(line =>
+                            (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
+                            (line.approverId === currentUser.id || line.approver_id === currentUser.id)
+                          );
+                          setHasApprovalAuthority(hasAuthority);
                         }
                     }
                 } catch (approvalError) {

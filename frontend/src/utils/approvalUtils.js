@@ -1,4 +1,3 @@
-
 // src/utils/approvalUtils.js
 
 import { fetchWithAuth } from './fetchWithAuth';
@@ -93,6 +92,7 @@ export const getStatusName = (statusCode) => {
     case 'REJECTED': return '반려';
     case 'IN_REVIEW': return '검토중';
     case 'PENDING': return '대기중';
+    case 'REQUESTED': return '요청됨';
     default: return statusCode;
   }
 };
@@ -127,13 +127,52 @@ export const getUserApprovalAuthority = (approvalLines, currentUserId) => {
     return { canApprove: false, lineId: null };
   }
 
-  // 상태가 IN_REVIEW이고 현재 사용자가 결재자인 항목 찾기
+  // 상태가 IN_REVIEW, PENDING, REQUESTED이고 현재 사용자가 결재자인 항목 찾기
   const currentUserApprovalLine = approvalLines.find(
-    line => line.statusCode === 'IN_REVIEW' && line.approverId === currentUserId
+    line => (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
+    (line.approverId === currentUserId || line.approver_id === currentUserId)
   );
 
   return {
     canApprove: !!currentUserApprovalLine,
     lineId: currentUserApprovalLine?.id || null
   };
+};
+
+/**
+ * 사용자의 결재 대기 목록 조회 유틸리티 함수
+ * @returns {Promise<Array>} - 결재 대기 목록
+ */
+export const fetchPendingApprovals = async () => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}approvals/pending`);
+
+    if (!response.ok) {
+      throw new Error(`결재 대기 목록 조회 실패: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('결재 대기 목록 조회 중 오류 발생:', error);
+    throw error;
+  }
+};
+
+/**
+ * 사용자의 결재 완료 목록 조회 유틸리티 함수
+ * @returns {Promise<Array>} - 결재 완료 목록
+ */
+export const fetchCompletedApprovals = async () => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}approvals/completed`);
+
+    if (!response.ok) {
+      throw new Error(`결재 완료 목록 조회 실패: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('결재 완료 목록 조회 중 오류 발생:', error);
+    throw error;
+  }
 };

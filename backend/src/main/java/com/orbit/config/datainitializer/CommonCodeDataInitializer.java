@@ -73,8 +73,8 @@ public class CommonCodeDataInitializer {
         // 결재선 상세 상태
         ParentCode approvalLineStatus = initParentCode("APPROVAL_LINE", "STATUS", "결재선 상세 상태");
         initChildCodes(approvalLineStatus,
-                List.of("WAITING", "IN_REVIEW", "PENDING", "APPROVED", "REJECTED"),
-                List.of("대기 중", "검토 중", "보류", "승인", "반려")
+                List.of("WAITING", "REQUESTED", "IN_REVIEW", "PENDING", "APPROVED", "REJECTED"), // "REQUESTED" 추가
+                List.of("대기 중", "요청됨", "검토 중", "보류", "승인", "반려")
         );
     }
 

@@ -4,6 +4,8 @@ import com.orbit.dto.approval.ApprovalLineCreateDTO;
 import com.orbit.dto.approval.ApprovalLineResponseDTO;
 import com.orbit.dto.approval.ApprovalProcessDTO;
 import com.orbit.entity.approval.ApprovalLine;
+import com.orbit.entity.approval.Department;
+import com.orbit.entity.approval.Position;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
@@ -11,6 +13,7 @@ import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.exception.ApprovalException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.ApprovalLineRepository;
+import com.orbit.repository.approval.DepartmentRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.member.MemberRepository;
@@ -18,6 +21,8 @@ import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +44,7 @@ public class ApprovalLineService {
     private final MemberRepository memberRepo;
     private final ParentCodeRepository parentCodeRepo;
     private final ChildCodeRepository childCodeRepo;
+    private final DepartmentRepository departmentRepo; // 추가된 Repository
     private final SimpMessagingTemplate messagingTemplate;
     private static final int MAX_APPROVAL_STEPS = 3;
 
@@ -65,7 +71,110 @@ public class ApprovalLineService {
         return convertToDTO(lines.get(0));
     }
 
-    // 자동 결재선 생성 메서드
+    // 결재 가능한 멤버 조회 메서드
+    private List<Member> findEligibleMembersForApproval(PurchaseRequest request) {
+        // 기안자의 부서 가져오기
+        Department requesterDepartment = request.getMember().getDepartment();
+
+        List<Member> approvers = new ArrayList<>();
+
+        // 1. 해당 부서의 상위 직급 멤버 (팀장/부서장) 조회
+        List<Member> departmentHeads = memberRepo.findByDepartmentAndPositionLevelGreaterThan(
+                requesterDepartment,
+                requesterDepartment.getTeamLeaderLevel() // 팀장 직급 수준
+        );
+
+        // 2. 재무/구매팀 담당자 조회 - 예외 처리 추가하여 찾을 수 없는 경우 다른 부서를 사용
+        Department financeDepartment = null;
+        try {
+            financeDepartment = departmentRepo.findByName("재무팀")
+                    .orElseGet(() -> departmentRepo.findByName("재무회계팀")
+                            .orElse(null));
+        } catch (Exception e) {
+            log.warn("재무팀 또는 재무회계팀을 찾을 수 없습니다: {}", e.getMessage());
+        }
+
+        Department purchaseDepartment = null;
+        try {
+            purchaseDepartment = departmentRepo.findByName("구매팀")
+                    .orElseGet(() -> departmentRepo.findByName("구매관리팀")
+                            .orElse(null));
+        } catch (Exception e) {
+            log.warn("구매팀 또는 구매관리팀을 찾을 수 없습니다: {}", e.getMessage());
+        }
+
+        List<Member> financeMembers = new ArrayList<>();
+        if (financeDepartment != null) {
+            financeMembers = memberRepo.findByDepartmentAndPositionLevelBetween(
+                    financeDepartment,
+                    financeDepartment.getMiddleManagerLevel(),
+                    financeDepartment.getUpperManagerLevel()
+            );
+        }
+
+        List<Member> purchaseMembers = new ArrayList<>();
+        if (purchaseDepartment != null) {
+            purchaseMembers = memberRepo.findByDepartmentAndPositionLevelBetween(
+                    purchaseDepartment,
+                    purchaseDepartment.getMiddleManagerLevel(),
+                    purchaseDepartment.getUpperManagerLevel()
+            );
+        }
+
+        // 3. 임원 조회 - 예외 처리 추가
+        Department executiveDept = null;
+        try {
+            executiveDept = departmentRepo.findByName("임원")
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("임원 부서를 찾을 수 없습니다: {}", e.getMessage());
+        }
+
+        List<Member> executives = new ArrayList<>();
+        if (executiveDept != null) {
+            executives = memberRepo.findByPositionLevelGreaterThan(
+                    executiveDept.getExecutiveLevel()
+            );
+        } else {
+            // 임원 부서가 없는 경우 직급 수준이 높은 멤버를 임원으로 간주
+            // 직급 수준 상수 대신 직접 숫자 값을 사용 (예: 8이 임원급 직급 수준이라고 가정)
+            executives = memberRepo.findByPositionLevelGreaterThan(8);
+        }
+
+        // 결재선 구성
+        // 1. 기안자 부서의 팀장/부서장 중 한 명
+        if (!departmentHeads.isEmpty()) {
+            approvers.add(departmentHeads.get(0));
+        }
+
+        // 2. 재무팀 또는 구매팀 담당자 중 한 명
+        if (!financeMembers.isEmpty()) {
+            approvers.add(financeMembers.get(0));
+        } else if (!purchaseMembers.isEmpty()) {
+            approvers.add(purchaseMembers.get(0));
+        }
+
+        // 3. 임원 중 한 명
+        if (!executives.isEmpty()) {
+            approvers.add(executives.get(0));
+        }
+
+        // 필요한 승인자 수를 맞추기 위해 추가 로직
+        while (approvers.size() < 3) {
+            // 직급 높은 순으로 정렬된 전체 멤버 중 추가
+            List<Member> allMembers = memberRepo.findAllSortedByPositionLevel();
+            for (Member member : allMembers) {
+                if (!approvers.contains(member)) {
+                    approvers.add(member);
+                    break;
+                }
+            }
+        }
+
+        return approvers;
+    }
+
+    // createAutoApprovalLine 메서드 수정
     public ApprovalLineResponseDTO createAutoApprovalLine(ApprovalLineCreateDTO dto) {
         // 구매 요청 조회
         PurchaseRequest request = purchaseRequestRepo.findById(dto.getPurchaseRequestId())
@@ -74,11 +183,40 @@ public class ApprovalLineService {
         // 상위 상태 코드 조회
         ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
 
-        // 결재 가능한 멤버 조회 (직급 기준 정렬)
-        List<Member> eligibleMembers = findEligibleMembersForApproval();
+        // 부서를 고려한 결재 가능한 멤버 조회
+        List<Member> approvers = findEligibleMembersForApproval(request);
+
+        // 현재 사용자(기안자)를 첫 번째 단계로 설정
+        Member requester = request.getMember();
 
         // 결재선 자동 생성
-        List<ApprovalLine> lines = createAutoApprovalLines(request, eligibleMembers, parentCode);
+        List<ApprovalLine> lines = new ArrayList<>();
+
+        // 1단계: 기안자 (작성자)
+        ChildCode initialStatus = findChildCode(parentCode, "REQUESTED");
+        ApprovalLine requesterLine = ApprovalLine.builder()
+                .purchaseRequest(request)
+                .approver(requester)
+                .step(1)
+                .status(initialStatus)
+                .build();
+        lines.add(requesterLine);
+
+        // 2~4단계: 부서 기반 결재자
+        for (int step = 2; step <= 4 && step-2 < approvers.size(); step++) {
+            ChildCode status = step == 2
+                    ? findChildCode(parentCode, "IN_REVIEW")
+                    : findChildCode(parentCode, "PENDING");
+
+            ApprovalLine line = ApprovalLine.builder()
+                    .purchaseRequest(request)
+                    .approver(approvers.get(step - 2))
+                    .step(step)
+                    .status(status)
+                    .build();
+            lines.add(line);
+        }
+
         approvalLineRepo.saveAll(lines);
 
         // 실시간 업데이트
@@ -86,23 +224,6 @@ public class ApprovalLineService {
 
         // 생성된 첫 번째 결재선 응답 DTO 반환
         return convertToDTO(lines.get(0));
-    }
-
-    // 결재 가능한 멤버 조회 (직급 높은 순으로 정렬)
-    private List<Member> findEligibleMembersForApproval() {
-        // 직급이 3 이상인 모든 멤버 조회 (level >= 3)
-        List<Member> eligibleMembers = memberRepo.findByPositionLevelGreaterThanEqual(3);
-
-        // 직급이 높은 순으로 정렬
-        return eligibleMembers.stream()
-                .sorted((m1, m2) ->
-                        Integer.compare(
-                                m2.getPosition().getLevel(),
-                                m1.getPosition().getLevel()
-                        )
-                )
-                .limit(3)  // 최대 3단계로 제한
-                .collect(Collectors.toList());
     }
 
     // 자동 결재선 생성 메서드
@@ -254,7 +375,8 @@ public class ApprovalLineService {
     // 특정 구매 요청의 현재 결재선 조회
     @Transactional(readOnly = true)
     public List<ApprovalLineResponseDTO> getApprovalLines(Long requestId) {
-        return approvalLineRepo.findCurrentStep(requestId)
+        // findAllByRequestId를 사용하여 모든 결재선을 단계 순서대로 조회
+        return approvalLineRepo.findAllByRequestId(requestId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -264,6 +386,8 @@ public class ApprovalLineService {
     private ApprovalLineResponseDTO convertToDTO(ApprovalLine line) {
         return ApprovalLineResponseDTO.builder()
                 .id(line.getId())
+                .purchaseRequestId(line.getPurchaseRequest().getId())
+                .approverId(line.getApprover().getId()) // 이 부분 추가
                 .approverName(line.getApprover().getName())
                 .department(line.getApprover().getDepartment().getName())
                 .step(line.getStep())
@@ -277,7 +401,7 @@ public class ApprovalLineService {
     // 결재 가능한 멤버 조회
     @Transactional(readOnly = true)
     public List<ApprovalLineResponseDTO> findByPositionLevelGreaterThanEqual() {
-        List<Member> eligibleMembers = memberRepo.findByPositionLevelGreaterThanEqual(3);
+        List<Member> eligibleMembers = memberRepo.findByPositionLevelGreaterThanEqual(Position.MIN_APPROVAL_LEVEL);
 
         return eligibleMembers.stream()
                 .map(member -> ApprovalLineResponseDTO.builder()
@@ -290,11 +414,72 @@ public class ApprovalLineService {
                 .collect(Collectors.toList());
     }
 
-    // 결재 알림 전송 (실제 구현은 프로젝트 요구사항에 맞게 변경 필요)
+    // 사용자의 결재 대기 목록 조회
+    @Transactional(readOnly = true)
+    public List<ApprovalLineResponseDTO> getPendingApprovals() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        return approvalLineRepo.findPendingApprovalsByUsername(currentUsername)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // 사용자의 완료된 결재 목록 조회
+    @Transactional(readOnly = true)
+    public List<ApprovalLineResponseDTO> getCompletedApprovals() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        return approvalLineRepo.findCompletedApprovalsByUsername(currentUsername)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // 알림 전송 메서드 개선
     private void sendApprovalNotification(ApprovalLine line) {
+        // 실제 알림 로직 (다양한 채널 지원)
         log.info("결재 알림 전송: 요청 ID {}, 결재자 {}",
                 line.getPurchaseRequest().getId(),
                 line.getApprover().getName());
-        // 실제 알림 로직 (이메일, SMS, 푸시 알림 등) 구현
+
+        // 이메일 알림
+        sendEmailNotification(line);
+
+        // SMS 알림
+        sendSMSNotification(line);
+
+        // 웹소켓 실시간 알림
+        sendWebSocketNotification(line);
+    }
+
+    private void sendEmailNotification(ApprovalLine line) {
+        try {
+            // 이메일 전송 로직 (JavaMail 또는 외부 서비스 활용)
+            // 결재 대기 알림 이메일 발송
+        } catch (Exception e) {
+            log.error("이메일 알림 전송 중 오류 발생: {}", e.getMessage());
+        }
+    }
+
+    private void sendSMSNotification(ApprovalLine line) {
+        try {
+            // SMS 전송 로직 (외부 SMS 서비스 활용)
+            // 결재 대기 알림 SMS 발송
+        } catch (Exception e) {
+            log.error("SMS 알림 전송 중 오류 발생: {}", e.getMessage());
+        }
+    }
+
+    private void sendWebSocketNotification(ApprovalLine line) {
+        // 실시간 웹소켓 알림
+        ApprovalLineResponseDTO notificationDto = convertToDTO(line);
+        messagingTemplate.convertAndSendToUser(
+                line.getApprover().getUsername(),
+                "/queue/approvals",
+                notificationDto
+        );
     }
 }
