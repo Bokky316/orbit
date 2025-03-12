@@ -1,14 +1,18 @@
 package com.orbit.entity.state;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+import java.util.List;
+import java.util.Map;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
 
 @Entity
 @Table(name = "status_codes")
@@ -43,7 +47,7 @@ public class StatusCode {
 
     // 시스템 유형 확장
     public enum SystemType {
-        PROJECT, PROCUREMENT, PURCHASE_REQUEST, CONTRACT, PAYMENT, SUPPLIER
+        PROJECT, PROCUREMENT, PURCHASE_REQUEST, CONTRACT, PAYMENT, SUPPLIER ,BIDDING, BID_METHOD, BIDDING_CONTRACT
     }
 
     // 기본 상태 코드 재정의
@@ -91,8 +95,31 @@ public class StatusCode {
                     new StatusCode("SUPPLIER", "APPROVED", "승인", SystemType.SUPPLIER, 2, true, false),
                     new StatusCode("SUPPLIER", "SUSPENDED", "일시정지", SystemType.SUPPLIER, 3, false, true),
                     new StatusCode("SUPPLIER", "BLACKLIST", "블랙리스트", SystemType.SUPPLIER, 4, true, false)
+            ),
+            
+            // 입찰 상태
+            "BIDDING", List.of(
+                    new StatusCode("BIDDING", "PENDING", "대기중", SystemType.BIDDING, 1, false, true),
+                    new StatusCode("BIDDING", "ONGOING", "진행중", SystemType.BIDDING, 2, false, true),
+                    new StatusCode("BIDDING", "CLOSED", "마감", SystemType.BIDDING, 3, true, false),
+                    new StatusCode("BIDDING", "CANCELED", "취소", SystemType.BIDDING, 4, true, false)
+            ),
+
+            // 입찰 방식
+            "BID_METHOD", List.of(
+                    new StatusCode("BID_METHOD", "FIXED_PRICE", "정가제안", SystemType.BID_METHOD, 1, false, false),
+                    new StatusCode("BID_METHOD", "PRICE_SUGGESTION", "가격제안", SystemType.BID_METHOD, 2, false, false)
+            ),
+
+            // 입찰 계약
+            "BIDDING_CONTRACT", List.of(
+                    new StatusCode("BIDDING_CONTRACT", "DRAFT", "초안", SystemType.BIDDING_CONTRACT, 1, false, true),
+                    new StatusCode("BIDDING_CONTRACT", "IN_PROGRESS", "진행중", SystemType.BIDDING_CONTRACT, 2, false, true),
+                    new StatusCode("BIDDING_CONTRACT", "CLOSED", "완료", SystemType.BIDDING_CONTRACT, 3, true, false),
+                    new StatusCode("BIDDING_CONTRACT", "CANCELED", "취소", SystemType.BIDDING_CONTRACT, 4, true, false)
             )
-    );
+            
+            );
 
     public StatusCode(String parentCode, String childCode, String codeName,
                       SystemType systemType, Integer sortOrder,

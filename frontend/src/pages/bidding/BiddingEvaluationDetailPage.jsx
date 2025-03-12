@@ -3,216 +3,130 @@ import {
   Box,
   Typography,
   Paper,
-  Grid,
-  Divider,
-  Button,
-  Chip,
-  Rating,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Card,
-  CardContent,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  CircularProgress,
+  Alert,
+  Button,
+  TextField,
+  InputAdornment,
+  Chip
 } from "@mui/material";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon
-} from "@mui/icons-material";
-import BiddingEvaluationDialog from "./BiddingEvaluationDialog";
+import { Search as SearchIcon } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import { API_URL } from "@/utils/constants";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { getStatusText } from "./helpers/biddingHelpers";
 
-function BiddingEvaluationDetailPage() {
-  const { id } = useParams();
+function BiddingEvaluationListPage() {
   const navigate = useNavigate();
-  const [evaluation, setEvaluation] = useState(null);
-  const [supplierInfo, setSupplierInfo] = useState(null);
-  const [biddingInfo, setBiddingInfo] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // 상태 관리
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [evaluations, setEvaluations] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // 데이터 로딩
-  const fetchEvaluationData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // 인증 토큰
-      const token = localStorage.getItem("authToken") || "temp-token";
-
-      // 1. 평가 상세 정보 가져오기
-      const evaluationResponse = await fetch(`/api/evaluations/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!evaluationResponse.ok) {
-        throw new Error("평가 정보를 불러오는데 실패했습니다.");
-      }
-
-      const evaluationData = await evaluationResponse.json();
-      setEvaluation(evaluationData);
-
-      // 2. 입찰 참여 정보 가져오기
-      const participationResponse = await fetch(
-        `/api/biddings/participations/${evaluationData.biddingParticipationId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (participationResponse.ok) {
-        const participationData = await participationResponse.json();
-        setSupplierInfo({
-          supplierName: participationData.supplierName,
-          supplierId: participationData.supplierId
-        });
-
-        // 3. 입찰 정보 가져오기
-        const biddingResponse = await fetch(
-          `/api/biddings/${participationData.biddingId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-
-        if (biddingResponse.ok) {
-          const biddingData = await biddingResponse.json();
-          setBiddingInfo({
-            bidNumber: biddingData.bidNumber,
-            title: biddingData.title,
-            status: biddingData.status
-          });
-        }
-      }
-    } catch (error) {
-      console.error("데이터 로딩 중 오류:", error);
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
+  // 임의의 구매요청 리스트 샘플 데이터
+  const samplePurchaseRequests = [
+    {
+      id: 1001,
+      purchaseRequestId: "PR-2025-0001",
+      bidNumber: "BID-2025-0042",
+      title: "서버 장비 구매",
+      description: "데이터 센터 확장을 위한 서버 장비 구매",
+      bidMethod: "가격제안",
+      startDate: "2025-02-10",
+      endDate: "2025-03-10",
+      totalAmount: 50000000,
+      evaluationCount: 3,
+      participationCount: 5
+    },
+    {
+      id: 1002,
+      purchaseRequestId: "PR-2025-0008",
+      bidNumber: "BID-2025-0098",
+      title: "개발자용 노트북 구매",
+      description: "신규 입사자 및 노후장비 교체용 노트북 구매",
+      bidMethod: "정가제안",
+      startDate: "2025-02-15",
+      endDate: "2025-03-05",
+      totalAmount: 35000000,
+      evaluationCount: 2,
+      participationCount: 3
+    },
+    {
+      id: 1003,
+      purchaseRequestId: "PR-2025-0015",
+      bidNumber: "BID-2025-0127",
+      title: "사무용 가구 구매",
+      description: "신규 사무실 구축을 위한 사무용 가구 구매",
+      bidMethod: "가격제안",
+      startDate: "2025-03-01",
+      endDate: "2025-03-20",
+      totalAmount: 15000000,
+      evaluationCount: 1,
+      participationCount: 4
+    },
+    {
+      id: 1004,
+      purchaseRequestId: "PR-2025-0023",
+      bidNumber: "BID-2025-0156",
+      title: "네트워크 장비 업그레이드",
+      description: "네트워크 인프라 개선을 위한 장비 업그레이드",
+      bidMethod: "정가제안",
+      startDate: "2025-02-28",
+      endDate: "2025-03-18",
+      totalAmount: 25000000,
+      evaluationCount: 4,
+      participationCount: 4
+    },
+    {
+      id: 1005,
+      purchaseRequestId: "PR-2025-0031",
+      bidNumber: "BID-2025-0189",
+      title: "클라우드 서비스 도입",
+      description: "하이브리드 클라우드 인프라 구축을 위한 서비스 도입",
+      bidMethod: "가격제안",
+      startDate: "2025-03-05",
+      endDate: "2025-03-25",
+      totalAmount: 60000000,
+      evaluationCount: 0,
+      participationCount: 2
     }
-  };
+  ];
 
-  // 테스트 목적으로 임시 데이터 사용
-  const loadMockData = () => {
-    setTimeout(() => {
-      const mockEvaluation = {
-        id: parseInt(id),
-        biddingParticipationId: 101,
-        evaluatorId: 1,
-        priceScore: 4,
-        qualityScore: 5,
-        deliveryScore: 4,
-        reliabilityScore: 3,
-        totalScore: 4,
-        comments:
-          "전반적으로 만족스러운 입찰이었으며, 특히 제품 품질이 우수했음. 다만 신뢰도 측면에서 과거 이력을 고려할 때 개선의 여지가 있음.",
-        createdAt: "2025-03-07T14:32:11",
-        updatedAt: "2025-03-07T14:32:11"
-      };
-
-      const mockSupplierInfo = {
-        supplierName: "글로벌 IT 솔루션",
-        supplierId: 2002
-      };
-
-      const mockBiddingInfo = {
-        bidNumber: "BID-2025-0042",
-        title: "개발자 PC 구매",
-        status: "ONGOING"
-      };
-
-      setEvaluation(mockEvaluation);
-      setSupplierInfo(mockSupplierInfo);
-      setBiddingInfo(mockBiddingInfo);
-      setIsLoading(false);
-    }, 1000);
-  };
-
-  // 초기 데이터 로딩
+  // 컴포넌트 마운트시 샘플 데이터 로드
   useEffect(() => {
-    // 실제 API 호출 (개발 완료 후 주석 해제)
-    // fetchEvaluationData();
+    setEvaluations(samplePurchaseRequests);
+  }, []);
 
-    // 테스트 목적의 목업 데이터 (개발 시에만 사용)
-    loadMockData();
-  }, [id]);
+  // 필터링된 데이터
+  const filteredEvaluations = evaluations.filter((evaluation) => {
+    const searchText = searchTerm.toLowerCase();
 
-  // 평가 삭제 처리
-  const handleDelete = async () => {
-    try {
-      setIsLoading(true);
+    return (
+      (evaluation.purchaseRequestId &&
+        evaluation.purchaseRequestId.toLowerCase().includes(searchText)) ||
+      (evaluation.bidNumber &&
+        evaluation.bidNumber.toLowerCase().includes(searchText)) ||
+      (evaluation.title && evaluation.title.toLowerCase().includes(searchText))
+    );
+  });
 
-      // 인증 토큰
-      const token = localStorage.getItem("authToken") || "temp-token";
-
-      const response = await fetch(`/api/evaluations/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("평가 삭제에 실패했습니다.");
-      }
-
-      // 삭제 성공 알림
-      alert("평가가 성공적으로 삭제되었습니다.");
-
-      // 목록 페이지로 이동
-      navigate("/evaluations");
-    } catch (error) {
-      console.error("평가 삭제 중 오류:", error);
-      alert("오류가 발생했습니다: " + error.message);
-    } finally {
-      setIsLoading(false);
-      setIsDeleteDialogOpen(false);
-    }
+  // 테이블 행 클릭 핸들러
+  const handleRowClick = (biddingId) => {
+    navigate(`/biddings/evaluations/${biddingId}`);
   };
 
-  // 평가 수정 완료 처리
-  const handleEditComplete = (updatedEvaluation) => {
-    setEvaluation({
-      ...evaluation,
-      ...updatedEvaluation,
-      updatedAt: new Date().toISOString()
-    });
-    setIsEditDialogOpen(false);
-  };
-
-  // 점수에 따른 색상 반환
-  const getScoreColor = (score) => {
-    if (score >= 4) return "success";
-    if (score >= 3) return "warning";
-    return "error";
-  };
-
-  // 상태 변환 함수
-  const getStatusText = (status) => {
-    const statusMap = {
-      PENDING: "대기중",
-      ONGOING: "진행중",
-      CLOSED: "마감",
-      CANCELED: "취소"
-    };
-    return statusMap[status] || status;
+  // 평가 기간 포맷팅 함수
+  const formatBiddingPeriod = (startDate, endDate) => {
+    if (!startDate || !endDate) return "-";
+    return `${startDate} ~ ${endDate}`;
   };
 
   // 로딩 중
@@ -226,9 +140,6 @@ function BiddingEvaluationDetailPage() {
           height: "70vh"
         }}>
         <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>
-          데이터를 불러오는 중...
-        </Typography>
       </Box>
     );
   }
@@ -237,34 +148,11 @@ function BiddingEvaluationDetailPage() {
   if (error) {
     return (
       <Box sx={{ p: 4 }}>
-        <Typography variant="h5" color="error" gutterBottom>
-          오류가 발생했습니다
-        </Typography>
-        <Typography>{error}</Typography>
-        <Button
-          variant="contained"
-          onClick={() => navigate("/evaluations")}
-          startIcon={<ArrowBackIcon />}
-          sx={{ mt: 2 }}>
-          목록으로 돌아가기
-        </Button>
-      </Box>
-    );
-  }
-
-  // 데이터가 없는 경우
-  if (!evaluation) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          평가 정보를 찾을 수 없습니다
-        </Typography>
-        <Button
-          variant="contained"
-          onClick={() => navigate("/evaluations")}
-          startIcon={<ArrowBackIcon />}
-          sx={{ mt: 2 }}>
-          목록으로 돌아가기
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={() => setError(null)}>
+          다시 시도
         </Button>
       </Box>
     );
@@ -272,298 +160,102 @@ function BiddingEvaluationDetailPage() {
 
   return (
     <Box sx={{ p: 4 }}>
-      {/* 헤더 */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 4
-        }}>
-        <Typography variant="h4">협력사 평가 상세</Typography>
-        <Box>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/evaluations")}
-            startIcon={<ArrowBackIcon />}
-            sx={{ mr: 1 }}>
-            목록으로
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setIsEditDialogOpen(true)}
-            startIcon={<EditIcon />}
-            sx={{ mr: 1 }}>
-            수정
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={() => setIsDeleteDialogOpen(true)}
-            startIcon={<DeleteIcon />}>
-            삭제
-          </Button>
-        </Box>
+      <Typography variant="h4" gutterBottom>
+        협력사 평가 목록
+      </Typography>
+
+      {/* 검색 필드 */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder="구매요청번호, 공고번호, 공고명으로 검색"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            )
+          }}
+        />
       </Box>
 
-      {/* 평가 정보 섹션 */}
-      <Grid container spacing={3}>
-        {/* 기본 정보 */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>
-              기본 정보
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  공급자
-                </Typography>
-                <Typography variant="body1">
-                  {supplierInfo?.supplierName || "-"}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  입찰 번호
-                </Typography>
-                <Typography variant="body1">
-                  {biddingInfo?.bidNumber || "-"}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  입찰 상태
-                </Typography>
-                <Chip
-                  label={
-                    biddingInfo?.status
-                      ? getStatusText(biddingInfo.status)
-                      : "-"
-                  }
-                  color={
-                    biddingInfo?.status === "ONGOING"
-                      ? "success"
-                      : biddingInfo?.status === "PENDING"
-                      ? "warning"
-                      : biddingInfo?.status === "CLOSED"
-                      ? "primary"
-                      : "default"
-                  }
-                  size="small"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  입찰 제목
-                </Typography>
-                <Typography variant="body1">
-                  {biddingInfo?.title || "-"}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  평가일
-                </Typography>
-                <Typography variant="body1">
-                  {evaluation.createdAt
-                    ? new Date(evaluation.createdAt).toLocaleDateString()
-                    : "-"}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  최종 수정일
-                </Typography>
-                <Typography variant="body1">
-                  {evaluation.updatedAt
-                    ? new Date(evaluation.updatedAt).toLocaleDateString()
-                    : "-"}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  평가 점수
-                </Typography>
-                <Chip
-                  label={`${evaluation.totalScore}점`}
-                  color={getScoreColor(evaluation.totalScore)}
-                />
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+      {/* 평가 목록 테이블 */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+              <TableCell>구매요청번호</TableCell>
+              <TableCell>공고번호</TableCell>
+              <TableCell>공고명</TableCell>
+              <TableCell>입찰방식</TableCell>
+              <TableCell>공고기간</TableCell>
+              <TableCell>평가현황</TableCell>
+              <TableCell>상태</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredEvaluations.length > 0 ? (
+              filteredEvaluations.map((evaluation) => {
+                // 평가 상태에 따른 색상 및 텍스트
+                const evaluationStatus =
+                  evaluation.evaluationCount === 0
+                    ? "미평가"
+                    : evaluation.evaluationCount ===
+                      evaluation.participationCount
+                    ? "평가완료"
+                    : "평가중";
 
-        {/* 평가 세부 점수 */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: "100%" }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>
-              평가 세부 점수
-            </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>평가 항목</TableCell>
-                    <TableCell align="center">점수</TableCell>
-                    <TableCell align="center">등급</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>가격</TableCell>
-                    <TableCell align="center">
-                      {evaluation.priceScore}
+                const statusColor =
+                  evaluationStatus === "미평가"
+                    ? "default"
+                    : evaluationStatus === "평가완료"
+                    ? "success"
+                    : "warning";
+
+                return (
+                  <TableRow
+                    key={evaluation.id}
+                    hover
+                    onClick={() => handleRowClick(evaluation.id)}
+                    sx={{ cursor: "pointer" }}>
+                    <TableCell>{evaluation.purchaseRequestId}</TableCell>
+                    <TableCell>{evaluation.bidNumber}</TableCell>
+                    <TableCell>{evaluation.title}</TableCell>
+                    <TableCell>{evaluation.bidMethod}</TableCell>
+                    <TableCell>
+                      {formatBiddingPeriod(
+                        evaluation.startDate,
+                        evaluation.endDate
+                      )}
                     </TableCell>
-                    <TableCell align="center">
+                    <TableCell>
+                      {evaluation.evaluationCount}/
+                      {evaluation.participationCount}
+                    </TableCell>
+                    <TableCell>
                       <Chip
-                        label={
-                          evaluation.priceScore >= 4
-                            ? "우수"
-                            : evaluation.priceScore >= 3
-                            ? "보통"
-                            : "미흡"
-                        }
-                        color={getScoreColor(evaluation.priceScore)}
+                        label={evaluationStatus}
+                        color={statusColor}
                         size="small"
                       />
                     </TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell>품질</TableCell>
-                    <TableCell align="center">
-                      {evaluation.qualityScore}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={
-                          evaluation.qualityScore >= 4
-                            ? "우수"
-                            : evaluation.qualityScore >= 3
-                            ? "보통"
-                            : "미흡"
-                        }
-                        color={getScoreColor(evaluation.qualityScore)}
-                        size="small"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>기술력</TableCell>
-                    <TableCell align="center">
-                      {evaluation.deliveryScore}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={
-                          evaluation.deliveryScore >= 4
-                            ? "우수"
-                            : evaluation.deliveryScore >= 3
-                            ? "보통"
-                            : "미흡"
-                        }
-                        color={getScoreColor(evaluation.deliveryScore)}
-                        size="small"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>신뢰도</TableCell>
-                    <TableCell align="center">
-                      {evaluation.reliabilityScore}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={
-                          evaluation.reliabilityScore >= 4
-                            ? "우수"
-                            : evaluation.reliabilityScore >= 3
-                            ? "보통"
-                            : "미흡"
-                        }
-                        color={getScoreColor(evaluation.reliabilityScore)}
-                        size="small"
-                      />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell>종합 평가</TableCell>
-                    <TableCell align="center">
-                      {evaluation.totalScore}
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={
-                          evaluation.totalScore >= 4
-                            ? "우수"
-                            : evaluation.totalScore >= 3
-                            ? "보통"
-                            : "미흡"
-                        }
-                        color={getScoreColor(evaluation.totalScore)}
-                        size="small"
-                      />
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </Grid>
-
-        {/* 평가 의견 */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: "100%" }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>
-              평가 의견
-            </Typography>
-            <Card variant="outlined" sx={{ height: "calc(100% - 40px)" }}>
-              <CardContent>
-                <Typography
-                  variant="body1"
-                  sx={{ whiteSpace: "pre-line", height: "100%" }}>
-                  {evaluation.comments || "평가 의견이 없습니다."}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Paper>
-        </Grid>
-
-        {/* 추가 정보 또는 다른 섹션을 여기에 추가할 수 있습니다 */}
-      </Grid>
-
-      {/* 삭제 확인 다이얼로그 */}
-      <Dialog
-        open={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}>
-        <DialogTitle>평가 삭제</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            정말로 이 평가를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsDeleteDialogOpen(false)} color="primary">
-            취소
-          </Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
-            삭제
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 평가 수정 다이얼로그 */}
-      <BiddingEvaluationDialog
-        open={isEditDialogOpen}
-        onClose={() => setIsEditDialogOpen(false)}
-        participationId={evaluation.biddingParticipationId}
-        supplierName={supplierInfo?.supplierName || ""}
-        bidNumber={biddingInfo?.bidNumber || ""}
-        onEvaluationComplete={handleEditComplete}
-      />
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  평가 정보가 없습니다.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
 }
 
-export default BiddingEvaluationDetailPage;
+export default BiddingEvaluationListPage;
