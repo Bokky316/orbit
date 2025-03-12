@@ -79,7 +79,7 @@ public class BiddingParticipationDto {
     
     // DTO -> Entity 변환
     public BiddingParticipation toEntity() {
-        return BiddingParticipation.builder()
+        BiddingParticipation participation = BiddingParticipation.builder()
                 .id(this.id)
                 .bidding(this.bidding)
                 .biddingId(this.biddingId)
@@ -90,5 +90,13 @@ public class BiddingParticipationDto {
                 .vat(this.vat)
                 .totalAmount(this.totalAmount)
                 .build();
+        
+        // 추가 속성 설정
+        participation.setConfirmed(this.confirmed);
+        participation.setConfirmedAt(this.confirmedAt);
+        participation.setEvaluated(this.evaluated);
+        participation.setEvaluationScore(this.evaluationScore);
+        
+        return participation;
     }
 }
