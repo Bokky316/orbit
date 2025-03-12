@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ApprovalLineResponseDTO {
     private Long id;
+    private Long purchaseRequestId;
     private String approverName;
     private String department;
     private Integer step;
