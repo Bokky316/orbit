@@ -44,8 +44,8 @@ import ProjectCreatePage from "@/pages/procurement/ProjectCreatePage";
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
-import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
-import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+import ApprovalListPage from "@/pages/approval/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
 
 /**

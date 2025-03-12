@@ -136,3 +136,41 @@ export const getUserApprovalAuthority = (approvalLines, currentUserId) => {
     lineId: currentUserApprovalLine?.id || null
   };
 };
+
+/**
+ * 사용자의 결재 대기 목록 조회 유틸리티 함수
+ * @returns {Promise<Array>} - 결재 대기 목록
+ */
+export const fetchPendingApprovals = async () => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}approvals/pending`);
+
+    if (!response.ok) {
+      throw new Error(`결재 대기 목록 조회 실패: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('결재 대기 목록 조회 중 오류 발생:', error);
+    throw error;
+  }
+};
+
+/**
+ * 사용자의 결재 완료 목록 조회 유틸리티 함수
+ * @returns {Promise<Array>} - 결재 완료 목록
+ */
+export const fetchCompletedApprovals = async () => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}approvals/completed`);
+
+    if (!response.ok) {
+      throw new Error(`결재 완료 목록 조회 실패: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('결재 완료 목록 조회 중 오류 발생:', error);
+    throw error;
+  }
+};
