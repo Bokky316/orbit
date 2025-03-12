@@ -14,9 +14,17 @@ import {
   CircularProgress,
   Snackbar,
   Divider,
-  FormHelperText
+  FormHelperText,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
+  IconButton
 } from '@mui/material';
-import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
+import { CloudUpload as CloudUploadIcon, Delete as DeleteIcon, AttachFile as AttachFileIcon } from '@mui/icons-material';
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
+import { API_URL } from '@/utils/constants';
 
 const SupplierRegistrationPage = () => {
   const dispatch = useDispatch();
@@ -33,6 +41,7 @@ const SupplierRegistrationPage = () => {
   // ROLE 확인 (응답 형식: {"roles":["ROLE_SUPPLIER"]} 또는 {"roles":["ROLE_ADMIN"]})
   const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
   const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
+
   const [formData, setFormData] = useState({
     supplierId: '',
     businessNo: '',
@@ -49,22 +58,15 @@ const SupplierRegistrationPage = () => {
     contactEmail: '',
     comments: ''
   });
-  const [businessFile, setBusinessFile] = useState(null);
-  const [fileName, setFileName] = useState('');
+
+  // 첨부 파일 상태 관리
+  const [attachments, setAttachments] = useState([]);
   const [errors, setErrors] = useState({});
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
-    // 컴포넌트가 마운트될 때 토큰 확인
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.log('🚨 인증 토큰이 없습니다! 다시 로그인해주세요.');
-      setSnackbarMessage('인증 정보가 없습니다. 다시 로그인해주세요.');
-      setOpenSnackbar(true);
-      // navigate('/login'); // 로그인 페이지로 리디렉션
-      return;
-    }
+    // 컴포넌트가 마운트될 때 토큰 확인 - 기존 로직 제거(fetchWithAuth가 처리)
 
     if (user) {
       setFormData(prev => ({
@@ -147,17 +149,20 @@ const SupplierRegistrationPage = () => {
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setBusinessFile(file);
-      setFileName(file.name);
-      if (errors.businessFile) {
+    const files = Array.from(e.target.files);
+    if (files && files.length > 0) {
+      setAttachments(prev => [...prev, ...files]);
+      if (errors.attachments) {
         setErrors(prev => ({
           ...prev,
-          businessFile: null
+          attachments: null
         }));
       }
     }
+  };
+
+  const handleRemoveFile = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const validateForm = () => {
@@ -172,70 +177,124 @@ const SupplierRegistrationPage = () => {
       newErrors.ceoName = '대표자명은 필수입니다.';
     }
 
-    if (!businessFile) {
-      newErrors.businessFile = '사업자등록증 파일은 필수입니다.';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
     try {
-      const fileData = new FormData();
-      fileData.append("businessFile", businessFile);
+      // FormData 객체 생성
+      const formDataToSend = new FormData();
 
-      let fileResponse = await fetchWithAuth("/api/files/upload", {
-        method: "POST",
-        body: fileData,
-      });
+      // 전화번호에서 하이픈 제거
+      const processedFormData = {
+        supplierId: Number(formData.supplierId),  // 숫자로 확실하게 변환
+        businessNo: formData.businessNo,
+        ceoName: formData.ceoName,
+        businessType: formData.businessType,
+        businessCategory: formData.businessCategory,
+        sourcingCategory: formData.sourcingCategory,
+        sourcingSubCategory: formData.sourcingSubCategory,
+        sourcingDetailCategory: formData.sourcingDetailCategory,
+        phoneNumber: formData.phoneNumber.replace(/-/g, ''),  // 하이픈 제거
+        headOfficeAddress: formData.headOfficeAddress,
+        contactPerson: formData.contactPerson,
+        contactPhone: formData.contactPhone.replace(/-/g, ''),  // 하이픈 제거
+        contactEmail: formData.contactEmail,
+        comments: formData.comments
+      };
 
-      // 401 발생 시, 토큰 갱신 후 재요청
-      if (fileResponse.status === 401) {
-        fileResponse = await fetchWithAuth("/api/files/upload", {
-          method: "POST",
-          body: fileData,
+      // JSON 문자열로 변환하여 추가
+      const supplierDTO = JSON.stringify(processedFormData);
+      // 문자열 형태로 전송 (백엔드 컨트롤러 로직과 일치)
+      formDataToSend.append("supplierRegistrationDTO", supplierDTO);
+
+      // 콘솔에서 확인
+      console.log('JSON 데이터:', supplierDTO);
+
+      // 첨부 파일 추가
+      if (attachments.length > 0) {
+        attachments.forEach((file, index) => {
+          formDataToSend.append(`files`, file);
+          console.log(`파일 ${index + 1} 추가:`, file.name, file.size);
         });
       }
 
-      if (!fileResponse.ok) {
-        throw new Error("파일 업로드 실패");
+      // FormData 내용 검사
+      console.log('FormData 내용:');
+      for (let pair of formDataToSend.entries()) {
+        console.log(`- ${pair[0]}: ${typeof pair[1] === 'string' ? pair[1] : '(파일)'}`);
       }
 
-      const uploadedFilePath = await fileResponse.text();
-      const requestData = { ...formData, businessFilePath: uploadedFilePath };
+      // PurchaseRequestCreatePage 참고하여 직접 fetch 호출로 변경
+      console.log('API 요청 전송 URL:', `${API_URL}supplier-registrations`);
 
-      let response = await fetchWithAuth("/api/supplier-registrations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestData),
+      // 토큰 가져오기
+      const token = localStorage.getItem('token');
+      console.log('토큰 존재 여부:', !!token);
+
+      // 직접 fetch 호출 - 핸들링이 더 간단함
+      const response = await fetch(`${API_URL}supplier-registrations`, {
+        method: 'POST',
+        credentials: 'include', // 쿠키 포함
+        headers: {
+          // 토큰이 있으면 Authorization 헤더 추가
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: formDataToSend, // FormData는 Content-Type 헤더를 자동으로 설정
       });
-
-      // 401 발생 시, 토큰 갱신 후 재요청
-      if (response.status === 401) {
-        response = await fetchWithAuth("/api/supplier-registrations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestData),
-        });
-      }
 
       if (!response.ok) {
-        throw new Error("등록 요청 실패");
+        // 응답 클론 생성 (스트림을 두 번 읽을 수 있도록)
+        const errorResponse = response.clone();
+
+        try {
+          // JSON 파싱 시도
+          const errorData = await response.json();
+          const errorText = errorData.message || JSON.stringify(errorData) || '알 수 없는 오류';
+          console.error('서버 응답 에러 (JSON):', errorText);
+          throw new Error(`서버 오류: ${errorText}`);
+        } catch (parseError) {
+          // JSON 파싱 실패 시 텍스트로 처리 (클론된 응답 사용)
+          const errorText = await errorResponse.text();
+          console.error('서버 응답 에러 (텍스트):', errorText || '응답 내용 없음');
+          throw new Error(`서버 오류: ${errorText || '내부 서버 오류가 발생했습니다. 관리자에게 문의하세요.'}`);
+        }
       }
 
-      setSnackbarMessage("협력업체 등록이 완료되었습니다.");
+      // 성공 처리 시도
+      let responseData;
+      try {
+        responseData = await response.json();
+        console.log('서버 응답 데이터:', responseData);
+      } catch (parseError) {
+        console.log('응답을 JSON으로 파싱할 수 없습니다:', parseError);
+        // JSON이 아니어도 성공으로 처리
+      }
+
+      // 성공 메시지 표시
+      setSnackbarMessage('협력업체 등록이 완료되었습니다.');
       setOpenSnackbar(true);
+
+      // 목록 페이지로 이동
+      setTimeout(() => {
+        navigate('/supplier');
+      }, 2000);
+
     } catch (error) {
-      setSnackbarMessage("오류가 발생했습니다. 다시 시도해주세요.");
+      console.error('등록 오류:', error);
+      setSnackbarMessage(`오류가 발생했습니다: ${error.message}`);
       setOpenSnackbar(true);
     }
   };
 
-
-
-  // ✅ `handleCloseSnackbar` 함수 추가 (에러 방지)
+  // 스낵바 닫기 핸들러
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
   };
@@ -414,26 +473,47 @@ const SupplierRegistrationPage = () => {
             {/* 파일 업로드 */}
             <Grid container spacing={2} sx={{ mt: 2 }}>
               <Grid item xs={12}>
-                <Button
-                  component="label"
-                  variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                >
-                  사업자등록증 업로드
-                  <input
-                    type="file"
-                    accept=".pdf, .jpg, .jpeg, .png"
-                    onChange={handleFileChange}
-                    hidden
-                  />
-                </Button>
-                {fileName && (
-                  <Typography variant="subtitle2" sx={{ ml: 1 }}>
-                    선택된 파일: {fileName}
-                  </Typography>
-                )}
-                {errors.businessFile && (
-                  <FormHelperText error>{errors.businessFile}</FormHelperText>
+                <input
+                  type="file"
+                  accept=".pdf, .jpg, .jpeg, .png"
+                  onChange={handleFileChange}
+                  id="file-upload"
+                  multiple
+                  style={{ display: 'none' }}
+                />
+                <label htmlFor="file-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<AttachFileIcon />}
+                  >
+                    파일 첨부
+                  </Button>
+                </label>
+                {attachments.length > 0 && (
+                  <>
+                    {attachments.map((file, index) => (
+                      <List key={index} sx={{ mt: 2 }}>
+                        <ListItem>
+                          <ListItemAvatar>
+                            <Avatar><AttachFileIcon /></Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={file.name}
+                            secondary={`${(file.size / 1024).toFixed(2)} KB`}
+                          />
+                          {/* 삭제 버튼 */}
+                          <IconButton
+                            edge="end"
+                            aria-label="delete"
+                            onClick={() => handleRemoveFile(index)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </ListItem>
+                      </List>
+                    ))}
+                  </>
                 )}
               </Grid>
             </Grid>
@@ -453,7 +533,12 @@ const SupplierRegistrationPage = () => {
                 color="primary"
                 disabled={loading}
               >
-                {loading ? '등록 중...' : '등록하기'}
+                {loading ? (
+                  <>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    등록 중...
+                  </>
+                ) : '등록하기'}
               </Button>
             </Box>
           </form>

@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.web.multipart.MultipartFile;
 
 @Getter
 @Setter
@@ -39,5 +38,5 @@ public class SupplierRegistrationRequestDto {
     private String contactPhone; // 담당자 연락처
     private String contactEmail; // 담당자 이메일
 
-    private String businessFilePath; // 🔹 파일 경로 추가
+    // businessFilePath 필드는 삭제됨 - 첨부 파일을 별도 테이블로 관리하기 때문
 }

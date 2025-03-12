@@ -154,7 +154,6 @@ public class SecurityConfig {
 
                 // 협력업체 등록 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/supplier-registrations/**").hasAnyRole("SUPPLIER", "ADMIN")
-                .requestMatchers("/api/files/**").hasAnyRole("SUPPLIER", "ADMIN")
 
                 // 조직 구조 관리 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/departments/**", "/api/positions/**").hasRole("ADMIN")

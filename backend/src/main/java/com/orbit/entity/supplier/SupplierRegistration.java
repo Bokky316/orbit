@@ -13,6 +13,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "supplier_registrations")
@@ -40,8 +42,9 @@ public class SupplierRegistration {
     @Column(name = "business_no", nullable = false, unique = true, length = 20)
     private String businessNo; // 사업자등록번호
 
-    @Column(name = "business_file", length = 255)
-    private String businessFile; // 사업자등록증 파일 경로
+    /* 기존 필드 제거하고 첨부파일 관계로 대체 */
+    @OneToMany(mappedBy = "supplierRegistration", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SupplierAttachment> attachments = new ArrayList<>();
 
     @Column(name = "ceo_name", nullable = false, length = 100)
     private String ceoName; // 대표자명
@@ -77,4 +80,12 @@ public class SupplierRegistration {
     @Column(name = "updated_at")
     @UpdateTimestamp
     private LocalDateTime updatedAt; // 수정일시
+
+    // 비즈니스 파일 관련 getter (이전 코드와의 호환성 유지)
+    public String getBusinessFile() {
+        if (this.attachments != null && !this.attachments.isEmpty()) {
+            return this.attachments.get(0).getFilePath();
+        }
+        return null;
+    }
 }

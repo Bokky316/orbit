@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchWithAuth } from '../../utils/fetchWithAuth';
+import { API_URL } from '../../utils/constants';
 
 // 더미 데이터
 const dummySuppliers = [
@@ -16,7 +17,16 @@ const dummySuppliers = [
     phoneNumber: "02-1234-5678",
     headOfficeAddress: "서울특별시 강남구 테헤란로 123",
     comments: "반도체 부품 전문 제조업체입니다.",
-    businessFile: "dummy-file-1.pdf",
+    // 첨부 파일 구조 변경
+    attachments: [
+      {
+        id: 1,
+        fileName: "business_cert.pdf",
+        filePath: "supplier_1/business_cert.pdf",
+        fileType: "application/pdf",
+        fileSize: 125000
+      }
+    ],
     status: {
       parentCode: "SUPPLIER",
       childCode: "APPROVED"
@@ -39,7 +49,16 @@ const dummySuppliers = [
     phoneNumber: "02-2345-6789",
     headOfficeAddress: "서울특별시 영등포구 여의도로 456",
     comments: "금속 원자재 전문 공급업체입니다.",
-    businessFile: "dummy-file-2.pdf",
+    // 첨부 파일 구조 변경
+    attachments: [
+      {
+        id: 2,
+        fileName: "business_cert.pdf",
+        filePath: "supplier_2/business_cert.pdf",
+        fileType: "application/pdf",
+        fileSize: 145000
+      }
+    ],
     status: {
       parentCode: "SUPPLIER",
       childCode: "PENDING"
@@ -62,7 +81,16 @@ const dummySuppliers = [
     phoneNumber: "02-3456-7890",
     headOfficeAddress: "서울특별시 서초구 강남대로 789",
     comments: "소프트웨어 개발 전문 기업입니다.",
-    businessFile: "dummy-file-3.pdf",
+    // 첨부 파일 구조 변경
+    attachments: [
+      {
+        id: 3,
+        fileName: "business_cert.pdf",
+        filePath: "supplier_3/business_cert.pdf",
+        fileType: "application/pdf",
+        fileSize: 165000
+      }
+    ],
     status: {
       parentCode: "SUPPLIER",
       childCode: "REJECTED"
@@ -86,7 +114,16 @@ const dummySuppliers = [
     phoneNumber: "02-4567-8901",
     headOfficeAddress: "경기도 화성시 산업로 101",
     comments: "자동차 부품 제조 전문 기업입니다.",
-    businessFile: "dummy-file-4.pdf",
+    // 첨부 파일 구조 변경
+    attachments: [
+      {
+        id: 4,
+        fileName: "business_cert.pdf",
+        filePath: "supplier_4/business_cert.pdf",
+        fileType: "application/pdf",
+        fileSize: 185000
+      }
+    ],
     status: {
       parentCode: "SUPPLIER",
       childCode: "APPROVED"
@@ -109,7 +146,16 @@ const dummySuppliers = [
     phoneNumber: "02-5678-9012",
     headOfficeAddress: "서울특별시 강남구 삼성로 555",
     comments: "경영 컨설팅 및 조직관리 전문 기업입니다.",
-    businessFile: "dummy-file-5.pdf",
+    // 첨부 파일 구조 변경
+    attachments: [
+      {
+        id: 5,
+        fileName: "business_cert.pdf",
+        filePath: "supplier_5/business_cert.pdf",
+        fileType: "application/pdf",
+        fileSize: 205000
+      }
+    ],
     status: {
       parentCode: "SUPPLIER",
       childCode: "PENDING"
@@ -132,7 +178,16 @@ const dummySuppliers = [
     phoneNumber: "02-6789-0123",
     headOfficeAddress: "경기도 안산시 산업로 202",
     comments: "알루미늄 제조 전문업체입니다.",
-    businessFile: "dummy-file-6.pdf",
+    // 첨부 파일 구조 변경
+    attachments: [
+      {
+        id: 6,
+        fileName: "business_cert.pdf",
+        filePath: "supplier_6/business_cert.pdf",
+        fileType: "application/pdf",
+        fileSize: 225000
+      }
+    ],
     status: {
       parentCode: "SUPPLIER",
       childCode: "BLACKLIST"
@@ -156,7 +211,16 @@ const dummySuppliers = [
     phoneNumber: "02-7890-1234",
     headOfficeAddress: "충청남도 천안시 공단로 303",
     comments: "화학 원료 공급업체입니다.",
-    businessFile: "dummy-file-7.pdf",
+    // 첨부 파일 구조 변경
+    attachments: [
+      {
+        id: 7,
+        fileName: "business_cert.pdf",
+        filePath: "supplier_7/business_cert.pdf",
+        fileType: "application/pdf",
+        fileSize: 245000
+      }
+    ],
     status: {
       parentCode: "SUPPLIER",
       childCode: "SUSPENDED"
@@ -174,7 +238,7 @@ export const fetchSuppliers = createAsyncThunk(
   'supplier/fetchSuppliers',
   async (filters = {}, { rejectWithValue }) => {
     try {
-      let url = '/api/suppliers';
+      let url = `${API_URL}supplier-registrations`;
       const queryParams = [];
       if (filters.status) {
         queryParams.push(`status=${filters.status}`);
@@ -195,11 +259,27 @@ export const fetchSuppliers = createAsyncThunk(
         url += `?${queryParams.join('&')}`;
       }
 
-      // axios -> fetchWithAuth로 변경
       const response = await fetchWithAuth(url);
+
+      // HTML 응답 방지 처리 (purchaseRequestSlice에서 가져옴)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return rejectWithValue(errorData.message || '데이터 로드 실패');
+      }
+
       const data = await response.json();
       return data;
     } catch (error) {
+      // HTML 응답 시 별도 처리 (purchaseRequestSlice에서 가져옴)
+      if (error.message.includes('Invalid content type')) {
+        return rejectWithValue('서버 응답 형식 오류');
+      }
+
       console.log('API 호출 실패, 더미 데이터 사용:', error);
       let filteredSuppliers = [...dummySuppliers];
       if (filters.status) {
@@ -237,11 +317,27 @@ export const fetchSupplierById = createAsyncThunk(
   'supplier/fetchSupplierById',
   async (id, { rejectWithValue }) => {
     try {
-      // axios -> fetchWithAuth로 변경
-      const response = await fetchWithAuth(`/api/suppliers/${id}`);
+      const response = await fetchWithAuth(`${API_URL}supplier-registrations/${id}/detail`);
+
+      // HTML 응답 방지 처리
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return rejectWithValue(errorData.message || '데이터 로드 실패');
+      }
+
       const data = await response.json();
       return data;
     } catch (error) {
+      // HTML 응답 시 별도 처리
+      if (error.message.includes('Invalid content type')) {
+        return rejectWithValue('서버 응답 형식 오류');
+      }
+
       console.log('API 호출 실패, 더미 데이터 사용:', error);
       const supplier = dummySuppliers.find(sup => sup.id.toString() === id.toString());
       if (supplier) {
@@ -252,15 +348,21 @@ export const fetchSupplierById = createAsyncThunk(
   }
 );
 
-// 협력업체 등록 요청 - 인증 토큰 처리 개선
+// 협력업체 등록 요청 - FormData 처리 방식으로 수정
 export const registerSupplier = createAsyncThunk(
   'supplier/registerSupplier',
-  async ({ formData }, { rejectWithValue }) => {
+  async (formData, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth('/api/supplier-registrations', {
+      const response = await fetchWithAuth(`${API_URL}supplier-registrations`, {
         method: 'POST',
-        body: formData,
+        body: formData, // FormData 객체 그대로 전송 (Content-Type 헤더 자동 설정)
       });
+
+      // HTML 응답 방지 처리
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -270,8 +372,44 @@ export const registerSupplier = createAsyncThunk(
       const responseData = await response.json();
       return responseData;
     } catch (error) {
+      // HTML 응답 시 별도 처리
+      if (error.message.includes('Invalid content type')) {
+        return rejectWithValue('서버 응답 형식 오류');
+      }
+
       console.error('API 요청 실패:', error);
-      return rejectWithValue('등록 요청 중 오류 발생');
+      return rejectWithValue(error.message || '등록 요청 중 오류 발생');
+    }
+  }
+);
+
+// 첨부 파일 다운로드 액션 추가
+export const downloadAttachment = createAsyncThunk(
+  'supplier/downloadAttachment',
+  async (attachmentId, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}supplier-registrations/attachments/${attachmentId}/download`,
+        { responseType: 'blob' }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`서버 응답 오류 (${response.status}): ${error}`);
+      }
+
+      // 헤더에서 파일명 추출
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileName = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : 'unnamed_file';
+
+      return {
+        blob: await response.blob(),
+        fileName: decodeURIComponent(fileName)
+      };
+    } catch (error) {
+      return rejectWithValue(error.toString());
     }
   }
 );
@@ -279,29 +417,88 @@ export const registerSupplier = createAsyncThunk(
 // 협력업체 승인/거절
 export const updateSupplierStatus = createAsyncThunk(
   'supplier/updateSupplierStatus',
-  async ({ id, status, rejectionReason }, { rejectWithValue }) => {
+  async ({ id, statusCode, rejectionReason }, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`/api/suppliers/${id}/status`, {
+      const response = await fetchWithAuth(`${API_URL}supplier-registrations/status/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ status, rejectionReason })
+        body: JSON.stringify({ statusCode, rejectionReason })
       });
+
+      // HTML 응답 방지 처리
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
         return rejectWithValue(errorData.message || '상태 업데이트 실패');
       }
 
-      return { id, status, rejectionReason };
+      return { id, statusCode, rejectionReason };
     } catch (error) {
+      // HTML 응답 시 별도 처리
+      if (error.message.includes('Invalid content type')) {
+        return rejectWithValue('서버 응답 형식 오류');
+      }
+
       console.log('API 호출 실패:', error);
-      return rejectWithValue('상태 업데이트 요청 중 오류 발생');
+      return rejectWithValue(error.message || '상태 업데이트 요청 중 오류 발생');
     }
   }
 );
 
+// 첨부 파일 추가 액션
+export const addAttachmentsToSupplier = createAsyncThunk(
+  'supplier/addAttachmentsToSupplier',
+  async ({ id, files }, { rejectWithValue }) => {
+    try {
+      // FormData 객체 생성
+      const formData = new FormData();
+
+      // 파일 추가
+      if (files && files.length > 0) {
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+      }
+
+      const response = await fetchWithAuth(`${API_URL}supplier-registrations/${id}/attachments`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      // HTML 응답 방지 처리
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return rejectWithValue(errorData.message || '파일 업로드 실패');
+      }
+
+      const responseData = await response.json();
+      return responseData;
+    } catch (error) {
+      // HTML 응답 시 별도 처리
+      if (error.message.includes('Invalid content type')) {
+        return rejectWithValue('서버 응답 형식 오류');
+      }
+
+      console.error('API 요청 실패:', error);
+      return rejectWithValue(error.message || '파일 업로드 요청 중 오류 발생');
+    }
+  }
+);
+
+/**
+ * 초기 상태 정의
+ */
 const initialState = {
   suppliers: [...dummySuppliers], // 초기 상태에 더미 데이터 설정
   currentSupplier: null,
@@ -386,6 +583,7 @@ const supplierSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // fetchSuppliers
       .addCase(fetchSuppliers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -398,6 +596,8 @@ const supplierSlice = createSlice({
         state.loading = false;
         state.error = action.payload || '협력업체 목록을 불러오는데 실패했습니다.';
       })
+
+      // fetchSupplierById
       .addCase(fetchSupplierById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -410,6 +610,8 @@ const supplierSlice = createSlice({
         state.loading = false;
         state.error = action.payload || '협력업체 정보를 불러오는데 실패했습니다.';
       })
+
+      // registerSupplier
       .addCase(registerSupplier.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -428,6 +630,8 @@ const supplierSlice = createSlice({
         state.error = action.payload || '협력업체 등록 요청에 실패했습니다.';
         state.success = false;
       })
+
+      // updateSupplierStatus
       .addCase(updateSupplierStatus.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -439,9 +643,9 @@ const supplierSlice = createSlice({
         const updatedSupplier = state.suppliers.find(supplier => supplier.id === action.payload.id);
         if (updatedSupplier) {
           if (!updatedSupplier.status) {
-            updatedSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.status };
+            updatedSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.statusCode };
           } else {
-            updatedSupplier.status.childCode = action.payload.status;
+            updatedSupplier.status.childCode = action.payload.statusCode;
           }
           if (action.payload.rejectionReason) {
             updatedSupplier.rejectionReason = action.payload.rejectionReason;
@@ -449,9 +653,9 @@ const supplierSlice = createSlice({
 
           if (state.currentSupplier && state.currentSupplier.id === action.payload.id) {
             if (!state.currentSupplier.status) {
-              state.currentSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.status };
+              state.currentSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.statusCode };
             } else {
-              state.currentSupplier.status.childCode = action.payload.status;
+              state.currentSupplier.status.childCode = action.payload.statusCode;
             }
             if (action.payload.rejectionReason) {
               state.currentSupplier.rejectionReason = action.payload.rejectionReason;
@@ -459,7 +663,7 @@ const supplierSlice = createSlice({
           }
         }
 
-        switch (action.payload.status) {
+        switch (action.payload.statusCode) {
           case 'APPROVED':
             state.message = '협력업체가 승인되었습니다.';
             break;
@@ -479,6 +683,46 @@ const supplierSlice = createSlice({
       .addCase(updateSupplierStatus.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || '상태 업데이트에 실패했습니다.';
+      })
+
+      // downloadAttachment
+      .addCase(downloadAttachment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(downloadAttachment.fulfilled, (state) => {
+        state.loading = false;
+        // 파일 다운로드는 상태에 저장하지 않고 브라우저에서 처리됨
+      })
+      .addCase(downloadAttachment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || '파일 다운로드에 실패했습니다.';
+      })
+
+      // addAttachmentsToSupplier
+      .addCase(addAttachmentsToSupplier.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(addAttachmentsToSupplier.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.message = '첨부 파일이 성공적으로 업로드되었습니다.';
+
+        // 현재 선택된 공급업체 업데이트
+        if (action.payload && state.currentSupplier && state.currentSupplier.id === action.payload.id) {
+          state.currentSupplier = action.payload;
+        }
+
+        // 목록 업데이트
+        const index = state.suppliers.findIndex(supplier => supplier.id === action.payload?.id);
+        if (index !== -1 && action.payload) {
+          state.suppliers[index] = action.payload;
+        }
+      })
+      .addCase(addAttachmentsToSupplier.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || '파일 업로드에 실패했습니다.';
       });
   }
 });
