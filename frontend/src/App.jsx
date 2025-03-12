@@ -49,6 +49,8 @@ import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
 import ApprovalLineAdministration from '@/pages/approval/ApprovalLineAdministration';
 import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+import ApprovalListPage from "@/pages/approval/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
 import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
 import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
