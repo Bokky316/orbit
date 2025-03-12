@@ -386,7 +386,8 @@ public class ApprovalLineService {
     private ApprovalLineResponseDTO convertToDTO(ApprovalLine line) {
         return ApprovalLineResponseDTO.builder()
                 .id(line.getId())
-                .purchaseRequestId(line.getPurchaseRequest().getId()) // 추가
+                .purchaseRequestId(line.getPurchaseRequest().getId())
+                .approverId(line.getApprover().getId()) // 이 부분 추가
                 .approverName(line.getApprover().getName())
                 .department(line.getApprover().getDepartment().getName())
                 .step(line.getStep())
