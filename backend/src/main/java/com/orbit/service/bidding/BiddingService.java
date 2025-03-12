@@ -508,6 +508,60 @@ public class BiddingService {
     }
 
 
+/**
+ * 입찰 공고 생성
+ */
+    @Transactional
+    public BiddingDto createBidding(BiddingFormDto formDto) {
+        // 입찰 번호 생성
+        String bidNumber = generateBidNumber();
+        
+        // 입찰 공고 엔티티 생성
+        Bidding bidding = formDto.toEntity();
+        
+        // 입찰 번호 설정
+        bidding.setBidNumber(bidNumber);
+        
+        // 가격 재계산
+        bidding.recalculatePrices();
+        
+        // 다중 공급자 정보 처리
+        if (formDto.getSupplierIds() != null && !formDto.getSupplierIds().isEmpty()) {
+            bidding.setDescription("공급자 ID: " + String.join(", ", 
+                formDto.getSupplierIds().stream()
+                    .map(Object::toString)
+                    .collect(Collectors.toList())));
+        }
+
+        // if (formDto.getSupplierIds() != null && !formDto.getSupplierIds().isEmpty()) {
+        //     List<Supplier> suppliers = supplierRepository.findAllById(formDto.getSupplierIds());
+            
+        //     // 공급자 정보를 companyName으로 설정
+        //     bidding.setCompanyName(
+        //         suppliers.stream()
+        //             .map(Supplier::getCompanyName)
+        //             .collect(Collectors.joining(", "))
+        //     );
+            
+        //     // 공급자-입찰 관계 설정
+        //     suppliers.forEach(bidding::addSupplier);
+        // }
+        
+        // 엔티티 저장
+        bidding = biddingRepository.save(bidding);
+        
+        // 상태 이력 추가
+        StatusHistory history = StatusHistory.builder()
+                .fromStatus(null)
+                .toStatus(bidding.getStatus())
+                .entityType(StatusHistory.EntityType.BIDDING)
+                .changedAt(LocalDateTime.now())
+                .bidding(bidding)
+                .build();
+        bidding.addStatusHistory(history);
+        
+        return BiddingDto.fromEntity(bidding);
+    }
     /**
      * 입찰 공고 수정
      */
@@ -617,6 +671,8 @@ public class BiddingService {
         
         biddingRepository.deleteById(id);
     }
+
+
 
     /**
      * 입찰 상태 변경
@@ -817,6 +873,44 @@ public class BiddingService {
                 .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + id));
         
         return BiddingParticipationDto.fromEntity(participation);
+    }
+
+    /**
+     * 입찰 상태 변경
+     */
+    @Transactional
+    public BiddingDto changeBiddingStatus(Long id, String status, String reason) {
+        Bidding bidding = biddingRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + id));
+        
+        // 이전 상태 저장
+        SystemStatus oldStatus = bidding.getStatus();
+        
+        // 새 상태 설정
+        SystemStatus newStatus = new SystemStatus("BIDDING", status);
+        bidding.setStatus(newStatus);
+        
+        // 상태 이력 추가
+        StatusHistory history = StatusHistory.builder()
+                .fromStatus(oldStatus)
+                .toStatus(newStatus)
+                .entityType(StatusHistory.EntityType.BIDDING)
+                .changedAt(LocalDateTime.now())
+                .bidding(bidding)
+                .reason(reason)  // reason 추가
+                .build();
+        
+        bidding.addStatusHistory(history);
+        
+        return BiddingDto.fromEntity(bidding);
+    }
+
+    /**
+     * 상태 변경 이력 조회
+     */
+    @Transactional(readOnly = true)
+    public List<StatusHistory> getBiddingStatusHistories(Long biddingId) {
+        return biddingRepository.findStatusHistoriesByBiddingId(biddingId);
     }
 
     /**

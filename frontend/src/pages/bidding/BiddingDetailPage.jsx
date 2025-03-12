@@ -78,6 +78,12 @@ function BiddingDetailPage() {
     participationId: null,
     supplierName: ""
   });
+  const [statusChangeDialog, setStatusChangeDialog] = useState({
+    open: false,
+    newStatus: "",
+    reason: ""
+  });
+  const [statusHistories, setStatusHistories] = useState([]);
 
   // 입찰 프로세스 단계
   const biddingSteps = [
