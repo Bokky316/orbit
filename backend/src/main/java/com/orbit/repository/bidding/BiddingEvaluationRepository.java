@@ -1,7 +1,7 @@
 package com.orbit.repository.bidding;
 
-
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,25 +12,58 @@ import com.orbit.entity.bidding.BiddingEvaluation;
 
 @Repository
 public interface BiddingEvaluationRepository extends JpaRepository<BiddingEvaluation, Long> {
-    
-    List<BiddingEvaluation> findByBiddingParticipationId(Long biddingParticipationId);
-    
-    @Query("SELECT e FROM BiddingEvaluation e WHERE e.participation.bidding.id = :biddingId " +
-           "ORDER BY e.totalScore DESC")
+
+    /**
+     * 특정 입찰 공고의 모든 평가 목록 조회
+     */
+    List<BiddingEvaluation> findByBiddingId(Long biddingId);
+
+    /**
+     * 특정 입찰 참여에 대한 평가 조회
+     */
+    Optional<BiddingEvaluation> findByBiddingParticipationId(Long participationId);
+
+    /**
+     * 특정 입찰 공고의 최고 점수 평가 목록 조회
+     */
+    @Query("SELECT be FROM BiddingEvaluation be WHERE be.biddingId = :biddingId AND be.totalScore = (SELECT MAX(b.totalScore) FROM BiddingEvaluation b WHERE b.biddingId = :biddingId)")
     List<BiddingEvaluation> findTopByBiddingIdOrderByTotalScoreDesc(@Param("biddingId") Long biddingId);
-    
-    List<BiddingEvaluation> findByBiddingParticipationIdInOrderByTotalScoreDesc(List<Long> participationIds);
-    
-    
-    // 입찰 ID로 모든 평가 조회
-    @Query("SELECT be FROM BiddingEvaluation be JOIN be.participation bp WHERE bp.biddingId = :biddingId")
-    List<BiddingEvaluation> findAllByBiddingId(@Param("biddingId") Long biddingId);
-    
-    // 공급자 ID로 모든 평가 조회
-    @Query("SELECT be FROM BiddingEvaluation be JOIN be.participation bp WHERE bp.supplierId = :supplierId")
-    List<BiddingEvaluation> findAllBySupplierId(@Param("supplierId") Long supplierId);
-    
-    // 전체 평가 목록 (공급자 정보 포함)
-    @Query("SELECT be FROM BiddingEvaluation be JOIN FETCH be.participation bp ORDER BY be.createdAt DESC")
-       List<BiddingEvaluation> findAllWithParticipation();
+
+
+    List<BiddingEvaluation> findBySupplierName(String supplierName);
+
+    /**
+     * 낙찰자로 선정된 모든 평가 목록 조회
+     */
+    List<BiddingEvaluation> findByIsSelectedBidderTrue();
+
+    /**
+     * 특정 입찰 공고의 낙찰자 평가 목록 조회
+     */
+    List<BiddingEvaluation> findByBiddingIdAndIsSelectedBidderTrue(Long biddingId);
+
+    /**
+     * 발주 선정된 모든 평가 목록 조회
+     */
+    List<BiddingEvaluation> findBySelectedForOrderTrue();
+
+    /**
+     * 특정 입찰 공고의 발주 선정 평가 목록 조회
+     */
+    List<BiddingEvaluation> findByBiddingIdAndSelectedForOrderTrue(Long biddingId);
+
+    /**
+     * 평가자별 평가 목록 조회
+     */
+    List<BiddingEvaluation> findByEvaluatorId(Long evaluatorId);
+
+    /**
+     * 특정 점수 범위 내의 평가 목록 조회
+     */
+    @Query("SELECT be FROM BiddingEvaluation be WHERE be.biddingId = :biddingId AND be.totalScore BETWEEN :minScore AND :maxScore")
+    List<BiddingEvaluation> findByBiddingIdAndTotalScoreBetween(
+            @Param("biddingId") Long biddingId, 
+            @Param("minScore") Integer minScore, 
+            @Param("maxScore") Integer maxScore
+    );
 }

@@ -39,60 +39,56 @@ public class BiddingEvaluation {
     private BiddingParticipation participation;
 
     @Column(name = "bidding_participation_id", nullable = false)
-    private Long biddingParticipationId; //입찰 참여 ID
+    private Long biddingParticipationId;
+
+    @Column(name = "bidding_id", nullable = false)
+    private Long biddingId;
 
     @Column(name = "evaluator_id", nullable = false)
-    private Long evaluatorId; //평가자 ID
+    private Long evaluatorId;
 
     @Column(name = "supplier_name")
-    private String supplierName; // 공급자 이름
+    private String supplierName;
 
     @Column(name = "price_score", nullable = false)
-    private Integer priceScore; //가격 점수 (5점 만점)
+    private Integer priceScore;
 
     @Column(name = "quality_score", nullable = false)
-    private Integer qualityScore; //품질 점수 (5점 만점)
+    private Integer qualityScore;
 
     @Column(name = "delivery_score", nullable = false)
-    private Integer deliveryScore; //납기 점수 (5점 만점)'
+    private Integer deliveryScore;
 
     @Column(name = "reliability_score", nullable = false)
-    private Integer reliabilityScore; //신뢰도 점수 (5점 만점)
+    private Integer reliabilityScore;
 
-    @Column(name = "total_score", insertable = false, updatable = false)
-    private Integer totalScore; //평균 점수
+    @Column(name = "total_score")
+    private Integer totalScore;
 
     @Column(name = "comments", columnDefinition = "TEXT")
-    private String comments; //평가 의견
+    private String comments;
 
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt; //평가일시
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt; //수정일시
+    private LocalDateTime updatedAt;
 
-    @Column(name = "selected_for_order", columnDefinition = "boolean default false")
-    private boolean selectedForOrder; // 발주 선정 여부
+    @Column(name = "evaluated_at")
+    private LocalDateTime evaluatedAt; // 평가 일시 추가
 
     @Column(name = "is_selected_bidder", columnDefinition = "boolean default false")
-    private boolean isSelectedBidder; // 낙찰자 선정 여부
-        
+    private boolean isSelectedBidder;
+
     @Column(name = "bidder_selected_at")
-    private LocalDateTime bidderSelectedAt; // 낙찰자 선정 일시
+    private LocalDateTime bidderSelectedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
+    @Column(name = "selected_for_order", columnDefinition = "boolean default false")
+    private boolean selectedForOrder;
 
     /**
      * 낙찰자로 선정
+     * 낙찰자로 선정하고 선정 일시를 현재 시간으로 업데이트합니다.
      */
     public void selectAsBidder() {
         this.isSelectedBidder = true;
@@ -102,10 +98,67 @@ public class BiddingEvaluation {
 
     /**
      * 낙찰자 선정 취소
+     * 낙찰자 선정 상태와 선정 일시를 초기화합니다.
      */
     public void cancelSelectedBidder() {
         this.isSelectedBidder = false;
         this.bidderSelectedAt = null;
         this.updatedAt = LocalDateTime.now();
+    }
+    
+   
+
+    /**
+     * 총점 계산
+     * 각 점수(가격, 품질, 납품, 신뢰도)의 평균을 계산하여 총점을 설정합니다.
+     */
+    private void calculateTotalScore() {
+        int totalPoints = 0;
+        int count = 0;
+        
+        if (this.priceScore != null) {
+            totalPoints += this.priceScore;
+            count++;
+        }
+        if (this.qualityScore != null) {
+            totalPoints += this.qualityScore;
+            count++;
+        }
+        if (this.deliveryScore != null) {
+            totalPoints += this.deliveryScore;
+            count++;
+        }
+        if (this.reliabilityScore != null) {
+            totalPoints += this.reliabilityScore;
+            count++;
+        }
+        
+        if (count > 0) {
+            this.totalScore = totalPoints / count;
+        } else {
+            this.totalScore = 0;
+        }
+    }
+
+    /**
+     * 엔티티 생성 시 호출되는 메서드
+     * 생성 시간, 업데이트 시간, 평가 일시를 현재 시간으로 설정하고 총점을 계산합니다.
+     */
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        this.evaluatedAt = LocalDateTime.now(); // 평가 일시 설정
+        calculateTotalScore();
+    }
+
+    /**
+     * 엔티티 업데이트 시 호출되는 메서드
+     * 업데이트 시간을 갱신하고 총점을 다시 계산합니다.
+     */
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+        calculateTotalScore();
     }
 }

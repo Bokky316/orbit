@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.orbit.entity.bidding.BiddingOrder;
-import com.orbit.entity.bidding.BiddingOrder.OrderStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,8 +34,7 @@ public class BiddingOrderDto {
     private BigDecimal totalAmount;
     private String terms;
     private LocalDate expectedDeliveryDate;
-    private OrderStatus status;
-    private Long approvedBy;
+    private Long evaluationId;
     private LocalDateTime approvedAt;
     private Long createdBy;
     private LocalDateTime createdAt;
@@ -67,8 +65,7 @@ public class BiddingOrderDto {
                 .totalAmount(entity.getTotalAmount())
                 .terms(entity.getTerms())
                 .expectedDeliveryDate(entity.getExpectedDeliveryDate())
-                .status(entity.getStatus())
-                .approvedBy(entity.getApprovedBy())
+                .evaluationId(entity.getEvaluationId())
                 .approvedAt(entity.getApprovedAt())
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
@@ -96,8 +93,7 @@ public class BiddingOrderDto {
                 .totalAmount(this.totalAmount)
                 .terms(this.terms)
                 .expectedDeliveryDate(this.expectedDeliveryDate)
-                .status(this.status)
-                .approvedBy(this.approvedBy)
+                .evaluationId(this.evaluationId)
                 .approvedAt(this.approvedAt)
                 .createdBy(this.createdBy)
                 .build();

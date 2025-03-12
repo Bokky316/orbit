@@ -1,52 +1,26 @@
 package com.orbit.controller.procurement;
 
-<<<<<<< HEAD
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.UUID;
 
-=======
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.orbit.dto.procurement.ApprovalDTO;
-import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.Approval;
-import com.orbit.entity.procurement.PurchaseRequest;
-import com.orbit.entity.procurement.Project;
-import com.orbit.repository.member.MemberRepository;
-import com.orbit.service.procurement.ApprovalService;
-import com.orbit.config.jwt.TokenProvider;
-import com.orbit.service.RedisService;
-import com.orbit.repository.procurement.ApprovalRepository;
-import com.orbit.repository.procurement.PurchaseRequestRepository;
-import com.orbit.repository.procurement.ProjectRepository;
-import com.orbit.constant.SupplierStatus;
->>>>>>> 93ffc6e (no message)
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-<<<<<<< HEAD
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-=======
->>>>>>> 93ffc6e (no message)
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-<<<<<<< HEAD
 import org.springframework.mock.web.MockCookie;
 import org.springframework.security.core.GrantedAuthority;
-=======
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
->>>>>>> 93ffc6e (no message)
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-<<<<<<< HEAD
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -66,20 +40,6 @@ import com.orbit.repository.procurement.ProjectRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.service.RedisService;
 import com.orbit.service.procurement.ApprovalService;
-=======
-import org.springframework.mock.web.MockCookie;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.time.Duration;
-import java.time.LocalDate;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.Collection;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
->>>>>>> 93ffc6e (no message)
 
 /**
  * ApprovalController에 대한 통합 테스트 클래스
@@ -171,15 +131,6 @@ public class ApprovalControllerTest {
         String projectId = UUID.randomUUID().toString();
         Project project =
                 Project.builder()
-<<<<<<< HEAD
-                        .projectId(projectId)
-                        .projectName("Test Project")
-                        .managerName("Test Manager")
-                        .startDate(LocalDate.now())
-                        .endDate(LocalDate.now().plusDays(7))
-                        .status(Project.ProjectStatus.IN_PROGRESS)
-                        .description("Test Project Description")
-=======
 //                        .projectId(projectId)
 //                        .projectName("Test Project")
 //                        .managerName("Test Manager")
@@ -187,7 +138,6 @@ public class ApprovalControllerTest {
 //                        .endDate(LocalDate.now().plusDays(7))
 //                        .status(Project.ProjectStatus.IN_PROGRESS)
 //                        .description("Test Project Description")
->>>>>>> 93ffc6e (no message)
 //                        .supplierStatus(SupplierStatus.PENDING)
                         .build();
         projectRepository.save(project);
@@ -198,11 +148,7 @@ public class ApprovalControllerTest {
         purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
         purchaseRequest.setProject(project);
         purchaseRequest.setMember(testMember); // Requester -> Member
-<<<<<<< HEAD
-        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
-=======
 //        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
->>>>>>> 93ffc6e (no message)
         purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
         purchaseRequest.setRequestDate(LocalDate.now());
         purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
