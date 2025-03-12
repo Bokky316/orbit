@@ -1,3 +1,4 @@
+// ItemRepository.java
 package com.orbit.repository.item;
 
 import com.orbit.entity.item.Item;
@@ -34,9 +35,10 @@ public interface ItemRepository extends JpaRepository<Item, String> {
             "WHERE i.id = :id")
     Optional<Item> findByIdWithCategoryAndUnitParent(@Param("id") String id);
 
-
     Optional<Item> findByCode(String code);
+
     boolean existsByCode(String code);
+
     List<Item> findByNameContaining(String name);
 
     @Query("SELECT i FROM Item i WHERE i.name LIKE %:keyword% OR i.code LIKE %:keyword% OR i.specification LIKE %:keyword%")

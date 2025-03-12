@@ -4,12 +4,6 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
 /**
  * 구매 요청 목록을 가져오는 비동기 액션
- *
- * @function fetchPurchaseRequests
- * @param {void} _ - 사용하지 않는 파라미터 (관례적으로 _ 로 표시)
- * @param {object} thunkAPI - Redux Toolkit에서 제공하는 thunk API 객체
- * @returns {Promise<Array<PurchaseRequest>>} 구매 요청 목록을 담은 Promise
- * @throws {Error} 구매 요청 목록을 가져오는 데 실패한 경우
  */
 export const fetchPurchaseRequests = createAsyncThunk(
   'purchaseRequest/fetchPurchaseRequests',
@@ -39,15 +33,42 @@ export const fetchPurchaseRequests = createAsyncThunk(
   }
 );
 
+// 아이템 목록 조회 액션
+export const fetchItems = createAsyncThunk(
+  'purchaseRequest/fetchItems',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}purchase-requests/items`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '아이템 조회 실패');
+      }
+      return await response.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// 카테고리 목록 조회 액션 추가
+export const fetchCategories = createAsyncThunk(
+  'purchaseRequest/fetchCategories',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}purchase-requests/categories`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '카테고리 조회 실패');
+      }
+      return await response.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 /**
  * 구매 요청을 생성하는 비동기 액션
- *
- * @function createPurchaseRequest
- * @param {PurchaseRequest} requestData - 생성할 구매 요청 데이터
- * @param {object} thunkAPI - Redux Toolkit에서 제공하는 thunk API 객체
- * @returns {Promise<PurchaseRequest>} 생성된 구매 요청을 담은 Promise
- * @throws {Error} 구매 요청을 생성하는 데 실패한 경우
  */
 export const createPurchaseRequest = createAsyncThunk(
   'purchaseRequest/create',
@@ -134,14 +155,6 @@ export const downloadAttachment = createAsyncThunk(
 
 /**
  * 구매 요청을 수정하는 비동기 액션
- *
- * @function updatePurchaseRequest
- * @param {object} payload - 수정할 구매 요청 ID와 데이터
- * @param {number} payload.id - 수정할 구매 요청 ID
- * @param {PurchaseRequest} payload.requestData - 수정할 구매 요청 데이터
- * @param {object} thunkAPI - Redux Toolkit에서 제공하는 thunk API 객체
- * @returns {Promise<PurchaseRequest>} 수정된 구매 요청을 담은 Promise
- * @throws {Error} 구매 요청을 수정하는 데 실패한 경우
  */
 export const updatePurchaseRequest = createAsyncThunk(
     'purchaseRequest/updatePurchaseRequest', // 액션 타입 정의
@@ -176,15 +189,6 @@ export const updatePurchaseRequest = createAsyncThunk(
 
 /**
  * 초기 상태 정의
- *
- * @typedef {object} PurchaseRequestState
- * @property {Array<PurchaseRequest>} purchaseRequests - 구매 요청 목록
- * @property {object} filters - 필터 정보
- * @property {string} filters.searchTerm - 검색어
- * @property {string} filters.requestDate - 요청일
- * @property {string} filters.status - 상태
- * @property {boolean} loading - 로딩 상태
- * @property {string | null} error - 에러 메시지
  */
 const initialState = {
   purchaseRequests: [],
@@ -196,7 +200,9 @@ const initialState = {
     searchTerm: '',
     requestDate: '',
     status: ''
-  }
+  },
+  items: [],
+  categories: [] // 카테고리 목록 추가
 };
 
 /**
@@ -208,20 +214,12 @@ const purchaseRequestSlice = createSlice({
     reducers: {
         /**
          * 구매 요청 목록 설정 액션
-         *
-         * @param {PurchaseRequestState} state - 현재 상태
-         * @param {object} action - 액션 객체
-         * @param {Array<PurchaseRequest>} action.payload - 설정할 구매 요청 목록
          */
         setPurchaseRequests: (state, action) => {
             state.purchaseRequests = action.payload;
         },
         /**
          * 검색어 설정 액션
-         *
-         * @param {PurchaseRequestState} state - 현재 상태
-         * @param {object} action - 액션 객체
-         * @param {string} action.payload - 설정할 검색어
          */
         setSearchTerm: (state, action) => {
             state.filters.searchTerm = action.payload;
@@ -232,20 +230,12 @@ const purchaseRequestSlice = createSlice({
           },
         /**
          * 요청일 설정 액션
-         *
-         * @param {PurchaseRequestState} state - 현재 상태
-         * @param {object} action - 액션 객체
-         * @param {string} action.payload - 설정할 요청일
          */
         setRequestDate: (state, action) => {
             state.filters.requestDate = action.payload;
         },
         /**
          * 상태 설정 액션
-         *
-         * @param {PurchaseRequestState} state - 현재 상태
-         * @param {object} action - 액션 객체
-         * @param {string} action.payload - 설정할 상태
          */
         setStatus: (state, action) => {
             state.filters.status = action.payload;
@@ -290,6 +280,32 @@ const purchaseRequestSlice = createSlice({
                     request.id === action.payload.id ? action.payload : request
                 ); // 구매 요청 업데이트
             })
+            // fetchItems 액션 처리
+            .addCase(fetchItems.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchItems.fulfilled, (state, action) => {
+                state.loading = false;
+                state.items = action.payload;
+            })
+            .addCase(fetchItems.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            // fetchCategories 액션 처리 (추가)
+            .addCase(fetchCategories.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchCategories.fulfilled, (state, action) => {
+                state.loading = false;
+                state.categories = action.payload;
+            })
+            .addCase(fetchCategories.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
             .addCase(updatePurchaseRequest.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
@@ -306,10 +322,10 @@ const purchaseRequestSlice = createSlice({
     },
 });
 
-// [신규] 웹소켓 미들웨어 내보내기
+
 export const websocketMiddleware = createWebsocketMiddleware();
 
-// 기존 액션 및 리듀서 유지
+
 export const {
   setSearchTerm,
   setRequestDate,

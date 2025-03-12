@@ -8,6 +8,7 @@ import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.exception.ApprovalException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.ApprovalLineRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
@@ -15,17 +16,23 @@ import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ApprovalLineService {
+
+    private static final String ENTITY_TYPE = "APPROVAL_LINE";
+    private static final String CODE_GROUP = "STATUS";
 
     private final ApprovalLineRepository approvalLineRepo;
     private final PurchaseRequestRepository purchaseRequestRepo;
@@ -33,65 +40,122 @@ public class ApprovalLineService {
     private final ParentCodeRepository parentCodeRepo;
     private final ChildCodeRepository childCodeRepo;
     private final SimpMessagingTemplate messagingTemplate;
+    private static final int MAX_APPROVAL_STEPS = 3;
 
-    // 결재선 생성
-    public void createApprovalLine(ApprovalLineCreateDTO dto) {
+    // 결재선 생성 메서드
+    public ApprovalLineResponseDTO createApprovalLine(ApprovalLineCreateDTO dto) {
+        // 구매 요청 조회
         PurchaseRequest request = purchaseRequestRepo.findById(dto.getPurchaseRequestId())
                 .orElseThrow(() -> new ResourceNotFoundException("구매요청을 찾을 수 없습니다. ID: " + dto.getPurchaseRequestId()));
 
-        // 상태 코드 파싱 및 조회 (Optional 처리 추가)
-        String[] statusParts = dto.getInitialStatusCode().split("-");
-        ParentCode parentCode = parentCodeRepo.findByEntityTypeAndCodeGroup(statusParts[0], statusParts[1])
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "ParentCode를 찾을 수 없습니다: " + statusParts[0] + "-" + statusParts[1]));
+        // 상위 상태 코드 조회
+        ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
 
-        ChildCode initialStatus = childCodeRepo.findByParentCodeAndCodeValue(parentCode, statusParts[2])
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "ChildCode를 찾을 수 없습니다: " + statusParts[2]));
+        // 초기 상태 코드 조회
+        ChildCode initialStatus = findChildCode(parentCode, "WAITING");
 
+        // 결재선 생성
+        List<ApprovalLine> lines = createApprovalLines(request, dto.getApproverIds(), parentCode);
+        approvalLineRepo.saveAll(lines);
+
+        // 실시간 업데이트
+        sendRealTimeUpdate(request.getId());
+
+        // 생성된 첫 번째 결재선 응답 DTO 반환
+        return convertToDTO(lines.get(0));
+    }
+
+    // 자동 결재선 생성 메서드
+    public ApprovalLineResponseDTO createAutoApprovalLine(ApprovalLineCreateDTO dto) {
+        // 구매 요청 조회
+        PurchaseRequest request = purchaseRequestRepo.findById(dto.getPurchaseRequestId())
+                .orElseThrow(() -> new ResourceNotFoundException("구매요청을 찾을 수 없습니다. ID: " + dto.getPurchaseRequestId()));
+
+        // 상위 상태 코드 조회
+        ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
+
+        // 결재 가능한 멤버 조회 (직급 기준 정렬)
+        List<Member> eligibleMembers = findEligibleMembersForApproval();
+
+        // 결재선 자동 생성
+        List<ApprovalLine> lines = createAutoApprovalLines(request, eligibleMembers, parentCode);
+        approvalLineRepo.saveAll(lines);
+
+        // 실시간 업데이트
+        sendRealTimeUpdate(request.getId());
+
+        // 생성된 첫 번째 결재선 응답 DTO 반환
+        return convertToDTO(lines.get(0));
+    }
+
+    // 결재 가능한 멤버 조회 (직급 높은 순으로 정렬)
+    private List<Member> findEligibleMembersForApproval() {
+        // 직급이 3 이상인 모든 멤버 조회 (level >= 3)
+        List<Member> eligibleMembers = memberRepo.findByPositionLevelGreaterThanEqual(3);
+
+        // 직급이 높은 순으로 정렬
+        return eligibleMembers.stream()
+                .sorted((m1, m2) ->
+                        Integer.compare(
+                                m2.getPosition().getLevel(),
+                                m1.getPosition().getLevel()
+                        )
+                )
+                .limit(3)  // 최대 3단계로 제한
+                .collect(Collectors.toList());
+    }
+
+    // 자동 결재선 생성 메서드
+    private List<ApprovalLine> createAutoApprovalLines(
+            PurchaseRequest request,
+            List<Member> approvers,
+            ParentCode parentCode
+    ) {
         List<ApprovalLine> lines = new ArrayList<>();
-        int step = 1;
 
-        for (Long approverId : dto.getApproverIds()) {
-            Member approver = memberRepo.findById(approverId)
-                    .orElseThrow(() -> new ResourceNotFoundException("결재자를 찾을 수 없습니다. ID: " + approverId));
+        // 결재 단계별 상태 코드 조회
+        ChildCode inReviewStatus = findChildCode(parentCode, "IN_REVIEW");
+        ChildCode pendingStatus = findChildCode(parentCode, "PENDING");
 
-            // 상태 코드 조회 (Optional 처리 추가)
-            ChildCode lineStatus = step == 1
-                    ? childCodeRepo.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW")
-                    .orElseThrow(() -> new ResourceNotFoundException("IN_REVIEW 상태 코드 없음"))
-                    : childCodeRepo.findByParentCodeAndCodeValue(parentCode, "PENDING")
-                    .orElseThrow(() -> new ResourceNotFoundException("PENDING 상태 코드 없음"));
+        for (int step = 0; step < approvers.size(); step++) {
+            ChildCode lineStatus = (step == 0) ? inReviewStatus : pendingStatus;
 
             ApprovalLine line = ApprovalLine.builder()
                     .purchaseRequest(request)
-                    .approver(approver)
-                    .step(step++)
+                    .approver(approvers.get(step))
+                    .step(step + 1)
                     .status(lineStatus)
                     .build();
 
             lines.add(line);
         }
 
-        approvalLineRepo.saveAll(lines);
-        sendRealTimeUpdate(request.getId());
+        return lines;
     }
 
-    // 결재 처리
-    public void processApproval(Long lineId, ApprovalProcessDTO dto) {
+    // 결재 처리 메서드
+    public ApprovalLineResponseDTO processApproval(Long lineId, ApprovalProcessDTO dto) {
         ApprovalLine line = approvalLineRepo.findById(lineId)
                 .orElseThrow(() -> new ResourceNotFoundException("결재선을 찾을 수 없습니다. ID: " + lineId));
 
-        // 상태 코드 파싱 및 조회 (Optional 처리 추가)
-        String[] statusParts = dto.getNextStatusCode().split("-");
-        ParentCode parentCode = parentCodeRepo.findByEntityTypeAndCodeGroup(statusParts[0], statusParts[1])
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "ParentCode를 찾을 수 없습니다: " + statusParts[0] + "-" + statusParts[1]));
+        // 상위 상태 코드 조회
+        ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
 
-        ChildCode nextStatus = childCodeRepo.findByParentCodeAndCodeValue(parentCode, statusParts[2])
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "ChildCode를 찾을 수 없습니다: " + statusParts[2]));
+        // 다음 상태 코드 조회
+        ChildCode nextStatus = findChildCode(parentCode, dto.getNextStatusCode());
 
+        // 결재 처리
+        processApprovalAction(line, dto, nextStatus, parentCode);
+
+        // 실시간 업데이트
+        sendRealTimeUpdate(line.getPurchaseRequest().getId());
+
+        return convertToDTO(line);
+    }
+
+    // 결재 처리 액션 메서드
+    private void processApprovalAction(ApprovalLine line, ApprovalProcessDTO dto,
+                                       ChildCode nextStatus, ParentCode parentCode) {
         switch (dto.getAction().toUpperCase()) {
             case "APPROVE":
                 line.approve(dto.getComment(), nextStatus);
@@ -102,22 +166,16 @@ public class ApprovalLineService {
                 cancelRemainingSteps(line, parentCode);
                 break;
             default:
-                throw new IllegalArgumentException("잘못된 요청 액션: " + dto.getAction());
+                throw new ApprovalException("잘못된 결재 액션: " + dto.getAction());
         }
 
         approvalLineRepo.save(line);
-        sendRealTimeUpdate(line.getPurchaseRequest().getId());
     }
 
-    // 다음 단계로 진행 (Optional 처리 추가)
+    // 다음 단계로 진행
     private void advanceToNextStep(ApprovalLine currentLine, ParentCode parentCode) {
         List<ApprovalLine> lines = approvalLineRepo.findAllByRequestId(currentLine.getPurchaseRequest().getId());
-
-        ChildCode inReviewStatus = childCodeRepo.findByParentCodeAndCodeValue(parentCode, "IN_REVIEW")
-                .orElseThrow(() -> new ResourceNotFoundException("IN_REVIEW 상태 코드 없음"));
-
-        ChildCode pendingStatus = childCodeRepo.findByParentCodeAndCodeValue(parentCode, "PENDING")
-                .orElseThrow(() -> new ResourceNotFoundException("PENDING 상태 코드 없음"));
+        ChildCode inReviewStatus = findChildCode(parentCode, "IN_REVIEW");
 
         lines.stream()
                 .filter(l -> l.getStep() > currentLine.getStep())
@@ -129,10 +187,9 @@ public class ApprovalLineService {
                 });
     }
 
-    // 남은 단계 취소 (Optional 처리 추가)
+    // 남은 단계 취소
     private void cancelRemainingSteps(ApprovalLine rejectedLine, ParentCode parentCode) {
-        ChildCode rejectedStatus = childCodeRepo.findByParentCodeAndCodeValue(parentCode, "REJECTED")
-                .orElseThrow(() -> new ResourceNotFoundException("REJECTED 상태 코드 없음"));
+        ChildCode rejectedStatus = findChildCode(parentCode, "REJECTED");
 
         approvalLineRepo.findCurrentStep(rejectedLine.getPurchaseRequest().getId())
                 .stream()
@@ -143,20 +200,67 @@ public class ApprovalLineService {
                 });
     }
 
-    // [기존 메서드 유지] -------------------------------------------------
+    // 결재선 생성 보조 메서드
+    private List<ApprovalLine> createApprovalLines(PurchaseRequest request,
+                                                   List<Long> approverIds,
+                                                   ParentCode parentCode) {
+        List<ApprovalLine> lines = new ArrayList<>();
+        int step = 1;
+
+        for (Long approverId : approverIds) {
+            Member approver = findMember(approverId);
+            ChildCode lineStatus = step == 1
+                    ? findChildCode(parentCode, "IN_REVIEW")
+                    : findChildCode(parentCode, "PENDING");
+
+            ApprovalLine line = ApprovalLine.builder()
+                    .purchaseRequest(request)
+                    .approver(approver)
+                    .step(step++)
+                    .status(lineStatus)
+                    .build();
+
+            lines.add(line);
+        }
+
+        return lines;
+    }
+
+    // 헬퍼 메서드들
+    private ParentCode findParentCode(String entityType, String codeGroup) {
+        return parentCodeRepo.findByEntityTypeAndCodeGroup(entityType, codeGroup)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "ParentCode를 찾을 수 없습니다: " + entityType + "-" + codeGroup));
+    }
+
+    private ChildCode findChildCode(ParentCode parentCode, String codeValue) {
+        return childCodeRepo.findByParentCodeAndCodeValue(parentCode, codeValue)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "ChildCode를 찾을 수 없습니다: " + codeValue));
+    }
+
+    private Member findMember(Long approverId) {
+        return memberRepo.findById(approverId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "결재자를 찾을 수 없습니다. ID: " + approverId));
+    }
+
+    // 실시간 업데이트 및 DTO 변환 메서드
     private void sendRealTimeUpdate(Long requestId) {
         List<ApprovalLineResponseDTO> lines = getApprovalLines(requestId);
         messagingTemplate.convertAndSend("/topic/approvals/" + requestId, lines);
     }
 
+    // 특정 구매 요청의 현재 결재선 조회
     @Transactional(readOnly = true)
     public List<ApprovalLineResponseDTO> getApprovalLines(Long requestId) {
         return approvalLineRepo.findCurrentStep(requestId)
                 .stream()
                 .map(this::convertToDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
+    // 결재선을 ResponseDTO로 변환
     private ApprovalLineResponseDTO convertToDTO(ApprovalLine line) {
         return ApprovalLineResponseDTO.builder()
                 .id(line.getId())
@@ -164,12 +268,33 @@ public class ApprovalLineService {
                 .department(line.getApprover().getDepartment().getName())
                 .step(line.getStep())
                 .statusCode(line.getStatus().getCodeValue())
+                .statusName(line.getStatus().getCodeName())
                 .approvedAt(line.getApprovedAt())
                 .comment(line.getComment())
                 .build();
     }
 
+    // 결재 가능한 멤버 조회
+    @Transactional(readOnly = true)
+    public List<ApprovalLineResponseDTO> findByPositionLevelGreaterThanEqual() {
+        List<Member> eligibleMembers = memberRepo.findByPositionLevelGreaterThanEqual(3);
+
+        return eligibleMembers.stream()
+                .map(member -> ApprovalLineResponseDTO.builder()
+                        .id(member.getId())
+                        .approverName(member.getName())
+                        .department(member.getDepartment().getName())
+                        .statusCode("ELIGIBLE")
+                        .statusName("결재 가능")
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // 결재 알림 전송 (실제 구현은 프로젝트 요구사항에 맞게 변경 필요)
     private void sendApprovalNotification(ApprovalLine line) {
-        // 구현 생략
+        log.info("결재 알림 전송: 요청 ID {}, 결재자 {}",
+                line.getPurchaseRequest().getId(),
+                line.getApprover().getName());
+        // 실제 알림 로직 (이메일, SMS, 푸시 알림 등) 구현
     }
 }
