@@ -5,6 +5,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.orbit.entity.commonCode.SystemStatus;
+import com.orbit.repository.member.MemberRepository;
 import org.springframework.stereotype.Service;
 
 import com.orbit.dto.bidding.BiddingContractDto;
@@ -12,11 +14,9 @@ import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.BiddingContract;
 import com.orbit.entity.bidding.BiddingParticipation;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.state.SystemStatus;
 import com.orbit.repository.bidding.BiddingContractRepository;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
 import com.orbit.repository.bidding.BiddingRepository;
-import com.orbit.repository.member.MemberRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;

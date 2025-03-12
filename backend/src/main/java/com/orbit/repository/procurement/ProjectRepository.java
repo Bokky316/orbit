@@ -1,6 +1,6 @@
 package com.orbit.repository.procurement;
 
-import com.orbit.entity.procurement.Project;
+import com.orbit.entity.project.Project;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
