@@ -74,8 +74,6 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/frontend/public/");
                 
-                .addResourceLocations("classpath:/frontend/public/");
-                
 
 
     }
@@ -91,7 +89,6 @@ public class WebConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         // React의 index.html을 기본 뷰로 매핑
         registry.addViewController("/{spring:[^\\.]*}")
-                .setViewName("forward:/frontend/public/index.html");
                 .setViewName("forward:/frontend/public/index.html");
     }
 }

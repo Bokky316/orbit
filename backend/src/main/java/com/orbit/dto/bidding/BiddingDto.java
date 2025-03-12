@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.entity.bidding.Bidding;
+import com.orbit.entity.state.SystemStatus;
 
 import com.orbit.entity.commonCode.SystemStatus;
 import lombok.AllArgsConstructor;
@@ -15,6 +16,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 입찰 공고 응답용 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -171,6 +175,11 @@ public class BiddingDto {
                 .totalParticipations(participationDtos.size())
     
                 .build();
+        
+        // 상태 텍스트 설정
+        dto.setStatusText(dto.getStatusText());
+        
+        return dto;
     }
     
 

@@ -481,6 +481,40 @@ public ResponseEntity<?> createBidding(
     // }
 
     /**
+     * 입찰 상태 변경
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<BiddingDto> changeBiddingStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> statusRequest
+    ) {
+        String status = statusRequest.get("status");
+        String reason = statusRequest.get("reason");
+        
+        log.info("입찰 공고 상태 변경 요청 - ID: {}, 상태: {}, 사유: {}", id, status, reason);
+        
+        BiddingDto updatedBidding = biddingService.changeBiddingStatus(id, status, reason);
+        return ResponseEntity.ok(updatedBidding);
+    }
+    
+    /**
+     * 상태 변경 이력 조회
+     */
+    @GetMapping("/{id}/status-histories")
+    public ResponseEntity<List<StatusHistory>> getBiddingStatusHistories(@PathVariable Long id) {
+        log.info("입찰 공고 상태 변경 이력 조회 요청 - ID: {}", id);
+        
+        try {
+            List<StatusHistory> histories = biddingService.getBiddingStatusHistories(id);
+            return ResponseEntity.ok(histories);
+        } catch (Exception e) {
+            log.error("상태 이력 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList()); // 오류 발생 시 빈 배열 반환
+        }
+    }
+
+    /**
      * 입찰 참여
      */
     @PostMapping("/{biddingId}/participate")
