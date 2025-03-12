@@ -40,4 +40,10 @@ public class ApprovalController {
         List<ApprovalLineResponseDTO> lines = approvalLineService.getApprovalLines(requestId);
         return new ResponseEntity<>(lines, HttpStatus.OK);
     }
+
+    @GetMapping("/eligible-members")
+    public ResponseEntity<List<ApprovalLineResponseDTO>> getEligibleApprovalMembers() {
+        List<ApprovalLineResponseDTO> eligibleMembers = approvalLineService.findEligibleApprovalMembers();
+        return ResponseEntity.ok(eligibleMembers);
+    }
 }
