@@ -1,22 +1,40 @@
 package com.orbit.service.procurement;
 
+import com.orbit.dto.procurement.ProjectAttachmentDTO;
 import com.orbit.dto.procurement.ProjectRequestDTO;
 import com.orbit.dto.procurement.ProjectResponseDTO;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.project.Project;
+import com.orbit.entity.project.ProjectAttachment;
 import com.orbit.exception.ProjectNotFoundException;
+import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
+import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.procurement.ProjectAttachmentRepository;
 import com.orbit.repository.procurement.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
@@ -24,6 +42,11 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ParentCodeRepository parentCodeRepository;
     private final ChildCodeRepository childCodeRepository;
+    private final ProjectAttachmentRepository projectAttachmentRepository;
+    private final MemberRepository memberRepository;
+
+    @Value("${uploadPath}")
+    private String uploadPath;
 
     /**
      * 모든 프로젝트 조회
@@ -52,16 +75,22 @@ public class ProjectService {
     public ProjectResponseDTO createProject(ProjectRequestDTO dto, String currentUserName) {
         Project project = convertToEntity(dto);
 
-        // 1. 상태 코드 설정 (메서드 분리)
+        // 1. 상태 코드 설정
         setProjectStatusCodes(project, dto.getBasicStatus(), dto.getProcurementStatus());
 
-        // 2. 프로젝트 생성자 설정 (예시)
-        // Member creator = memberRepository.findByUsername(currentUserName)
-        //        .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
-        // project.setCreator(creator);
+        // 2. 프로젝트 생성자 설정
+        Member creator = memberRepository.findByUsername(currentUserName)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
+        project.setRequester(creator);
 
         // 3. 프로젝트 저장
         Project savedProject = projectRepository.save(project);
+
+        // 4. 첨부파일 처리
+        if (dto.getFiles() != null && dto.getFiles().length > 0) {
+            processAttachments(savedProject, dto.getFiles(), creator);
+        }
+
         return convertToDto(savedProject);
     }
 
@@ -74,13 +103,20 @@ public class ProjectService {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
 
-        // 2. 프로젝트 업데이트 (메서드 분리)
+        // 2. 프로젝트 업데이트
         updateProjectDetails(project, dto);
 
-        // 3. 상태 코드 업데이트 (메서드 분리)
+        // 3. 상태 코드 업데이트
         setProjectStatusCodes(project, dto.getBasicStatus(), dto.getProcurementStatus());
 
-        // 4. 저장 후 DTO 반환
+        // 4. 첨부파일 처리
+        if (dto.getFiles() != null && dto.getFiles().length > 0) {
+            Member updater = memberRepository.findByUsername(dto.getUpdatedBy())
+                    .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
+            processAttachments(project, dto.getFiles(), updater);
+        }
+
+        // 5. 저장 후 DTO 반환
         Project updatedProject = projectRepository.save(project);
         return convertToDto(updatedProject);
     }
@@ -96,6 +132,90 @@ public class ProjectService {
 
         // 2. 삭제
         projectRepository.delete(project);
+    }
+
+    /**
+     * 첨부파일 추가
+     */
+    @Transactional
+    public ProjectResponseDTO addAttachmentsToProject(Long id, MultipartFile[] files, String username) {
+        // 1. 프로젝트 조회
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
+
+        // 2. 사용자 조회
+        Member uploader = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
+
+        // 3. 첨부파일 처리
+        processAttachments(project, files, uploader);
+
+        // 4. DTO 반환
+        return convertToDto(project);
+    }
+
+    /**
+     * 첨부파일 다운로드
+     */
+    public Resource downloadAttachment(Long attachmentId) {
+        // 1. 첨부파일 조회
+        ProjectAttachment attachment = projectAttachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("ID " + attachmentId + "에 해당하는 첨부파일이 없습니다."));
+
+        // 2. 파일 경로 확인 및 Resource 생성
+        Path file = Paths.get(uploadPath).resolve(attachment.getFilePath());
+        Resource resource = new FileSystemResource(file);
+
+        if (!resource.exists() || !resource.isReadable()) {
+            throw new ResourceNotFoundException("파일을 다운로드할 수 없습니다: " + attachment.getOriginalFilename());
+        }
+
+        return resource;
+    }
+
+    /**
+     * 첨부파일 처리
+     */
+    private void processAttachments(Project project, MultipartFile[] files, Member uploader) {
+        if (files == null || files.length == 0) return;
+
+        try {
+            Path baseDir = Paths.get(uploadPath).toAbsolutePath();
+            String subDir = "project_" + project.getId();
+            Path targetDir = baseDir.resolve(subDir);
+            Files.createDirectories(targetDir);
+
+            for (MultipartFile file : files) {
+                String fileName = StringUtils.cleanPath(file.getOriginalFilename()).replaceAll("[^a-zA-Z0-9.-]", "_");
+                String uniqueFileName = System.currentTimeMillis() + "_" + fileName;
+                Path targetPath = targetDir.resolve(uniqueFileName);
+                Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+                String relativePath = Paths.get(subDir, uniqueFileName).toString().replace("\\", "/");
+
+                // 파일 확장자 추출
+                String fileExtension = null;
+                if (fileName.contains(".")) {
+                    fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1);
+                }
+
+                ProjectAttachment attachment = ProjectAttachment.builder()
+                        .originalFilename(fileName)
+                        .storedFilename(uniqueFileName)
+                        .filePath(relativePath)
+                        .fileSize(file.getSize())
+                        .fileExtension(fileExtension)
+                        .project(project)
+                        .uploadedBy(uploader)
+                        .uploadedAt(LocalDateTime.now())
+                        .build();
+
+                projectAttachmentRepository.save(attachment);
+                project.addAttachment(attachment);
+            }
+        } catch (IOException e) {
+            log.error("파일 저장 실패: {}", e.getMessage(), e);
+            throw new RuntimeException("파일 처리 중 오류 발생", e);
+        }
     }
 
     /**
@@ -148,8 +268,11 @@ public class ProjectService {
         project.setTotalBudget(dto.getTotalBudget());
         project.setClientCompany(dto.getClientCompany());
         project.setContractType(dto.getContractType());
+        project.setRequestDepartment(dto.getRequestDepartment());
+        project.setBudgetCode(dto.getBudgetCode());
+        project.setRemarks(dto.getRemarks());
 
-        // 프로젝트 기간 업데이트 (Project 내부에 정의된 클래스 활용)
+        // 프로젝트 기간 업데이트
         Project.ProjectPeriod projectPeriod = project.getProjectPeriod();
         if (projectPeriod == null) {
             projectPeriod = new Project.ProjectPeriod();
@@ -169,6 +292,9 @@ public class ProjectService {
                 .totalBudget(dto.getTotalBudget())
                 .clientCompany(dto.getClientCompany())
                 .contractType(dto.getContractType())
+                .requestDepartment(dto.getRequestDepartment())
+                .budgetCode(dto.getBudgetCode())
+                .remarks(dto.getRemarks())
                 .build();
 
         // ProjectPeriod 설정
@@ -194,17 +320,31 @@ public class ProjectService {
         dto.setTotalBudget(project.getTotalBudget());
         dto.setClientCompany(project.getClientCompany());
         dto.setContractType(project.getContractType());
+        dto.setRequestDepartment(project.getRequestDepartment());
+        dto.setBudgetCode(project.getBudgetCode());
+        dto.setRemarks(project.getRemarks());
 
-        // 상태 코드 설정 (메서드 분리)
+        // 요청자 설정
+        if (project.getRequester() != null) {
+            dto.setRequesterName(project.getRequester().getUsername());
+        }
+
+        // 상태 코드 설정
         setDtoStatusCodes(project, dto);
 
-        // 프로젝트 기간 설정 (ProjectResponseDTO 내부에 정의된 클래스 활용)
+        // 프로젝트 기간 설정
         ProjectResponseDTO.PeriodInfo periodInfo = new ProjectResponseDTO.PeriodInfo();
         if (project.getProjectPeriod() != null) {
             periodInfo.setStartDate(project.getProjectPeriod().getStartDate());
             periodInfo.setEndDate(project.getProjectPeriod().getEndDate());
         }
         dto.setProjectPeriod(periodInfo);
+
+        // 첨부파일 설정
+        List<ProjectAttachmentDTO> attachmentDTOs = project.getAttachments().stream()
+                .map(this::convertAttachmentToDto)
+                .collect(Collectors.toList());
+        dto.setAttachments(attachmentDTOs);
 
         return dto;
     }
@@ -230,5 +370,20 @@ public class ProjectService {
                             project.getProcurementStatusChild().getCodeValue()
             );
         }
+    }
+
+    /**
+     * 첨부파일 엔티티 -> DTO 변환
+     */
+    private ProjectAttachmentDTO convertAttachmentToDto(ProjectAttachment attachment) {
+        return ProjectAttachmentDTO.builder()
+                .id(attachment.getId())
+                .fileName(attachment.getOriginalFilename())
+                .fileSize(attachment.getFileSize())
+                .fileExtension(attachment.getFileExtension())
+                .uploadedBy(attachment.getUploadedBy() != null ? attachment.getUploadedBy().getUsername() : null)
+                .uploadedAt(attachment.getUploadedAt())
+                .description(attachment.getDescription())
+                .build();
     }
 }
