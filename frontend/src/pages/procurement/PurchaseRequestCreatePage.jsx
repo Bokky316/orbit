@@ -250,39 +250,6 @@ function PurchaseRequestCreatePage() {
         }
     }, [selectedCategory, availableItems]);
 
-    // 부서 선택 시 해당 부서의 멤버 필터링
-    // 부서 선택 시 해당 부서의 멤버 조회
-    useEffect(() => {
-        if (selectedDepartment) {
-            const fetchDepartmentMembers = async () => {
-                try {
-                    const response = await fetchWithAuth(`${API_URL}organization/members/department/${selectedDepartment.id}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        setDepartmentMembers(data);
-                    } else {
-                        console.error('부서 멤버를 가져오는데 실패했습니다.');
-                    }
-                } catch (error) {
-                    console.error('부서 멤버 조회 중 오류 발생:', error);
-                }
-            };
-
-            fetchDepartmentMembers();
-        } else {
-            setDepartmentMembers([]);
-        }
-    }, [selectedDepartment]);
-
-    // 담당자 변경 시 전화번호 자동 설정
-    useEffect(() => {
-        if (selectedManager && selectedManager.contactNumber) {
-            setManagerPhoneNumber(selectedManager.contactNumber.replace(/[^0-9]/g, ''));
-        } else {
-            setManagerPhoneNumber('');
-        }
-    }, [selectedManager]);
-
     // 결재선 설정 완료 핸들러
     const handleApprovalSetupComplete = (setupData) => {
         setShowApprovalSetup(false);
