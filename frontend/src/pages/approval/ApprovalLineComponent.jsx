@@ -70,6 +70,7 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
  };
 
   // 결재선 정보 조회
+  // 결재선 정보 조회
   useEffect(() => {
     if (!purchaseRequestId) return;
 
@@ -90,18 +91,21 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
           line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING'
         );
 
-        // 현재 사용자의 결재 항목 찾기
+        // 현재 사용자의 결재 항목 찾기 (모든 상태 포함)
         if (currentUserId) {
+          // 기존 로직 대신 새로운 로직 추가
           const userApprovalLine = data.find(line =>
-            line.approverId === currentUserId &&
-            (line.statusCode === 'REQUESTED' || line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING')
+            String(line.approverId) === String(currentUserId)
           );
-          setCurrentUserApprovalLine(userApprovalLine);
-        }
 
-        // 활성 단계 설정
-        if (currentStepIndex !== -1) {
-          setActiveStep(currentStepIndex);
+          console.log('찾은 사용자 결재 라인:', userApprovalLine);
+
+          setCurrentUserApprovalLine(userApprovalLine);
+
+          // 활성 단계 설정
+          if (currentStepIndex !== -1) {
+            setActiveStep(currentStepIndex);
+          }
         }
 
         setLoading(false);
@@ -113,7 +117,7 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
     };
 
     fetchApprovalLines();
-  }, [purchaseRequestId, currentUserId]);
+  }, [purchaseRequestId, currentUserId, user]);
 
   // 결재 처리 함수
   const handleProcessApproval = async (action) => {
