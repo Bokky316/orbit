@@ -16,6 +16,8 @@ import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -140,7 +142,8 @@ public class ApprovalLineService {
     // 결재선 조회
     @Transactional(readOnly = true)
     public List<ApprovalLineResponseDTO> getApprovalLines(Long requestId) {
-        return approvalLineRepo.findByPurchaseRequestIdOrderByStepAsc(requestId)
+        // findAllByRequestId를 사용하여 모든 결재선을 단계 순서대로 조회
+        return approvalLineRepo.findAllByRequestId(requestId)
                 .stream()
                 .map(this::convertToDTO)
                 .toList();
@@ -150,6 +153,7 @@ public class ApprovalLineService {
     private ApprovalLineResponseDTO convertToDTO(ApprovalLine line) {
         return ApprovalLineResponseDTO.builder()
                 .id(line.getId())
+                .purchaseRequestId(line.getPurchaseRequest().getId()) // 추가
                 .approverName(line.getApprover().getName())
                 .department(line.getApprover().getDepartment().getName())
                 .step(line.getStep())
@@ -177,5 +181,74 @@ public class ApprovalLineService {
                         .statusName("결재 가능")
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    // 사용자의 결재 대기 목록 조회
+    @Transactional(readOnly = true)
+    public List<ApprovalLineResponseDTO> getPendingApprovals() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        return approvalLineRepo.findPendingApprovalsByUsername(currentUsername)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // 사용자의 완료된 결재 목록 조회
+    @Transactional(readOnly = true)
+    public List<ApprovalLineResponseDTO> getCompletedApprovals() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        return approvalLineRepo.findCompletedApprovalsByUsername(currentUsername)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // 알림 전송 메서드 개선
+    private void sendApprovalNotification(ApprovalLine line) {
+        // 실제 알림 로직 (다양한 채널 지원)
+        log.info("결재 알림 전송: 요청 ID {}, 결재자 {}",
+                line.getPurchaseRequest().getId(),
+                line.getApprover().getName());
+
+        // 이메일 알림
+        sendEmailNotification(line);
+
+        // SMS 알림
+        sendSMSNotification(line);
+
+        // 웹소켓 실시간 알림
+        sendWebSocketNotification(line);
+    }
+
+    private void sendEmailNotification(ApprovalLine line) {
+        try {
+            // 이메일 전송 로직 (JavaMail 또는 외부 서비스 활용)
+            // 결재 대기 알림 이메일 발송
+        } catch (Exception e) {
+            log.error("이메일 알림 전송 중 오류 발생: {}", e.getMessage());
+        }
+    }
+
+    private void sendSMSNotification(ApprovalLine line) {
+        try {
+            // SMS 전송 로직 (외부 SMS 서비스 활용)
+            // 결재 대기 알림 SMS 발송
+        } catch (Exception e) {
+            log.error("SMS 알림 전송 중 오류 발생: {}", e.getMessage());
+        }
+    }
+
+    private void sendWebSocketNotification(ApprovalLine line) {
+        // 실시간 웹소켓 알림
+        ApprovalLineResponseDTO notificationDto = convertToDTO(line);
+        messagingTemplate.convertAndSendToUser(
+                line.getApprover().getUsername(),
+                "/queue/approvals",
+                notificationDto
+        );
     }
 }
