@@ -1,8 +1,10 @@
+
+// 2. PurchaseRequestItemDTO.java 수정 - itemId 타입을 String으로 변경
+
 package com.orbit.dto.procurement;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,12 +16,18 @@ public class PurchaseRequestItemDTO {
 
     private Long id;
 
-    @Size(max = 255, message = "품목명은 최대 255자까지 입력 가능합니다.")
+    // itemId 타입을 String으로 변경 (UUID 대응)
+    private String itemId; // Item ID
+
     private String itemName;
 
-    private String specification;
+    private String categoryName; // 카테고리명 추가
 
-    private String unit;
+    private String unitParentCode; // 단위 부모 코드
+
+    private String unitChildCode; // 단위 자식 코드
+
+    private String specification;
 
     @Positive(message = "수량은 0보다 커야 합니다.")
     private Integer quantity;

@@ -4,6 +4,7 @@ import com.orbit.entity.member.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -51,4 +52,12 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
     @Query("SELECT m FROM Member m WHERE m.department.name = :departmentName " +
             "ORDER BY m.id ASC")
     Optional<Member> findAvailableInspector(String departmentName);
+
+    /**
+     * 결재 가능한 사용자 조회 (직급 레벨 3 이상)
+     * @return 결재 가능한 사용자 리스트
+     */
+        @Query("SELECT m FROM Member m JOIN m.position p WHERE p.level >= :level")
+        List<Member> findByPositionLevelGreaterThanEqual(@Param("level") int level);
 }
+
