@@ -44,6 +44,8 @@ function ProjectDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // src/pages/procurement/ProjectDetailPage.jsx의 useEffect 부분 수정
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -51,21 +53,38 @@ function ProjectDetailPage() {
                 const projectRes = await fetchWithAuth(`${API_URL}projects/${id}`);
                 if (!projectRes.ok) throw new Error('프로젝트 조회 실패');
                 const projectData = await projectRes.json();
-
-                // 2. 연관 구매 요청 조회
-                const prRes = await fetchWithAuth(
-                    `${API_URL}purchase-requests?projectId=${projectData.id}`
-                );
-                if (!prRes.ok) throw new Error('구매 요청 조회 실패');
-
                 setProject(projectData);
-                setPurchaseRequests(await prRes.json());
+
+                console.log('프로젝트 정보:', projectData);
+
+                // 2. 모든 구매 요청을 가져와서 클라이언트에서 필터링
+                const allPrRes = await fetchWithAuth(`${API_URL}purchase-requests`);
+                if (!allPrRes.ok) throw new Error('구매 요청 조회 실패');
+
+                const allRequests = await allPrRes.json();
+                console.log('모든 구매 요청 데이터:', allRequests);
+
+                if (Array.isArray(allRequests)) {
+                    // 현재 프로젝트 ID와 일치하는 요청만 필터링
+                    const filteredRequests = allRequests.filter(req => {
+                        // projectId를 문자열로 변환하여 비교 (숫자와 문자열 타입을 모두 처리)
+                        return req.projectId && req.projectId.toString() === id.toString();
+                    });
+
+                    console.log(`총 ${allRequests.length}개의 구매 요청 중 ${filteredRequests.length}개가 프로젝트 ID(${id})와 일치합니다.`);
+                    setPurchaseRequests(filteredRequests);
+                } else {
+                    console.warn('API가 배열을 반환하지 않음:', allRequests);
+                    setPurchaseRequests([]);
+                }
             } catch (err) {
+                console.error('데이터 로드 오류:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
             }
         };
+
         fetchData();
     }, [id]);
 

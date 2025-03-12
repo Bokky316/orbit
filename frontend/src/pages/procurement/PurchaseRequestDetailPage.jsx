@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Paper, Button, Link, Chip,
-    Grid, List, ListItem, ListItemText, Divider, Alert
+    Grid, List, ListItem, ListItemText, Divider, Alert,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
 import moment from 'moment';
+import { AttachFile as AttachFileIcon } from '@mui/icons-material';
 
 const PurchaseRequestDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [request, setRequest] = useState(null);
+    const [project, setProject] = useState(null); // 프로젝트 정보 상태 추가
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -19,6 +22,7 @@ const PurchaseRequestDetailPage = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
+                // 1. 구매 요청 데이터 가져오기
                 const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -27,9 +31,6 @@ const PurchaseRequestDetailPage = () => {
 
                 const data = await response.json();
                 console.log('API 응답 데이터:', data);
-                console.log('비즈니스 타입:', data.businessType);
-                console.log('items 존재 여부:', data.hasOwnProperty('items'));
-                console.log('items 내용:', data.items);
 
                 // 만약 GOODS 타입인데 items가 없으면 빈 배열로 초기화
                 if (data.businessType === 'GOODS' && !Array.isArray(data.items)) {
@@ -38,6 +39,18 @@ const PurchaseRequestDetailPage = () => {
                 }
 
                 setRequest(data);
+
+                // 2. 프로젝트 ID가 있으면 프로젝트 정보 가져오기
+                if (data.projectId) {
+                    const projectResponse = await fetchWithAuth(`${API_URL}projects/${data.projectId}`);
+                    if (projectResponse.ok) {
+                        const projectData = await projectResponse.json();
+                        setProject(projectData);
+                    } else {
+                        console.warn('프로젝트 정보를 가져오는데 실패했습니다.');
+                    }
+                }
+
                 setError(null);
             } catch (error) {
                 console.error('Error:', error);
@@ -141,6 +154,47 @@ const PurchaseRequestDetailPage = () => {
                 <Chip label={request.prStatusChild} color={statusColor} variant="outlined" />
             </Box>
 
+            {/* 관련 프로젝트 정보 (새로 추가) */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>관련 프로젝트 정보</Typography>
+                {project ? (
+                    <Grid container spacing={2}>
+                        <Grid item xs={4}>
+                            <Typography><strong>프로젝트명:</strong> {project.projectName}</Typography>
+                            <Typography>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{ mt: 1 }}
+                                    onClick={() => navigate(`/projects/${project.id}`)}
+                                >
+                                    프로젝트 상세보기
+                                </Button>
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Typography><strong>고객사:</strong> {project.clientCompany || '정보 없음'}</Typography>
+                            <Typography><strong>계약 유형:</strong> {project.contractType || '정보 없음'}</Typography>
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Typography><strong>기간:</strong> {
+                                project.projectPeriod ?
+                                `${moment(project.projectPeriod.startDate).format('YYYY-MM-DD')} ~
+                                ${moment(project.projectPeriod.endDate).format('YYYY-MM-DD')}` :
+                                '정보 없음'
+                            }</Typography>
+                            <Typography><strong>예산:</strong> {
+                                project.totalBudget ?
+                                `${project.totalBudget.toLocaleString()}원` :
+                                '정보 없음'
+                            }</Typography>
+                        </Grid>
+                    </Grid>
+                ) : (
+                    <Typography color="text.secondary">관련 프로젝트 정보가 없습니다.</Typography>
+                )}
+            </Paper>
+
             {/* 기본 정보 */}
             <Paper sx={{ p: 3, mb: 3 }}>
                 <Typography variant="h6" gutterBottom>기본 정보</Typography>
@@ -158,6 +212,19 @@ const PurchaseRequestDetailPage = () => {
                     <Grid item xs={4}>
                         <Typography><strong>예산:</strong> {request.businessBudget ? `${request.businessBudget.toLocaleString()}원` : '정보 없음'}</Typography>
                         <Typography><strong>연락처:</strong> {request.managerPhoneNumber || '정보 없음'}</Typography>
+                    </Grid>
+                </Grid>
+            </Paper>
+
+            {/* 요청자 정보 추가 */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>요청자 정보</Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                        <Typography><strong>요청자:</strong> {request.memberName || '정보 없음'}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                        <Typography><strong>소속:</strong> {request.memberCompany || '정보 없음'}</Typography>
                     </Grid>
                 </Grid>
             </Paper>
@@ -259,7 +326,8 @@ const PurchaseRequestDetailPage = () => {
                                onClick={() => downloadFile(attachment)}
                                sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                              >
-                               📎 {attachment.fileName || '파일명 없음'}
+                               <AttachFileIcon sx={{ mr: 1 }} />
+                               {attachment.fileName || '파일명 없음'}
                                <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
                                  ({Math.round((attachment.fileSize || 0) / 1024)}KB)
                                </Typography>
