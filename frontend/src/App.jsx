@@ -41,6 +41,9 @@ import CategoryListPage from "@pages/item/CategoryListPage";
 import CategoryFormPage from "@pages/item/CategoryFormPage";
 import ItemListPage from "@pages/item/ItemListPage";
 import ItemFormPage from "@pages/item/ItemFormPage";
+import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
