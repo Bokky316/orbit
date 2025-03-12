@@ -38,11 +38,20 @@ public class SupplierRegistrationResponseDto {
 
     private String sourcingSubCategory; // 소싱중분류
 
+    private String sourcingDetailCategory; // 소싱소분류 추가
+
     private String phoneNumber; // 전화번호
 
     private String headOfficeAddress; // 본사 주소
 
     private String comments; // 의견
+
+    // 담당자 관련 필드 추가
+    private String contactPerson; // 담당자 이름
+
+    private String contactPhone; // 담당자 연락처
+
+    private String contactEmail; // 담당자 이메일
 
     // 첨부 파일 목록 추가
     private List<SupplierAttachmentDto> attachments;
@@ -79,9 +88,13 @@ public class SupplierRegistrationResponseDto {
                 supplierRegistration.getBusinessType(),
                 supplierRegistration.getSourcingCategory(),
                 supplierRegistration.getSourcingSubCategory(),
+                supplierRegistration.getSourcingDetailCategory(),
                 supplierRegistration.getPhoneNumber(),
                 supplierRegistration.getHeadOfficeAddress(),
                 supplierRegistration.getComments(),
+                supplierRegistration.getContactPerson(),  // 담당자 이름 추가
+                supplierRegistration.getContactPhone(),   // 담당자 연락처 추가
+                supplierRegistration.getContactEmail(),   // 담당자 이메일 추가
                 new ArrayList<>()
         );
 

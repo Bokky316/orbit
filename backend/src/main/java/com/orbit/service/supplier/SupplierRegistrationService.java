@@ -90,11 +90,17 @@ public class SupplierRegistrationService {
         registration.setBusinessCategory(requestDto.getBusinessCategory());
         registration.setSourcingCategory(requestDto.getSourcingCategory());
         registration.setSourcingSubCategory(requestDto.getSourcingSubCategory());
+        registration.setSourcingDetailCategory(requestDto.getSourcingDetailCategory());
         registration.setPhoneNumber(requestDto.getPhoneNumber());
         registration.setHeadOfficeAddress(requestDto.getHeadOfficeAddress());
         registration.setComments(requestDto.getComments());
         registration.setStatus(new SystemStatus("SUPPLIER", "PENDING"));
         registration.setRegistrationDate(LocalDate.now());
+
+        // 담당자 정보 설정
+        registration.setContactPerson(requestDto.getContactPerson());
+        registration.setContactPhone(requestDto.getContactPhone());
+        registration.setContactEmail(requestDto.getContactEmail());
 
         // 저장
         SupplierRegistration savedRegistration = supplierRegistrationRepository.save(registration);

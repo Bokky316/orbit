@@ -61,6 +61,9 @@ public class SupplierRegistration {
     @Column(name = "sourcing_sub_category", length = 100)
     private String sourcingSubCategory; // 소싱중분류
 
+    @Column(name = "sourcing_detail_category", length = 100)
+    private String sourcingDetailCategory; // 소싱소분류 추가
+
     @Column(name = "phone_number", length = 20)
     private String phoneNumber; // 전화번호
 
@@ -72,6 +75,16 @@ public class SupplierRegistration {
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason; // 거절 사유
+
+    // 담당자 관련 필드 추가
+    @Column(name = "contact_person", length = 100)
+    private String contactPerson; // 담당자 이름
+
+    @Column(name = "contact_phone", length = 20)
+    private String contactPhone; // 담당자 연락처
+
+    @Column(name = "contact_email", length = 100)
+    private String contactEmail; // 담당자 이메일
 
     @Column(name = "created_at", updatable = false)
     @CreationTimestamp

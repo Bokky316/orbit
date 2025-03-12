@@ -394,9 +394,6 @@ const SupplierListPage = () => {
                     {supplier.contactPerson && (
                       <Box>
                         <Typography variant="body2">{supplier.contactPerson}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {supplier.contactPhone || supplier.contactEmail || '-'}
-                        </Typography>
                       </Box>
                     )}
                   </TableCell>
