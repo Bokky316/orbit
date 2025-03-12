@@ -417,6 +417,24 @@ function BiddingFormPage() {
         );
         navigate(`/biddings/${data.id}`);
       }
+
+      console.log("서버 응답 상태:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("서버 에러 응답:", errorText);
+        throw new Error(
+          `HTTP error! Status: ${response.status}, Body: ${
+            errorText || "응답 없음"
+          }`
+        );
+      }
+
+      // 성공 알림
+      alert(`입찰 공고가 ${mode === "create" ? "등록" : "수정"}되었습니다.`);
+
+      // 목록 페이지로 이동
+      navigate("/biddings");
     } catch (error) {
       console.error("입찰 공고 제출 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);

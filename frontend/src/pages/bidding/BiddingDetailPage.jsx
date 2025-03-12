@@ -680,9 +680,7 @@ function BiddingDetailPage() {
             <Typography variant="subtitle2" color="text.secondary">
               입찰 방식
             </Typography>
-            <Typography variant="body1">
-              {getBidMethodText(bidding.bidMethod)}
-            </Typography>
+            <Typography variant="body1">{bidding.bidMethod}</Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="subtitle2" color="text.secondary">
@@ -789,6 +787,27 @@ function BiddingDetailPage() {
           {bidding.conditions || "입찰 조건이 없습니다."}
         </Typography>
       </Paper>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          첨부 파일
+        </Typography>
+        {bidding.filePath ? (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="body1">{bidding.filePath}</Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => handleFileDownload(bidding.filePath)}
+              startIcon={<DownloadIcon />}>
+              다운로드
+            </Button>
+          </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            첨부된 파일이 없습니다.
+          </Typography>
+        )}
+      </Paper>
 
       {/* 첨부 파일 */}
       <Paper sx={{ p: 3, mb: 3 }}>
@@ -890,6 +909,49 @@ function BiddingDetailPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 4
+                  }}>
+                  <Typography variant="h4">입찰 공고 상세</Typography>
+                  <Box>
+                    <Button
+                      variant="outlined"
+                      onClick={handleOpenStatusChange}
+                      sx={{ mr: 1 }}>
+                      상태 변경
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      onClick={handleVendorSelection}
+                      sx={{ mr: 1 }}>
+                      공급자 선정
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleBack}
+                      sx={{ mr: 1 }}>
+                      목록으로
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleEdit}
+                      sx={{ mr: 1 }}>
+                      수정
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={handleDelete}>
+                      삭제
+                    </Button>
+                  </Box>
+                </Box>
                 {participations.map((participation) => (
                   <TableRow key={participation.id}>
                     <TableCell>

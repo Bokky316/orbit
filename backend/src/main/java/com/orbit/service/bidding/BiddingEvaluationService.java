@@ -1,5 +1,7 @@
 package com.orbit.service.bidding;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,8 +39,8 @@ public class BiddingEvaluationService {
     public List<BiddingEvaluationDto> getAllEvaluations() {
         List<BiddingEvaluation> evaluations = evaluationRepository.findAll();
         return evaluations.stream()
-                .map(BiddingEvaluationDto::fromEntity)
-                .collect(Collectors.toList());
+            .map(BiddingEvaluationDto::fromEntity)
+            .collect(Collectors.toList());
     }
     
     /**

@@ -99,6 +99,9 @@ public class BiddingOrder extends BaseEntity {
     private LocalDate expectedDeliveryDate; // 예상 납품일
     
     private LocalDateTime approvedAt; // 승인 일시
+
+    @Column(name = "evaluation_id")
+    private Long evaluationId; // 평가 ID
     
     @Column(name = "approval_by_id")
     private Long approvalById; // 승인자 ID
