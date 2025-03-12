@@ -28,6 +28,19 @@ public class Department {
     @Column(length = 200)
     private String description;
 
+    // 직급 레벨 관련 필드 추가
+    @Column(nullable = false)
+    private int teamLeaderLevel;
+
+    @Column(nullable = false)
+    private int middleManagerLevel;
+
+    @Column(nullable = false)
+    private int upperManagerLevel;
+
+    @Column(nullable = false)
+    private int executiveLevel;
+
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL)
     @Builder.Default
     private List<Member> members = new ArrayList<>();

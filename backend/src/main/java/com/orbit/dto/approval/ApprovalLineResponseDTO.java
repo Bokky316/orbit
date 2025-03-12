@@ -11,7 +11,8 @@ import java.time.LocalDateTime;
 public class ApprovalLineResponseDTO {
     private Long id;
     private Long purchaseRequestId;
-    private String approverName;
+    private Long approverId;       // 결재자 ID
+    private String approverName;   // 결재자 이름
     private String department;
     private Integer step;
 
