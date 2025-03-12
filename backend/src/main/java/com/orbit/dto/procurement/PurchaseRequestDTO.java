@@ -35,6 +35,9 @@ public abstract class PurchaseRequestDTO {
     // 문자열 타입으로 프로젝트 ID 추가
     private String projectId; // 프로젝트 ID (UUID 형식)
 
+    // 프로젝트 이름 추가 (응답용)
+    private String projectName;
+
     private String requestName; // 요청명
 
     private String requestNumber; // 요청 번호
@@ -59,6 +62,11 @@ public abstract class PurchaseRequestDTO {
     private String managerPhoneNumber; // 담당자 핸드폰 번호
 
     private String projectContent; // 사업 내용
+
+    // 사용자 정보 (응답용 필드)
+    private Long memberId; // 요청자 ID
+    private String memberName; // 요청자 이름
+    private String memberCompany; // 요청자 회사
 
     // 응답용 필드 추가
     private List<PurchaseRequestAttachmentDTO> attachments; // 첨부 파일 목록

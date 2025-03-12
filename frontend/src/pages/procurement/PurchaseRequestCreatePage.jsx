@@ -36,6 +36,9 @@ function PurchaseRequestCreatePage() {
     const loading = useSelector(state => state.purchaseRequest.loading);
     const error = useSelector(state => state.purchaseRequest.error);
 
+    // 현재 로그인한 사용자 정보 가져오기
+    const { user } = useSelector(state => state.auth);
+
     // 프로젝트 목록 상태
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -190,6 +193,11 @@ function PurchaseRequestCreatePage() {
             managerPhoneNumber: managerPhoneNumber || '01044737122',
             // UUID 문자열을 그대로 전송 (숫자로 변환하지 않음)
             projectId: selectedProjectId,
+
+            // 현재 로그인한 사용자 정보 추가
+            memberId: user?.id,
+            memberName: user?.name,
+            memberCompany: user?.companyName,
 
             // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
             prStatusParent: 'PURCHASE_REQUEST',
