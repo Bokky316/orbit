@@ -890,7 +890,30 @@ function BiddingFormPage() {
         <CircularProgress />
       </Box>
     );
-  }
+  };
+
+  // 파일 첨부 input 수정
+  const renderFileUploadInput = () => (
+    <>
+      <input
+        type="file"
+        multiple
+        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+        onChange={handleFileChange}
+        id="contained-button-file"
+        style={{ display: "none" }}
+      />
+      <label htmlFor="contained-button-file">
+        <Button
+          variant="contained"
+          component="span"
+          startIcon={<AttachFileIcon />}
+          disabled={mode === "edit"}>
+          파일 첨부
+        </Button>
+      </label>
+    </>
+  );
 
   return (
     <Box sx={{ p: 4 }}>
@@ -949,7 +972,6 @@ function BiddingFormPage() {
                 margin="normal"
               />
             </Grid>
-
             {/* 공급자 선택 */}
             <Grid item xs={12}>
               <Typography variant="subtitle1" gutterBottom>
@@ -1018,7 +1040,6 @@ function BiddingFormPage() {
                 공급자 선택
               </Button>
             </Grid>
-
             {/* 입찰 정보 */}
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth margin="normal">

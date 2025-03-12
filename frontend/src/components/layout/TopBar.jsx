@@ -35,12 +35,13 @@ function TopBar() {
       { label: "입찰공고리스트", path: "/biddings" },
       { label: "협력사평가리스트", path: "/biddings/evaluations" }
     ],
-    "/contracts": [{ label: "계약리스트", path: "/contracts" }],
-    "/orders": [{ label: "발주리스트", path: "/orders" }],
-    "/deliveries": [{ label: "입고리스트", path: "/deliveries" }],
-    "/invoices": [{ label: "송장리스트", path: "/invoices" }],
-    "/payments": [{ label: "자금관리", path: "/payments" }],
-    "/chart": [{ label: "통계대시보드", path: "/chart" }],
+    "/biddings/contracts": [
+      { label: "계약리스트", path: "/biddings/contracts" }
+    ],
+    "/orders": [{ label: "발주리스트", path: "/orders/list" }],
+    "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
+    "/funds": [{ label: "자금리스트", path: "/funds/list" }],
+    "/reports": [{ label: "보고서리스트", path: "/reports/list" }],
     "/system": [
       { label: "공통 코드 관리", path: "/common-codes" },
       { label: "기타 설정", path: "/system/settings" }
