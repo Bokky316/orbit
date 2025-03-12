@@ -290,7 +290,8 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
       </TableContainer>
 
       {/* 현재 사용자의 결재 처리 폼 */}
-      {currentUserApprovalLine && (
+      {currentUserApprovalLine && currentUserApprovalLine.statusCode !== 'APPROVED' && (
+        // 현재 사용자의 결재 처리 폼
         <Box sx={{ mt: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
           <Typography variant="subtitle1" gutterBottom>결재 처리</Typography>
           <TextField
