@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Paper, TextField, Button, Grid, Alert,
     IconButton, List, ListItem, ListItemAvatar, ListItemText,
-    Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem
+    Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem,
+    Chip, Divider
 } from '@mui/material';
 import { Delete as DeleteIcon, AttachFile as AttachFileIcon, Add as AddIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -13,7 +14,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
-import { fetchItems, fetchCategories } from '@/redux/purchaseRequestSlice'; // Redux 액션 추가
+import { fetchItems, fetchCategories } from '@/redux/purchaseRequestSlice';
+import ApprovalLineSetupComponent from '@/pages/approval/ApprovalLineSetupComponent';
 
 const initItem = {
     itemId: '',
@@ -42,6 +44,10 @@ function PurchaseRequestCreatePage() {
     // 프로젝트 목록 상태
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
+
+    // 결재선 상태
+    const [showApprovalSetup, setShowApprovalSetup] = useState(false);
+    const [approvalLines, setApprovalLines] = useState([]);
 
     // 공통 필드 상태
     const [businessType, setBusinessType] = useState('');
@@ -114,6 +120,26 @@ function PurchaseRequestCreatePage() {
             setFilteredItems(availableItems);
         }
     }, [selectedCategory, availableItems]);
+
+    // 결재선 설정 완료 핸들러
+    const handleApprovalSetupComplete = (setupData) => {
+        setShowApprovalSetup(false);
+
+        // 현재 API 구조에 맞춰 데이터 처리
+        const formattedLines = setupData.map(line => ({
+            id: line.id,
+            approverName: line.approverName,
+            department: line.department,
+            step: line.step
+        }));
+
+        setApprovalLines(formattedLines);
+    };
+
+    // 결재선 설정 취소 핸들러
+    const handleCancelApprovalSetup = () => {
+        setShowApprovalSetup(false);
+    };
 
     // 품목 필드 변경 핸들러
     const handleItemChange = (index, fieldName, value) => {
@@ -701,6 +727,45 @@ function PurchaseRequestCreatePage() {
                             )}
                         </Grid>
 
+                        {/* 결재선 설정 섹션 */}
+                        <Grid item xs={12} sx={{ mt: 3 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="subtitle1">결재선 설정</Typography>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<AddIcon />}
+                                    onClick={() => setShowApprovalSetup(true)}
+                                >
+                                    결재선 추가
+                                </Button>
+                            </Box>
+
+                            {/* 설정된 결재선 미리보기 */}
+                            {approvalLines.length > 0 && (
+                                <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                                    <Grid container spacing={2}>
+                                        {approvalLines.map((line, index) => (
+                                            <Grid item key={line.id}>
+                                                <Chip
+                                                    label={`${index + 1}. ${line.approverName}`}
+                                                    variant="outlined"
+                                                />
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Paper>
+                            )}
+                        </Grid>
+
+                        {/* 결재선 설정 컴포넌트 */}
+                        {showApprovalSetup && (
+                            <ApprovalLineSetupComponent
+                                purchaseRequestId={null}
+                                onSetupComplete={handleApprovalSetupComplete}
+                                onCancel={handleCancelApprovalSetup}
+                            />
+                        )}
+
                         {/* 제출 버튼 */}
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>
                             <Button
@@ -713,7 +778,6 @@ function PurchaseRequestCreatePage() {
                                 제출하기
                             </Button>
                         </Grid>
-
                     </Grid>
                 </Paper>
             </Box>
