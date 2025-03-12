@@ -33,6 +33,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Inspection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,8 +43,20 @@ public class Inspection {
     @Column(name = "contract_id", nullable = false)
     private Long contractId; // 연결된 계약 ID
 
-    @Column(name = "inspector_id", nullable = false)
-    private Long inspectorId; // 검수자 ID
+    @Column(name = "transaction_number", nullable = false, unique = true, length = 50)
+    private String transactionNumber; // 계약 번호
+
+    @Column(name = "supplier_name", nullable = false)
+    private String supplierName; // 공급업체명
+
+    @Column(name = "item_name", nullable = false)
+    private String itemName; // 품목명
+
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity; // 계약된 품목 수량
+
+    @Column(name = "inspector_id")
+    private Long inspectorId; // 검수자 ID (자동 배정)
 
     @Column(name = "inspection_date")
     private LocalDate inspectionDate; // 검수 수행 날짜
