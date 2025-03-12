@@ -42,6 +42,7 @@ import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetail
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
 import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
 import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
 import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
@@ -94,6 +95,7 @@ function AppContent() {
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
+              <Route path="/approval-management" element={<ApprovalManagementPage />} /> {/* 추가 */}
 
               {/* 검수 관리 */}
               <Route path="/inspections" element={<InspectionsListPage />} />

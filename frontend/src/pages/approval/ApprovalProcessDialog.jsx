@@ -24,14 +24,7 @@ import { API_URL } from '@/utils/constants';
  * @param {Function} props.onComplete - 처리 완료 후 콜백 함수
  * @returns {JSX.Element}
  */
-function ApprovalProcessDialog({
-  open,
-  onClose,
-  action,
-  lineId,
-  purchaseRequestId, // 구매 요청 ID 추가 제안
-  onComplete
-}) {
+function ApprovalProcessDialog({ open, onClose, action, lineId, onComplete }) {
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -41,21 +34,16 @@ function ApprovalProcessDialog({
   const buttonText = action === 'APPROVE' ? '승인' : '반려';
   const buttonColor = action === 'APPROVE' ? 'success' : 'error';
 
-  // 코멘트 변경 핸들러
-  const handleCommentChange = (e) => {
-    setComment(e.target.value);
-  };
-
   // 결재 처리 핸들러
   const handleProcess = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // 상태 코드 결정 (백엔드 기준에 맞게 수정)
+      // 상태 코드 결정
       const nextStatusCode = action === 'APPROVE'
-        ? 'APPROVED'  // 상태 코드 수정
-        : 'REJECTED';
+        ? 'APPROVAL-STATUS-APPROVED'
+        : 'APPROVAL-STATUS-REJECTED';
 
       // 결재 처리 API 호출
       const response = await fetchWithAuth(`${API_URL}approvals/${lineId}/process`, {
@@ -74,9 +62,9 @@ function ApprovalProcessDialog({
         throw new Error(`결재 처리 실패: ${response.status}`);
       }
 
-      // 처리 완료 콜백 호출 (액션 전달)
+      // 처리 완료 콜백 호출
       if (onComplete) {
-        onComplete(action);
+        onComplete();
       }
 
       // 대화상자 닫기
@@ -88,16 +76,33 @@ function ApprovalProcessDialog({
     }
   };
 
+  // 댓글 변경 핸들러
+  const handleCommentChange = (e) => {
+    setComment(e.target.value);
+  };
+
+  // 초기화 함수
+  const resetForm = () => {
+    setComment('');
+    setError(null);
+  };
+
+  // 대화상자 닫기 핸들러
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="sm"
       fullWidth
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {dialogTitle}
-        <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">
+        <IconButton edge="end" color="inherit" onClick={handleClose} aria-label="close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -122,7 +127,7 @@ function ApprovalProcessDialog({
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={handleClose} disabled={loading}>
           취소
         </Button>
         <Button

@@ -5,7 +5,7 @@ import {
     Box, Typography, Paper, TextField, Button, Grid, Alert,
     IconButton, List, ListItem, ListItemAvatar, ListItemText,
     Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem,
-    Chip, Divider, Autocomplete
+    Chip, Divider
 } from '@mui/material';
 import { Delete as DeleteIcon, AttachFile as AttachFileIcon, Add as AddIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -44,13 +44,6 @@ function PurchaseRequestCreatePage() {
     // 프로젝트 목록 상태
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
-
-    // 부서 및 담당자 데이터 상태
-    const [departments, setDepartments] = useState([]);
-    const [members, setMembers] = useState([]);
-    const [departmentMembers, setDepartmentMembers] = useState([]);
-    const [selectedDepartment, setSelectedDepartment] = useState(null);
-    const [selectedManager, setSelectedManager] = useState(null);
 
     // 결재선 상태
     const [showApprovalSetup, setShowApprovalSetup] = useState(false);
@@ -166,27 +159,6 @@ function PurchaseRequestCreatePage() {
             setFilteredItems(availableItems);
         }
     }, [selectedCategory, availableItems]);
-
-    // 부서 선택 시 해당 부서의 멤버 필터링
-    useEffect(() => {
-        if (selectedDepartment) {
-            const filtered = members.filter(member =>
-                member.department && member.department.id === selectedDepartment.id
-            );
-            setDepartmentMembers(filtered);
-        } else {
-            setDepartmentMembers([]);
-        }
-    }, [selectedDepartment, members]);
-
-    // 담당자 변경 시 전화번호 자동 설정
-    useEffect(() => {
-        if (selectedManager && selectedManager.contactNumber) {
-            setManagerPhoneNumber(selectedManager.contactNumber.replace(/[^0-9]/g, ''));
-        } else {
-            setManagerPhoneNumber('');
-        }
-    }, [selectedManager]);
 
     // 결재선 설정 완료 핸들러
     const handleApprovalSetupComplete = (setupData) => {
@@ -813,6 +785,45 @@ function PurchaseRequestCreatePage() {
                                 </>
                             )}
                         </Grid>
+
+                        {/* 결재선 설정 섹션 */}
+                        <Grid item xs={12} sx={{ mt: 3 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="subtitle1">결재선 설정</Typography>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<AddIcon />}
+                                    onClick={() => setShowApprovalSetup(true)}
+                                >
+                                    결재선 추가
+                                </Button>
+                            </Box>
+
+                            {/* 설정된 결재선 미리보기 */}
+                            {approvalLines.length > 0 && (
+                                <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                                    <Grid container spacing={2}>
+                                        {approvalLines.map((line, index) => (
+                                            <Grid item key={line.id}>
+                                                <Chip
+                                                    label={`${index + 1}. ${line.approverName}`}
+                                                    variant="outlined"
+                                                />
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Paper>
+                            )}
+                        </Grid>
+
+                        {/* 결재선 설정 컴포넌트 */}
+                        {showApprovalSetup && (
+                            <ApprovalLineSetupComponent
+                                purchaseRequestId={null}
+                                onSetupComplete={handleApprovalSetupComplete}
+                                onCancel={handleCancelApprovalSetup}
+                            />
+                        )}
 
                         {/* 제출 버튼 */}
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>
