@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { Box, Typography, Paper, Stepper, Step, StepLabel, Divider,
+import { Box, Typography, Paper, Stepper, Step, StepLabel, StepContent, Divider,
          Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
          TextField, Button, CircularProgress, Chip } from '@mui/material';
-import { styled, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
 
@@ -15,7 +14,6 @@ const StatusChip = styled(Chip)(({ theme, status }) => {
       case 'REJECTED': return theme.palette.error.main;
       case 'IN_REVIEW': return theme.palette.warning.main;
       case 'PENDING': return theme.palette.info.main;
-      case 'REQUESTED': return theme.palette.primary.main;
       default: return theme.palette.grey[500];
     }
   };
@@ -27,49 +25,22 @@ const StatusChip = styled(Chip)(({ theme, status }) => {
   };
 });
 
-function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSteps = 4 }) {
-  const theme = useTheme();
-  const { user } = useSelector(state => state.auth);
-  const currentUserId = user?.id;
-
+/**
+ * 구매요청 결재선 표시 컴포넌트
+ * @param {Object} props
+ * @param {number} props.purchaseRequestId - 구매요청 ID
+ * @param {string} props.currentUserId - 현재 로그인한 사용자 ID
+ * @param {Function} props.onApprovalComplete - 결재 완료 후 콜백 함수
+ * @returns {JSX.Element}
+ */
+function ApprovalLineComponent({ purchaseRequestId, currentUserId, onApprovalComplete }) {
   const [approvalLines, setApprovalLines] = useState([]);
   const [currentUserApprovalLine, setCurrentUserApprovalLine] = useState(null);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = useState(0); // 현재 활성화된 단계
 
-  // 상태별 색상 및 라벨 결정 함수
- const getStepInfo = (statusCode) => {
-   switch(statusCode) {
-     case 'APPROVED': return {
-       color: theme.palette.success.main,
-       label: '승인완료'
-     };
-     case 'REJECTED': return {
-       color: theme.palette.error.main,
-       label: '반려'
-     };
-     case 'IN_REVIEW': return {
-       color: theme.palette.warning.main,
-       label: '검토중'
-     };
-     case 'PENDING': return {
-       color: theme.palette.info.main,
-       label: '대기중'
-     };
-     case 'REQUESTED': return { // 추가
-       color: theme.palette.primary.main,
-       label: '요청됨'
-     };
-     default: return {
-       color: theme.palette.grey[500],
-       label: '대기중'
-     };
-   }
- };
-
-  // 결재선 정보 조회
   // 결재선 정보 조회
   useEffect(() => {
     if (!purchaseRequestId) return;
@@ -88,22 +59,21 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
 
         // 현재 사용자의 결재 항목 찾기
         if (currentUserId) {
-          // 현재 진행 중인 결재 단계 찾기
-          const currentStepIndex = data.findIndex(line =>
-            line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING'
-          );
-
-          // 현재 사용자의 결재 항목 찾기
           const userApprovalLine = data.find(line =>
-            line.approverId === currentUserId &&
-            (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING')
+            line.statusCode === 'IN_REVIEW' &&
+            line.approverId === currentUserId
           );
-
           setCurrentUserApprovalLine(userApprovalLine);
 
-          // 활성 단계 설정
-          if (currentStepIndex !== -1) {
-            setActiveStep(currentStepIndex);
+          // 활성 단계 설정 (첫 번째 IN_REVIEW 상태나 가장 앞선 PENDING 상태)
+          const inReviewIndex = data.findIndex(line => line.statusCode === 'IN_REVIEW');
+          if (inReviewIndex !== -1) {
+            setActiveStep(inReviewIndex);
+          } else {
+            const pendingIndex = data.findIndex(line => line.statusCode === 'PENDING');
+            if (pendingIndex !== -1) {
+              setActiveStep(pendingIndex);
+            }
           }
         }
 
@@ -129,7 +99,9 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
       setLoading(true);
 
       // 상태 코드 결정 (승인 또는 반려)
-      const nextStatusCode = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+      const nextStatusCode = action === 'APPROVE'
+        ? 'APPROVAL-STATUS-APPROVED'
+        : 'APPROVAL-STATUS-REJECTED';
 
       const response = await fetchWithAuth(`${API_URL}approvals/${currentUserApprovalLine.id}/process`, {
         method: 'POST',
@@ -152,7 +124,7 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
       const updatedData = await updatedResponse.json();
       setApprovalLines(updatedData);
 
-      // 현재 사용자의 결재 항목 초기화
+      // 현재 사용자의 결재 항목 초기화 (이미 처리됨)
       setCurrentUserApprovalLine(null);
       setComment('');
 
@@ -166,6 +138,17 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
       console.error('결재 처리 중 오류 발생:', err);
       setError('결재 처리 중 오류가 발생했습니다.');
       setLoading(false);
+    }
+  };
+
+  // 상태 코드에 따른 한글 상태명 반환
+  const getStatusName = (statusCode) => {
+    switch(statusCode) {
+      case 'APPROVED': return '승인완료';
+      case 'REJECTED': return '반려';
+      case 'IN_REVIEW': return '검토중';
+      case 'PENDING': return '대기중';
+      default: return statusCode;
     }
   };
 
@@ -194,133 +177,105 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
     );
   }
 
-  // 전체 단계 생성 (기본 4단계)
-  const fullApprovalSteps = [];
-  for (let i = 1; i <= totalSteps; i++) {
-    const stepData = approvalLines.find(line => line.step === i);
-    fullApprovalSteps.push(stepData || {
-      step: i,
-      statusCode: stepData ? stepData.statusCode : 'PENDING',
-      approverName: stepData?.approverName,
-      department: stepData?.department,
-      approvedAt: stepData?.approvedAt,
-      comment: stepData?.comment,
-      approverId: stepData?.approverId,
-      requestId: stepData?.requestId
-    });
-  }
-
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" gutterBottom>결재선 정보</Typography>
 
-      {/* 전체 단계를 보여주는 스텝퍼 */}
-      <Box sx={{ mb: 4 }}>
-        <Stepper activeStep={-1} orientation="horizontal">
-          {fullApprovalSteps.map((step, index) => {
-            const stepInfo = getStepInfo(step.statusCode);
-            return (
-              <Step
-                key={index}
-                completed={step.statusCode === 'APPROVED'}
-                sx={{
-                  '& .MuiStepIcon-root': {
-                    color: stepInfo.color
-                  }
-                }}
-              >
-                <StepLabel
-                  error={step.statusCode === 'REJECTED'}
-                  optional={
-                    <Typography variant="caption">
-                      {step.approverName ? `${step.approverName} (${step.department})` : '미지정'}
-                    </Typography>
-                  }
-                >
-                  {`${index + 1}단계`}
-                </StepLabel>
-              </Step>
-            );
-          })}
-        </Stepper>
-      </Box>
-
-      <Divider sx={{ my: 2 }} />
-
-      {/* 결재선 상세 정보 테이블 */}
-      <TableContainer>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>순서</TableCell>
-              <TableCell>결재자</TableCell>
-              <TableCell>부서</TableCell>
-              <TableCell>상태</TableCell>
-              <TableCell>결재일시</TableCell>
-              <TableCell>의견</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {fullApprovalSteps.map((step) => (
-              <TableRow key={step.step}>
-                <TableCell>{step.step}</TableCell>
-                <TableCell>{step.approverName || '-'}</TableCell>
-                <TableCell>{step.department || '-'}</TableCell>
-                <TableCell>
-                  <StatusChip
-                    label={getStepInfo(step.statusCode).label}
-                    status={step.statusCode}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  {step.approvedAt
-                    ? formatDateTime(step.approvedAt)
-                    : (step.rejectedAt
-                      ? formatDateTime(step.rejectedAt)
-                      : '-')
-                  }
-                </TableCell>
-                <TableCell>{step.comment || '-'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* 현재 사용자의 결재 처리 폼 */}
-      {currentUserApprovalLine && (
-        <Box sx={{ mt: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="subtitle1" gutterBottom>결재 처리</Typography>
-          <TextField
-            fullWidth
-            label="의견"
-            multiline
-            rows={3}
-            variant="outlined"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={() => handleProcessApproval('APPROVE')}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} /> : '승인'}
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => handleProcessApproval('REJECT')}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} /> : '반려'}
-            </Button>
+      {approvalLines.length === 0 ? (
+        <Typography color="textSecondary">등록된 결재선이 없습니다.</Typography>
+      ) : (
+        <>
+          {/* 스텝퍼로 결재 진행 상태 표시 */}
+          <Box sx={{ mb: 4 }}>
+            <Stepper activeStep={activeStep} orientation="horizontal">
+              {approvalLines.map((line, index) => (
+                <Step key={line.id} completed={line.statusCode === 'APPROVED'}>
+                  <StepLabel
+                    error={line.statusCode === 'REJECTED'}
+                    optional={
+                      <Typography variant="caption">
+                        {line.approverName} ({line.department})
+                      </Typography>
+                    }
+                  >
+                    {`${index + 1}단계`}
+                  </StepLabel>
+                </Step>
+              ))}
+            </Stepper>
           </Box>
-        </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* 결재선 상세 정보 테이블 */}
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>순서</TableCell>
+                  <TableCell>결재자</TableCell>
+                  <TableCell>부서</TableCell>
+                  <TableCell>상태</TableCell>
+                  <TableCell>결재일시</TableCell>
+                  <TableCell>의견</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {approvalLines.map((line) => (
+                  <TableRow key={line.id}>
+                    <TableCell>{line.step}</TableCell>
+                    <TableCell>{line.approverName}</TableCell>
+                    <TableCell>{line.department}</TableCell>
+                    <TableCell>
+                      <StatusChip
+                        label={getStatusName(line.statusCode)}
+                        status={line.statusCode}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{formatDateTime(line.approvedAt)}</TableCell>
+                    <TableCell>{line.comment || '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* 현재 사용자의 결재 처리 폼 */}
+          {currentUserApprovalLine && (
+            <Box sx={{ mt: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle1" gutterBottom>결재 처리</Typography>
+              <TextField
+                fullWidth
+                label="의견"
+                multiline
+                rows={3}
+                variant="outlined"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => handleProcessApproval('APPROVE')}
+                  disabled={loading}
+                >
+                  {loading ? <CircularProgress size={24} /> : '승인'}
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={() => handleProcessApproval('REJECT')}
+                  disabled={loading}
+                >
+                  {loading ? <CircularProgress size={24} /> : '반려'}
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </>
       )}
     </Paper>
   );

@@ -111,38 +111,11 @@ export const processApproval = createAsyncThunk(
     }
   }
 );
-// 결재 대기 목록 조회 액션
-export const fetchPendingApprovalsAction = createAsyncThunk(
-  'approval/fetchPendingApprovals',
-  async (_, { rejectWithValue }) => {
-    try {
-      const data = await fetchPendingApprovals();
-      return data;
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-// 결재 완료 목록 조회 액션
-export const fetchCompletedApprovalsAction = createAsyncThunk(
-  'approval/fetchCompletedApprovals',
-  async (_, { rejectWithValue }) => {
-    try {
-      const data = await fetchCompletedApprovals();
-      return data;
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
 
 // 이전 코드의 나머지 부분 유지 (초기 상태, 리듀서 등)
 const initialState = {
   approvals: [],
   approvalLines: {},
-  pendingApprovals: [],
-  completedApprovals: [],
   filters: {
     searchTerm: '',
     requestDate: '',
@@ -231,30 +204,6 @@ const approvalSlice = createSlice({
         state.approvals = state.approvals.filter(approval => approval.id !== lineId);
       })
       .addCase(processApproval.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase(fetchPendingApprovalsAction.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchPendingApprovalsAction.fulfilled, (state, action) => {
-        state.loading = false;
-        state.pendingApprovals = action.payload;
-      })
-      .addCase(fetchPendingApprovalsAction.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase(fetchCompletedApprovalsAction.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchCompletedApprovalsAction.fulfilled, (state, action) => {
-        state.loading = false;
-        state.completedApprovals = action.payload;
-      })
-      .addCase(fetchCompletedApprovalsAction.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

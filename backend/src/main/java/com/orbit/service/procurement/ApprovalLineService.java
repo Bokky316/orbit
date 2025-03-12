@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -160,5 +162,20 @@ public class ApprovalLineService {
     // 알림 전송 메서드 구현 필요
     private void sendApprovalNotification(ApprovalLine line) {
         // 실제 알림 로직 구현
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApprovalLineResponseDTO> findEligibleApprovalMembers() {
+        List<Member> eligibleMembers = memberRepo.findEligibleApprovalMembers(); // 기존 쿼리 메서드 사용
+
+        return eligibleMembers.stream()
+                .map(member -> ApprovalLineResponseDTO.builder()
+                        .id(member.getId())
+                        .approverName(member.getName())
+                        .department(member.getDepartment().getName())
+                        .statusCode("ELIGIBLE") // 결재 가능 상태를 나타내는 임시 상태 코드
+                        .statusName("결재 가능")
+                        .build())
+                .collect(Collectors.toList());
     }
 }
