@@ -5,9 +5,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,20 +33,27 @@ public class FileController {
      * @return 저장된 파일 경로 반환
      */
     @PostMapping("/upload")
-    @PreAuthorize("hasRole('SUPPLIER')")
+    @PreAuthorize("hasAnyRole('SUPPLIER', 'ADMIN')")
     public ResponseEntity<String> uploadFile(@RequestParam("businessFile") MultipartFile businessFile) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.info("📂 파일 업로드 요청 받음: {}", businessFile.getOriginalFilename());
+        log.info("✅ 현재 사용자 권한: {}", authentication.getAuthorities());
+
         try {
             if (businessFile.isEmpty()) {
+                log.error("❌ 파일이 비어 있음");
                 return ResponseEntity.badRequest().body("파일이 비어 있습니다.");
             }
 
             String storedFileName = fileStorageService.storeFile(businessFile);
-            return ResponseEntity.ok(storedFileName); // 저장된 파일 경로 반환
+            log.info("✅ 파일 업로드 성공: {}", storedFileName);
+            return ResponseEntity.ok(storedFileName);
         } catch (Exception e) {
-            log.error("파일 업로드 실패", e);
-            return ResponseEntity.status(500).body("파일 업로드 실패: " + e.getMessage());
+            log.error("❌ 파일 업로드 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("파일 업로드 실패: " + e.getMessage());
         }
     }
+
 
     /**
      * 🔹 파일 다운로드 엔드포인트
