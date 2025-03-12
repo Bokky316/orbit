@@ -1,6 +1,7 @@
 package com.orbit.controller.bidding;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,12 +20,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.orbit.dto.bidding.BiddingDto;
+import com.orbit.dto.bidding.BiddingFormDto;
 import com.orbit.dto.bidding.BiddingParticipationDto;
-import com.orbit.dto.bidding.SimplifiedContractDto;
-import com.orbit.entity.bidding.Bidding.BiddingStatus;
-import com.orbit.entity.bidding.SimplifiedContract.ContractStatus;
+import com.orbit.entity.state.StatusHistory;
 import com.orbit.service.bidding.BiddingService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,12 +36,52 @@ import lombok.extern.slf4j.Slf4j;
 public class BiddingController {
     private final BiddingService biddingService;
 
+    // @GetMapping("/download-file")
+    // @Operation(summary = "파일 다운로드", description = "지정된 파일 다운로드")
+    // public ResponseEntity<Resource> downloadFile(
+    //     @RequestParam("filename") String filename
+    // ) {
+    //     try {
+    //         // 파일 리소스 로드
+    //         Resource resource = biddingService.loadFileAsResource(filename);
+            
+    //         // 파일명 인코딩 (한글 파일명 지원)
+    //         String encodedFilename = URLEncoder.encode(resource.getFilename(), StandardCharsets.UTF_8)
+    //             .replaceAll("\\+", "%20");
+
+    //         return ResponseEntity.ok()
+    //             .contentType(MediaType.parseMediaType(determineContentType(filename)))
+    //             .header(HttpHeaders.CONTENT_DISPOSITION, 
+    //                 "attachment; filename*=UTF-8''" + encodedFilename)
+    //             .body(resource);
+    //     } catch (Exception e) {
+    //         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+    //             .body(null);
+    //     }
+    // }
+
+    /**
+     * 파일 확장자에 따른 콘텐츠 타입 결정
+     * @param filename 파일명
+     * @return MIME 타입
+     */
+    // private String determineContentType(String filename) {
+    //     filename = filename.toLowerCase();
+    //     if (filename.endsWith(".pdf")) return MediaType.APPLICATION_PDF_VALUE;
+    //     if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return MediaType.IMAGE_JPEG_VALUE;
+    //     if (filename.endsWith(".png")) return MediaType.IMAGE_PNG_VALUE;
+    //     if (filename.endsWith(".gif")) return MediaType.IMAGE_GIF_VALUE;
+    //     if (filename.endsWith(".doc")) return "application/msword";
+    //     if (filename.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    //     return MediaType.APPLICATION_OCTET_STREAM_VALUE;
+    // }
+
     /**
      * 입찰 공고 목록 조회
      */
     @GetMapping
     public ResponseEntity<List<BiddingDto>> getBiddingList(
-            @RequestParam(required = false) BiddingStatus status,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
     ) {
@@ -70,16 +111,14 @@ public class BiddingController {
      * 입찰 공고 생성
      */
     @PostMapping
-    public ResponseEntity<BiddingDto> createBidding(@RequestBody BiddingDto bidding) {
-        log.info("입찰 공고 생성 요청 - 제목: {}", bidding.getTitle());
+    public ResponseEntity<BiddingDto> createBidding(@Valid @RequestBody BiddingFormDto formDto) {
+        log.info("입찰 공고 생성 요청 - 제목: {}", formDto.getTitle());
         
         try {
-            // 필수 필드 유효성 검사
-            if (bidding.getTitle() == null || bidding.getTitle().isEmpty()) {
-                return ResponseEntity.badRequest().build();
-            }
+            // 금액 필드 안전 처리 및 재계산
+            formDto.recalculateAllPrices();
             
-            BiddingDto createdBidding = biddingService.createBidding(bidding);
+            BiddingDto createdBidding = biddingService.createBidding(formDto);
             return new ResponseEntity<>(createdBidding, HttpStatus.CREATED);
         } catch (Exception e) {
             log.error("입찰 공고 생성 중 오류 발생", e);
@@ -93,12 +132,20 @@ public class BiddingController {
     @PutMapping("/{id}")
     public ResponseEntity<BiddingDto> updateBidding(
             @PathVariable Long id,
-            @RequestBody BiddingDto bidding
+            @Valid @RequestBody BiddingFormDto formDto
     ) {
-        log.info("입찰 공고 수정 요청 - ID: {}, 제목: {}", id, bidding.getTitle());
+        log.info("입찰 공고 수정 요청 - ID: {}, 제목: {}", id, formDto.getTitle());
         
-        BiddingDto updatedBidding = biddingService.updateBidding(id, bidding);
-        return ResponseEntity.ok(updatedBidding);
+        try {
+            // 금액 필드 안전 처리 및 재계산
+            formDto.recalculateAllPrices();
+            
+            BiddingDto updatedBidding = biddingService.updateBidding(id, formDto);
+            return ResponseEntity.ok(updatedBidding);
+        } catch (Exception e) {
+            log.error("입찰 공고 수정 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     /**
@@ -110,6 +157,40 @@ public class BiddingController {
         
         biddingService.deleteBidding(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 입찰 상태 변경
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<BiddingDto> changeBiddingStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> statusRequest
+    ) {
+        String status = statusRequest.get("status");
+        String reason = statusRequest.get("reason");
+        
+        log.info("입찰 공고 상태 변경 요청 - ID: {}, 상태: {}, 사유: {}", id, status, reason);
+        
+        BiddingDto updatedBidding = biddingService.changeBiddingStatus(id, status, reason);
+        return ResponseEntity.ok(updatedBidding);
+    }
+    
+    /**
+     * 상태 변경 이력 조회
+     */
+    @GetMapping("/{id}/status-histories")
+    public ResponseEntity<List<StatusHistory>> getBiddingStatusHistories(@PathVariable Long id) {
+        log.info("입찰 공고 상태 변경 이력 조회 요청 - ID: {}", id);
+        
+        try {
+            List<StatusHistory> histories = biddingService.getBiddingStatusHistories(id);
+            return ResponseEntity.ok(histories);
+        } catch (Exception e) {
+            log.error("상태 이력 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList()); // 오류 발생 시 빈 배열 반환
+        }
     }
 
     /**
@@ -147,78 +228,5 @@ public class BiddingController {
         
         BiddingParticipationDto participation = biddingService.getParticipationById(id);
         return ResponseEntity.ok(participation);
-    }
-
-    
-    // /**
-    //  * 낙찰자 선정
-    //  */
-    // @GetMapping("/{biddingId}/winning-bid")
-    // public ResponseEntity<BiddingEvaluationDto> selectWinningBid(@PathVariable Long biddingId) {
-    //     log.info("낙찰자 선정 요청 - 입찰 ID: {}", biddingId);
-        
-    //     BiddingEvaluationDto winningBid = biddingService.selectWinningBid(biddingId);
-    //     if (winningBid == null) {
-    //         return ResponseEntity.noContent().build();
-    //     }
-    //     return ResponseEntity.ok(winningBid);
-    // }
-
-    /**
-     * 계약 생성
-     */
-    @PostMapping("/{biddingId}/contract")
-    public ResponseEntity<SimplifiedContractDto> createContract(
-            @PathVariable Long biddingId,
-            @RequestBody SimplifiedContractDto contract
-    ) {
-        log.info("계약 생성 요청 - 입찰 ID: {}", biddingId);
-        
-        contract.setBiddingId(biddingId);
-        SimplifiedContractDto createdContract = biddingService.createContract(contract);
-        return new ResponseEntity<>(createdContract, HttpStatus.CREATED);
-    }
-    
-    /**
-     * 계약 목록 조회
-     */
-    @GetMapping("/contracts")
-    public ResponseEntity<List<SimplifiedContractDto>> getContractList(
-            @RequestParam(required = false) Long biddingId,
-            @RequestParam(required = false) ContractStatus status
-    ) {
-        log.info("계약 목록 조회 요청 - 입찰 ID: {}, 상태: {}", biddingId, status);
-        
-        Map<String, Object> params = new HashMap<>();
-        if (biddingId != null) params.put("biddingId", biddingId);
-        if (status != null) params.put("status", status);
-        
-        List<SimplifiedContractDto> contracts = biddingService.getContractList(params);
-        return ResponseEntity.ok(contracts);
-    }
-    
-    /**
-     * 계약 상세 조회
-     */
-    @GetMapping("/contracts/{id}")
-    public ResponseEntity<SimplifiedContractDto> getContractById(@PathVariable Long id) {
-        log.info("계약 상세 조회 요청 - ID: {}", id);
-        
-        SimplifiedContractDto contract = biddingService.getContractById(id);
-        return ResponseEntity.ok(contract);
-    }
-    
-    /**
-     * 계약 상태 업데이트
-     */
-    @PutMapping("/contracts/{id}/status")
-    public ResponseEntity<SimplifiedContractDto> updateContractStatus(
-            @PathVariable Long id,
-            @RequestParam ContractStatus status
-    ) {
-        log.info("계약 상태 업데이트 요청 - ID: {}, 상태: {}", id, status);
-        
-        SimplifiedContractDto updatedContract = biddingService.updateContractStatus(id, status);
-        return ResponseEntity.ok(updatedContract);
     }
 }

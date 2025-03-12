@@ -6,8 +6,6 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -31,15 +29,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class BiddingOrder {
-    
-    public enum OrderStatus {
-        DRAFT, // 초안
-        PENDING_APPROVAL, // 승인 대기
-        APPROVED, // 승인됨
-        IN_PROGRESS, // 진행 중
-        COMPLETED, // 완료
-        CANCELLED // 취소됨
-    }
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -104,12 +93,10 @@ public class BiddingOrder {
     @Column(name = "expected_delivery_date")
     private LocalDate expectedDeliveryDate; // 예상 납품일
     
-    @Enumerated(EnumType.STRING)
-    private OrderStatus status; // 발주 상태
-    
-    private Long approvedBy; // 승인자 ID
-    
     private LocalDateTime approvedAt; // 승인 일시
+
+    @Column(name = "evaluation_id")
+    private Long evaluationId; // 평가 ID
     
     @Column(name = "created_by")
     private Long createdBy; // 생성자 ID

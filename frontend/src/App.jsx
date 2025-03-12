@@ -11,7 +11,9 @@ import BiddingDetailPage from "./pages/bidding/BiddingDetailPage";
 import BiddingFormPage from "@/pages/bidding/BiddingFormPage";
 import BiddingEvaluationListPage from "./pages/bidding/BiddingEvaluationListPage";
 import BiddingEvaluationDetailPage from "./pages/bidding/BiddingEvaluationDetailPage";
-import BiddingOrderList from "./pages/bidding/BiddingOrderList";
+import ContractsListPage from "./pages/contract/ContractsListPage";
+import ContractCreatePage from "./pages/contract/ContractCreatePage";
+import BiddingOrderPage from "./pages/bidding/BiddingOrderPage";
 import BiddingOrderDetail from "./pages/bidding/BiddingOrderDetail";
 import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
@@ -71,18 +73,27 @@ function AppContent() {
                 element={<BiddingFormPage mode="create" />}
               />
               <Route
-                path="/biddings/edit/:id"
+                path="/biddings/:id/edit"
                 element={<BiddingFormPage mode="edit" />}
               />
+              {/* 평가 페이지 */}
               <Route
                 path="/biddings/evaluations"
                 element={<BiddingEvaluationListPage />}
               />
+              {/* 평가 상세 페이지 */}
               <Route
                 path="/biddings/evaluations/:id"
                 element={<BiddingEvaluationDetailPage />}
               />
-              <Route path="/biddings/orders" element={<BiddingOrderList />} />
+              {/* 계약 목록 페이지 */}
+              <Route path="" element={<ContractsListPage />} />
+              {/* 계약 생성 페이지 */}
+              <Route path="" element={<ContractCreatePage />} />
+
+              {/* 주문 목록 페이지 */}
+              <Route path="/biddings/orders" element={<BiddingOrderPage />} />
+              {/* 주문 상세 페이지 */}
               <Route
                 path="/biddings/orders/:id"
                 element={<BiddingOrderDetail />}

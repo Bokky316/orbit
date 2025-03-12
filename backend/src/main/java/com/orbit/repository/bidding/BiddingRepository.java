@@ -6,32 +6,40 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import com.orbit.entity.bidding.Bidding;
-import com.orbit.entity.bidding.Bidding.BiddingStatus;
+import com.orbit.entity.state.StatusHistory;
+import com.orbit.entity.state.SystemStatus;
 
-
-@Repository
 public interface BiddingRepository extends JpaRepository<Bidding, Long> {
-    
+
+    /**
+     * 상태와 날짜 범위로 입찰 공고 필터링
+     */
     @Query("SELECT b FROM Bidding b WHERE " +
            "(:status IS NULL OR b.status = :status) AND " +
-           "(:startDate IS NULL OR b.endDate >= :startDate) AND " +
-           "(:endDate IS NULL OR b.startDate <= :endDate)")
-    List<Bidding> findBiddingsByFilter(@Param("status") BiddingStatus status, 
-                                     @Param("startDate") LocalDateTime startDate, 
-                                     @Param("endDate") LocalDateTime endDate);
-    
-    List<Bidding> findByStatus(BiddingStatus status);
-    
-    List<Bidding> findByStartDateBetween(LocalDateTime start, LocalDateTime end);
-    
-    @Query("SELECT b FROM Bidding b WHERE b.bidNumber LIKE %:keyword% OR b.title LIKE %:keyword%")
-    List<Bidding> searchByKeyword(@Param("keyword") String keyword);
-/**
-     * 특정 상태이면서 마감일이 지정된 날짜보다 이전인 입찰 목록 조회
-     * 주로 자동 마감 처리를 위해 사용됨
+           "(:startDate IS NULL OR b.startDate >= :startDate) AND " +
+           "(:endDate IS NULL OR b.endDate <= :endDate) " +
+           "ORDER BY b.id DESC")
+    List<Bidding> findBiddingsByFilter(
+            @Param("status") SystemStatus status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * 날짜 범위로 입찰 공고 필터링
      */
-    List<Bidding> findByStatusAndEndDateBefore(BiddingStatus status, LocalDateTime endDate);
+    @Query("SELECT b FROM Bidding b WHERE " +
+           "(:startDate IS NULL OR b.startDate >= :startDate) AND " +
+           "(:endDate IS NULL OR b.endDate <= :endDate) " +
+           "ORDER BY b.id DESC")
+    List<Bidding> findBiddingsByDateRange(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * 특정 입찰 공고의 상태 변경 이력 조회
+     */
+    @Query("SELECT h FROM StatusHistory h WHERE h.bidding.id = :biddingId ORDER BY h.changedAt DESC")
+    List<StatusHistory> findStatusHistoriesByBiddingId(@Param("biddingId") Long biddingId);
 }

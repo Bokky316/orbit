@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.orbit.entity.bidding.Bidding;
+import com.orbit.entity.state.SystemStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +13,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 입찰 공고 응답용 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,10 +26,10 @@ public class BiddingDto {
     private String bidNumber;
     private Long purchaseRequestId;
     private Long purchaseRequestItemId;
-    private Integer quantity;  // BiddingService의 calculateBiddingPrices 메서드 관련
+    private Integer quantity;
     private String title;
     private String description;
-    private Bidding.BidMethod bidMethod;
+    private String bidMethod;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String conditions;
@@ -34,28 +38,55 @@ public class BiddingDto {
     private BigDecimal supplyPrice;
     private BigDecimal vat;
     private BigDecimal totalAmount;
-    private List<Long> supplierIds;  // 다중 공급자 정보를 저장할 필드 추가
-    private Bidding.BiddingStatus status;
+    private List<Long> supplierIds;
+    private SystemStatus status;
+    private String statusText;
     private String filePath;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Long createdBy;
-    private Long updatedBy;
-  
+    private String createdBy;
+    private String modifiedBy;
     
-    // 필드명 불일치 해결을 위한 변환 메서드 추가
-    public void setBiddingConditions(String biddingConditions) {
-        this.conditions = biddingConditions;
+    // 상태 텍스트 가져오기 (UI 표시용)
+    public String getStatusText() {
+        if (this.status == null) {
+            return "미정";
+        }
+        
+        String childCode = this.status.getChildCode();
+        if ("PENDING".equals(childCode)) return "대기중";
+        if ("ONGOING".equals(childCode)) return "진행중";
+        if ("CLOSED".equals(childCode)) return "마감";
+        if ("CANCELED".equals(childCode)) return "취소";
+        
+        return childCode;
     }
-
-    public String getBiddingConditions() {
-        return this.conditions;
-    }
-
+    
     // Entity -> DTO 변환
     public static BiddingDto fromEntity(Bidding entity) {
-        return BiddingDto.builder()
+        if (entity == null) {
+            return null;
+        }
+        
+        // BiddingPrice에서 금액 정보 가져오기
+        BigDecimal unitPrice = null;
+        BigDecimal supplyPrice = null;
+        BigDecimal vat = null;
+        BigDecimal totalAmount = null;
+        
+        if (entity.getBiddingPrice() != null) {
+            unitPrice = entity.getBiddingPrice().getUnitPrice();
+            supplyPrice = entity.getBiddingPrice().getSupplyPrice();
+            vat = entity.getBiddingPrice().getVat();
+            totalAmount = entity.getBiddingPrice().getTotalAmount();
+        }
+        
+        BiddingDto dto = BiddingDto.builder()
                 .id(entity.getId())
+                .bidNumber(entity.getBidNumber())
+                .purchaseRequestId(entity.getPurchaseRequestId())
+                .purchaseRequestItemId(entity.getPurchaseRequestItemId())
+                .quantity(entity.getQuantity())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .bidMethod(entity.getBidMethod())
@@ -63,34 +94,23 @@ public class BiddingDto {
                 .endDate(entity.getEndDate())
                 .conditions(entity.getConditions())
                 .internalNote(entity.getInternalNote())
-                .unitPrice(entity.getUnitPrice())
-                .supplyPrice(entity.getSupplyPrice())
-                .vat(entity.getVat())
-                .totalAmount(entity.getTotalAmount())
+                .unitPrice(unitPrice)
+                .supplyPrice(supplyPrice)
+                .vat(vat)
+                .totalAmount(totalAmount)
                 .status(entity.getStatus())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
+                .filePath(entity.getFilePath())
+                // BaseEntity에서 상속받은 필드
+                .createdBy(entity.getCreatedBy())
+                .modifiedBy(entity.getModifiedBy())
+                // 시간 필드는 BaseTimeEntity에서 상속
+                .createdAt(entity.getRegTime()) 
+                .updatedAt(entity.getUpdateTime()) 
                 .build();
-    }
-
-    // DTO -> Entity 변환
-    public Bidding toEntity() {
-        return Bidding.builder()
-                .id(this.id)
-                .bidNumber(this.bidNumber)
-                .title(this.title)
-                .description(this.description)
-                .bidMethod(this.bidMethod)
-                .startDate(this.startDate)
-                .endDate(this.endDate)
-                .conditions(this.conditions)
-                .internalNote(this.internalNote)
-                .unitPrice(this.unitPrice)
-                .supplyPrice(this.supplyPrice)
-                .vat(this.vat)
-                .totalAmount(this.totalAmount)
-                .status(this.status)
-                .filePath(this.filePath)
-                .build();
+        
+        // 상태 텍스트 설정
+        dto.setStatusText(dto.getStatusText());
+        
+        return dto;
     }
 }

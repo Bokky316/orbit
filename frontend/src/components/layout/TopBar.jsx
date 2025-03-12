@@ -33,7 +33,9 @@ function TopBar() {
       { label: "협력사평가리스트", path: "/biddings/evaluations" },
       { label: "발주리스트", path: "/biddings/orders" }
     ],
-    "/contracts": [{ label: "계약리스트", path: "/contracts/list" }],
+    "/biddings/contracts": [
+      { label: "계약리스트", path: "/biddings/contracts" }
+    ],
     "/orders": [{ label: "발주리스트", path: "/orders/list" }],
     "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
     "/funds": [{ label: "자금리스트", path: "/funds/list" }],
