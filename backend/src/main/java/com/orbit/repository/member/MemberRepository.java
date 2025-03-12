@@ -1,13 +1,13 @@
 package com.orbit.repository.member;
 
-import com.orbit.entity.approval.Department;
-import com.orbit.entity.member.Member;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
-import java.util.List;
-import java.util.Optional;
+import com.orbit.entity.member.Member;
 
 /**
  * Member 엔티티를 위한 JpaRepository
@@ -35,45 +35,21 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
      */
     List<Member> findByNameContainingIgnoreCase(String name);
 
+    /**
+     * 검수 작업이 가장 적은 품질관리부 담당자 찾기
+     * - `QualityControl` 부서에서 가장 적은 검수 건수를 가진 담당자를 찾음
+     * - 만약 검수 담당자가 없으면 `Optional.empty()` 반환
+     */
+    @Query("SELECT m FROM Member m WHERE m.department.name = 'QualityControl' " +
+            "ORDER BY (SELECT COUNT(i) FROM Inspection i WHERE i.inspectorId = m.id) ASC")
+    Optional<Member> findTopByDepartmentNameOrderByInspectionCountAsc();
 
     /**
-     * 결재 가능한 사용자 조회 (직급 레벨 3 이상)
-     * @return 결재 가능한 사용자 리스트
+     * 특정 부서에서 가장 오래된 미배정 검수 담당자 찾기
+     * - 특정 부서에서 아직 검수를 배정받지 않은 담당자를 찾음.
+     * - `ORDER BY m.id ASC`로 오래된 순서대로 조회
      */
-
-    /**
-     * 특정 직급 이상의 멤버 조회
-     * @param positionLevel 직급 레벨
-     * @return 해당 직급 이상 멤버 리스트
-     */
-    @Query("SELECT m FROM Member m WHERE m.position.level > :positionLevel ORDER BY m.position.level DESC")
-    List<Member> findByPositionLevelGreaterThan(@Param("positionLevel") int positionLevel);
-
-    /**
-     * 직급 순으로 정렬된 모든 멤버 조회 (높은 순)
-     * @return 직급 순으로 정렬된 멤버 리스트
-     */
-    @Query("SELECT m FROM Member m ORDER BY m.position.level DESC")
-    List<Member> findAllSortedByPositionLevel();
-
-    /**
-     * 부서별 결재 가능한 멤버 조회
-     * @param department 부서
-     * @param minLevel 최소 직급 레벨
-     * @return 해당 부서의 결재 가능한 멤버 리스트
-     */
-    @Query("SELECT m FROM Member m WHERE m.department = :department AND m.position.level >= :minLevel")
-    List<Member> findEligibleApproversByDepartment(
-            @Param("department") Department department,
-            @Param("minLevel") int minLevel
-    );
-
-    /**
-     * 특정 부서 ID로 해당 부서에 속한 모든 회원 조회
-     * @param departmentId 부서 ID
-     * @return 해당 부서에 속한 회원 리스트
-     */
-    List<Member> findByDepartmentId(Long departmentId);
-
-    List<Member> findByUsernameStartingWith(String prefix);
+    @Query("SELECT m FROM Member m WHERE m.department.name = :departmentName " +
+            "ORDER BY m.id ASC")
+    Optional<Member> findAvailableInspector(String departmentName);
 }
