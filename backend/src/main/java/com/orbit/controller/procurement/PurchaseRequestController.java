@@ -1,5 +1,7 @@
 package com.orbit.controller.procurement;
 
+import com.orbit.dto.item.ItemDTO;
+import com.orbit.dto.procurement.GoodsRequestDTO;
 import com.orbit.dto.procurement.PurchaseRequestDTO;
 import com.orbit.service.procurement.PurchaseRequestService;
 import jakarta.validation.Valid;
@@ -108,4 +110,13 @@ public class PurchaseRequestController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    // PurchaseRequestController.java (추가된 부분)
+
+    @GetMapping("/items")
+    public ResponseEntity<List<ItemDTO>> getAllItems() {
+        List<ItemDTO> items = purchaseRequestService.getAllItems();
+        return new ResponseEntity<>(items, HttpStatus.OK);
+    }
+
 }
