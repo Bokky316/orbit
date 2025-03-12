@@ -39,7 +39,22 @@ export const fetchPurchaseRequests = createAsyncThunk(
   }
 );
 
-
+// 아이템 목록 조회 액션 ✅ 추가
+export const fetchItems = createAsyncThunk(
+  'purchaseRequest/fetchItems',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}items`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '아이템 조회 실패');
+      }
+      return await response.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 /**
  * 구매 요청을 생성하는 비동기 액션
  *
@@ -196,7 +211,8 @@ const initialState = {
     searchTerm: '',
     requestDate: '',
     status: ''
-  }
+  },
+    items: []
 };
 
 /**
@@ -290,6 +306,18 @@ const purchaseRequestSlice = createSlice({
                     request.id === action.payload.id ? action.payload : request
                 ); // 구매 요청 업데이트
             })
+            .addCase(fetchItems.pending, (state) => { // ✅ 아이템 처리
+                state.loading = true;
+                state.error = null;
+              })
+              .addCase(fetchItems.fulfilled, (state, action) => {
+                state.loading = false;
+                state.items = action.payload;
+              })
+              .addCase(fetchItems.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+              })
             .addCase(updatePurchaseRequest.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
@@ -306,10 +334,10 @@ const purchaseRequestSlice = createSlice({
     },
 });
 
-// [신규] 웹소켓 미들웨어 내보내기
+
 export const websocketMiddleware = createWebsocketMiddleware();
 
-// 기존 액션 및 리듀서 유지
+
 export const {
   setSearchTerm,
   setRequestDate,

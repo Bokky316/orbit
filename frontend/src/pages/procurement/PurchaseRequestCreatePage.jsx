@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Paper, TextField, Button, Grid, Alert,
@@ -16,9 +16,7 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { fetchProjects } from '@/redux/projectSlice'; // 프로젝트 목록 액션 추가
 
 const initItem = {
-    itemName: '',
-    specification: '',
-    unit: '',
+    itemId: '', // 아이템 ID 추가
     quantity: '',
     unitPrice: '',
     totalPrice: 0,
@@ -61,11 +59,12 @@ function PurchaseRequestCreatePage() {
 
     // 물품 필드 상태
     const [items, setItems] = useState([initItem]);
+    const [availableItems, setAvailableItems] = useState([]); // 사용 가능한 아이템 목록
 
     // 첨부 파일 상태
     const [attachments, setAttachments] = useState([]);
 
-   useEffect(() => {
+    useEffect(() => {
         // 컴포넌트 마운트 시 프로젝트 목록 가져오기
         const fetchAllProjects = async () => {
             try {
@@ -86,34 +85,74 @@ function PurchaseRequestCreatePage() {
         };
 
         fetchAllProjects();
+
+        // 아이템 목록 가져오기
+        const fetchItems = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}items`, { // 아이템 목록 API 엔드포인트
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`아이템 목록을 가져오는데 실패했습니다: ${response.status}`);
+                }
+                const itemsData = await response.json();
+                setAvailableItems(itemsData);
+            } catch (error) {
+                alert(`아이템 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
+            }
+        };
+
+        fetchItems();
     }, []);
+
     // 품목 필드 변경 핸들러
     const handleItemChange = (index, fieldName, value) => {
-      const newItems = [...items];
-      newItems[index][fieldName] = value;
+        const newItems = [...items];
+        newItems[index][fieldName] = value;
 
-      // 수량/단가 변경 시 총액 자동 계산
-      if (fieldName === 'quantity' || fieldName === 'unitPrice') {
-        const quantity = Number(newItems[index].quantity) || 0;
-        const unitPrice = Number(newItems[index].unitPrice) || 0;
-        newItems[index].totalPrice = quantity * unitPrice;
-      }
+        // 수량/단가 변경 시 총액 자동 계산
+        if (fieldName === 'quantity' || fieldName === 'unitPrice') {
+            const quantity = Number(newItems[index].quantity) || 0;
+            const unitPrice = Number(newItems[index].unitPrice) || 0;
+            newItems[index].totalPrice = quantity * unitPrice;
+        }
 
-      setItems(newItems);
+        setItems(newItems);
+    };
+
+    // 아이템 선택 핸들러
+    const handleItemSelect = (index, event) => {
+        const selectedItemId = event.target.value;
+        const selectedItem = availableItems.find(item => item.id === selectedItemId);
+
+        if (selectedItem) {
+            const newItems = [...items];
+            newItems[index] = {
+                ...newItems[index],
+                itemId: selectedItem.id, // 아이템 ID 저장
+                itemName: selectedItem.name, // 아이템 이름
+                specification: selectedItem.specification, // 사양
+                unit: selectedItem.unit // 단위
+            };
+            setItems(newItems);
+        }
     };
 
     // 숫자 입력 핸들러
     const handleNumericItemChange = (index, fieldName) => (e) => {
-      const value = e.target.value.replace(/[^0-9]/g, '');
-      handleItemChange(index, fieldName, value);
+        const value = e.target.value.replace(/[^0-9]/g, '');
+        handleItemChange(index, fieldName, value);
     };
 
     // 품목 삭제 핸들러
     const handleRemoveItem = (index) => {
-      if (items.length > 1) {
-        const newItems = items.filter((_, i) => i !== index);
-        setItems(newItems);
-      }
+        if (items.length > 1) {
+            const newItems = items.filter((_, i) => i !== index);
+            setItems(newItems);
+        }
     };
 
     /**
@@ -133,7 +172,7 @@ function PurchaseRequestCreatePage() {
             businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0,
             specialNotes,
             managerPhoneNumber: '01044737122',
-             projectId: selectedProjectId,
+            projectId: selectedProjectId,
 
             // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
             prStatusParent: 'PURCHASE_REQUEST',
@@ -152,9 +191,7 @@ function PurchaseRequestCreatePage() {
             requestData.contractDetails = contractDetails;
         } else if (businessType === 'GOODS') {
             requestData.items = items.map(item => ({
-                itemName: item.itemName,
-                specification: item.specification,
-                unit: item.unit,
+                itemId: item.itemId, // 아이템 ID 전송
                 quantity: parseInt(item.quantity) || 0,
                 unitPrice: parseFloat(item.unitPrice.replace(/,/g, '')) || 0,
                 totalPrice: parseFloat(item.totalPrice) || 0,
@@ -221,7 +258,6 @@ function PurchaseRequestCreatePage() {
             case 'SI':
                 return (
                     <>
-
                         <Grid item xs={6}>
                             <DatePicker
                                 label="프로젝트 시작일"
@@ -297,37 +333,50 @@ function PurchaseRequestCreatePage() {
             case 'GOODS':
                 return (
                     <>
-
                         {items.map((item, index) => (
                             <Grid container spacing={2} key={index} alignItems="center" sx={{ mb: 2 }}>
-                                {/* 품목명 */}
+                                {/* 아이템 선택 */}
                                 <Grid item xs={3}>
-                                    <TextField
-                                        fullWidth
-                                        label="품목명 *"
-                                        value={item.itemName}
-                                        onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
-                                        required
-                                    />
+                                    <FormControl fullWidth>
+                                        <InputLabel id={`item-select-label-${index}`}>품목 선택 *</InputLabel>
+                                        <Select
+                                            labelId={`item-select-label-${index}`}
+                                            id={`item-select-${index}`}
+                                            value={item.itemId}
+                                            label="품목 선택 *"
+                                            onChange={(e) => handleItemSelect(index, e)}
+                                            required
+                                        >
+                                            {availableItems.map(availableItem => (
+                                                <MenuItem key={availableItem.id} value={availableItem.id}>
+                                                    {availableItem.name}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </Grid>
 
-                                {/* 사양 */}
+                                {/* 사양 (선택된 아이템 정보) */}
                                 <Grid item xs={2}>
                                     <TextField
                                         fullWidth
                                         label="사양"
-                                        value={item.specification}
-                                        onChange={(e) => handleItemChange(index, 'specification', e.target.value)}
+                                        value={item.specification || ''}
+                                        InputProps={{
+                                            readOnly: true
+                                        }}
                                     />
                                 </Grid>
 
-                                {/* 단위 */}
+                                {/* 단위 (선택된 아이템 정보) */}
                                 <Grid item xs={1}>
                                     <TextField
                                         fullWidth
                                         label="단위"
-                                        value={item.unit}
-                                        onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                                        value={item.unit || ''}
+                                        InputProps={{
+                                            readOnly: true
+                                        }}
                                     />
                                 </Grid>
 
@@ -427,7 +476,7 @@ function PurchaseRequestCreatePage() {
                 </Typography>
                 <Paper sx={{ p: 2 }}>
                     <Grid container spacing={3}>
-                         <Grid item xs={6}>
+                        <Grid item xs={6}>
                             <FormControl fullWidth>
                                 <InputLabel id="project-select-label">프로젝트 선택</InputLabel>
                                 <Select
@@ -561,42 +610,42 @@ function PurchaseRequestCreatePage() {
                                 </Button>
                             </label>
                             {attachments.length > 0 && (
-                              <>
-                                  {attachments.map((file, index) => (
-                                      <List key={index} sx={{ mt: 2 }}>
-                                          <ListItem>
-                                              <ListItemAvatar>
-                                                  <Avatar><AttachFileIcon /></Avatar>
-                                              </ListItemAvatar>
-                                              <ListItemText
-                                                  primary={file.name}
-                                                  secondary={`${(file.size / 1024).toFixed(2)} KB`}
-                                              />
-                                              {/* 삭제 버튼 */}
-                                              <IconButton edge="end" aria-label="delete" onClick={() => {
-                                                  const newFiles = [...attachments];
-                                                  newFiles.splice(index, 1);
-                                                  setAttachments(newFiles);
-                                              }}>
-                                                  <DeleteIcon />
-                                              </IconButton>
-                                          </ListItem>
-                                      </List>
-                                  ))}
-                              </>
+                                <>
+                                    {attachments.map((file, index) => (
+                                        <List key={index} sx={{ mt: 2 }}>
+                                            <ListItem>
+                                                <ListItemAvatar>
+                                                    <Avatar><AttachFileIcon /></Avatar>
+                                                </ListItemAvatar>
+                                                <ListItemText
+                                                    primary={file.name}
+                                                    secondary={`${(file.size / 1024).toFixed(2)} KB`}
+                                                />
+                                                {/* 삭제 버튼 */}
+                                                <IconButton edge="end" aria-label="delete" onClick={() => {
+                                                    const newFiles = [...attachments];
+                                                    newFiles.splice(index, 1);
+                                                    setAttachments(newFiles);
+                                                }}>
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </ListItem>
+                                        </List>
+                                    ))}
+                                </>
                             )}
                         </Grid>
 
                         {/* 제출 버튼 */}
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>
                             <Button
-                              type="submit"
-                              variant="contained"
-                              color="primary"
-                              size="large"
-                              sx={{ mt: 2 }}
+                                type="submit"
+                                variant="contained"
+                                color="primary"
+                                size="large"
+                                sx={{ mt: 2 }}
                             >
-                              제출하기
+                                제출하기
                             </Button>
                         </Grid>
 
