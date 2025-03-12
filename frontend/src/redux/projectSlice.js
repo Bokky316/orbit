@@ -50,7 +50,7 @@ export const deleteProject = createAsyncThunk(
 );
 
 /**
- * 프로젝트를 생성하는 비동기 액션
+ * 프로젝트를 생성하는 비동기 액션 (JSON)
  */
 export const createProject = createAsyncThunk(
     'project/createProject',
@@ -58,6 +58,9 @@ export const createProject = createAsyncThunk(
         try {
             const response = await fetchWithAuth(`${API_URL}projects`, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify(projectData),
             });
             if (!response.ok) {
@@ -68,6 +71,45 @@ export const createProject = createAsyncThunk(
             return data;
         } catch (error) {
             console.error('Error creating project:', error);
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+/**
+ * 프로젝트를 파일과 함께 생성하는 비동기 액션 (Multipart/form-data)
+ */
+export const createProjectWithFiles = createAsyncThunk(
+    'project/createProjectWithFiles',
+    async ({ projectData, files }, { rejectWithValue }) => {
+        try {
+            const formData = new FormData();
+
+            // 프로젝트 데이터를 Blob으로 변환하여 FormData에 추가
+            const projectBlob = new Blob([JSON.stringify(projectData)], {
+                type: 'application/json'
+            });
+            formData.append('projectRequestDTO', projectBlob);
+
+            // 파일 추가
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            const response = await fetchWithAuth(`${API_URL}projects`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to create project: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error creating project with files:', error);
             return rejectWithValue(error.message);
         }
     }
@@ -98,6 +140,9 @@ export const updateProjectStatus = createAsyncThunk(
         try {
             const response = await fetchWithAuth(`${API_URL}projects/${id}/status`, {
                 method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({ statusType, statusCode })
             });
             if (!response.ok) throw new Error('상태 업데이트 실패');
@@ -109,7 +154,7 @@ export const updateProjectStatus = createAsyncThunk(
 );
 
 /**
- * 프로젝트를 수정하는 비동기 액션
+ * 프로젝트를 수정하는 비동기 액션 (JSON)
  */
 export const updateProject = createAsyncThunk(
     'project/updateProject',
@@ -117,6 +162,9 @@ export const updateProject = createAsyncThunk(
         try {
             const response = await fetchWithAuth(`${API_URL}projects/${id}`, {
                 method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify(projectData),
             });
             if (!response.ok) {
@@ -127,6 +175,78 @@ export const updateProject = createAsyncThunk(
             return data;
         } catch (error) {
             console.error('Error updating project:', error);
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+/**
+ * 프로젝트를 파일과 함께 수정하는 비동기 액션 (Multipart/form-data)
+ */
+export const updateProjectWithFiles = createAsyncThunk(
+    'project/updateProjectWithFiles',
+    async ({ id, projectData, files }, { rejectWithValue }) => {
+        try {
+            const formData = new FormData();
+
+            // 프로젝트 데이터를 Blob으로 변환하여 FormData에 추가
+            const projectBlob = new Blob([JSON.stringify(projectData)], {
+                type: 'application/json'
+            });
+            formData.append('projectRequestDTO', projectBlob);
+
+            // 파일 추가
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            const response = await fetchWithAuth(`${API_URL}projects/${id}`, {
+                method: 'PUT',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to update project: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error updating project with files:', error);
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+/**
+ * 프로젝트에 첨부파일 추가 액션
+ */
+export const addAttachmentsToProject = createAsyncThunk(
+    'project/addAttachments',
+    async ({ id, files }, { rejectWithValue }) => {
+        try {
+            const formData = new FormData();
+
+            // 파일 추가
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            const response = await fetchWithAuth(`${API_URL}projects/${id}/attachments`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to upload attachments: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error uploading attachments:', error);
             return rejectWithValue(error.message);
         }
     }
@@ -170,12 +290,13 @@ const projectSlice = createSlice({
             state.filters.status = action.payload;
         },
         resetProjectState: (state) => {
-                    state.projects = [];
-                    state.filters = initialState.filters;
-                    }
+            state.projects = [];
+            state.filters = initialState.filters;
+        }
     },
     extraReducers: (builder) => {
         builder
+            // fetchProjects
             .addCase(fetchProjects.pending, (state) => {
                 state.loading = true;
                 state.error = null;
@@ -188,6 +309,8 @@ const projectSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+
+            // deleteProject
             .addCase(deleteProject.pending, (state) => {
                 state.loading = true;
                 state.error = null;
@@ -200,18 +323,36 @@ const projectSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+
+            // createProject
             .addCase(createProject.pending, (state) => {
                 state.loading = true;
                 state.error = null;
             })
             .addCase(createProject.fulfilled, (state, action) => {
                 state.loading = false;
-                state.projects.push(action.payload); // 새로운 프로젝트를 목록에 추가
+                state.projects.push(action.payload);
             })
             .addCase(createProject.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })
+
+            // createProjectWithFiles
+            .addCase(createProjectWithFiles.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(createProjectWithFiles.fulfilled, (state, action) => {
+                state.loading = false;
+                state.projects.push(action.payload);
+            })
+            .addCase(createProjectWithFiles.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+
+            // updateProject
             .addCase(updateProject.pending, (state) => {
                 state.loading = true;
                 state.error = null;
@@ -220,12 +361,30 @@ const projectSlice = createSlice({
                 state.loading = false;
                 state.projects = state.projects.map(project =>
                     project.id === action.payload.id ? action.payload : project
-                ); // 프로젝트 업데이트
+                );
             })
             .addCase(updateProject.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })
+
+            // updateProjectWithFiles
+            .addCase(updateProjectWithFiles.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(updateProjectWithFiles.fulfilled, (state, action) => {
+                state.loading = false;
+                state.projects = state.projects.map(project =>
+                    project.id === action.payload.id ? action.payload : project
+                );
+            })
+            .addCase(updateProjectWithFiles.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+
+            // fetchProjectById
             .addCase(fetchProjectById.pending, (state) => {
                 state.loading = true;
                 state.error = null;
@@ -243,6 +402,8 @@ const projectSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+
+            // updateProjectStatus
             .addCase(updateProjectStatus.fulfilled, (state, action) => {
                 const index = state.projects.findIndex(p => p.id === action.payload.id);
                 if (index !== -1) {
@@ -251,6 +412,23 @@ const projectSlice = createSlice({
                         ...action.payload
                     };
                 }
+            })
+
+            // addAttachmentsToProject
+            .addCase(addAttachmentsToProject.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(addAttachmentsToProject.fulfilled, (state, action) => {
+                state.loading = false;
+                const index = state.projects.findIndex(p => p.id === action.payload.id);
+                if (index !== -1) {
+                    state.projects[index] = action.payload;
+                }
+            })
+            .addCase(addAttachmentsToProject.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             });
     },
 });

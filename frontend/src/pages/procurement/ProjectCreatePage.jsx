@@ -12,10 +12,17 @@ import {
     InputLabel,
     Select,
     MenuItem,
+    List,
+    ListItem,
+    ListItemAvatar,
+    ListItemText,
+    Avatar,
+    IconButton
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { Delete as DeleteIcon, AttachFile as AttachFileIcon } from '@mui/icons-material';
 import moment from 'moment';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
@@ -40,12 +47,27 @@ function ProjectCreatePage() {
     const [procurementStatus, setProcurementStatus] = useState('PROJECT-PROCUREMENT-REQUEST_RECEIVED'); // 유효한 기본값 설정
     const [requestDepartment, setRequestDepartment] = useState('');
 
+    // 첨부 파일 상태
+    const [attachments, setAttachments] = useState([]);
+
     /**
      * 폼 제출 핸들러
      */
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // 첨부 파일이 있는 경우 multipart/form-data로 처리
+        if (attachments.length > 0) {
+            await handleSubmitWithFiles();
+        } else {
+            await handleSubmitJson();
+        }
+    };
+
+    /**
+     * JSON 형식으로 제출 (파일 없을 때)
+     */
+    const handleSubmitJson = async () => {
         // 요청 데이터 구성
         const requestData = {
             projectName,
@@ -60,7 +82,7 @@ function ProjectCreatePage() {
             },
             basicStatus,
             procurementStatus,
-            requestDepartment, // 누락된 속성 추가
+            requestDepartment,
         };
 
         try {
@@ -71,6 +93,58 @@ function ProjectCreatePage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(requestData),
+            });
+
+            if (response.ok) {
+                alert('프로젝트가 성공적으로 생성되었습니다.');
+                navigate('/projects'); // 프로젝트 목록 페이지로 이동
+            } else {
+                const errorData = await response.text();
+                alert(`오류 발생: ${errorData}`);
+            }
+        } catch (error) {
+            alert(`오류 발생: ${error.message}`);
+        }
+    };
+
+    /**
+     * Multipart/form-data로 제출 (파일 있을 때)
+     */
+    const handleSubmitWithFiles = async () => {
+        // FormData 구성
+        const formData = new FormData();
+
+        // 프로젝트 데이터를 JSON으로 변환하여 추가
+        const projectData = {
+            projectName,
+            businessCategory,
+            clientCompany,
+            contractType,
+            totalBudget: parseFloat(totalBudget) || 0,
+            remarks,
+            projectPeriod: {
+                startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
+                endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
+            },
+            basicStatus,
+            procurementStatus,
+            requestDepartment,
+        };
+
+        // 프로젝트 데이터를 Blob으로 변환하여 FormData에 추가
+        const projectBlob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+        formData.append('projectRequestDTO', projectBlob);
+
+        // 첨부 파일 추가
+        attachments.forEach(file => {
+            formData.append('files', file);
+        });
+
+        try {
+            // API 요청
+            const response = await fetchWithAuth(`${API_URL}projects`, {
+                method: 'POST',
+                body: formData, // Content-Type은 자동으로 설정됨
             });
 
             if (response.ok) {
@@ -184,7 +258,10 @@ function ProjectCreatePage() {
                                     label="시작일"
                                     value={startDate}
                                     onChange={(date) => setStartDate(date)}
-                                    renderInput={(params) => <TextField {...params} fullWidth />}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
                                 />
                             </LocalizationProvider>
                         </Grid>
@@ -194,10 +271,56 @@ function ProjectCreatePage() {
                                     label="종료일"
                                     value={endDate}
                                     onChange={(date) => setEndDate(date)}
-                                    renderInput={(params) => <TextField {...params} fullWidth />}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
                                 />
                             </LocalizationProvider>
                         </Grid>
+
+                        {/* 파일 첨부 영역 */}
+                        <Grid item xs={12}>
+                            <input
+                                type="file"
+                                multiple
+                                onChange={(e) => setAttachments(Array.from(e.target.files))}
+                                id="file-upload"
+                                style={{ display: 'none' }}
+                            />
+                            <label htmlFor="file-upload">
+                                <Button variant="outlined" component="span" startIcon={<AttachFileIcon />}>
+                                    파일 첨부
+                                </Button>
+                            </label>
+                            {attachments.length > 0 && (
+                                <List>
+                                    {attachments.map((file, index) => (
+                                        <ListItem key={index}>
+                                            <ListItemAvatar>
+                                                <Avatar><AttachFileIcon /></Avatar>
+                                            </ListItemAvatar>
+                                            <ListItemText
+                                                primary={file.name}
+                                                secondary={`${(file.size / 1024).toFixed(2)} KB`}
+                                            />
+                                            <IconButton
+                                                edge="end"
+                                                aria-label="delete"
+                                                onClick={() => {
+                                                    const newFiles = [...attachments];
+                                                    newFiles.splice(index, 1);
+                                                    setAttachments(newFiles);
+                                                }}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </ListItem>
+                                    ))}
+                                </List>
+                            )}
+                        </Grid>
+
                         <Grid item xs={12}>
                             <Button type="submit" variant="contained">
                                 제출하기
