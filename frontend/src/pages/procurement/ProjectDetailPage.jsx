@@ -85,24 +85,54 @@ function ProjectDetailPage() {
     };
 
     // 첨부파일 다운로드 함수
+    // downloadFile 함수 부분만 수정
     const downloadFile = async (attachmentId) => {
         try {
+            console.log("첨부파일 다운로드 시작, attachmentId:", attachmentId);
+
             const response = await fetchWithAuth(
                 `${API_URL}projects/attachments/${attachmentId}/download`,
-                { method: 'GET', responseType: 'blob' }
+                {
+                    method: 'GET',
+                    // responseType: 'blob' - fetchWithAuth는 자동으로 Response 객체를 반환
+                }
             );
 
             if (response.ok) {
+                // Blob으로 응답 변환
                 const blob = await response.blob();
+
+                // 파일명 추출 시도
+                let filename = 'download';
+                const contentDisposition = response.headers.get('content-disposition');
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1].replace(/['"]/g, '');
+                        // URL 디코딩이 필요할 수 있음
+                        try {
+                            filename = decodeURIComponent(filename);
+                        } catch (e) {
+                            console.warn('파일명 디코딩 실패:', e);
+                        }
+                    }
+                }
+
+                // 다운로드 링크 생성 및 클릭
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                const filename = response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/"/g, '') || `attachment-${attachmentId}`;
                 a.href = url;
                 a.download = filename;
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
+
+                // 정리
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                console.log("파일 다운로드 성공:", filename);
             } else {
                 console.error('다운로드 실패:', await response.text());
                 alert('파일 다운로드에 실패했습니다.');
@@ -113,36 +143,39 @@ function ProjectDetailPage() {
         }
     };
 
-    // 첨부파일 업로드 함수
-    const uploadFiles = async (files) => {
-        if (!files || files.length === 0) return;
-
-        const formData = new FormData();
-        for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]);
-        }
-
-        try {
-            const response = await fetchWithAuth(`${API_URL}projects/${id}/attachments`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (response.ok) {
-                // 프로젝트 정보 다시 불러오기
-                const projectRes = await fetchWithAuth(`${API_URL}projects/${id}`);
-                if (projectRes.ok) {
-                    setProject(await projectRes.json());
-                    alert('첨부파일이 성공적으로 업로드되었습니다.');
-                }
-            } else {
-                alert('첨부파일 업로드에 실패했습니다.');
-            }
-        } catch (error) {
-            console.error('업로드 오류:', error);
-            alert('첨부파일 업로드 중 오류가 발생했습니다.');
-        }
-    };
+//     // 첨부파일 업로드 함수
+//     // uploadFiles 함수 부분만 수정
+//     const uploadFiles = async (files) => {
+//         if (!files || files.length === 0) return;
+//
+//         const formData = new FormData();
+//         for (let i = 0; i < files.length; i++) {
+//             formData.append('files', files[i]);
+//         }
+//
+//         try {
+//             // Content-Type 헤더를 명시적으로 지정하지 않음 (브라우저가 자동으로 설정)
+//             const response = await fetchWithAuth(`${API_URL}projects/${id}/attachments`, {
+//                 method: 'POST',
+//                 body: formData,
+//             });
+//
+//             if (response.ok) {
+//                 // 프로젝트 정보 다시 불러오기
+//                 const projectRes = await fetchWithAuth(`${API_URL}projects/${id}`);
+//                 if (projectRes.ok) {
+//                     setProject(await projectRes.json());
+//                     alert('첨부파일이 성공적으로 업로드되었습니다.');
+//                 }
+//             } else {
+//                 const errorData = await response.text();
+//                 alert(`첨부파일 업로드에 실패했습니다: ${errorData}`);
+//             }
+//         } catch (error) {
+//             console.error('업로드 오류:', error);
+//             alert(`첨부파일 업로드 중 오류가 발생했습니다: ${error.message}`);
+//         }
+//     };
 
     if (loading) return <Typography>로딩 중...</Typography>;
     if (error) return <Typography color="error">{error}</Typography>;
@@ -199,19 +232,19 @@ function ProjectDetailPage() {
             <Paper sx={{ p: 3, mb: 3 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                     <Typography variant="h6">첨부 파일</Typography>
-                    <Button
-                        variant="outlined"
-                        component="label"
-                        startIcon={<AttachFileIcon />}
-                    >
-                        파일 추가
-                        <input
-                            type="file"
-                            multiple
-                            hidden
-                            onChange={(e) => uploadFiles(e.target.files)}
-                        />
-                    </Button>
+{/*                     <Button */}
+{/*                         variant="outlined" */}
+{/*                         component="label" */}
+{/*                         startIcon={<AttachFileIcon />} */}
+{/*                     > */}
+{/*                         파일 추가 */}
+{/*                         <input */}
+{/*                             type="file" */}
+{/*                             multiple */}
+{/*                             hidden */}
+{/*                             onChange={(e) => uploadFiles(e.target.files)} */}
+{/*                         /> */}
+{/*                     </Button> */}
                 </Box>
 
                 {project.attachments && project.attachments.length > 0 ? (

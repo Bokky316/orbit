@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -295,6 +296,7 @@ public class ProjectService {
                 .requestDepartment(dto.getRequestDepartment())
                 .budgetCode(dto.getBudgetCode())
                 .remarks(dto.getRemarks())
+                .attachments(new ArrayList<>()) // 빈 리스트로 초기화 추가
                 .build();
 
         // ProjectPeriod 설정
@@ -340,10 +342,13 @@ public class ProjectService {
         }
         dto.setProjectPeriod(periodInfo);
 
-        // 첨부파일 설정
-        List<ProjectAttachmentDTO> attachmentDTOs = project.getAttachments().stream()
-                .map(this::convertAttachmentToDto)
-                .collect(Collectors.toList());
+        // 첨부파일 설정 - 항상 설정
+        List<ProjectAttachmentDTO> attachmentDTOs = new ArrayList<>();
+        if (project.getAttachments() != null) {
+            attachmentDTOs = project.getAttachments().stream()
+                    .map(this::convertAttachmentToDto)
+                    .collect(Collectors.toList());
+        }
         dto.setAttachments(attachmentDTOs);
 
         return dto;

@@ -1,6 +1,7 @@
 // PurchaseRequestService.java
 package com.orbit.service.procurement;
 
+import com.orbit.dto.item.CategoryDTO;
 import com.orbit.dto.item.ItemDTO;
 import com.orbit.dto.procurement.*;
 import com.orbit.entity.procurement.*;
@@ -11,9 +12,10 @@ import com.orbit.entity.item.Item;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
+import com.orbit.repository.item.CategoryRepository;
 import com.orbit.repository.item.ItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
-import com.orbit.repository.procurement.PurchaseRequestItemRepository;
+import com.orbit.entity.item.Category;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,7 +49,7 @@ public class PurchaseRequestService {
     private final ParentCodeRepository parentCodeRepository;
     private final ChildCodeRepository childCodeRepository;
     private final PurchaseRequestAttachmentRepository attachmentRepository;
-    private final PurchaseRequestItemRepository purchaseRequestItemRepository; // ★ 추가
+    private final CategoryRepository categoryRepository;
 
     @Value("${uploadPath}")
     private String uploadPath;
@@ -111,10 +114,17 @@ public class PurchaseRequestService {
      */
     @Transactional(readOnly = true)
     public PurchaseRequestDTO getPurchaseRequestById(Long id) {
-
-        return purchaseRequestRepository.findById(id)
-                .map(this::convertToDto)
+        PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 구매 요청이 없습니다."));
+
+        PurchaseRequestDTO dto = convertToDto(purchaseRequest);
+
+        // GOODS 타입이고 items가 null인 경우 빈 리스트로 초기화
+        if ("GOODS".equals(dto.getBusinessType()) && dto.getItems() == null) {
+            dto.setItems(new ArrayList<>());
+        }
+
+        return dto;
     }
 
     /**
@@ -264,11 +274,19 @@ public class PurchaseRequestService {
      * GoodsRequest -> GoodsRequestDTO 변환
      */
     private GoodsRequestDTO convertToGoodsDto(GoodsRequest entity) {
-
         GoodsRequestDTO dto = new GoodsRequestDTO();
-        dto.setItems(entity.getItems().stream()
-                .map(this::convertToItemDto)
-                .collect(Collectors.toList()));
+
+        // items가 null이 아닌지 확인하고 빈 리스트로 초기화
+        if (entity.getItems() != null && !entity.getItems().isEmpty()) {
+            List<PurchaseRequestItemDTO> itemDtos = entity.getItems().stream()
+                    .map(this::convertToItemDto)
+                    .collect(Collectors.toList());
+            dto.setItems(itemDtos);
+        } else {
+            // 명시적으로 빈 리스트 설정 (null이 되지 않도록)
+            dto.setItems(new ArrayList<>());
+        }
+
         return dto;
     }
 
@@ -352,7 +370,8 @@ public class PurchaseRequestService {
 
         PurchaseRequestItemDTO itemDto = new PurchaseRequestItemDTO();
         itemDto.setId(item.getId());
-        itemDto.setItemId(Long.valueOf(item.getItem().getId()));
+        // Long 타입 변환 대신 String으로 직접 할당
+        itemDto.setItemId(item.getItem().getId());
         itemDto.setItemName(item.getItem().getName());
         if (item.getUnitParentCode() != null) {
             itemDto.setUnitParentCode(item.getUnitParentCode().getCodeName());
@@ -418,27 +437,29 @@ public class PurchaseRequestService {
      * GoodsRequest 업데이트
      */
     private void updateGoodsRequest(GoodsRequest entity, GoodsRequestDTO dto) {
-
         // 기존 아이템 제거 후 새 아이템 추가
         entity.getItems().clear();
         List<PurchaseRequestItem> newItems = dto.getItems().stream()
-                .map(itemDto -> convertToItemEntity(itemDto, entity)) // 변경
+                .map(itemDto -> {
+                    PurchaseRequestItem item = convertToItemEntity(itemDto, entity);
+                    // 명시적으로 양방향 관계 설정 (addItem 메서드 활용)
+                    entity.addItem(item);
+                    return item;
+                })
                 .collect(Collectors.toList());
-
-        entity.getItems().addAll(newItems);
     }
 
     /**
      * 품목 엔티티로 변환 (GoodsRequest 연관관계 설정)
      */
     private PurchaseRequestItem convertToItemEntity(PurchaseRequestItemDTO itemDto, GoodsRequest goodsRequest) {
-
         Item foundItem = itemRepository.findById(itemDto.getItemId().toString())
                 .orElseThrow(() -> new ResourceNotFoundException("Item ID " + itemDto.getItemId() + "에 해당하는 품목이 없습니다."));
 
         PurchaseRequestItem item = new PurchaseRequestItem();
         item.setItem(foundItem);
-        item.setPurchaseRequest(goodsRequest); // GoodsRequest 설정
+        item.setPurchaseRequest(goodsRequest); // PurchaseRequest 설정
+        item.setGoodsRequest(goodsRequest);    // 여기에 GoodsRequest도 추가 설정
 
         // 단위 코드 조회 및 설정
         if(itemDto.getUnitParentCode() != null){
@@ -450,7 +471,6 @@ public class PurchaseRequestService {
                 item.setUnitChildCode(unitChildCode);
             }
         }
-
 
         item.setSpecification(itemDto.getSpecification());
 
@@ -539,14 +559,14 @@ public class PurchaseRequestService {
 
     private void processGoodsRequestItems(GoodsRequest goodsRequest, GoodsRequestDTO goodsRequestDTO) {
         if (goodsRequestDTO.getItems() != null) {
-            // 1. 기존 아이템 제거 후 새 아이템 추가
+            // 1. 기존 아이템 제거
             goodsRequest.getItems().clear();
-            List<PurchaseRequestItem> newItems = goodsRequestDTO.getItems().stream()
-                    .map(itemDto -> convertToItemEntity(itemDto, goodsRequest))
-                    .collect(Collectors.toList());
 
-            // 2. cascade ALL 설정 시 자동 저장됨
-            goodsRequest.getItems().addAll(newItems);
+            // 2. 새 아이템 추가 (addItem 메서드 활용)
+            goodsRequestDTO.getItems().forEach(itemDto -> {
+                PurchaseRequestItem item = convertToItemEntity(itemDto, goodsRequest);
+                goodsRequest.addItem(item); // GoodsRequest의 addItem 메서드 사용
+            });
         }
     }
 
@@ -574,5 +594,14 @@ public class PurchaseRequestService {
                 )
                 .standardPrice(item.getStandardPrice())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryDTO> getAllCategories() {
+        // 활성화된 카테고리만 조회 (useYn = 'Y')
+        List<Category> categories = categoryRepository.findAllActive();
+        return categories.stream()
+                .map(CategoryDTO::from)
+                .collect(Collectors.toList());
     }
 }

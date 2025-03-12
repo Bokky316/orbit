@@ -13,10 +13,10 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
-import { fetchProjects } from '@/redux/projectSlice'; // 프로젝트 목록 액션 추가
+import { fetchItems, fetchCategories } from '@/redux/purchaseRequestSlice'; // Redux 액션 추가
 
 const initItem = {
-    itemId: '', // 아이템 ID 추가
+    itemId: '',
     quantity: '',
     unitPrice: '',
     totalPrice: 0,
@@ -30,6 +30,11 @@ const initItem = {
 function PurchaseRequestCreatePage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    // Redux 상태 가져오기
+    const { items: availableItems, categories } = useSelector(state => state.purchaseRequest);
+    const loading = useSelector(state => state.purchaseRequest.loading);
+    const error = useSelector(state => state.purchaseRequest.error);
 
     // 프로젝트 목록 상태
     const [projects, setProjects] = useState([]);
@@ -59,7 +64,8 @@ function PurchaseRequestCreatePage() {
 
     // 물품 필드 상태
     const [items, setItems] = useState([initItem]);
-    const [availableItems, setAvailableItems] = useState([]); // 사용 가능한 아이템 목록
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [filteredItems, setFilteredItems] = useState([]);
 
     // 첨부 파일 상태
     const [attachments, setAttachments] = useState([]);
@@ -86,27 +92,25 @@ function PurchaseRequestCreatePage() {
 
         fetchAllProjects();
 
-        // 아이템 목록 가져오기
-        const fetchItems = async () => {
-            try {
-                const response = await fetchWithAuth(`${API_URL}items`, { // 아이템 목록 API 엔드포인트
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error(`아이템 목록을 가져오는데 실패했습니다: ${response.status}`);
-                }
-                const itemsData = await response.json();
-                setAvailableItems(itemsData);
-            } catch (error) {
-                alert(`아이템 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
-            }
-        };
+        // Redux를 통해 아이템과 카테고리 목록 가져오기
+        dispatch(fetchItems());
+        dispatch(fetchCategories());
+    }, [dispatch]);
 
-        fetchItems();
-    }, []);
+    // 초기에 filteredItems 설정
+    useEffect(() => {
+        setFilteredItems(availableItems);
+    }, [availableItems]);
+
+    // 카테고리 선택 시 아이템 필터링
+    useEffect(() => {
+        if (selectedCategory) {
+            const filtered = availableItems.filter(item => item.categoryId === selectedCategory);
+            setFilteredItems(filtered);
+        } else {
+            setFilteredItems(availableItems);
+        }
+    }, [selectedCategory, availableItems]);
 
     // 품목 필드 변경 핸들러
     const handleItemChange = (index, fieldName, value) => {
@@ -132,11 +136,23 @@ function PurchaseRequestCreatePage() {
             const newItems = [...items];
             newItems[index] = {
                 ...newItems[index],
-                itemId: selectedItem.id, // 아이템 ID 저장
-                itemName: selectedItem.name, // 아이템 이름
-                specification: selectedItem.specification, // 사양
-                unit: selectedItem.unit // 단위
+                itemId: selectedItem.id,
+                itemName: selectedItem.name,
+                categoryId: selectedItem.categoryId,
+                categoryName: selectedItem.categoryName,
+                specification: selectedItem.specification,
+                unitParentCode: selectedItem.unitParentCode,
+                unitChildCode: selectedItem.unitChildCode,
+                unitPrice: selectedItem.standardPrice || 0,
             };
+
+            // 가격이 있으면 총액 자동 계산
+            if (selectedItem.standardPrice && newItems[index].quantity) {
+                const quantity = Number(newItems[index].quantity) || 0;
+                const unitPrice = Number(selectedItem.standardPrice) || 0;
+                newItems[index].totalPrice = quantity * unitPrice;
+            }
+
             setItems(newItems);
         }
     };
@@ -171,7 +187,8 @@ function PurchaseRequestCreatePage() {
             businessManager,
             businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0,
             specialNotes,
-            managerPhoneNumber: '01044737122',
+            managerPhoneNumber: managerPhoneNumber || '01044737122',
+            // UUID 문자열을 그대로 전송 (숫자로 변환하지 않음)
             projectId: selectedProjectId,
 
             // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
@@ -190,14 +207,25 @@ function PurchaseRequestCreatePage() {
             requestData.contractAmount = parseFloat(contractAmount.replace(/,/g, '')) || 0;
             requestData.contractDetails = contractDetails;
         } else if (businessType === 'GOODS') {
-            requestData.items = items.map(item => ({
-                itemId: item.itemId, // 아이템 ID 전송
-                quantity: parseInt(item.quantity) || 0,
-                unitPrice: parseFloat(item.unitPrice.replace(/,/g, '')) || 0,
-                totalPrice: parseFloat(item.totalPrice) || 0,
-                deliveryRequestDate: item.deliveryRequestDate ? item.deliveryRequestDate.format('YYYY-MM-DD') : null,
-                deliveryLocation: item.deliveryLocation
-            }));
+            // 이 부분에서 오류 발생했던 코드 수정
+            requestData.items = items.map(item => {
+                // unitPrice가 문자열인지 확인하고 적절히 처리
+                let unitPrice = 0;
+                if (typeof item.unitPrice === 'string') {
+                    unitPrice = parseFloat(item.unitPrice.replace(/,/g, '')) || 0;
+                } else if (typeof item.unitPrice === 'number') {
+                    unitPrice = item.unitPrice;
+                }
+
+                return {
+                    itemId: item.itemId, // 여기도 UUID 문자열을 그대로 사용
+                    quantity: parseInt(item.quantity) || 0,
+                    unitPrice: unitPrice,
+                    totalPrice: parseFloat(item.totalPrice) || 0,
+                    deliveryRequestDate: item.deliveryRequestDate ? item.deliveryRequestDate.format('YYYY-MM-DD') : null,
+                    deliveryLocation: item.deliveryLocation
+                };
+            });
         }
 
         try {
@@ -233,6 +261,8 @@ function PurchaseRequestCreatePage() {
 
                         if (fileResponse.ok) {
                             alert('첨부 파일이 성공적으로 업로드되었습니다.');
+                            // 목록 페이지로 이동
+                            navigate('/purchase-requests');
                         } else {
                             const errorMsg = await fileResponse.text();
                             alert(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
@@ -240,6 +270,9 @@ function PurchaseRequestCreatePage() {
                     } catch (fileError) {
                         alert(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
                     }
+                } else {
+                    // 첨부 파일이 없는 경우 바로 목록 페이지로 이동
+                    navigate('/purchase-requests');
                 }
             } else {
                 const errorData = await response.text();
@@ -289,7 +322,6 @@ function PurchaseRequestCreatePage() {
             case 'MAINTENANCE':
                 return (
                     <>
-
                         <Grid item xs={6}>
                             <DatePicker
                                 label="계약 시작일"
@@ -333,133 +365,138 @@ function PurchaseRequestCreatePage() {
             case 'GOODS':
                 return (
                     <>
+                        {/* 카테고리 선택 필드 추가 */}
+                        <Grid item xs={12} sx={{ mb: 2 }}>
+                            <FormControl fullWidth>
+                                <InputLabel id="category-select-label">카테고리 선택</InputLabel>
+                                <Select
+                                    labelId="category-select-label"
+                                    id="category-select"
+                                    value={selectedCategory}
+                                    label="카테고리 선택"
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                >
+                                    <MenuItem value="">모든 카테고리</MenuItem>
+                                    {categories.map(category => (
+                                        <MenuItem key={category.id} value={category.id}>
+                                            {category.name}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        {/* 물품 아이템 레이아웃 수정 */}
                         {items.map((item, index) => (
-                            <Grid container spacing={2} key={index} alignItems="center" sx={{ mb: 2 }}>
-                                {/* 아이템 선택 */}
-                                <Grid item xs={3}>
-                                    <FormControl fullWidth>
-                                        <InputLabel id={`item-select-label-${index}`}>품목 선택 *</InputLabel>
-                                        <Select
-                                            labelId={`item-select-label-${index}`}
-                                            id={`item-select-${index}`}
-                                            value={item.itemId}
-                                            label="품목 선택 *"
-                                            onChange={(e) => handleItemSelect(index, e)}
-                                            required
-                                        >
-                                            {availableItems.map(availableItem => (
-                                                <MenuItem key={availableItem.id} value={availableItem.id}>
-                                                    {availableItem.name}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-
-                                {/* 사양 (선택된 아이템 정보) */}
-                                <Grid item xs={2}>
-                                    <TextField
-                                        fullWidth
-                                        label="사양"
-                                        value={item.specification || ''}
-                                        InputProps={{
-                                            readOnly: true
-                                        }}
-                                    />
-                                </Grid>
-
-                                {/* 단위 (선택된 아이템 정보) */}
-                                <Grid item xs={1}>
-                                    <TextField
-                                        fullWidth
-                                        label="단위"
-                                        value={item.unit || ''}
-                                        InputProps={{
-                                            readOnly: true
-                                        }}
-                                    />
-                                </Grid>
-
-                                {/* 수량 */}
-                                <Grid item xs={1}>
-                                    <TextField
-                                        fullWidth
-                                        label="수량 *"
-                                        value={item.quantity}
-                                        onChange={(e) => handleNumericItemChange(index, 'quantity')(e)}
-                                        required
-                                    />
-                                </Grid>
-
-                                {/* 단가 */}
-                                <Grid item xs={2}>
-                                    <TextField
-                                        fullWidth
-                                        label="단가 *"
-                                        value={item.unitPrice}
-                                        onChange={(e) => handleNumericItemChange(index, 'unitPrice')(e)}
-                                        InputProps={{
-                                            startAdornment: <InputAdornment position="start">₩</InputAdornment>,
-                                            inputProps: { maxLength: 15 }
-                                        }}
-                                        required
-                                    />
-                                </Grid>
-
-                                {/* 총액 (자동 계산) */}
-                                <Grid item xs={2}>
-                                    <TextField
-                                        fullWidth
-                                        label="총액"
-                                        value={item.totalPrice.toLocaleString()}
-                                        InputProps={{
-                                            readOnly: true,
-                                            startAdornment: <InputAdornment position="start">₩</InputAdornment>
-                                        }}
-                                    />
-                                </Grid>
-
-                                {/* 납품 요청일 */}
-                                <Grid item xs={2}>
-                                    <DatePicker
-                                        label="납품 요청일"
-                                        value={item.deliveryRequestDate}
-                                        onChange={(date) => handleItemChange(index, 'deliveryRequestDate', date)}
-                                        renderInput={(params) => <TextField {...params} fullWidth />}
-                                    />
-                                </Grid>
-
-                                {/* 납품 장소 */}
-                                <Grid item xs={2}>
-                                    <TextField
-                                        fullWidth
-                                        label="납품 장소"
-                                        value={item.deliveryLocation}
-                                        onChange={(e) => handleItemChange(index, 'deliveryLocation', e.target.value)}
-                                    />
-                                </Grid>
-
-                                {/* 삭제 버튼 */}
-                                <Grid item xs={1}>
-                                    <IconButton
-                                        aria-label="delete"
-                                        onClick={() => handleRemoveItem(index)}
-                                        color="error"
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
-                                </Grid>
+                          <Grid container spacing={2} key={index} alignItems="center" sx={{ mb: 2, mx: 0, width: '100%' }}>
+                            {/* 아이템 선택 */}
+                            <Grid item xs={3}>
+                              <FormControl fullWidth size="small">
+                                <InputLabel id={`item-select-label-${index}`}>품목 선택 *</InputLabel>
+                                <Select
+                                  labelId={`item-select-label-${index}`}
+                                  id={`item-select-${index}`}
+                                  value={item.itemId}
+                                  label="품목 선택 *"
+                                  onChange={(e) => handleItemSelect(index, e)}
+                                  required
+                                >
+                                  {filteredItems.map(availableItem => (
+                                    <MenuItem key={availableItem.id} value={availableItem.id}>
+                                      {availableItem.name}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
                             </Grid>
+
+                            {/* 사양 (필드 크기 조정) */}
+                            <Grid item xs={2}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="사양"
+                                value={item.specification || ''}
+                                InputProps={{ readOnly: true }}
+                              />
+                            </Grid>
+
+                            {/* 나머지 필드도 size="small" 추가 */}
+                            <Grid item xs={1}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="단위"
+                                value={item.unitChildCode || ''}
+                                InputProps={{ readOnly: true }}
+                              />
+                            </Grid>
+
+                            <Grid item xs={1}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="수량 *"
+                                value={item.quantity}
+                                onChange={(e) => handleNumericItemChange(index, 'quantity')(e)}
+                                required
+                              />
+                            </Grid>
+
+                            <Grid item xs={2}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="단가 *"
+                                value={item.unitPrice}
+                                onChange={(e) => handleNumericItemChange(index, 'unitPrice')(e)}
+                                InputProps={{
+                                  startAdornment: <InputAdornment position="start">₩</InputAdornment>,
+                                  inputProps: { maxLength: 15 }
+                                }}
+                                required
+                              />
+                            </Grid>
+
+                            <Grid item xs={2}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="총액"
+                                value={item.totalPrice.toLocaleString()}
+                                InputProps={{
+                                  readOnly: true,
+                                  startAdornment: <InputAdornment position="start">₩</InputAdornment>
+                                }}
+                              />
+                            </Grid>
+
+                            {/* 삭제 버튼을 오른쪽으로 이동 */}
+                            <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <IconButton
+                                aria-label="delete"
+                                onClick={() => handleRemoveItem(index)}
+                                color="error"
+                                size="small"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Grid>
+                          </Grid>
                         ))}
 
                         {/* 품목 추가 버튼 */}
-                        <Button
+                        <Grid item xs={12} sx={{ mt: 1, display: 'flex', justifyContent: 'flex-start' }}>
+                          <Button
                             variant="outlined"
                             onClick={() => setItems([...items, initItem])}
                             startIcon={<AddIcon />}
-                        >
+                            size="small"
+                            sx={{ px: 2, py: 1 }}
+                          >
                             품목 추가
-                        </Button>
+                          </Button>
+                        </Grid>
                     </>
                 );
 
@@ -467,6 +504,26 @@ function PurchaseRequestCreatePage() {
                 return null;
         }
     };
+
+    // 로딩 중 표시
+    if (loading && !availableItems.length && !categories.length) {
+        return (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography>데이터를 불러오는 중입니다...</Typography>
+            </Box>
+        );
+    }
+
+    // 에러 표시
+    if (error) {
+        return (
+            <Box sx={{ p: 3 }}>
+                <Alert severity="error">
+                    {error}
+                </Alert>
+            </Box>
+        );
+    }
 
     return (
         <LocalizationProvider dateAdapter={AdapterMoment}>
