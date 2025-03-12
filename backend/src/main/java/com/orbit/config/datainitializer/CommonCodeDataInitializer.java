@@ -61,11 +61,20 @@ public class CommonCodeDataInitializer {
     }
 
     //▶▶▶ 결재 코드
+    //▶▶▶ 결재 코드 (기존 코드 확장)
     private void initApprovalCodes() {
+        // 결재 상태 (전체적인 결재 상태)
         ParentCode approvalStatus = initParentCode("APPROVAL", "STATUS", "결재 상태");
         initChildCodes(approvalStatus,
-                List.of("PENDING", "APPROVED", "REJECTED"),
-                List.of("대기", "승인", "반려")
+                List.of("PENDING", "IN_REVIEW", "APPROVED", "REJECTED", "COMPLETED"),
+                List.of("대기", "검토 중", "승인", "반려", "완료")
+        );
+
+        // 결재선 상세 상태
+        ParentCode approvalLineStatus = initParentCode("APPROVAL_LINE", "STATUS", "결재선 상세 상태");
+        initChildCodes(approvalLineStatus,
+                List.of("WAITING", "IN_REVIEW", "PENDING", "APPROVED", "REJECTED"),
+                List.of("대기 중", "검토 중", "보류", "승인", "반려")
         );
     }
 

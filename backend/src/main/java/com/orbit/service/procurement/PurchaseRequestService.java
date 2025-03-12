@@ -1,6 +1,7 @@
 // PurchaseRequestService.java
 package com.orbit.service.procurement;
 
+import com.orbit.dto.approval.ApprovalLineCreateDTO;
 import com.orbit.dto.item.CategoryDTO;
 import com.orbit.dto.item.ItemDTO;
 import com.orbit.dto.procurement.*;
@@ -59,6 +60,7 @@ public class PurchaseRequestService {
     private final CategoryRepository categoryRepository;
     private final MemberRepository memberRepository;
     private final ProjectRepository projectRepository;
+    private final ApprovalLineService approvalLineService;
 
     @Value("${uploadPath}")
     private String uploadPath;
@@ -102,6 +104,12 @@ public class PurchaseRequestService {
         if (savedRequest instanceof GoodsRequest && purchaseRequestDTO instanceof GoodsRequestDTO) {
             processGoodsRequestItems((GoodsRequest) savedRequest, (GoodsRequestDTO) purchaseRequestDTO);
         }
+
+        approvalLineService.createAutoApprovalLine(
+                ApprovalLineCreateDTO.builder()
+                        .purchaseRequestId(savedRequest.getId())
+                        .build()
+        );
 
         return convertToDto(savedRequest);
     }

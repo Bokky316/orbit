@@ -727,44 +727,7 @@ function PurchaseRequestCreatePage() {
                             )}
                         </Grid>
 
-                        {/* 결재선 설정 섹션 */}
-                        <Grid item xs={12} sx={{ mt: 3 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography variant="subtitle1">결재선 설정</Typography>
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<AddIcon />}
-                                    onClick={() => setShowApprovalSetup(true)}
-                                >
-                                    결재선 추가
-                                </Button>
-                            </Box>
 
-                            {/* 설정된 결재선 미리보기 */}
-                            {approvalLines.length > 0 && (
-                                <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-                                    <Grid container spacing={2}>
-                                        {approvalLines.map((line, index) => (
-                                            <Grid item key={line.id}>
-                                                <Chip
-                                                    label={`${index + 1}. ${line.approverName}`}
-                                                    variant="outlined"
-                                                />
-                                            </Grid>
-                                        ))}
-                                    </Grid>
-                                </Paper>
-                            )}
-                        </Grid>
-
-                        {/* 결재선 설정 컴포넌트 */}
-                        {showApprovalSetup && (
-                            <ApprovalLineSetupComponent
-                                purchaseRequestId={null}
-                                onSetupComplete={handleApprovalSetupComplete}
-                                onCancel={handleCancelApprovalSetup}
-                            />
-                        )}
 
                         {/* 제출 버튼 */}
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>
