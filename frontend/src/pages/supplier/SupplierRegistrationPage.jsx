@@ -46,7 +46,7 @@ const SupplierRegistrationPage = () => {
     sourcingCategory: '',
     sourcingSubCategory: '',
     sourcingDetailCategory: '',
-    companyPhoneNumber: '', // 회사 연락처
+    phoneNumber: '', // 회사 연락처 (필드명 변경: companyPhoneNumber → phoneNumber)
     headOfficeAddress: '',
     contactPerson: '',
     contactPhone: '',
@@ -110,7 +110,7 @@ const SupplierRegistrationPage = () => {
         .replace(/\D/g, "") // 숫자만 허용
         .replace(/(\d{3})(\d{2})(\d{5})/, "$1-$2-$3")
         .slice(0, 12);
-    } else if (name === "companyPhoneNumber" || name === "contactPhone") {
+    } else if (name === "phoneNumber" || name === "contactPhone") {
       // 전화번호 (다양한 경우의 수 처리)
       formattedValue = value.replace(/\D/g, ""); // 숫자만 허용
       if (formattedValue.length <= 8) {
@@ -188,97 +188,72 @@ const SupplierRegistrationPage = () => {
   const handleSubmit = async (e) => {
       e.preventDefault();
 
-      // 토큰 확인 및 저장 로직 추가
-      const token = localStorage.getItem('token');
-      if (!token && authState.token) {
-        console.log('폼 제출 전 토큰을 로컬 스토리지에 저장합니다.');
-        localStorage.setItem('token', authState.token);
-      } else if (!token && !authState.token && authState.isLoggedIn) {
-        console.log('토큰이 없지만 로그인 상태입니다. 임시 토큰을 설정합니다.');
-        localStorage.setItem('token', 'dev_temp_token');
-      } else if (!token && !authState.isLoggedIn) {
-        setErrors(prev => ({
-          ...prev,
-          general: '로그인 세션이 유효하지 않습니다. 다시 로그인해주세요.'
-        }));
-        setSnackbarMessage('로그인 세션이 유효하지 않습니다.');
-        setOpenSnackbar(true);
-        return;
-      }
-
       if (!validateForm()) {
-        return;
+          return;
       }
 
-      const data = new FormData();
-
-      // 폼 데이터 처리
-      const formDataCopy = { ...formData };
-
-      // companyPhoneNumber를 phoneNumber로 변경 (백엔드 API에 맞게)
-      if (formDataCopy.companyPhoneNumber) {
-        formDataCopy.phoneNumber = formDataCopy.companyPhoneNumber;
-        delete formDataCopy.companyPhoneNumber;
+      // 🔹 1. 로그인 토큰 가져오기
+      const token = localStorage.getItem("token");
+      if (!token) {
+          setSnackbarMessage("인증 정보가 없습니다. 다시 로그인해주세요.");
+          setOpenSnackbar(true);
+          return;
       }
 
-      // 디버깅: 전송 데이터 확인
-      console.log('폼 데이터 확인:', formDataCopy);
-
-      // 🚀 JSON 데이터를 Blob 형식으로 변환 후 FormData에 추가
-      data.append('data', new Blob([JSON.stringify(formDataCopy)], { type: "application/json" }));
-
-      // 사업자등록증 파일 추가
+      // 🔹 2. 파일 먼저 업로드
+      let uploadedFilePath = null;
       if (businessFile) {
-        data.append('businessFile', businessFile);
-        console.log('업로드 파일:', businessFile.name, businessFile.type, businessFile.size);
+          const fileData = new FormData();
+          fileData.append("businessFile", businessFile);
+
+          const fileResponse = await fetch("/api/files/upload", {
+              method: "POST",
+              headers: {
+                  Authorization: `Bearer ${token}`, // 🔹 인증 토큰 추가
+              },
+              body: fileData,
+          });
+
+          if (fileResponse.ok) {
+              uploadedFilePath = await fileResponse.text(); // 파일 경로 받기
+          } else {
+              setSnackbarMessage("파일 업로드 실패");
+              setOpenSnackbar(true);
+              return;
+          }
       }
 
-      try {
-        // 디버깅: 전송 직전 데이터 확인
-        console.log('dispatch 직전 FormData 확인');
-        for (let [key, value] of data.entries()) {
-          console.log(`${key}: ${value instanceof File ? '파일 객체' : value}`);
-        }
+      // 🔹 3. 협력업체 등록 요청 (파일 경로 포함)
+      const requestData = {
+          ...formData,
+          businessFilePath: uploadedFilePath, // 업로드된 파일 경로 추가
+      };
 
-        // 등록 요청 전송 및 결과 처리
-        const resultAction = await dispatch(registerSupplier(data));
+      const response = await fetch("/api/supplier-registrations", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`, // 🔹 협력업체 등록 요청에도 인증 추가
+          },
+          body: JSON.stringify(requestData),
+      });
 
-        if (registerSupplier.fulfilled.match(resultAction)) {
-          // 성공 처리
-          console.log('등록 성공:', resultAction.payload);
-          setSnackbarMessage('협력업체 등록이 완료되었습니다.');
+      if (response.ok) {
+          setSnackbarMessage("협력업체 등록이 완료되었습니다.");
           setOpenSnackbar(true);
-        } else if (registerSupplier.rejected.match(resultAction)) {
-          // 실패 처리
-          console.error('등록 실패:', resultAction.payload || resultAction.error);
-
-          // 문자열 처리 확인 (객체가 아닌 문자열만 처리)
-          const errorMessage = typeof resultAction.payload === 'string'
-            ? resultAction.payload
-            : '등록 요청 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.';
-
-          setErrors(prev => ({
-            ...prev,
-            general: errorMessage
-          }));
-
-          setSnackbarMessage('등록 요청에 실패했습니다.');
+      } else {
+          setSnackbarMessage("등록 요청 실패");
           setOpenSnackbar(true);
-        }
-      } catch (err) {
-        console.error('Error registering supplier:', err);
-        setErrors(prev => ({
-          ...prev,
-          general: '등록 요청 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.'
-        }));
-        setSnackbarMessage('등록 요청에 실패했습니다.');
-        setOpenSnackbar(true);
       }
-    };
-
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
   };
+
+
+
+  // ✅ `handleCloseSnackbar` 함수 추가 (에러 방지)
+  const handleCloseSnackbar = () => {
+      setOpenSnackbar(false);
+  };
+
 
   // 관리자 경고 표시 여부
   const showAdminWarning = isAdmin && !isSupplier;
@@ -394,8 +369,8 @@ const SupplierRegistrationPage = () => {
               <TextField
                 fullWidth
                 label="회사 연락처"
-                name="companyPhoneNumber"
-                value={formData.companyPhoneNumber}
+                name="phoneNumber"
+                value={formData.phoneNumber}
                 onChange={handleChange}
                 placeholder="숫자만 입력하세요"
                 disabled={loading}

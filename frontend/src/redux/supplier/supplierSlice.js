@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
 import { fetchWithAuth } from '../../utils/fetchWithAuth';
 
 // 더미 데이터
@@ -170,78 +169,64 @@ const dummySuppliers = [
   }
 ];
 
-
 // 협력업체 목록 조회
 export const fetchSuppliers = createAsyncThunk(
   'supplier/fetchSuppliers',
   async (filters = {}, { rejectWithValue }) => {
     try {
-      // 필터링 매개변수를 URL에 추가
-      let url = '/api/supplier-registrations';
+      let url = '/api/suppliers';
       const queryParams = [];
-
       if (filters.status) {
         queryParams.push(`status=${filters.status}`);
       }
-
       if (filters.sourcingCategory) {
         queryParams.push(`sourcingCategory=${filters.sourcingCategory}`);
       }
-
       if (filters.sourcingSubCategory) {
         queryParams.push(`sourcingSubCategory=${filters.sourcingSubCategory}`);
       }
-
       if (filters.sourcingDetailCategory) {
         queryParams.push(`sourcingDetailCategory=${filters.sourcingDetailCategory}`);
       }
-
       if (filters.supplierName) {
         queryParams.push(`supplierName=${filters.supplierName}`);
       }
-
       if (queryParams.length > 0) {
         url += `?${queryParams.join('&')}`;
       }
 
-      const response = await axios.get(url);
-      return response.data;
+      // axios -> fetchWithAuth로 변경
+      const response = await fetchWithAuth(url);
+      const data = await response.json();
+      return data;
     } catch (error) {
-      // API 호출 실패 시 더미 데이터 필터링하여 반환 (개발용)
       console.log('API 호출 실패, 더미 데이터 사용:', error);
-
       let filteredSuppliers = [...dummySuppliers];
-
       if (filters.status) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
           supplier.status.childCode === filters.status
         );
       }
-
       if (filters.sourcingCategory) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
           supplier.sourcingCategory === filters.sourcingCategory
         );
       }
-
       if (filters.sourcingSubCategory) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
           supplier.sourcingSubCategory === filters.sourcingSubCategory
         );
       }
-
       if (filters.sourcingDetailCategory) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
           supplier.sourcingDetailCategory === filters.sourcingDetailCategory
         );
       }
-
       if (filters.supplierName) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
           supplier.supplierName.includes(filters.supplierName)
         );
       }
-
       return filteredSuppliers;
     }
   }
@@ -252,10 +237,11 @@ export const fetchSupplierById = createAsyncThunk(
   'supplier/fetchSupplierById',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`/api/supplier-registrations/${id}`);
-      return response.data;
+      // axios -> fetchWithAuth로 변경
+      const response = await fetchWithAuth(`/api/suppliers/${id}`);
+      const data = await response.json();
+      return data;
     } catch (error) {
-      // API 호출 실패 시 더미 데이터에서 찾아서 반환 (개발용)
       console.log('API 호출 실패, 더미 데이터 사용:', error);
       const supplier = dummySuppliers.find(sup => sup.id.toString() === id.toString());
       if (supplier) {
@@ -269,99 +255,23 @@ export const fetchSupplierById = createAsyncThunk(
 // 협력업체 등록 요청 - 인증 토큰 처리 개선
 export const registerSupplier = createAsyncThunk(
   'supplier/registerSupplier',
-  async (formData, { rejectWithValue, getState }) => {
+  async ({ formData }, { rejectWithValue }) => {
     try {
-      console.log('FormData 전송 데이터:');
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${typeof value === 'object' ? '파일 객체' : value}`);
+      const response = await fetchWithAuth('/api/supplier-registrations', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return rejectWithValue(errorData.message || '등록 실패');
       }
 
-      // 🚀 API 호출 URL 변경
-      const apiUrl = '/api/supplier-registrations/register';
-
-      // Redux 스토어에서 auth 상태 가져오기
-      const state = getState();
-      const { auth } = state;
-
-      // 로그인 상태 확인 및 디버깅
-      console.log('현재 Redux 인증 상태:', auth);
-      console.log('로그인 상태:', auth.isLoggedIn);
-
-      // 로컬 스토리지에서 토큰 가져오기 (기존 방식)
-      let token = localStorage.getItem('token');
-
-      // 토큰이 없을 경우 Redux 스토어에서 확인
-      if (!token && auth && auth.token) {
-        token = auth.token;
-        console.log('Redux 스토어에서 토큰을 가져왔습니다.');
-
-        // 토큰을 로컬 스토리지에 저장 (향후 사용을 위해)
-        localStorage.setItem('token', token);
-      }
-
-      // 토큰 디버깅
-      console.log('사용할 토큰 상태:', token ? '토큰 존재' : '토큰 없음');
-
-      // 토큰이 없는데 로그인 상태라면, 로그인한 회원 정보가 있으므로 임시 토큰 생성
-      if (!token && auth && auth.isLoggedIn && auth.user) {
-        // 개발 목적으로 임시 토큰 생성 (실제 운영에서는 사용하지 않음)
-        console.log('임시 토큰 생성 - 개발 목적');
-        token = 'dev_temp_token';
-        localStorage.setItem('token', token);
-      }
-
-      // 토큰이 없을 경우에 대한 처리
-      if (!token) {
-        console.error('토큰이 없습니다. 로그인 상태를 확인하세요.');
-        return rejectWithValue('로그인 상태가 유효하지 않습니다. 다시 로그인해주세요.');
-      }
-
-      // FormData를 위한 특수 헤더 설정 (Content-Type은 설정하지 않음)
-      const config = {
-        headers: {
-          // 🚀 Content-Type 제거
-          Authorization: `Bearer ${token}`
-        }
-      };
-
-      // 디버깅
-      console.log('API 호출 URL:', apiUrl);
-      console.log('API 호출 설정:', config);
-
-      // axios를 사용한 FormData 전송
-      const response = await axios.post(apiUrl, formData, config);
-      console.log('등록 성공 응답:', response.data);
-      return response.data;
+      const responseData = await response.json();
+      return responseData;
     } catch (error) {
-      console.error('협력업체 등록 요청 실패:', error);
-
-      // 오류 응답 처리 개선
-      let errorMessage = '협력업체 등록 요청에 실패했습니다.';
-
-      if (error.response) {
-        console.error('서버 응답 상태:', error.response.status);
-        console.error('서버 응답 데이터:', error.response.data);
-
-        // 🚀 오류 메시지 상세화
-        if (error.response.data) {
-          if (typeof error.response.data === 'string') {
-            errorMessage = error.response.data;
-          } else if (error.response.data.message) {
-            errorMessage = error.response.data.message;
-          } else if (error.response.data.error) {
-            errorMessage = `${error.response.data.error}: ${error.response.data.message || ''}`;
-          }
-        }
-
-        // 401 Unauthorized 에러 처리 - 토큰 문제일 가능성이 높음
-        if (error.response.status === 401) {
-          errorMessage = '로그인 세션이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.';
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      return rejectWithValue(errorMessage);
+      console.error('API 요청 실패:', error);
+      return rejectWithValue('등록 요청 중 오류 발생');
     }
   }
 );
@@ -371,15 +281,23 @@ export const updateSupplierStatus = createAsyncThunk(
   'supplier/updateSupplierStatus',
   async ({ id, status, rejectionReason }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`/api/supplier-registrations/${id}/status`, {
-        status,
-        rejectionReason
+      const response = await fetchWithAuth(`/api/suppliers/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status, rejectionReason })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return rejectWithValue(errorData.message || '상태 업데이트 실패');
+      }
+
       return { id, status, rejectionReason };
     } catch (error) {
-      // API 호출 실패 시 더미 응답 생성 (개발용)
-      console.log('API 호출 실패, 더미 응답 생성:', error);
-      return { id, status, rejectionReason };
+      console.log('API 호출 실패:', error);
+      return rejectWithValue('상태 업데이트 요청 중 오류 발생');
     }
   }
 );
@@ -391,7 +309,6 @@ const initialState = {
   error: null,
   success: false,
   message: '',
-  // 소싱 카테고리 목록 (더미 데이터)
   sourcingCategories: [
     { value: "전자", label: "전자" },
     { value: "원료", label: "원료" },
@@ -469,7 +386,6 @@ const supplierSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // 목록 조회
       .addCase(fetchSuppliers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -482,8 +398,6 @@ const supplierSlice = createSlice({
         state.loading = false;
         state.error = action.payload || '협력업체 목록을 불러오는데 실패했습니다.';
       })
-
-      // 상세 조회
       .addCase(fetchSupplierById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -496,8 +410,6 @@ const supplierSlice = createSlice({
         state.loading = false;
         state.error = action.payload || '협력업체 정보를 불러오는데 실패했습니다.';
       })
-
-      // 등록 요청
       .addCase(registerSupplier.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -507,15 +419,15 @@ const supplierSlice = createSlice({
         state.loading = false;
         state.success = true;
         state.message = '협력업체 등록 요청이 완료되었습니다.';
-        state.suppliers.push(action.payload);
+        if (action.payload) {
+          state.suppliers.push(action.payload);
+        }
       })
       .addCase(registerSupplier.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || '협력업체 등록 요청에 실패했습니다.';
         state.success = false;
       })
-
-      // 승인/거절
       .addCase(updateSupplierStatus.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -524,7 +436,6 @@ const supplierSlice = createSlice({
         state.loading = false;
         state.success = true;
 
-        // 상태 업데이트
         const updatedSupplier = state.suppliers.find(supplier => supplier.id === action.payload.id);
         if (updatedSupplier) {
           if (!updatedSupplier.status) {
@@ -532,27 +443,23 @@ const supplierSlice = createSlice({
           } else {
             updatedSupplier.status.childCode = action.payload.status;
           }
-
           if (action.payload.rejectionReason) {
             updatedSupplier.rejectionReason = action.payload.rejectionReason;
           }
-        }
 
-        // 현재 선택된 공급자인 경우 해당 정보도 업데이트
-        if (state.currentSupplier && state.currentSupplier.id === action.payload.id) {
-          if (!state.currentSupplier.status) {
-            state.currentSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.status };
-          } else {
-            state.currentSupplier.status.childCode = action.payload.status;
-          }
-
-          if (action.payload.rejectionReason) {
-            state.currentSupplier.rejectionReason = action.payload.rejectionReason;
+          if (state.currentSupplier && state.currentSupplier.id === action.payload.id) {
+            if (!state.currentSupplier.status) {
+              state.currentSupplier.status = { parentCode: "SUPPLIER", childCode: action.payload.status };
+            } else {
+              state.currentSupplier.status.childCode = action.payload.status;
+            }
+            if (action.payload.rejectionReason) {
+              state.currentSupplier.rejectionReason = action.payload.rejectionReason;
+            }
           }
         }
 
-        // 상태에 따른 메시지 설정
-        switch(action.payload.status) {
+        switch (action.payload.status) {
           case 'APPROVED':
             state.message = '협력업체가 승인되었습니다.';
             break;

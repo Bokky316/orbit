@@ -39,5 +39,5 @@ public class SupplierRegistrationRequestDto {
     private String contactPhone; // 담당자 연락처
     private String contactEmail; // 담당자 이메일
 
-    private MultipartFile businessFile; // 사업자등록증 파일 업로드
+    private String businessFilePath; // 🔹 파일 경로 추가
 }

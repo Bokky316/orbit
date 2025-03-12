@@ -8,11 +8,9 @@ import com.orbit.service.supplier.SupplierRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +25,7 @@ public class SupplierRegistrationController {
     private final SupplierRegistrationService supplierRegistrationService;
 
     // 🟢 협력업체 목록 조회
-    @GetMapping("")
+    @GetMapping
     public ResponseEntity<List<SupplierRegistrationResponseDto>> getSuppliers(
             @RequestParam(required = false) String status) {
 
@@ -52,37 +50,25 @@ public class SupplierRegistrationController {
     }
 
     // 🟢 협력업체 상세 조회
-    @GetMapping("/detail/{id}")
+    @GetMapping("/{id}/detail")
     public ResponseEntity<SupplierRegistrationResponseDto> getSupplier(@PathVariable Long id) {
         SupplierRegistration supplier = supplierRegistrationService.getSupplierById(id);
         return ResponseEntity.ok(SupplierRegistrationResponseDto.fromEntity(supplier));
     }
 
-    // 🟢 협력업체 등록 (SUPPLIER 전용)
-    @PostMapping(
-            value = "/register",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    ) // 명시적 하위 경로 추가
-    @PreAuthorize("hasRole('SUPPLIER')") // 메소드 레벨 권한 재정의
+    // 🟢 협력업체 등록 (SUPPLIER 전용) - 파일 업로드 제거 후, 파일 경로만 받도록 변경
+    @PostMapping
+    @PreAuthorize("hasRole('SUPPLIER')")
     public ResponseEntity<SupplierRegistrationResponseDto> registerSupplier(
-            @Valid @ModelAttribute SupplierRegistrationRequestDto requestDto,
-            @RequestPart("businessFile") MultipartFile businessFile) { // 파일 파라미터 명시
+            @RequestBody SupplierRegistrationRequestDto requestDto) {
 
-        SupplierRegistration registration = supplierRegistrationService.registerSupplier(
-                requestDto.getSupplierId(),
-                requestDto.getBusinessNo(),
-                requestDto.getCeoName(),
-                requestDto.getBusinessType(),
-                requestDto.getBusinessCategory(),
-                requestDto.getSourcingCategory(),
-                requestDto.getSourcingSubCategory(),
-                requestDto.getPhoneNumber(),
-                requestDto.getHeadOfficeAddress(),
-                requestDto.getComments(),
-                businessFile // 파일 파라미터 직접 전달
-        );
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(SupplierRegistrationResponseDto.fromEntity(registration));
+        try {
+            SupplierRegistration registration = supplierRegistrationService.registerSupplier(requestDto);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(SupplierRegistrationResponseDto.fromEntity(registration));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     // 🟢 상태 업데이트 (ADMIN 전용)

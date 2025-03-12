@@ -2,16 +2,14 @@ package com.orbit.controller.supplier;
 
 import com.orbit.service.supplier.FileStorageService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,38 +17,73 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @RestController
-@RequestMapping("/files")
+@RequestMapping("/api/files")
 @RequiredArgsConstructor
+@Slf4j
 public class FileController {
+
     private final FileStorageService fileStorageService;
 
-    @Value("${uploadPath}")
-    private String uploadPath;
-
-    private final String businessCertDir = "business-certificates";
-
-    @GetMapping("/{fileName:.+}")
-    public ResponseEntity<Resource> getFile(@PathVariable String fileName) {
+    /**
+     * 🔹 파일 업로드 엔드포인트 추가
+     * @param businessFile 업로드할 파일
+     * @return 저장된 파일 경로 반환
+     */
+    @PostMapping("/upload")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    public ResponseEntity<String> uploadFile(@RequestParam("businessFile") MultipartFile businessFile) {
         try {
-            // 전체 경로 구성
-            Path filePath = Paths.get(uploadPath + businessCertDir).resolve(fileName);
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists() || !resource.isReadable()) {
-                throw new RuntimeException("파일을 찾을 수 없습니다: " + fileName);
+            if (businessFile.isEmpty()) {
+                return ResponseEntity.badRequest().body("파일이 비어 있습니다.");
             }
 
-            String contentType = Files.probeContentType(filePath);
+            String storedFileName = fileStorageService.storeFile(businessFile);
+            return ResponseEntity.ok(storedFileName); // 저장된 파일 경로 반환
+        } catch (Exception e) {
+            log.error("파일 업로드 실패", e);
+            return ResponseEntity.status(500).body("파일 업로드 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 🔹 파일 다운로드 엔드포인트
+     * @param path 파일 경로 (상대 경로)
+     * @return 파일 리소스
+     */
+    @GetMapping("/download")
+    public ResponseEntity<Resource> downloadFile(@RequestParam String path) {
+        try {
+            // 파일 리소스 가져오기
+            Resource resource = fileStorageService.loadFileAsResource(path);
+
+            // 파일 이름 추출
+            String filename = resource.getFilename();
+
+            // 콘텐츠 타입 확인
+            String contentType = null;
+            try {
+                Path filePath = resource.getFile().toPath();
+                contentType = Files.probeContentType(filePath);
+            } catch (IOException ex) {
+                log.warn("파일 타입 결정 실패", ex);
+            }
+
+            // 콘텐츠 타입을 결정할 수 없는 경우 기본값 설정
             if (contentType == null) {
                 contentType = "application/octet-stream";
             }
 
+            log.info("파일 다운로드: {}, 타입: {}", filename, contentType);
+
+            // 응답 생성
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .body(resource);
-        } catch (IOException e) {
-            throw new RuntimeException("파일 조회 중 오류 발생!", e);
+
+        } catch (Exception e) {
+            log.error("파일 다운로드 실패", e);
+            return ResponseEntity.notFound().build();
         }
     }
 }
