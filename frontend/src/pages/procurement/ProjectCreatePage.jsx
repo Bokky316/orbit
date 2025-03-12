@@ -56,11 +56,74 @@ function ProjectCreatePage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // 첨부 파일이 있는 경우 multipart/form-data로 처리
-        if (attachments.length > 0) {
-            await handleSubmitWithFiles();
-        } else {
-            await handleSubmitJson();
+        // 요청 데이터 구성 (첨부파일 제외)
+        const requestData = {
+            projectName,
+            businessCategory,
+            clientCompany,
+            contractType,
+            totalBudget: parseFloat(totalBudget) || 0,
+            remarks,
+            projectPeriod: {
+                startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
+                endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
+            },
+            basicStatus,
+            procurementStatus,
+            requestDepartment,
+        };
+
+        try {
+            // 1. 먼저 JSON으로 프로젝트 생성
+            const response = await fetchWithAuth(`${API_URL}projects`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData),
+            });
+
+            if (response.ok) {
+                const createdProject = await response.json();
+
+                // 2. 파일 첨부가 있는 경우, 별도 요청으로 처리
+                if (attachments.length > 0) {
+                    const fileFormData = new FormData();
+
+                    attachments.forEach(file => {
+                        fileFormData.append('files', file);
+                    });
+
+                    try {
+                        // 구매요청과 동일하게 fetch 직접 호출 방식으로 변경
+                        const fileResponse = await fetch(`${API_URL}projects/${createdProject.id}/attachments`, {
+                            method: 'POST',
+                            credentials: 'include', // 쿠키 포함
+                            body: fileFormData
+                        });
+
+                        if (fileResponse.ok) {
+                            console.log('첨부 파일이 성공적으로 업로드되었습니다.');
+                            alert('첨부 파일이 성공적으로 업로드되었습니다.');
+                        } else {
+                            const errorMsg = await fileResponse.text();
+                            console.error(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                            alert(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                        }
+                    } catch (fileError) {
+                        console.error(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
+                        alert(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
+                    }
+                }
+
+                alert('프로젝트가 성공적으로 생성되었습니다.');
+                navigate('/projects');
+            } else {
+                const errorData = await response.text();
+                alert(`오류 발생: ${errorData}`);
+            }
+        } catch (error) {
+            alert(`오류 발생: ${error.message}`);
         }
     };
 
@@ -108,48 +171,46 @@ function ProjectCreatePage() {
     };
 
     /**
-     * Multipart/form-data로 제출 (파일 있을 때)
+     * Multipart/form-data로 제출 (파일 있을 때) - 구매요청과 동일한 방식으로 수정
      */
     const handleSubmitWithFiles = async () => {
-        // FormData 구성
-        const formData = new FormData();
-
-        // 프로젝트 데이터를 JSON으로 변환하여 추가
-        const projectData = {
-            projectName,
-            businessCategory,
-            clientCompany,
-            contractType,
-            totalBudget: parseFloat(totalBudget) || 0,
-            remarks,
-            projectPeriod: {
-                startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
-                endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
-            },
-            basicStatus,
-            procurementStatus,
-            requestDepartment,
-        };
-
-        // 프로젝트 데이터를 Blob으로 변환하여 FormData에 추가
-        const projectBlob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
-        formData.append('projectRequestDTO', projectBlob);
-
-        // 첨부 파일 추가
-        attachments.forEach(file => {
-            formData.append('files', file);
-        });
-
         try {
+            // FormData 생성
+            const formData = new FormData();
+
+            // 각 필드를 개별적으로 추가 (JSON 문자열 대신)
+            formData.append('projectName', projectName);
+            formData.append('businessCategory', businessCategory);
+            formData.append('clientCompany', clientCompany);
+            formData.append('contractType', contractType);
+            formData.append('totalBudget', parseFloat(totalBudget) || 0);
+            formData.append('remarks', remarks);
+
+            // 날짜 필드
+            if (startDate)
+                formData.append('projectPeriod.startDate', startDate.format('YYYY-MM-DD'));
+            if (endDate)
+                formData.append('projectPeriod.endDate', endDate.format('YYYY-MM-DD'));
+
+            // 상태 필드
+            formData.append('basicStatus', basicStatus);
+            formData.append('procurementStatus', procurementStatus);
+            formData.append('requestDepartment', requestDepartment);
+
+            // 첨부 파일 추가
+            for (let i = 0; i < attachments.length; i++) {
+                formData.append('files', attachments[i]);
+            }
+
             // API 요청
             const response = await fetchWithAuth(`${API_URL}projects`, {
                 method: 'POST',
-                body: formData, // Content-Type은 자동으로 설정됨
+                body: formData,
             });
 
             if (response.ok) {
                 alert('프로젝트가 성공적으로 생성되었습니다.');
-                navigate('/projects'); // 프로젝트 목록 페이지로 이동
+                navigate('/projects');
             } else {
                 const errorData = await response.text();
                 alert(`오류 발생: ${errorData}`);

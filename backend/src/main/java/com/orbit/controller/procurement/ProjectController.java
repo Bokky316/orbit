@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -43,12 +44,44 @@ public class ProjectController {
     }
 
     /**
-     * 프로젝트 생성 (Multipart)
+     * 프로젝트 생성 (Multipart) - 구매요청과 동일한 방식으로 수정
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProjectResponseDTO> createProjectWithFiles(
-            @Valid @RequestPart("projectRequestDTO") ProjectRequestDTO projectRequestDTO,
-            @RequestPart(value = "files", required = false) MultipartFile[] files) {
+            @RequestParam("projectName") String projectName,
+            @RequestParam("businessCategory") String businessCategory,
+            @RequestParam(value = "clientCompany", required = false) String clientCompany,
+            @RequestParam(value = "contractType", required = false) String contractType,
+            @RequestParam(value = "totalBudget", required = false, defaultValue = "0") Long totalBudget,
+            @RequestParam(value = "remarks", required = false) String remarks,
+            @RequestParam(value = "basicStatus", required = false) String basicStatus,
+            @RequestParam(value = "procurementStatus", required = false) String procurementStatus,
+            @RequestParam(value = "requestDepartment", required = false) String requestDepartment,
+            @RequestParam(value = "projectPeriod.startDate", required = false) String startDate,
+            @RequestParam(value = "projectPeriod.endDate", required = false) String endDate,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) {
+
+        // ProjectRequestDTO 객체 생성
+        ProjectRequestDTO projectRequestDTO = new ProjectRequestDTO();
+        projectRequestDTO.setProjectName(projectName);
+        projectRequestDTO.setBusinessCategory(businessCategory);
+        projectRequestDTO.setClientCompany(clientCompany);
+        projectRequestDTO.setContractType(contractType);
+        projectRequestDTO.setTotalBudget(totalBudget);
+        projectRequestDTO.setRemarks(remarks);
+        projectRequestDTO.setBasicStatus(basicStatus);
+        projectRequestDTO.setProcurementStatus(procurementStatus);
+        projectRequestDTO.setRequestDepartment(requestDepartment);
+
+        // 기간 정보 설정
+        ProjectRequestDTO.PeriodInfo periodInfo = new ProjectRequestDTO.PeriodInfo();
+        if (startDate != null) {
+            periodInfo.setStartDate(LocalDate.parse(startDate));
+        }
+        if (endDate != null) {
+            periodInfo.setEndDate(LocalDate.parse(endDate));
+        }
+        projectRequestDTO.setProjectPeriod(periodInfo);
 
         // 파일 정보 설정
         projectRequestDTO.setFiles(files);
@@ -97,7 +130,7 @@ public class ProjectController {
     }
 
     /**
-     * 프로젝트 업데이트 (Multipart)
+     * 프로젝트 업데이트 (Multipart) - 구매요청과 동일한 방식으로 수정
      */
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProjectResponseDTO> updateProjectWithFiles(

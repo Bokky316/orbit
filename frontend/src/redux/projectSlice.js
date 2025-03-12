@@ -85,17 +85,15 @@ export const createProjectWithFiles = createAsyncThunk(
         try {
             const formData = new FormData();
 
-            // 프로젝트 데이터를 Blob으로 변환하여 FormData에 추가
-            const projectBlob = new Blob([JSON.stringify(projectData)], {
-                type: 'application/json'
-            });
-            formData.append('projectRequestDTO', projectBlob);
+            // 프로젝트 데이터를 JSON 문자열로 추가
+            formData.append('projectRequestDTO', JSON.stringify(projectData));
 
             // 파일 추가
             for (let i = 0; i < files.length; i++) {
                 formData.append('files', files[i]);
             }
 
+            // Content-Type 헤더를 명시적으로 설정하지 않음 (브라우저가 자동으로 설정)
             const response = await fetchWithAuth(`${API_URL}projects`, {
                 method: 'POST',
                 body: formData,
@@ -189,17 +187,15 @@ export const updateProjectWithFiles = createAsyncThunk(
         try {
             const formData = new FormData();
 
-            // 프로젝트 데이터를 Blob으로 변환하여 FormData에 추가
-            const projectBlob = new Blob([JSON.stringify(projectData)], {
-                type: 'application/json'
-            });
-            formData.append('projectRequestDTO', projectBlob);
+            // 프로젝트 데이터를 JSON 문자열로 추가
+            formData.append('projectRequestDTO', JSON.stringify(projectData));
 
             // 파일 추가
             for (let i = 0; i < files.length; i++) {
                 formData.append('files', files[i]);
             }
 
+            // Content-Type 헤더를 명시적으로 설정하지 않음 (브라우저가 자동으로 설정)
             const response = await fetchWithAuth(`${API_URL}projects/${id}`, {
                 method: 'PUT',
                 body: formData,
@@ -220,37 +216,38 @@ export const updateProjectWithFiles = createAsyncThunk(
 );
 
 /**
- * 프로젝트에 첨부파일 추가 액션
- */
-export const addAttachmentsToProject = createAsyncThunk(
-    'project/addAttachments',
-    async ({ id, files }, { rejectWithValue }) => {
-        try {
-            const formData = new FormData();
+  * 프로젝트에 첨부파일 추가 액션
+  */
+ export const addAttachmentsToProject = createAsyncThunk(
+     'project/addAttachments',
+     async ({ id, files }, { rejectWithValue }) => {
+         try {
+             const formData = new FormData();
 
-            // 파일 추가
-            for (let i = 0; i < files.length; i++) {
-                formData.append('files', files[i]);
-            }
+             // 파일 추가
+             for (let i = 0; i < files.length; i++) {
+                 formData.append('files', files[i]);
+             }
 
-            const response = await fetchWithAuth(`${API_URL}projects/${id}/attachments`, {
-                method: 'POST',
-                body: formData,
-            });
+             // Content-Type 헤더를 명시적으로 설정하지 않음 (브라우저가 자동으로 설정)
+             const response = await fetchWithAuth(`${API_URL}projects/${id}/attachments`, {
+                 method: 'POST',
+                 body: formData,
+             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Failed to upload attachments: ${response.status} - ${errorText}`);
-            }
+             if (!response.ok) {
+                 const errorText = await response.text();
+                 throw new Error(`Failed to upload attachments: ${response.status} - ${errorText}`);
+             }
 
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('Error uploading attachments:', error);
-            return rejectWithValue(error.message);
-        }
-    }
-);
+             const data = await response.json();
+             return data;
+         } catch (error) {
+             console.error('Error uploading attachments:', error);
+             return rejectWithValue(error.message);
+         }
+     }
+ );
 
 /**
  * 초기 상태 정의

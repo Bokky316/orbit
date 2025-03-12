@@ -1,5 +1,6 @@
 package com.orbit.controller.procurement;
 
+import com.orbit.dto.item.CategoryDTO;
 import com.orbit.dto.item.ItemDTO;
 import com.orbit.dto.procurement.GoodsRequestDTO;
 import com.orbit.dto.procurement.PurchaseRequestDTO;
@@ -119,4 +120,9 @@ public class PurchaseRequestController {
         return new ResponseEntity<>(items, HttpStatus.OK);
     }
 
+    @GetMapping("/categories")
+    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+        List<CategoryDTO> categories = purchaseRequestService.getAllCategories();
+        return new ResponseEntity<>(categories, HttpStatus.OK);
+    }
 }
