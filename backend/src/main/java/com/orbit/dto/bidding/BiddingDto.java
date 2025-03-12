@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.entity.bidding.Bidding;
+import com.orbit.entity.state.SystemStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,6 +15,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 입찰 공고 응답용 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

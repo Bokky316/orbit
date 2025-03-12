@@ -132,6 +132,12 @@ function BiddingDetailPage() {
     participationId: null,
     supplierName: ""
   });
+  const [statusChangeDialog, setStatusChangeDialog] = useState({
+    open: false,
+    newStatus: "",
+    reason: ""
+  });
+  const [statusHistories, setStatusHistories] = useState([]);
 
   // 상태 변경 다이얼로그 상태
   const [statusChangeDialog, setStatusChangeDialog] = useState({
@@ -316,8 +322,15 @@ function BiddingDetailPage() {
       setIsLoading(true);
       setDeleteConfirmOpen(false);
 
-      const response = await fetchWithAuth(`${API_URL}biddings/${id}`, {
-        method: "DELETE"
+      const response = await fetchWithAuth(`${API_URL}biddings/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          status: statusChangeDialog.newStatus,
+          reason: statusChangeDialog.reason
+        })
       });
 
       if (!response.ok) {
@@ -327,7 +340,7 @@ function BiddingDetailPage() {
       alert("입찰 공고가 성공적으로 삭제되었습니다.");
       navigate("/biddings");
     } catch (error) {
-      console.error("입찰 공고 삭제 중 오류:", error);
+      console.error("상태 변경 중 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
