@@ -194,20 +194,20 @@ const SupplierRegistrationPage = () => {
 
       // 전화번호에서 하이픈 제거
       const processedFormData = {
-        supplierId: Number(formData.supplierId),  // 숫자로 확실하게 변환
-        businessNo: formData.businessNo,
-        ceoName: formData.ceoName,
-        businessType: formData.businessType,
-        businessCategory: formData.businessCategory,
-        sourcingCategory: formData.sourcingCategory,
-        sourcingSubCategory: formData.sourcingSubCategory,
-        sourcingDetailCategory: formData.sourcingDetailCategory,
-        phoneNumber: formData.phoneNumber.replace(/-/g, ''),  // 하이픈 제거
-        headOfficeAddress: formData.headOfficeAddress,
-        contactPerson: formData.contactPerson,
-        contactPhone: formData.contactPhone.replace(/-/g, ''),  // 하이픈 제거
-        contactEmail: formData.contactEmail,
-        comments: formData.comments
+          supplierId: Number(formData.supplierId),  // 숫자로 확실하게 변환
+          businessNo: formData.businessNo,
+          ceoName: formData.ceoName,
+          businessType: formData.businessType || '',
+          businessCategory: formData.businessCategory || '',
+          sourcingCategory: formData.sourcingCategory || '',
+          sourcingSubCategory: formData.sourcingSubCategory || '',
+          sourcingDetailCategory: formData.sourcingDetailCategory || '',
+          phoneNumber: formData.phoneNumber ? formData.phoneNumber.replace(/-/g, '') : '',  // 하이픈 제거 (안전하게)
+          headOfficeAddress: formData.headOfficeAddress || '',
+          contactPerson: formData.contactPerson || '',
+          contactPhone: formData.contactPhone ? formData.contactPhone.replace(/-/g, '') : '',  // 하이픈 제거 (안전하게)
+          contactEmail: formData.contactEmail || '',
+          comments: formData.comments || ''
       };
 
       // JSON 문자열로 변환하여 추가

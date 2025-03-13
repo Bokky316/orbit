@@ -31,6 +31,30 @@ import {
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 
+// 전화번호 포맷팅 함수 추가
+const formatPhoneNumber = (phoneNumber) => {
+  if (!phoneNumber || phoneNumber.includes("-")) {
+    return phoneNumber;
+  }
+
+  // 전화번호 형식에 따라 하이픈 적용
+  if (phoneNumber.length === 8) {
+    return phoneNumber.replace(/(\d{4})(\d{4})/, "$1-$2");
+  } else if (phoneNumber.length === 9) {
+    return phoneNumber.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3");
+  } else if (phoneNumber.length === 10) {
+    if (phoneNumber.startsWith("02")) {
+      return phoneNumber.replace(/(\d{2})(\d{4})(\d{4})/, "$1-$2-$3");
+    } else {
+      return phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+    }
+  } else if (phoneNumber.length === 11) {
+    return phoneNumber.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+  }
+
+  return phoneNumber;
+};
+
 const SupplierReviewPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -263,7 +287,7 @@ const SupplierReviewPage = () => {
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" color="text.secondary">회사 전화번호</Typography>
-              <Typography variant="body1">{currentSupplier.phoneNumber || '-'}</Typography>
+              <Typography variant="body1">{formatPhoneNumber(currentSupplier.phoneNumber) || '-'}</Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
@@ -280,7 +304,7 @@ const SupplierReviewPage = () => {
 
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" color="text.secondary">담당자 연락처</Typography>
-              <Typography variant="body1">{currentSupplier.contactPhone || '-'}</Typography>
+              <Typography variant="body1">{formatPhoneNumber(currentSupplier.contactPhone) || '-'}</Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
