@@ -153,7 +153,11 @@ public class ProjectController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
-        projectService.deleteProject(id);
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        projectService.deleteProject(id, currentUserName);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 

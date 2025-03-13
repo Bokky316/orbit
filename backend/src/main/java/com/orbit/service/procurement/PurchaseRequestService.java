@@ -46,6 +46,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -143,15 +144,18 @@ public class PurchaseRequestService {
      * 구매 요청 업데이트
      */
     @Transactional
-    public PurchaseRequestDTO updatePurchaseRequest(Long id, PurchaseRequestDTO purchaseRequestDTO) {
+    public PurchaseRequestDTO updatePurchaseRequest(Long id, PurchaseRequestDTO purchaseRequestDTO, String username) {
         // 1. ID로 기존 엔티티 조회
         PurchaseRequest existingRequest = purchaseRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 구매 요청이 없습니다."));
 
-        // 2. 엔티티 업데이트 (updateEntity 메서드 활용)
+        // 2. 수정 가능 여부 검증
+        validatePurchaseRequestModifiable(existingRequest, username);
+
+        // 3. 엔티티 업데이트
         updateEntity(existingRequest, purchaseRequestDTO);
 
-        // 3. 프로젝트 정보 업데이트
+        // 4. 프로젝트 정보 업데이트
         if (purchaseRequestDTO.getProjectId() != null && !purchaseRequestDTO.getProjectId().isEmpty()) {
             try {
                 Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
@@ -164,10 +168,10 @@ public class PurchaseRequestService {
             }
         }
 
-        // 4. 종합적인 유효성 검증 추가
+        // 5. 종합적인 유효성 검증 추가
         validatePurchaseRequest(existingRequest);
 
-        // 5. 저장 후 DTO 변환
+        // 6. 저장 후 DTO 변환
         PurchaseRequest updatedRequest = purchaseRequestRepository.save(existingRequest);
         return convertToDto(updatedRequest);
     }
@@ -175,12 +179,16 @@ public class PurchaseRequestService {
     /**
      * 구매 요청 삭제
      */
-    public boolean deletePurchaseRequest(Long id) {
-        // 1. ID로 기존 엔티티 조회 (존재 여부 확인)
+    @Transactional
+    public boolean deletePurchaseRequest(Long id, String username) {
+        // 1. ID로 기존 엔티티 조회
         PurchaseRequest existingRequest = purchaseRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 구매 요청이 없습니다."));
 
-        // 2. 삭제
+        // 2. 삭제 가능 여부 검증
+        validatePurchaseRequestDeletable(existingRequest, username);
+
+        // 3. 삭제
         purchaseRequestRepository.delete(existingRequest);
         return true;
     }
@@ -1017,6 +1025,62 @@ public class PurchaseRequestService {
 
         if (StringUtils.isEmpty(request.getContractDetails())) {
             throw new IllegalArgumentException("유지보수 계약 세부내용은 필수입니다.");
+        }
+    }
+
+    /**
+     * 구매요청 수정 가능 여부 검증
+     */
+    private void validatePurchaseRequestModifiable(PurchaseRequest request, String username) {
+        // 1. 상태 기반 검증 - 구매 요청 상태에서만 수정 가능
+        if (request.getStatus() != null) {
+            String statusCode = request.getStatus().getChildCode();
+            if (!"REQUESTED".equals(statusCode)) {
+                throw new IllegalStateException("현재 구매요청 상태(" + statusCode + ")에서는 수정할 수 없습니다. 구매 요청 상태에서만 수정 가능합니다.");
+            }
+        }
+
+        // 2. 권한 기반 검증 - 요청자 또는 관리자만 수정 가능
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = request.getMember() != null && request.getMember().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("구매요청 수정 권한이 없습니다. 요청자 또는 관리자만 수정할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 구매요청 삭제 가능 여부 검증
+     */
+    private void validatePurchaseRequestDeletable(PurchaseRequest request, String username) {
+        // 1. 상태 기반 검증 - 구매 요청 상태에서만 삭제 가능
+        if (request.getStatus() != null) {
+            String statusCode = request.getStatus().getChildCode();
+            if (!"REQUESTED".equals(statusCode)) {
+                throw new IllegalStateException("현재 구매요청 상태(" + statusCode + ")에서는 삭제할 수 없습니다. 구매 요청 상태에서만 삭제 가능합니다.");
+            }
+        }
+
+        // 2. 권한 기반 검증 - 요청자 또는 관리자만 삭제 가능
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = request.getMember() != null && request.getMember().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("구매요청 삭제 권한이 없습니다. 요청자 또는 관리자만 삭제할 수 있습니다.");
+        }
+
+        // 3. 시간 기반 제한 (선택사항) - 요청일 기준 24시간 이내만 삭제 가능
+        LocalDate requestDate = request.getRequestDate();
+        if (requestDate != null && requestDate.plusDays(1).isBefore(LocalDate.now())) {
+            log.warn("요청일로부터 24시간이 지난 구매요청 삭제 시도: ID={}, 요청일={}", request.getId(), requestDate);
+            // 경고만 하고 삭제 가능하게 하거나, 아래 주석 해제하여 제한 설정
+            // throw new IllegalStateException("구매요청은 요청일로부터 24시간 이내에만 삭제할 수 있습니다.");
         }
     }
 }
