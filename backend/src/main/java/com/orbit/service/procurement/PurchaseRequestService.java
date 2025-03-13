@@ -27,6 +27,7 @@ import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
 import com.orbit.entity.item.Category;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.security.dto.MemberSecurityDto;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -95,6 +96,10 @@ public class PurchaseRequestService {
                 Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
                 Project project = projectRepository.findById(projectId)
                         .orElseThrow(() -> new ResourceNotFoundException("ID " + projectId + "에 해당하는 프로젝트가 없습니다."));
+
+                // 프로젝트와 구매요청 간 제약조건 검증
+                validatePurchaseRequestWithProject(purchaseRequest, project);
+
                 purchaseRequest.setProject(project);
             } catch (NumberFormatException e) {
                 log.error("프로젝트 ID 변환 실패: {}", e.getMessage());
@@ -150,6 +155,10 @@ public class PurchaseRequestService {
                 Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
                 Project project = projectRepository.findById(projectId)
                         .orElseThrow(() -> new ResourceNotFoundException("ID " + projectId + "에 해당하는 프로젝트가 없습니다."));
+
+                // 프로젝트와 구매요청 간 제약조건 검증
+                validatePurchaseRequestWithProject(existingRequest, project);
+
                 existingRequest.setProject(project);
             } catch (NumberFormatException e) {
                 log.error("프로젝트 ID 변환 실패: {}", e.getMessage());
@@ -762,5 +771,71 @@ public class PurchaseRequestService {
         return members.stream()
                 .map(this::convertToMemberDTO)
                 .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 프로젝트와 구매요청 간 제약조건 검증
+     */
+    private void validatePurchaseRequestWithProject(PurchaseRequest purchaseRequest, Project project) {
+        // 1. 예산 검증 - 현재 구매요청과 기존 구매요청의 총합이 프로젝트 예산을 초과하지 않아야 함
+        BigDecimal totalBudget = calculateTotalBudgetUsed(project, purchaseRequest.getId());
+        BigDecimal newRequestBudget = purchaseRequest.getBusinessBudget();
+
+        if (project.getTotalBudget() != null) {
+            BigDecimal projectBudget = BigDecimal.valueOf(project.getTotalBudget());
+
+            if (totalBudget.add(newRequestBudget).compareTo(projectBudget) > 0) {
+                throw new IllegalArgumentException(
+                        "구매요청 예산 총합(" + totalBudget.add(newRequestBudget) +
+                                ")이 프로젝트 예산(" + projectBudget + ")을 초과합니다."
+                );
+            }
+        }
+
+        // 2. 기간 검증 - 타입에 따라 다른 날짜 필드 검증
+        LocalDate requestStartDate = null;
+        LocalDate requestEndDate = null;
+
+        if (purchaseRequest instanceof SIRequest) {
+            SIRequest siRequest = (SIRequest) purchaseRequest;
+            requestStartDate = siRequest.getProjectStartDate();
+            requestEndDate = siRequest.getProjectEndDate();
+        } else if (purchaseRequest instanceof MaintenanceRequest) {
+            MaintenanceRequest maintenanceRequest = (MaintenanceRequest) purchaseRequest;
+            requestStartDate = maintenanceRequest.getContractStartDate();
+            requestEndDate = maintenanceRequest.getContractEndDate();
+        }
+
+        // 날짜 검증 로직
+        if (requestStartDate != null && requestEndDate != null) {
+            // 2.1. 시작일이 종료일보다 앞에 있어야 함
+            if (requestStartDate.isAfter(requestEndDate)) {
+                throw new IllegalArgumentException("구매요청의 시작일이 종료일보다 늦을 수 없습니다.");
+            }
+
+            // 2.2. 구매요청 기간이 프로젝트 기간 내에 있어야 함
+            LocalDate projectStartDate = project.getProjectPeriod().getStartDate();
+            LocalDate projectEndDate = project.getProjectPeriod().getEndDate();
+
+            if (requestStartDate.isBefore(projectStartDate) || requestEndDate.isAfter(projectEndDate)) {
+                throw new IllegalArgumentException(
+                        "구매요청 기간(" + requestStartDate + " ~ " + requestEndDate +
+                                ")이 프로젝트 기간(" + projectStartDate + " ~ " + projectEndDate + ")을 벗어납니다."
+                );
+            }
+        }
+    }
+
+    /**
+     * 프로젝트의 현재 사용된 총 예산 계산 (현재 구매요청 제외)
+     */
+    private BigDecimal calculateTotalBudgetUsed(Project project, Long currentRequestId) {
+        // 프로젝트에 연결된, 현재 요청 외의 모든 구매요청의 예산 합계 계산
+        return project.getPurchaseRequests().stream()
+                .filter(pr -> currentRequestId == null || !pr.getId().equals(currentRequestId))
+                .map(PurchaseRequest::getBusinessBudget)
+                .filter(budget -> budget != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
