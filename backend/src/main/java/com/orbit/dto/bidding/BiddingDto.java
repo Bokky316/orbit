@@ -5,7 +5,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.orbit.entity.bidding.Bidding;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.PurchaseRequestItem;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,42 +27,62 @@ import lombok.Setter;
 public class BiddingDto {
     private Long id;
     private String bidNumber;
+    
+    // 구매 요청 관련 정보
+    private PurchaseRequest purchaseRequest;
     private Long purchaseRequestId;
+    private PurchaseRequestItem purchaseRequestItem;
     private Long purchaseRequestItemId;
-    private Integer quantity;
+    
+    // 입찰 기본 정보
     private String title;
     private String description;
-    private String bidMethod;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String conditions;
     private String internalNote;
+    
+    // 수량 및 가격 정보
+    private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal supplyPrice;
     private BigDecimal vat;
     private BigDecimal totalAmount;
-    private List<Long> supplierIds;
-    private SystemStatus status;
+    
+    // 상태 정보
+    private ParentCode statusParent;
+    private ChildCode statusChild;
     private String statusText;
+    
+    // 입찰 방식
+    private ParentCode methodParent;
+    private ChildCode methodChild;
+    
+    // 파일 및 기타 정보
     private String filePath;
+    
+    // 시간 및 생성자 정보
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String createdBy;
     private String modifiedBy;
     
+    // 공급자 및 참여 정보
+    private List<Long> supplierIds;
+
     // 상태 텍스트 가져오기 (UI 표시용)
     public String getStatusText() {
-        if (this.status == null) {
+        if (this.statusChild == null) {
             return "미정";
         }
         
-        String childCode = this.status.getChildCode();
-        if ("PENDING".equals(childCode)) return "대기중";
-        if ("ONGOING".equals(childCode)) return "진행중";
-        if ("CLOSED".equals(childCode)) return "마감";
-        if ("CANCELED".equals(childCode)) return "취소";
-        
-        return childCode;
+        return switch (this.statusChild.getCodeValue()) {
+            case "PENDING" -> "대기중";
+            case "ONGOING" -> "진행중";
+            case "CLOSED" -> "마감";
+            case "CANCELED" -> "취소";
+            default -> this.statusChild.getCodeValue();
+        };
     }
     
     // Entity -> DTO 변환
@@ -68,49 +91,33 @@ public class BiddingDto {
             return null;
         }
         
-        // BiddingPrice에서 금액 정보 가져오기
-        BigDecimal unitPrice = null;
-        BigDecimal supplyPrice = null;
-        BigDecimal vat = null;
-        BigDecimal totalAmount = null;
-        
-        if (entity.getBiddingPrice() != null) {
-            unitPrice = entity.getBiddingPrice().getUnitPrice();
-            supplyPrice = entity.getBiddingPrice().getSupplyPrice();
-            vat = entity.getBiddingPrice().getVat();
-            totalAmount = entity.getBiddingPrice().getTotalAmount();
-        }
-        
-        BiddingDto dto = BiddingDto.builder()
+        return BiddingDto.builder()
                 .id(entity.getId())
                 .bidNumber(entity.getBidNumber())
+                .purchaseRequest(entity.getPurchaseRequest())
                 .purchaseRequestId(entity.getPurchaseRequestId())
+                .purchaseRequestItem(entity.getPurchaseRequestItem())
                 .purchaseRequestItemId(entity.getPurchaseRequestItemId())
-                .quantity(entity.getQuantity())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
-                .bidMethod(entity.getBidMethod())
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
                 .conditions(entity.getConditions())
                 .internalNote(entity.getInternalNote())
-                .unitPrice(unitPrice)
-                .supplyPrice(supplyPrice)
-                .vat(vat)
-                .totalAmount(totalAmount)
-                .status(entity.getStatus())
+                .quantity(entity.getQuantity())
+                .unitPrice(entity.getUnitPrice())
+                .supplyPrice(entity.getSupplyPrice())
+                .vat(entity.getVat())
+                .totalAmount(entity.getTotalAmount())
+                .statusParent(entity.getStatusParent())
+                .statusChild(entity.getStatusChild())
+                .methodParent(entity.getMethodParent())
+                .methodChild(entity.getMethodChild())
                 .filePath(entity.getFilePath())
-                // BaseEntity에서 상속받은 필드
                 .createdBy(entity.getCreatedBy())
                 .modifiedBy(entity.getModifiedBy())
-                // 시간 필드는 BaseTimeEntity에서 상속
-                .createdAt(entity.getRegTime()) 
-                .updatedAt(entity.getUpdateTime()) 
+                .createdAt(entity.getRegTime())
+                .updatedAt(entity.getUpdateTime())
                 .build();
-        
-        // 상태 텍스트 설정
-        dto.setStatusText(dto.getStatusText());
-        
-        return dto;
     }
 }

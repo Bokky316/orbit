@@ -1,4 +1,3 @@
-// ProjectResponseDTO.java
 package com.orbit.dto.procurement;
 
 import lombok.AllArgsConstructor;
@@ -10,31 +9,42 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-@Getter @Setter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProjectResponseDTO {
 
     // 기본 식별자
     private Long id;
     private String projectIdentifier;
+
+    // 기본 정보
     private String projectName;
     private String businessCategory;
-    private String basicStatus;
-    private String procurementStatus;
-    private ManagerInfo projectManager;
-    private PeriodInfo projectPeriod;
     private Long totalBudget;
     private String clientCompany;
     private String contractType;
-    private LocalDate registrationDate;
+    private String requestDepartment;
+    private String budgetCode;
+    private String remarks;
 
-    @Getter @Setter
-    public static class ManagerInfo {
-        private String name;
-        private String contact;
-        private String email;
-    }
+    // 요청자 정보
+    private String requesterName;
 
-    @Getter @Setter
+    // 상태 정보
+    private String basicStatus;
+    private String procurementStatus;
+
+    // 프로젝트 기간
+    private PeriodInfo projectPeriod;
+
+    // 첨부파일 목록
+    private List<ProjectAttachmentDTO> attachments = new ArrayList<>();
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PeriodInfo {
         private LocalDate startDate;
         private LocalDate endDate;

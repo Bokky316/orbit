@@ -8,13 +8,10 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * 구매 요청 항목 DTO
- */
-@Getter
-@Setter
+@Getter @Setter
 public class PurchaseRequestItemDTO {
 
     private Long id;
@@ -24,17 +21,24 @@ public class PurchaseRequestItemDTO {
 
     private String itemName;
 
-    private Double supplyPrice; // 공급가액 (선택적)
+    private String categoryName; // 카테고리명 추가
 
-    private Double vat; // 부가세 (선택적)
+    private String unitParentCode; // 단위 부모 코드
 
-    private String itemName; // 품목명
+    private String unitChildCode; // 단위 자식 코드
 
-    private String specification; // 사양
+    private String specification;
 
-    private String unit; // 단위
+    @Positive(message = "수량은 0보다 커야 합니다.")
+    private Integer quantity;
 
-    private LocalDate deliveryRequestDate; // 납품 요청일
+    @Positive(message = "단가는 0보다 커야 합니다.")
+    private BigDecimal unitPrice;
 
-    private String deliveryLocation; // 납품 장소
+    private BigDecimal totalPrice;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate deliveryRequestDate;
+
+    private String deliveryLocation;
 }

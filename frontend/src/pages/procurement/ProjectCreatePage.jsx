@@ -43,8 +43,8 @@ function ProjectCreatePage() {
     const [remarks, setRemarks] = useState('');
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
-    // 상태 코드 변경
-    const [basicStatus, setBasicStatus] = useState('PROJECT-BASIC_STATUS-REGISTERED');
+    const [basicStatus, setBasicStatus] = useState('PROJECT-STATUS-REQUESTED'); // 유효한 기본값 설정
+    const [procurementStatus, setProcurementStatus] = useState('PROJECT-PROCUREMENT-REQUEST_RECEIVED'); // 유효한 기본값 설정
     const [requestDepartment, setRequestDepartment] = useState('');
 
     // 첨부 파일 상태
@@ -69,6 +69,7 @@ function ProjectCreatePage() {
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
             basicStatus,
+            procurementStatus,
             requestDepartment,
         };
 
@@ -143,6 +144,7 @@ function ProjectCreatePage() {
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
             basicStatus,
+            procurementStatus,
             requestDepartment,
         };
 
@@ -192,6 +194,7 @@ function ProjectCreatePage() {
 
             // 상태 필드
             formData.append('basicStatus', basicStatus);
+            formData.append('procurementStatus', procurementStatus);
             formData.append('requestDepartment', requestDepartment);
 
             // 첨부 파일 추가
@@ -285,11 +288,28 @@ function ProjectCreatePage() {
                                     label="기본 상태"
                                     onChange={(e) => setBasicStatus(e.target.value)}
                                 >
-                                    <MenuItem value="PROJECT-BASIC_STATUS-REGISTERED">등록</MenuItem>
-                                    <MenuItem value="PROJECT-BASIC_STATUS-REREGISTERED">정정등록</MenuItem>
-                                    <MenuItem value="PROJECT-BASIC_STATUS-IN_PROGRESS">진행중</MenuItem>
-                                    <MenuItem value="PROJECT-BASIC_STATUS-TERMINATED">중도종결</MenuItem>
-                                    <MenuItem value="PROJECT-BASIC_STATUS-COMPLETED">완료</MenuItem>
+                                    <MenuItem value="PROJECT-STATUS-REQUESTED">프로젝트 요청</MenuItem>
+                                    <MenuItem value="PROJECT-STATUS-RECEIVED">프로젝트 접수</MenuItem>
+                                    <MenuItem value="PROJECT-STATUS-REJECTED">프로젝트 반려</MenuItem>
+                                    <MenuItem value="PROJECT-STATUS-TERMINATED">프로젝트 중도 종결</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <FormControl fullWidth>
+                                <InputLabel id="procurement-status-label">조달 상태</InputLabel>
+                                <Select
+                                    labelId="procurement-status-label"
+                                    value={procurementStatus}
+                                    label="조달 상태"
+                                    onChange={(e) => setProcurementStatus(e.target.value)}
+                                >
+                                    <MenuItem value="PROJECT-PROCUREMENT-REQUEST_RECEIVED">구매요청 접수</MenuItem>
+                                    <MenuItem value="PROJECT-PROCUREMENT-VENDOR_SELECTION">업체 선정</MenuItem>
+                                    <MenuItem value="PROJECT-PROCUREMENT-CONTRACT_PENDING">구매계약 대기</MenuItem>
+                                    <MenuItem value="PROJECT-PROCUREMENT-INSPECTION">검수 진행</MenuItem>
+                                    <MenuItem value="PROJECT-PROCUREMENT-INVOICE_ISSUED">인보이스 발행</MenuItem>
+                                    <MenuItem value="PROJECT-PROCUREMENT-PAYMENT_COMPLETED">대급지급 완료</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>

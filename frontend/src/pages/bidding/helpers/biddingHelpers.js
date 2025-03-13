@@ -22,8 +22,6 @@ export const getBidMethodText = (bidMethod) => {
   return bidMethod || "정가제안";
 };
 
-
-
 // 초기 폼 데이터 상수
 export const INITIAL_FORM_DATA = {
   purchaseRequestCode: "",
@@ -80,6 +78,17 @@ export const transformFormDataToApiFormat = (formData, user) => {
     totalAmount: Number(formData.totalAmount) || 0,
     supplierIds: Array.isArray(formData.suppliers)
       ? formData.suppliers.map((s) => Number(s.id))
+      : [],
+    // 파일 처리 추가
+    attachments: formData.files
+      ? formData.files.map((file) => {
+          // 서버에 전송될 파일 정보 형식으로 변환
+          return {
+            originalName: file.name,
+            fileType: file.type,
+            fileSize: file.size
+          };
+        })
       : []
   };
 };
@@ -189,4 +198,105 @@ export const processOrderList = (orders) => {
       ? order.totalAmount.toLocaleString() + "원"
       : "0원"
   }));
+};
+
+// 입찰 방식에 따른 폼 필드 검증
+export const validateBiddingForm = (formData) => {
+  const errors = {};
+
+  // 공통 필수 필드 검증
+  if (!formData.purchaseRequestCode) {
+    errors.purchaseRequestCode = "구매 요청을 선택해주세요.";
+  }
+
+  if (!formData.suppliers || formData.suppliers.length === 0) {
+    errors.suppliers = "최소 한 개의 공급사를 선택해주세요.";
+  }
+
+  if (!formData.deadline) {
+    errors.deadline = "마감일을 선택해주세요.";
+  }
+
+  // 입찰 방식별 추가 검증
+  if (formData.bidMethod === "정가제안") {
+    // 정가제안 방식 추가 검증
+    if (!formData.itemQuantity || formData.itemQuantity <= 0) {
+      errors.itemQuantity = "수량을 올바르게 입력해주세요.";
+    }
+
+    if (!formData.unitPrice || formData.unitPrice <= 0) {
+      errors.unitPrice = "단가를 올바르게 입력해주세요.";
+    }
+  }
+
+  // 파일 크기 및 타입 검증
+  if (formData.files) {
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    const ALLOWED_TYPES = [
+      "image/jpeg",
+      "image/png",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ];
+
+    formData.files.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        errors.files = `파일 크기는 50MB를 초과할 수 없습니다: ${file.name}`;
+      }
+
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        errors.files = `지원되지 않는 파일 형식입니다: ${file.name}`;
+      }
+    });
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};
+
+// 입찰 공고 상태에 따른 폼 필드 활성/비활성 처리
+export const getBiddingFormFieldStatus = (mode, bidding) => {
+  const fieldStatus = {
+    purchaseRequestCode: mode === "create",
+    bidMethod: mode === "create",
+    suppliers: mode === "create",
+    itemQuantity: bidding?.bidMethod !== "가격제안",
+    unitPrice: bidding?.bidMethod !== "가격제안",
+    deadline: true,
+    biddingConditions: true,
+    internalNote: true,
+    attachments: true
+  };
+
+  return fieldStatus;
+};
+
+// 입찰 공고 상태 변경 가능 여부 확인
+export const canChangeBiddingStatus = (currentStatus, newStatus, userRole) => {
+  const statusChangeMap = {
+    PENDING: ["ONGOING", "CANCELED"],
+    ONGOING: ["CLOSED", "CANCELED"],
+    CLOSED: [],
+    CANCELED: []
+  };
+
+  // 관리자만 모든 상태 변경 가능
+  if (userRole === "ADMIN") return true;
+
+  // 구매자의 경우 허용된 상태 변경만 가능
+  return statusChangeMap[currentStatus]?.includes(newStatus) || false;
+};
+
+// 입찰 공고 생성/수정 가능 여부 확인
+export const canManageBidding = (mode, bidding, userRole) => {
+  if (userRole === "ADMIN") return true;
+
+  if (mode === "create") return true;
+
+  // 수정 모드에서는 진행 중이거나 대기 상태일 때만 수정 가능
+  const allowedStatuses = ["PENDING", "ONGOING"];
+  return allowedStatuses.includes(bidding?.status?.childCode);
 };
