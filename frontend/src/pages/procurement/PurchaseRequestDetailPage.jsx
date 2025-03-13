@@ -33,10 +33,18 @@ const StatusChip = styled(Chip)(({ theme, statuscode }) => {
         color = theme.palette.error.main;
     } else if (status.includes('requested') || status.includes('요청')) {
         color = theme.palette.info.main;
-    } else if (status.includes('in_review') || status.includes('검토')) {
+    } else if (status.includes('received') || status.includes('접수')) {
+        color = theme.palette.primary.main;
+    } else if (status.includes('vendor_selection') || status.includes('업체')) {
+        color = theme.palette.secondary.main;
+    } else if (status.includes('contract_pending') || status.includes('계약')) {
+        color = theme.palette.warning.light;
+    } else if (status.includes('inspection') || status.includes('검수')) {
         color = theme.palette.warning.main;
-    } else if (status.includes('pending') || status.includes('대기')) {
-        color = theme.palette.primary.light;
+    } else if (status.includes('invoice') || status.includes('인보이스')) {
+        color = theme.palette.info.dark;
+    } else if (status.includes('payment') || status.includes('지급')) {
+        color = theme.palette.success.dark;
     }
 
     return {
@@ -265,6 +273,19 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
+    const getStatusLabel = (statusCode) => {
+        switch(statusCode) {
+            case 'REQUESTED': return '구매 요청';
+            case 'RECEIVED': return '구매요청 접수';
+            case 'VENDOR_SELECTION': return '업체 선정';
+            case 'CONTRACT_PENDING': return '계약 대기';
+            case 'INSPECTION': return '검수 진행';
+            case 'INVOICE_ISSUED': return '인보이스 발행';
+            case 'PAYMENT_COMPLETED': return '대금지급 완료';
+            default: return statusCode;
+        }
+    };
+
     // 결재선 설정 가능 여부 확인
     const canSetupApprovalLine = () => {
         if (approvalLines.length === 0) {
@@ -284,8 +305,8 @@ const PurchaseRequestDetailPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="h4">{request.requestName}</Typography>
                     <StatusChip
-                        label={request.prStatusChild || '요청됨'}
-                        statuscode={request.prStatusChild}
+                        label={getStatusLabel(request.prStatusChild || request.status?.split('-')[2] || 'REQUESTED')}
+                        statuscode={request.prStatusChild || request.status?.split('-')[2] || 'REQUESTED'}
                         variant="outlined"
                     />
                 </Box>

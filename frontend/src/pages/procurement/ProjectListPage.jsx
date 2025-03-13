@@ -127,119 +127,124 @@ function ProjectListPage() {
         return <Typography color="error">Error: {error}</Typography>;
     }
 
-    return (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h4" gutterBottom>프로젝트 목록</Typography>
+     return (
+            <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>프로젝트 목록</Typography>
 
-            {/* 필터 섹션 */}
-            <Paper sx={{ p: 2, mb: 2 }}>
-                <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                            fullWidth
-                            label="검색"
-                            value={localFilters.searchTerm}
-                            onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                            variant="outlined"
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <LocalizationProvider dateAdapter={AdapterMoment}>
-                            <DatePicker
-                                label="시작일"
-                                value={localFilters.startDate ? moment(localFilters.startDate) : null}
-                                onChange={(date) => handleFilterChange('startDate', date ? date.format('YYYY-MM-DD') : null)}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
+                {/* 필터 섹션 - 상태 코드 수정 */}
+                <Paper sx={{ p: 2, mb: 2 }}>
+                    <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} sm={6} md={3}>
+                            <TextField
+                                fullWidth
+                                label="검색"
+                                value={localFilters.searchTerm}
+                                onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                                variant="outlined"
                             />
-                        </LocalizationProvider>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <LocalizationProvider dateAdapter={AdapterMoment}>
+                                <DatePicker
+                                    label="시작일"
+                                    value={localFilters.startDate ? moment(localFilters.startDate) : null}
+                                    onChange={(date) => handleFilterChange('startDate', date ? date.format('YYYY-MM-DD') : null)}
+                                    renderInput={(params) => <TextField {...params} fullWidth />}
+                                />
+                            </LocalizationProvider>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <LocalizationProvider dateAdapter={AdapterMoment}>
+                                <DatePicker
+                                    label="종료일"
+                                    value={localFilters.endDate ? moment(localFilters.endDate) : null}
+                                    onChange={(date) => handleFilterChange('endDate', date ? date.format('YYYY-MM-DD') : null)}
+                                    renderInput={(params) => <TextField {...params} fullWidth />}
+                                />
+                            </LocalizationProvider>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <FormControl fullWidth variant="outlined">
+                                <InputLabel>진행상태</InputLabel>
+                                <Select
+                                    value={localFilters.status}
+                                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                                    label="진행상태"
+                                >
+                                    <MenuItem value="">전체</MenuItem>
+                                    <MenuItem value="PROJECT-BASIC_STATUS-REGISTERED">등록</MenuItem>
+                                    <MenuItem value="PROJECT-BASIC_STATUS-REREGISTERED">정정등록</MenuItem>
+                                    <MenuItem value="PROJECT-BASIC_STATUS-IN_PROGRESS">진행중</MenuItem>
+                                    <MenuItem value="PROJECT-BASIC_STATUS-TERMINATED">중도종결</MenuItem>
+                                    <MenuItem value="PROJECT-BASIC_STATUS-COMPLETED">완료</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <Button variant="contained" color="primary" onClick={handleApplyFilters}>
+                                검색
+                            </Button>
+                        </Grid>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <LocalizationProvider dateAdapter={AdapterMoment}>
-                            <DatePicker
-                                label="종료일"
-                                value={localFilters.endDate ? moment(localFilters.endDate) : null}
-                                onChange={(date) => handleFilterChange('endDate', date ? date.format('YYYY-MM-DD') : null)}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                            />
-                        </LocalizationProvider>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <FormControl fullWidth variant="outlined">
-                            <InputLabel>진행상태</InputLabel>
-                            <Select
-                                value={localFilters.status}
-                                onChange={(e) => handleFilterChange('status', e.target.value)}
-                                label="진행상태"
-                            >
-                                <MenuItem value="">전체</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-REQUESTED">요청</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-RECEIVED">접수</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-REJECTED">반려</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-TERMINATED">중도 종결</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                    <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button variant="contained" color="primary" onClick={handleApplyFilters}>
-                            검색
-                        </Button>
-                    </Grid>
-                </Grid>
-            </Paper>
+                </Paper>
 
-            {/* 프로젝트 목록 테이블 */}
-            <StyledTableContainer component={Paper}>
-                <Table stickyHeader aria-label="sticky table">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>프로젝트 ID</TableCell>
-                            <TableCell>프로젝트명</TableCell>
-                            <TableCell>담당자</TableCell>
-                             <TableCell>고객사</TableCell>
-                            <TableCell>계약 유형</TableCell>
-                            <TableCell>기본 상태</TableCell>
-                            <TableCell>조달 상태</TableCell>
-                            <TableCell>액션</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {getFilteredProjects().map(project => (
-                            <TableRow
-                                key={project.id}
-                                hover
-                                onClick={() => handleViewDetail(project.id)}
-                                sx={{ cursor: 'pointer' }}
-                            >
-                                <TableCell>{project.id}</TableCell>
-                                <TableCell>{project.projectName}</TableCell>
-                                <TableCell>{project.businessManager}</TableCell>
-                                 <TableCell>{project.clientCompany}</TableCell>
-                                <TableCell>{project.contractType}</TableCell>
-                                <TableCell>{project.basicStatus}</TableCell>
-                                <TableCell>{project.procurementStatus}</TableCell>
-                                <TableCell>
-                                    <Button size="small" variant="outlined" onClick={() => handleViewDetail(project.id)}>
-                                        상세보기
-                                    </Button>
-                                </TableCell>
+                {/* 프로젝트 목록 테이블 - 상태 표시 부분 수정 */}
+                <StyledTableContainer component={Paper}>
+                    <Table stickyHeader aria-label="sticky table">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>프로젝트 ID</TableCell>
+                                <TableCell>프로젝트명</TableCell>
+                                <TableCell>담당자</TableCell>
+                                <TableCell>고객사</TableCell>
+                                <TableCell>계약 유형</TableCell>
+                                <TableCell>기본 상태</TableCell>
+                                <TableCell>조달 상태</TableCell>
+                                <TableCell>액션</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </StyledTableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {getFilteredProjects().map(project => (
+                                <TableRow
+                                    key={project.id}
+                                    hover
+                                    onClick={() => handleViewDetail(project.id)}
+                                    sx={{ cursor: 'pointer' }}
+                                >
+                                    <TableCell>{project.id}</TableCell>
+                                    <TableCell>{project.projectName}</TableCell>
+                                    <TableCell>{project.businessManager}</TableCell>
+                                    <TableCell>{project.clientCompany}</TableCell>
+                                    <TableCell>{project.contractType}</TableCell>
+                                    <TableCell>
+                                        {project.basicStatus ? project.basicStatus.split('-')[2] : '미설정'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {project.procurementStatus ? project.procurementStatus.split('-')[2] : '미설정'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button size="small" variant="outlined" onClick={() => handleViewDetail(project.id)}>
+                                            상세보기
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </StyledTableContainer>
 
-            {/* 신규 생성 버튼 */}
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleCreateProject}
-                >
-                    신규 생성
-                </Button>
+                {/* 신규 생성 버튼 */}
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleCreateProject}
+                    >
+                        신규 생성
+                    </Button>
+                </Box>
             </Box>
-        </Box>
-    );
-}
+        );
+    }
 
-export default ProjectListPage;
+    export default ProjectListPage;
