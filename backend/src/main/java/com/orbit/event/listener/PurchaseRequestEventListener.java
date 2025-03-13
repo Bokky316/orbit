@@ -3,7 +3,7 @@ package com.orbit.event.listener;
 import com.orbit.event.dto.PurchaseRequestStatusEventDTO;
 import com.orbit.event.event.PurchaseRequestStatusChangeEvent;
 import com.orbit.event.publisher.PurchaseRequestEventPublisher;
-import com.orbit.service.event.PurchaseRequestWebSocketService;
+import com.orbit.service.procurement.PurchaseRequestWebSocketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
