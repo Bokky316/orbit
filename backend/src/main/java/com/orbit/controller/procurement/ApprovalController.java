@@ -4,6 +4,7 @@ import com.orbit.dto.approval.ApprovalLineCreateDTO;
 import com.orbit.dto.approval.ApprovalLineResponseDTO;
 import com.orbit.dto.approval.ApprovalProcessDTO;
 import com.orbit.service.procurement.ApprovalLineService;
+import com.orbit.service.procurement.PurchaseRequestService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/approvals")
 public class ApprovalController {
 
-    private final ApprovalLineService approvalService;
+    private final ApprovalLineService approvalLineService;
 
     public ApprovalController(ApprovalLineService approvalLineService) {
         this.approvalLineService = approvalLineService;

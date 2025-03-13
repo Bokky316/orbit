@@ -8,8 +8,7 @@ import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.project.Project;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.project.ProjectAttachment;
 import com.orbit.exception.ProjectNotFoundException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.DepartmentRepository;
@@ -18,9 +17,11 @@ import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ProjectAttachmentRepository;
 import com.orbit.repository.procurement.ProjectRepository;
-
-import com.orbit.service.StateService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,6 +35,9 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
@@ -45,20 +49,32 @@ public class ProjectService {
     private final MemberRepository memberRepository;
     private final DepartmentRepository departmentRepository;
 
+    @Value("${uploadPath}")
+    private String uploadPath;
+
+    /**
+     * 모든 프로젝트 조회
+     */
     @Transactional(readOnly = true)
     public List<ProjectDTO> getAllProjects() {
         return projectRepository.findAll().stream()
                 .map(this::convertToDto)
-                .toList();
+                .collect(Collectors.toList());
     }
 
+    /**
+     * 단일 프로젝트 조회
+     */
     @Transactional(readOnly = true)
     public ProjectDTO getProjectById(Long id) {
         return projectRepository.findById(id)
                 .map(this::convertToDto)
-                .orElseThrow(() -> new ProjectNotFoundException("Project not found: " + id));
+                .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
     }
 
+    /**
+     * 프로젝트 생성
+     */
     @Transactional
     public ProjectDTO createProject(ProjectDTO projectDTO, String requesterUsername) {
         // 1. 요청자 정보 조회
@@ -89,20 +105,44 @@ public class ProjectService {
         return convertToDto(savedProject);
     }
 
+    /**
+     * 프로젝트 업데이트
+     */
     @Transactional
     public ProjectDTO updateProject(Long id, ProjectDTO dto) {
         // 1. 프로젝트 조회
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ProjectNotFoundException("Project not found: " + id));
+                .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
 
-        updateFields(project, dto);
-        logStatusChange(project, updater);
-        return convertToDto(projectRepository.save(project));
+        // 2. 프로젝트 업데이트
+        updateProjectDetails(project, dto);
+
+        // 3. 상태 코드 업데이트
+        setProjectStatusCodes(project, dto.getBasicStatus(), dto.getProcurementStatus());
+
+        // 4. 첨부파일 처리
+        if (dto.getFiles() != null && dto.getFiles().length > 0) {
+            Member updater = memberRepository.findByUsername(dto.getUpdatedBy())
+                    .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
+            processAttachments(project, dto.getFiles(), updater);
+        }
+
+        // 5. 저장 후 DTO 반환
+        Project updatedProject = projectRepository.save(project);
+        return convertToDto(updatedProject);
     }
 
+    /**
+     * 프로젝트 삭제
+     */
     @Transactional
     public void deleteProject(Long id) {
-        projectRepository.deleteById(id);
+        // 1. 프로젝트 조회 (존재 확인)
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
+
+        // 2. 삭제
+        projectRepository.delete(project);
     }
 
     /**
@@ -241,16 +281,14 @@ public class ProjectService {
         project.setBudgetCode(dto.getBudgetCode());
         project.setRemarks(dto.getRemarks());
 
-        if (dto.getProjectManager() != null) {
-            project.getProjectManager().setName(dto.getProjectManager().getName());
-            project.getProjectManager().setContact(dto.getProjectManager().getContact());
-            project.getProjectManager().setEmail(dto.getProjectManager().getEmail());
+        // 프로젝트 기간 업데이트
+        Project.ProjectPeriod projectPeriod = project.getProjectPeriod();
+        if (projectPeriod == null) {
+            projectPeriod = new Project.ProjectPeriod();
+            project.setProjectPeriod(projectPeriod);
         }
-
-        if (dto.getProjectPeriod() != null) {
-            project.getProjectPeriod().setStartDate(dto.getProjectPeriod().getStartDate());
-            project.getProjectPeriod().setEndDate(dto.getProjectPeriod().getEndDate());
-        }
+        projectPeriod.setStartDate(dto.getProjectPeriod().getStartDate());
+        projectPeriod.setEndDate(dto.getProjectPeriod().getEndDate());
     }
 
     /**
@@ -260,15 +298,6 @@ public class ProjectService {
         Project project = Project.builder()
                 .projectName(dto.getProjectName())
                 .businessCategory(dto.getBusinessCategory())
-                .projectManager(new Project.ProjectManager(
-                        dto.getProjectManager().getName(),
-                        dto.getProjectManager().getContact(),
-                        dto.getProjectManager().getEmail()
-                ))
-                .projectPeriod(new Project.ProjectPeriod(
-                        dto.getProjectPeriod().getStartDate(),
-                        dto.getProjectPeriod().getEndDate()
-                ))
                 .totalBudget(dto.getTotalBudget())
                 .requestDepartment(dto.getRequestDepartment())
                 .budgetCode(dto.getBudgetCode())
@@ -305,19 +334,18 @@ public class ProjectService {
         dto.setProjectIdentifier(project.getProjectIdentifier());
         dto.setProjectName(project.getProjectName());
         dto.setBusinessCategory(project.getBusinessCategory());
-        dto.setBasicStatus(project.getBasicStatus().getFullCode());
-        dto.setProcurementStatus(project.getProcurementStatus().getFullCode());
         dto.setTotalBudget(project.getTotalBudget());
         dto.setRequestDepartment(project.getRequestDepartment());
         dto.setBudgetCode(project.getBudgetCode());
         dto.setRemarks(project.getRemarks());
 
+        // 요청자 설정
+        if (project.getRequester() != null) {
+            dto.setRequesterName(project.getRequester().getUsername());
+        }
 
-        ProjectResponseDTO.ManagerInfo managerInfo = new ProjectResponseDTO.ManagerInfo();
-        managerInfo.setName(project.getProjectManager().getName());
-        managerInfo.setContact(project.getProjectManager().getContact());
-        managerInfo.setEmail(project.getProjectManager().getEmail());
-        dto.setProjectManager(managerInfo);
+        // 상태 코드 설정
+        setDtoStatusCodes(project, dto);
 
         // 프로젝트 기간 설정
         ProjectDTO.PeriodInfo periodInfo = new ProjectDTO.PeriodInfo();
@@ -326,6 +354,15 @@ public class ProjectService {
             periodInfo.setEndDate(project.getProjectPeriod().getEndDate());
         }
         dto.setProjectPeriod(periodInfo);
+
+        // 첨부파일 설정 - 항상 설정
+        List<ProjectAttachmentDTO> attachmentDTOs = new ArrayList<>();
+        if (project.getAttachments() != null) {
+            attachmentDTOs = project.getAttachments().stream()
+                    .map(this::convertAttachmentToDto)
+                    .collect(Collectors.toList());
+        }
+        dto.setAttachments(attachmentDTOs);
 
         return dto;
     }
@@ -340,6 +377,15 @@ public class ProjectService {
                     project.getBasicStatusParent().getEntityType() + "-" +
                             project.getBasicStatusParent().getCodeGroup() + "-" +
                             project.getBasicStatusChild().getCodeValue()
+            );
+        }
+
+        // 조달 상태 코드 설정
+        if (project.getProcurementStatusParent() != null && project.getProcurementStatusChild() != null) {
+            dto.setProcurementStatus(
+                    project.getProcurementStatusParent().getEntityType() + "-" +
+                            project.getProcurementStatusParent().getCodeGroup() + "-" +
+                            project.getProcurementStatusChild().getCodeValue()
             );
         }
     }
@@ -358,67 +404,4 @@ public class ProjectService {
                 .description(attachment.getDescription())
                 .build();
     }
-
-    /**
-     * 프로젝트 수정 가능 여부 검증
-     */
-    private void validateProjectModifiable(Project project, String username) {
-        // 1. 상태 기반 검증 - 등록, 정정등록 상태에서만 수정 가능
-        if (project.getBasicStatusChild() != null) {
-            String statusCode = project.getBasicStatusChild().getCodeValue();
-            if (!("REGISTERED".equals(statusCode) || "REREGISTERED".equals(statusCode))) {
-                throw new IllegalStateException("현재 프로젝트 상태(" + statusCode + ")에서는 수정할 수 없습니다. 등록 또는 정정등록 상태에서만 수정 가능합니다.");
-            }
-        }
-
-        // 2. 권한 기반 검증 - 프로젝트 담당자 또는 관리자만 수정 가능
-        Member currentUser = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
-
-        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
-        boolean isRequester = project.getRequester() != null && project.getRequester().getId().equals(currentUser.getId());
-
-        if (!(isAdmin || isRequester)) {
-            throw new SecurityException("프로젝트 수정 권한이 없습니다. 프로젝트 요청자 또는 관리자만 수정할 수 있습니다.");
-        }
-    }
-
-    /**
-     * 프로젝트 삭제 가능 여부 검증
-     */
-    private void validateProjectDeletable(Project project, String username) {
-        // 1. 상태 기반 검증 - 등록, 정정등록 상태에서만 삭제 가능
-        if (project.getBasicStatusChild() != null) {
-            String statusCode = project.getBasicStatusChild().getCodeValue();
-            if (!("REGISTERED".equals(statusCode) || "REREGISTERED".equals(statusCode))) {
-                throw new IllegalStateException("현재 프로젝트 상태(" + statusCode + ")에서는 삭제할 수 없습니다. 등록 또는 정정등록 상태에서만 삭제 가능합니다.");
-            }
-        }
-
-        // 2. 권한 기반 검증 - 프로젝트 담당자 또는 관리자만 삭제 가능
-        Member currentUser = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
-
-        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
-        boolean isRequester = project.getRequester() != null && project.getRequester().getId().equals(currentUser.getId());
-
-        if (!(isAdmin || isRequester)) {
-            throw new SecurityException("프로젝트 삭제 권한이 없습니다. 프로젝트 요청자 또는 관리자만 삭제할 수 있습니다.");
-        }
-
-        // 3. 연관관계 기반 검증 - 진행 중인 구매요청이 없어야 삭제 가능
-        List<PurchaseRequest> activeRequests = project.getPurchaseRequests().stream()
-                .filter(pr -> {
-                    if (pr.getStatus() == null) return false;
-                    String requestStatus = pr.getStatus().getChildCode();
-                    // 구매요청 접수 이후 상태인 경우 진행 중으로 간주
-                    return !("REQUESTED".equals(requestStatus));
-                })
-                .collect(Collectors.toList());
-
-        if (!activeRequests.isEmpty()) {
-            throw new IllegalStateException("이 프로젝트와 연결된 진행 중인 구매요청이 " + activeRequests.size() + "개 있어 삭제할 수 없습니다.");
-        }
-    }
-
 }

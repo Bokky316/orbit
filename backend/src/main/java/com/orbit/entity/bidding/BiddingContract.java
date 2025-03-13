@@ -170,6 +170,7 @@ public class BiddingContract extends BaseEntity {
     /**
      * 서명 상태를 확인하고 필요시 계약 상태를 업데이트합니다.
      */
+    @PreUpdate
     public void checkSignatureStatus() {
         if (buyerSignature != null && supplierSignature != null) {
             // 초안 또는 진행중 상태에서만 자동 변경

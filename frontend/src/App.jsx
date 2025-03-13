@@ -83,7 +83,6 @@ function AppContent() {
             <Route element={<Home />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
-
               {/* 입찰 관리 */}
               <Route path="/biddings" element={<BiddingListPage />} />
               <Route path="/biddings/:id" element={<BiddingDetailPage />} />
@@ -135,6 +134,7 @@ function AppContent() {
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
+
               <Route path="/approval-management" element={<ApprovalManagementPage />} />
               <Route path="/approval-lines" element={<ApprovalLineAdministration />} />
 
@@ -143,6 +143,48 @@ function AppContent() {
               <Route path="/inspections/:id" element={<InspectionDetailPage />} />
               <Route path="/inspections/:id/edit" element={<InspectionFormPage />} />
 
+              {/* 송장 관리 */}
+                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
+
+              <Route path="/projects" element={<ProjectListPage />} />
+              <Route path="/projects/:id" element={<ProjectDetailPage />} />
+              <Route path="/projects/new" element={<ProjectCreatePage />} />
+              {/* 구매 요청 관리 */}
+              <Route
+                path="/purchase-requests"
+                element={<PurchaseRequestListPage />}
+              />
+              <Route
+                path="/purchase-requests/:id"
+                element={<PurchaseRequestDetailPage />}
+              />
+              <Route
+                path="/purchase-requests/:id"
+                element={<PurchaseRequestDetailPage />}
+              />
+              <Route
+                path="/purchase-requests/new"
+                element={<PurchaseRequestCreatePage />}
+              />
+              {/* 승인 관리 */}
+              <Route path="/approvals" element={<ApprovalListPage />} />
+              <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
+              <Route
+                path="/approval-management"
+                element={<ApprovalManagementPage />}
+              />{" "}
+              {/* 추가 */}
+              {/* 검수 관리 */}
+              <Route path="/inspections" element={<InspectionsListPage />} />
+              <Route
+                path="/inspections/:id"
+                element={<InspectionDetailPage />}
+              />
+              <Route
+                path="/inspections/:id/edit"
+                element={<InspectionFormPage />}
+              />
               {/* 송장 관리 */}
               <Route path="/invoices" element={<InvoicesListPage />} />
               <Route path="/invoices/create" element={<InvoiceCreatePage />} />

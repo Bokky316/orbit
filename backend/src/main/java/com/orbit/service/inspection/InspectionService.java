@@ -13,6 +13,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.stereotype.Service;
+
+import com.orbit.dto.inspection.InspectionRequestDto;
+import com.orbit.dto.inspection.InspectionResponseDto;
+import com.orbit.entity.bidding.BiddingContract;
+import com.orbit.entity.inspection.Inspection;
+import com.orbit.repository.bidding.BiddingContractRepository;
+import com.orbit.repository.inspection.InspectionRepository;
+
 @Service
 @RequiredArgsConstructor
 public class InspectionService {
@@ -23,7 +32,7 @@ public class InspectionService {
     public InspectionService(InspectionRepository inspectionRepository,
     BiddingContractRepository simplifiedContractRepository) {
         this.inspectionRepository = inspectionRepository;
-        this.simplifiedContractRepository = simplifiedContractRepository;
+        this.biddingContractRepository = biddingContractRepository;
     }
 
     // 계약이 완료된 검수 목록 조회 - 수정된 로직

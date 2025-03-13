@@ -1,26 +1,28 @@
 package com.orbit.dto.procurement;
 
+import java.time.LocalDate;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProjectResponseDTO {
-
-    // 기본 식별자
-    private Long id;
-    private String projectIdentifier;
+public class ProjectRequestDTO {
 
     // 기본 정보
+    @NotBlank(message = "프로젝트명은 필수입니다")
     private String projectName;
+
     private String businessCategory;
     private Long totalBudget;
     private String clientCompany;
@@ -29,24 +31,29 @@ public class ProjectResponseDTO {
     private String budgetCode;
     private String remarks;
 
-    // 요청자 정보
-    private String requesterName;
-
     // 상태 정보
     private String basicStatus;
     private String procurementStatus;
 
     // 프로젝트 기간
+    @NotNull(message = "프로젝트 기간은 필수입니다")
+    @Valid
     private PeriodInfo projectPeriod;
 
-    // 첨부파일 목록
-    private List<ProjectAttachmentDTO> attachments = new ArrayList<>();
+    // 업데이트 요청자 (업데이트 시 사용)
+    private String updatedBy;
+
+    // 첨부파일 (Multipart 요청 시 사용)
+    private MultipartFile[] files;
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PeriodInfo {
+        @NotNull(message = "시작일은 필수입니다")
         private LocalDate startDate;
+
+        @NotNull(message = "종료일은 필수입니다")
         private LocalDate endDate;
     }
 }
