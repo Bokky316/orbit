@@ -17,16 +17,20 @@ import BiddingOrderDetail from "./pages/bidding/BiddingOrderDetail";
 import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
+import ProjectCreatePage from '@/pages/procurement/ProjectCreatePage';
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
-import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
-import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
-import SupplierListPage from "@/pages/supplier/SupplierListPage";
-import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
-import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
-import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
-
+import ApprovalListPage from "@/pages/approval/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
+import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
+import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
+import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
+import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import PaymentListPage from '@/pages/payment/PaymentListPage';
+import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -75,6 +79,7 @@ function AppContent() {
               {/* 프로젝트 관리 */}
                 <Route path="/projects" element={<ProjectListPage />} />
                 <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/projects/new" element={<ProjectCreatePage />} />
 
                 {/* 구매 요청 관리 */}
                 <Route
@@ -89,12 +94,18 @@ function AppContent() {
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
+              <Route path="/approval-management" element={<ApprovalManagementPage />} /> {/* 추가 */}
 
-              {/* 협력사 관리 */}
-              <Route path="/supplier" element={<SupplierListPage />} />
-              <Route path="/supplier/registrations" element={<SupplierRegistrationPage />} />
-              <Route path="/supplier/review/:id" element={<SupplierReviewPage />} />
-              <Route path="/supplier/approval" element={<SupplierApprovalListPage />} />
+                {/* 검수 관리 */}
+                <Route path="/inspections" element={<InspectionsListPage />} />
+                <Route path="/inspections/:id" element={<InspectionDetailPage />} />
+                <Route path="/inspections/:id/edit" element={<InspectionFormPage />} />
+
+                {/* 송장 관리 */}
+                <Route path="/invoices" element={<InvoicesListPage />} />
+                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+                <Route path="/payments" element={<PaymentListPage />} />
+                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
