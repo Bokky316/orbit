@@ -202,17 +202,14 @@ public class ProjectService {
         // 2. 프로젝트 업데이트
         updateProjectDetails(project, dto);
 
-        // 3. 상태 코드 업데이트
-        setProjectStatusCodes(project, dto.getBasicStatus(), dto.getProcurementStatus());
-
-        // 4. 첨부파일 처리
+        // 3. 첨부파일 처리
         if (dto.getFiles() != null && dto.getFiles().length > 0) {
             Member updater = memberRepository.findByUsername(dto.getUpdatedBy())
                     .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
             processAttachments(project, dto.getFiles(), updater);
         }
 
-        // 5. 저장 후 DTO 반환
+        // 4. 저장 후 DTO 반환
         Project updatedProject = projectRepository.save(project);
         return convertToDto(updatedProject);
     }
@@ -459,15 +456,6 @@ public class ProjectService {
                     project.getBasicStatusParent().getEntityType() + "-" +
                             project.getBasicStatusParent().getCodeGroup() + "-" +
                             project.getBasicStatusChild().getCodeValue()
-            );
-        }
-
-        // 조달 상태 코드 설정
-        if (project.getProcurementStatusParent() != null && project.getProcurementStatusChild() != null) {
-            dto.setProcurementStatus(
-                    project.getProcurementStatusParent().getEntityType() + "-" +
-                            project.getProcurementStatusParent().getCodeGroup() + "-" +
-                            project.getProcurementStatusChild().getCodeValue()
             );
         }
     }

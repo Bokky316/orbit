@@ -31,7 +31,6 @@ public class ProjectRequestDTO {
 
     // 상태 정보
     private String basicStatus;
-    private String procurementStatus;
 
     // 프로젝트 기간
     @NotNull(message = "프로젝트 기간은 필수입니다")

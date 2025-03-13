@@ -70,7 +70,6 @@ public class ProjectController {
         projectRequestDTO.setTotalBudget(totalBudget);
         projectRequestDTO.setRemarks(remarks);
         projectRequestDTO.setBasicStatus(basicStatus);
-        projectRequestDTO.setProcurementStatus(procurementStatus);
         projectRequestDTO.setRequestDepartment(requestDepartment);
 
         // 기간 정보 설정
