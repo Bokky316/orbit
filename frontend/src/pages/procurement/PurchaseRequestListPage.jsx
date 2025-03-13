@@ -11,6 +11,8 @@ import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import { styled } from '@mui/material/styles';
+import useWebSocket from '@hooks/useWebSocket';
+
 
 // Redux 액션 및 선택자 임포트
 import {
@@ -35,6 +37,8 @@ const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
 function PurchaseRequestListPage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { user } = useSelector((state) => state.auth);
+      useWebSocket(user);
 
     // Redux 상태에서 데이터 가져오기
     const { purchaseRequests, filters } = useSelector(state => state.purchaseRequest);

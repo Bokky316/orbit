@@ -4,7 +4,6 @@ import { Provider } from "react-redux";
 import { store } from "@/redux/store";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-// 페이지 컴포넌트 임포트
 import Home from "@/pages/Home";
 import Login from "@/pages/member/Login";
 import BiddingListPage from "@/pages/bidding/BiddingListPage";
@@ -23,7 +22,7 @@ import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetail
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
-import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
 import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
 import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
 import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
