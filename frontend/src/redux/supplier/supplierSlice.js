@@ -407,37 +407,6 @@ export const registerSupplier = createAsyncThunk(
   }
 );
 
-// 첨부 파일 다운로드 액션 추가
-export const downloadAttachment = createAsyncThunk(
-  'supplier/downloadAttachment',
-  async (attachmentId, { rejectWithValue }) => {
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}supplier-registrations/attachments/${attachmentId}/download`,
-        { responseType: 'blob' }
-      );
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`서버 응답 오류 (${response.status}): ${error}`);
-      }
-
-      // 헤더에서 파일명 추출
-      const contentDisposition = response.headers.get('Content-Disposition');
-      const fileName = contentDisposition
-        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
-        : 'unnamed_file';
-
-      return {
-        blob: await response.blob(),
-        fileName: decodeURIComponent(fileName)
-      };
-    } catch (error) {
-      return rejectWithValue(error.toString());
-    }
-  }
-);
-
 // 협력업체 승인/거절
 export const updateSupplierStatus = createAsyncThunk(
   'supplier/updateSupplierStatus',
@@ -707,20 +676,6 @@ const supplierSlice = createSlice({
       .addCase(updateSupplierStatus.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || '상태 업데이트에 실패했습니다.';
-      })
-
-      // downloadAttachment
-      .addCase(downloadAttachment.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(downloadAttachment.fulfilled, (state) => {
-        state.loading = false;
-        // 파일 다운로드는 상태에 저장하지 않고 브라우저에서 처리됨
-      })
-      .addCase(downloadAttachment.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || '파일 다운로드에 실패했습니다.';
       })
 
       // addAttachmentsToSupplier

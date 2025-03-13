@@ -19,17 +19,23 @@ import {
   DialogTitle,
   TextField,
   Chip,
-  Card,
-  CardContent,
-  CardMedia,
-  Link,
-  Stack
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  Stack,
+  Tooltip
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  Download as DownloadIcon,
+  AttachFile as AttachFileIcon
 } from '@mui/icons-material';
+import { API_URL } from '@/utils/constants';
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
 // 전화번호 포맷팅 함수 추가
 const formatPhoneNumber = (phoneNumber) => {
@@ -55,6 +61,15 @@ const formatPhoneNumber = (phoneNumber) => {
   return phoneNumber;
 };
 
+// 파일 크기 포맷팅 함수 추가
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const SupplierReviewPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -77,6 +92,9 @@ const SupplierReviewPage = () => {
   const [openRejectModal, setOpenRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [rejectionError, setRejectionError] = useState('');
+  const [downloadLoading, setDownloadLoading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const [loadingAttachmentId, setLoadingAttachmentId] = useState(null);
 
   const isAdmin = user && user.role === 'ADMIN';
 
@@ -101,7 +119,7 @@ const SupplierReviewPage = () => {
     try {
       dispatch(updateSupplierStatus({
         id: currentSupplier.id,
-        status: 'APPROVED'
+        statusCode: 'APPROVED'
       }));
     } catch (err) {
       console.error('Error approving supplier:', err);
@@ -136,7 +154,7 @@ const SupplierReviewPage = () => {
     try {
       dispatch(updateSupplierStatus({
         id: currentSupplier.id,
-        status: 'REJECTED',
+        statusCode: 'REJECTED',
         rejectionReason
       }));
 
@@ -144,6 +162,47 @@ const SupplierReviewPage = () => {
     } catch (err) {
       console.error('Error rejecting supplier:', err);
       setRejectionError('처리 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 파일 다운로드 처리 - PurchaseRequestDetailPage 방식 채택
+  const downloadFile = async (attachment) => {
+    try {
+      console.log("[DEBUG] 첨부파일 객체 전체:", attachment); // 디버깅 출력
+
+      // ID 유효성 검사 강화
+      if (!attachment?.id || typeof attachment.id !== "number") {
+        alert("유효하지 않은 첨부파일 ID입니다.");
+        return;
+      }
+
+      setLoadingAttachmentId(attachment.id);
+      setDownloadError('');
+
+      const response = await fetchWithAuth(
+        `${API_URL}supplier-registrations/attachments/${attachment.id}/download`,
+        { method: 'GET', responseType: 'blob' }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = attachment.fileName; // 원본 파일 이름 사용
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('다운로드 실패:', await response.text());
+        setDownloadError('파일 다운로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('다운로드 오류:', error);
+      setDownloadError('파일 다운로드 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+      setLoadingAttachmentId(null);
     }
   };
 
@@ -175,11 +234,6 @@ const SupplierReviewPage = () => {
         <CircularProgress />
       </Container>
     );
-  }
-
-  // 에러 표시 (하지만 계속 렌더링)
-  if (error) {
-    console.error('Error in supplier review:', error);
   }
 
   // 데이터가 없을 때
@@ -324,7 +378,7 @@ const SupplierReviewPage = () => {
             </Box>
           </Grid>
 
-          {currentSupplier.status === 'REJECTED' && currentSupplier.rejectionReason && (
+          {currentSupplier.status?.childCode === 'REJECTED' && currentSupplier.rejectionReason && (
             <Grid item xs={12}>
               <Alert severity="error" sx={{ mb: 2 }}>
                 <Typography variant="subtitle2">반려 사유</Typography>
@@ -332,36 +386,86 @@ const SupplierReviewPage = () => {
               </Alert>
             </Grid>
           )}
-        </Grid>
 
-        {currentSupplier.businessFile && (
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="subtitle2" color="text.secondary">사업자등록증</Typography>
-            <Card sx={{ maxWidth: 300, mt: 1 }}>
-              <Link href={`/files/${currentSupplier.businessFile}`} target="_blank" underline="none">
-                <CardMedia
-                  component="img"
-                  height="140"
-                  image={`/files/${currentSupplier.businessFile}`}
-                  alt="사업자등록증"
-                  sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
-                  onError={(e) => {
-                    e.target.src = '/placeholder-image.png'; // 이미지 로드 실패 시 대체 이미지
-                  }}
-                />
-                <CardContent sx={{ py: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    클릭하여 원본 파일 보기
-                  </Typography>
-                </CardContent>
-              </Link>
-            </Card>
-          </Box>
-        )}
+          {/* 첨부 파일 섹션 */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>첨부 파일</Typography>
+
+            {downloadError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {downloadError}
+              </Alert>
+            )}
+
+            {currentSupplier.attachments && currentSupplier.attachments.length > 0 ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <List>
+                  {currentSupplier.attachments.map((attachment) => (
+                    <ListItem
+                      key={attachment.id}
+                      secondaryAction={
+                        <Tooltip title="파일 다운로드">
+                          <span>
+                            <IconButton
+                              edge="end"
+                              onClick={() => downloadFile(attachment)}
+                              disabled={loadingAttachmentId === attachment.id}
+                            >
+                              {loadingAttachmentId === attachment.id ? <CircularProgress size={24} /> : <DownloadIcon />}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      }
+                    >
+                      <ListItemIcon>
+                        <AttachFileIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={attachment.fileName}
+                        secondary={attachment.fileSize ? formatFileSize(attachment.fileSize) : ''}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+            ) : (
+              currentSupplier.businessFile ? (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <ListItem>
+                    <ListItemIcon>
+                      <AttachFileIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="사업자등록증"
+                      secondary="이전 버전 첨부파일"
+                    />
+                    <Tooltip title="파일 다운로드">
+                      <span>
+                        <IconButton
+                          edge="end"
+                          onClick={() => {
+                            // 이전 버전 호환성 - 링크로 열기
+                            window.open(`/files/${currentSupplier.businessFile}`, '_blank');
+                          }}
+                        >
+                          <DownloadIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </ListItem>
+                </Paper>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  첨부된 파일이 없습니다.
+                </Typography>
+              )
+            )}
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* ADMIN만 보이는 승인/반려 버튼 */}
-      {isAdmin && currentSupplier.status === 'PENDING' && (
+      {isAdmin && currentSupplier.status?.childCode === 'PENDING' && (
         <Paper sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
           <Button
             variant="outlined"
