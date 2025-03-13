@@ -116,18 +116,9 @@ public class ProjectService {
         ChildCode registeredStatus = childCodeRepository.findByParentCodeAndCodeValue(basicStatusParent, "REGISTERED")
                 .orElseThrow(() -> new ResourceNotFoundException("ChildCode(REGISTERED)를 찾을 수 없습니다."));
 
-        // 조달 상태 코드 조회 - 프로젝트 생성(PROJECT_CREATED)
-        ParentCode procurementStatusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("PROJECT", "PROCUREMENT_STATUS")
-                .orElseThrow(() -> new ResourceNotFoundException("ParentCode(PROJECT, PROCUREMENT_STATUS)를 찾을 수 없습니다."));
-
-        ChildCode projectCreatedStatus = childCodeRepository.findByParentCodeAndCodeValue(procurementStatusParent, "PROJECT_CREATED")
-                .orElseThrow(() -> new ResourceNotFoundException("ChildCode(PROJECT_CREATED)를 찾을 수 없습니다."));
-
         // 상태 설정
         project.setBasicStatusParent(basicStatusParent);
         project.setBasicStatusChild(registeredStatus);
-        project.setProcurementStatusParent(procurementStatusParent);
-        project.setProcurementStatusChild(projectCreatedStatus);
     }
 
     /**

@@ -45,7 +45,6 @@ function ProjectCreatePage() {
     const [endDate, setEndDate] = useState(null);
     // 상태 코드 변경
     const [basicStatus, setBasicStatus] = useState('PROJECT-BASIC_STATUS-REGISTERED');
-    const [procurementStatus, setProcurementStatus] = useState('PROJECT-PROCUREMENT_STATUS-PROJECT_CREATED');
     const [requestDepartment, setRequestDepartment] = useState('');
 
     // 첨부 파일 상태
@@ -70,7 +69,6 @@ function ProjectCreatePage() {
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
             basicStatus,
-            procurementStatus,
             requestDepartment,
         };
 
@@ -145,7 +143,6 @@ function ProjectCreatePage() {
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
             basicStatus,
-            procurementStatus,
             requestDepartment,
         };
 
@@ -195,7 +192,6 @@ function ProjectCreatePage() {
 
             // 상태 필드
             formData.append('basicStatus', basicStatus);
-            formData.append('procurementStatus', procurementStatus);
             formData.append('requestDepartment', requestDepartment);
 
             // 첨부 파일 추가
@@ -294,26 +290,6 @@ function ProjectCreatePage() {
                                     <MenuItem value="PROJECT-BASIC_STATUS-IN_PROGRESS">진행중</MenuItem>
                                     <MenuItem value="PROJECT-BASIC_STATUS-TERMINATED">중도종결</MenuItem>
                                     <MenuItem value="PROJECT-BASIC_STATUS-COMPLETED">완료</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel id="procurement-status-label">조달 상태</InputLabel>
-                                <Select
-                                    labelId="procurement-status-label"
-                                    value={procurementStatus}
-                                    label="조달 상태"
-                                    onChange={(e) => setProcurementStatus(e.target.value)}
-                                >
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-PROJECT_CREATED">프로젝트 생성</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-PURCHASE_REQUESTED">구매 요청</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-PURCHASE_RECEIVED">구매요청 접수</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-VENDOR_SELECTION">업체 선정</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-CONTRACT_PENDING">계약 대기</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-INSPECTION">검수 진행</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-INVOICE_ISSUED">인보이스 발행</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT_STATUS-PAYMENT_COMPLETED">대금지급 완료</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>
