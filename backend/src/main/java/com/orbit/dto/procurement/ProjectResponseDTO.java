@@ -34,7 +34,6 @@ public class ProjectResponseDTO {
 
     // 상태 정보
     private String basicStatus;
-    private String procurementStatus;
 
     // 프로젝트 기간
     private PeriodInfo projectPeriod;

@@ -26,33 +26,31 @@ public class CommonCodeDataInitializer {
         initProjectCodes();
         initPurchaseCodes();
         initApprovalCodes();
-        initUnitCodes(); // ✅ 단위 코드 추가
+        initUnitCodes();
     }
 
     //▶▶▶ 프로젝트 상태 코드
     private void initProjectCodes() {
-        ParentCode projectStatus = initParentCode("PROJECT", "STATUS", "프로젝트 기본 상태");
-        initChildCodes(projectStatus,
-                List.of("REQUESTED", "RECEIVED", "REJECTED", "TERMINATED"),
-                List.of("요청됨", "접수됨", "반려됨", "중도종결")
-        );
-
-        ParentCode projectProcurement = initParentCode("PROJECT", "PROCUREMENT", "프로젝트 조달 상태");
-        initChildCodes(projectProcurement,
-                List.of("REQUEST_RECEIVED", "VENDOR_SELECTION", "CONTRACT_PENDING",
-                        "INSPECTION", "INVOICE_ISSUED", "PAYMENT_COMPLETED"),
-                List.of("구매요청 접수", "업체 선정", "계약 대기", "검수 진행", "인보이스 발행", "대급지급 완료")
+        // 프로젝트 기본 상태 코드
+        ParentCode projectBasicStatus = initParentCode("PROJECT", "BASIC_STATUS", "프로젝트 기본 상태");
+        initChildCodes(projectBasicStatus,
+                List.of("REGISTERED", "REREGISTERED", "IN_PROGRESS", "TERMINATED", "COMPLETED"),
+                List.of("등록", "정정등록", "진행중", "중도종결", "완료")
         );
     }
 
     //▶▶▶ 구매 요청 코드
     private void initPurchaseCodes() {
+        // 구매 요청 상태 코드
         ParentCode purchaseStatus = initParentCode("PURCHASE_REQUEST", "STATUS", "구매 요청 상태");
         initChildCodes(purchaseStatus,
-                List.of("REQUESTED", "IN_REVIEW", "APPROVED", "REJECTED", "COMPLETED"),
-                List.of("요청됨", "검토 중", "승인됨", "반려됨", "완료됨")
+                List.of("REQUESTED", "RECEIVED", "VENDOR_SELECTION", "CONTRACT_PENDING",
+                        "INSPECTION", "INVOICE_ISSUED", "PAYMENT_COMPLETED"),
+                List.of("구매 요청", "구매요청 접수", "업체 선정", "계약 대기",
+                        "검수 진행", "인보이스 발행", "대금지급 완료")
         );
 
+        // 구매 유형 코드
         ParentCode purchaseType = initParentCode("PURCHASE_REQUEST", "TYPE", "구매 유형");
         initChildCodes(purchaseType,
                 List.of("SI", "MAINTENANCE", "GOODS"),
@@ -61,7 +59,6 @@ public class CommonCodeDataInitializer {
     }
 
     //▶▶▶ 결재 코드
-    //▶▶▶ 결재 코드 (기존 코드 확장)
     private void initApprovalCodes() {
         // 결재 상태 (전체적인 결재 상태)
         ParentCode approvalStatus = initParentCode("APPROVAL", "STATUS", "결재 상태");
@@ -73,12 +70,12 @@ public class CommonCodeDataInitializer {
         // 결재선 상세 상태
         ParentCode approvalLineStatus = initParentCode("APPROVAL_LINE", "STATUS", "결재선 상세 상태");
         initChildCodes(approvalLineStatus,
-                List.of("WAITING", "REQUESTED", "IN_REVIEW", "PENDING", "APPROVED", "REJECTED"), // "REQUESTED" 추가
+                List.of("WAITING", "REQUESTED", "IN_REVIEW", "PENDING", "APPROVED", "REJECTED"),
                 List.of("대기 중", "요청됨", "검토 중", "보류", "승인", "반려")
         );
     }
 
-    //▶▶▶ 단위 코드 (아이템용) ✅ 추가된 부분
+    //▶▶▶ 단위 코드 (아이템용)
     private void initUnitCodes() {
         ParentCode unit = initParentCode("ITEM", "UNIT", "단위");
         initChildCodes(unit,

@@ -13,6 +13,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
@@ -21,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -64,13 +67,22 @@ public class PurchaseRequestController {
     public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequest(
             @PathVariable Long id,
             @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO);
+
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        PurchaseRequestDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO, currentUserName);
         return new ResponseEntity<>(updatedPurchaseRequest, HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePurchaseRequest(@PathVariable Long id) {
-        boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id);
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id, currentUserName);
         return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
@@ -161,5 +173,22 @@ public class PurchaseRequestController {
     public ResponseEntity<List<MemberDTO>> getMembersByDepartment(@PathVariable Long departmentId) {
         List<MemberDTO> members = purchaseRequestService.getMembersByDepartment(departmentId);
         return ResponseEntity.ok(members);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequestStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> statusData,
+            Authentication authentication
+    ) {
+        String currentUsername = authentication.getName();
+
+        PurchaseRequestDTO updatedRequest = purchaseRequestService.updatePurchaseRequestStatus(
+                id,
+                statusData.get("toStatus"),
+                currentUsername
+        );
+
+        return ResponseEntity.ok(updatedRequest);
     }
 }

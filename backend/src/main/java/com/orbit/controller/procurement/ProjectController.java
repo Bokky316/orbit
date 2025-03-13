@@ -70,7 +70,6 @@ public class ProjectController {
         projectRequestDTO.setTotalBudget(totalBudget);
         projectRequestDTO.setRemarks(remarks);
         projectRequestDTO.setBasicStatus(basicStatus);
-        projectRequestDTO.setProcurementStatus(procurementStatus);
         projectRequestDTO.setRequestDepartment(requestDepartment);
 
         // 기간 정보 설정
@@ -154,7 +153,11 @@ public class ProjectController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
-        projectService.deleteProject(id);
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        projectService.deleteProject(id, currentUserName);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
