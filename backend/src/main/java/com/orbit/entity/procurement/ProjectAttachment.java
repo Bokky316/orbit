@@ -1,4 +1,4 @@
-package com.orbit.entity.project;
+package com.orbit.entity.procurement;
 
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
