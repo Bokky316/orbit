@@ -33,4 +33,6 @@ public interface ApprovalLineRepository extends JpaRepository<ApprovalLine, Long
             "WHERE al.approver.username = :username " +
             "AND al.status.codeValue IN ('APPROVED', 'REJECTED')")
     List<ApprovalLine> findCompletedApprovalsByUsername(@Param("username") String username);
+
+
 }
