@@ -15,6 +15,7 @@ import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.item.Item;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.Project;
+import com.orbit.event.event.PurchaseRequestStatusChangeEvent;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.DepartmentRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
@@ -30,6 +31,7 @@ import com.orbit.security.dto.MemberSecurityDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.core.Authentication;
@@ -67,7 +69,7 @@ public class PurchaseRequestService {
     private final ProjectRepository projectRepository;
     private final DepartmentRepository departmentRepository;
     private final ApprovalLineService approvalLineService;
-
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Value("${uploadPath}")
     private String uploadPath;
@@ -1082,5 +1084,47 @@ public class PurchaseRequestService {
             // 경고만 하고 삭제 가능하게 하거나, 아래 주석 해제하여 제한 설정
             // throw new IllegalStateException("구매요청은 요청일로부터 24시간 이내에만 삭제할 수 있습니다.");
         }
+    }
+
+    @Transactional
+    public PurchaseRequestDTO updatePurchaseRequestStatus(
+            Long purchaseRequestId,
+            String newStatusCode,
+            String username
+    ) {
+        // 기존 상태 변경 로직
+        PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(purchaseRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("구매요청을 찾을 수 없습니다."));
+
+        // 기존 상태
+        SystemStatus oldStatus = purchaseRequest.getStatus();
+
+        // 새로운 상태 설정
+        ParentCode parentCode = parentCodeRepository.findByEntityTypeAndCodeGroup("PURCHASE_REQUEST", "STATUS")
+                .orElseThrow(() -> new ResourceNotFoundException("부모 코드를 찾을 수 없습니다."));
+
+        ChildCode childCode = childCodeRepository.findByParentCodeAndCodeValue(parentCode, newStatusCode)
+                .orElseThrow(() -> new ResourceNotFoundException("자식 코드를 찾을 수 없습니다."));
+
+        SystemStatus newStatus = new SystemStatus(parentCode.getCodeName(), childCode.getCodeValue());
+        purchaseRequest.setStatus(newStatus);
+
+        // 현재 사용자 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+
+        // 이벤트 발행
+        PurchaseRequestStatusChangeEvent event = new PurchaseRequestStatusChangeEvent(
+                this,
+                purchaseRequestId,
+                oldStatus.getFullCode(),
+                newStatus.getFullCode(),
+                currentUsername
+        );
+
+        // 애플리케이션 이벤트 발행
+        applicationEventPublisher.publishEvent(event);
+
+        return convertToDto(purchaseRequest);
     }
 }

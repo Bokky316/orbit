@@ -23,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -172,5 +173,22 @@ public class PurchaseRequestController {
     public ResponseEntity<List<MemberDTO>> getMembersByDepartment(@PathVariable Long departmentId) {
         List<MemberDTO> members = purchaseRequestService.getMembersByDepartment(departmentId);
         return ResponseEntity.ok(members);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequestStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> statusData,
+            Authentication authentication
+    ) {
+        String currentUsername = authentication.getName();
+
+        PurchaseRequestDTO updatedRequest = purchaseRequestService.updatePurchaseRequestStatus(
+                id,
+                statusData.get("toStatus"),
+                currentUsername
+        );
+
+        return ResponseEntity.ok(updatedRequest);
     }
 }
