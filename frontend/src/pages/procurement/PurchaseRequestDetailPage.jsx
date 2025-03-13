@@ -273,6 +273,30 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
+    // 구매요청이 수정 가능한지 확인하는 함수
+    const canEditRequest = () => {
+        if (!request || !request.status) return false;
+
+        // 상태 코드 추출 (PURCHASE_REQUEST-STATUS-REQUESTED 형식)
+        const statusParts = request.status.split('-');
+        const statusCode = statusParts.length > 2 ? statusParts[2] : '';
+
+        // '구매 요청' 상태일 때만 수정 가능
+        return statusCode === 'REQUESTED';
+    };
+
+    // 구매요청이 삭제 가능한지 확인하는 함수
+    const canDeleteRequest = () => {
+        if (!request || !request.status) return false;
+
+        // 상태 코드 추출
+        const statusParts = request.status.split('-');
+        const statusCode = statusParts.length > 2 ? statusParts[2] : '';
+
+        // '구매 요청' 상태일 때만 삭제 가능
+        return statusCode === 'REQUESTED';
+    };
+
     const getStatusLabel = (statusCode) => {
         switch(statusCode) {
             case 'REQUESTED': return '구매 요청';
@@ -312,26 +336,38 @@ const PurchaseRequestDetailPage = () => {
                 </Box>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                        variant="outlined"
-                        color="primary"
-                        startIcon={<EditIcon />}
-                        onClick={() => navigate(`/purchase-requests/edit/${id}`)}
-                    >
-                        수정
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => {
-                            if (window.confirm('정말 삭제하시겠습니까?')) {
-                                // 삭제 로직
-                            }
-                        }}
-                    >
-                        삭제
-                    </Button>
+                    {canEditRequest() && (
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<EditIcon />}
+                            onClick={() => navigate(`/purchase-requests/edit/${id}`)}
+                        >
+                            수정
+                        </Button>
+                    )}
+                    {canDeleteRequest() && (
+                        <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => {
+                                if (window.confirm('정말 삭제하시겠습니까?')) {
+                                    dispatch(deletePurchaseRequest(id))
+                                        .unwrap()
+                                        .then(() => {
+                                            alert('구매요청이 삭제되었습니다.');
+                                            navigate('/purchase-requests');
+                                        })
+                                        .catch((err) => {
+                                            alert(`삭제 실패: ${err}`);
+                                        });
+                                }
+                            }}
+                        >
+                            삭제
+                        </Button>
+                    )}
                     {canSetupApprovalLine() && !showApprovalSetup && (
                         <Button
                             variant="contained"

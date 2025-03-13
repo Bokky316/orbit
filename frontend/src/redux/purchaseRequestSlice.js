@@ -67,6 +67,27 @@ export const fetchCategories = createAsyncThunk(
   }
 );
 
+export const deletePurchaseRequest = createAsyncThunk(
+    'purchaseRequest/delete',
+    async (id, { rejectWithValue }) => {
+        try {
+            const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`${errorText || '구매요청 삭제 실패'}`);
+            }
+            return id;
+        } catch (error) {
+            console.error('구매요청 삭제 중 오류 발생:', error);
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+
+
 /**
  * 구매 요청을 생성하는 비동기 액션
  */
@@ -279,6 +300,21 @@ const purchaseRequestSlice = createSlice({
                 state.purchaseRequests = state.purchaseRequests.map(request =>
                     request.id === action.payload.id ? action.payload : request
                 ); // 구매 요청 업데이트
+            })
+            // extraReducers에 추가
+            .addCase(deletePurchaseRequest.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(deletePurchaseRequest.fulfilled, (state, action) => {
+                state.loading = false;
+                state.purchaseRequests = state.purchaseRequests.filter(
+                    request => request.id !== action.payload
+                );
+            })
+            .addCase(deletePurchaseRequest.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
             })
             // fetchItems 액션 처리
             .addCase(fetchItems.pending, (state) => {
