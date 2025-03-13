@@ -74,6 +74,8 @@ public class PurchaseRequestService {
     /**
      * 구매 요청 생성 (핵심 로직)
      */
+    // createPurchaseRequest 메소드 수정
+    @Transactional
     public PurchaseRequestDTO createPurchaseRequest(PurchaseRequestDTO purchaseRequestDTO, MultipartFile[] files) {
         // 1. DTO -> Entity 변환
         PurchaseRequest purchaseRequest = convertToEntity(purchaseRequestDTO);
@@ -95,10 +97,6 @@ public class PurchaseRequestService {
                 Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
                 Project project = projectRepository.findById(projectId)
                         .orElseThrow(() -> new ResourceNotFoundException("ID " + projectId + "에 해당하는 프로젝트가 없습니다."));
-
-                // 프로젝트와 구매요청 간 제약조건 검증
-                validatePurchaseRequestWithProject(purchaseRequest, project);
-
                 purchaseRequest.setProject(project);
             } catch (NumberFormatException e) {
                 log.error("프로젝트 ID 변환 실패: {}", e.getMessage());
@@ -106,15 +104,19 @@ public class PurchaseRequestService {
             }
         }
 
-        // 5. 저장 및 첨부 파일 처리
+        // 5. 종합적인 유효성 검증 추가
+        validatePurchaseRequest(purchaseRequest);
+
+        // 6. 저장 및 첨부 파일 처리
         PurchaseRequest savedRequest = purchaseRequestRepository.save(purchaseRequest);
         processAttachments(savedRequest, files);
 
-        // 6. 물품 요청 시 품목 처리
+        // 7. 물품 요청 시 품목 처리
         if (savedRequest instanceof GoodsRequest && purchaseRequestDTO instanceof GoodsRequestDTO) {
             processGoodsRequestItems((GoodsRequest) savedRequest, (GoodsRequestDTO) purchaseRequestDTO);
         }
 
+        // 8. 결재선 자동 생성
         approvalLineService.createAutoApprovalLine(
                 ApprovalLineCreateDTO.builder()
                         .purchaseRequestId(savedRequest.getId())
@@ -140,6 +142,7 @@ public class PurchaseRequestService {
     /**
      * 구매 요청 업데이트
      */
+    @Transactional
     public PurchaseRequestDTO updatePurchaseRequest(Long id, PurchaseRequestDTO purchaseRequestDTO) {
         // 1. ID로 기존 엔티티 조회
         PurchaseRequest existingRequest = purchaseRequestRepository.findById(id)
@@ -154,10 +157,6 @@ public class PurchaseRequestService {
                 Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
                 Project project = projectRepository.findById(projectId)
                         .orElseThrow(() -> new ResourceNotFoundException("ID " + projectId + "에 해당하는 프로젝트가 없습니다."));
-
-                // 프로젝트와 구매요청 간 제약조건 검증
-                validatePurchaseRequestWithProject(existingRequest, project);
-
                 existingRequest.setProject(project);
             } catch (NumberFormatException e) {
                 log.error("프로젝트 ID 변환 실패: {}", e.getMessage());
@@ -165,7 +164,10 @@ public class PurchaseRequestService {
             }
         }
 
-        // 4. 저장 후 DTO 변환
+        // 4. 종합적인 유효성 검증 추가
+        validatePurchaseRequest(existingRequest);
+
+        // 5. 저장 후 DTO 변환
         PurchaseRequest updatedRequest = purchaseRequestRepository.save(existingRequest);
         return convertToDto(updatedRequest);
     }
@@ -838,5 +840,183 @@ public class PurchaseRequestService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    /**
+     * 구매요청 생성/수정 시 종합적인 유효성 검증
+     */
+    private void validatePurchaseRequest(PurchaseRequest request) {
+        // 1. 기본 필드 검증
+        validateBasicFields(request);
 
+        // 2. 날짜 유효성 검증
+        validateDates(request);
+
+        // 3. 예산 유효성 검증
+        validateBudget(request);
+
+        // 4. 프로젝트 연관관계 검증
+        if (request.getProject() != null) {
+            validatePurchaseRequestWithProject(request, request.getProject());
+        }
+
+        // 5. 요청 타입별 추가 검증
+        if (request instanceof GoodsRequest) {
+            validateGoodsRequest((GoodsRequest) request);
+        } else if (request instanceof SIRequest) {
+            validateSIRequest((SIRequest) request);
+        } else if (request instanceof MaintenanceRequest) {
+            validateMaintenanceRequest((MaintenanceRequest) request);
+        }
+    }
+
+    /**
+     * 기본 필드 유효성 검증
+     */
+    private void validateBasicFields(PurchaseRequest request) {
+        // 필수 필드 검증
+        if (StringUtils.isEmpty(request.getRequestName())) {
+            throw new IllegalArgumentException("구매요청명은 필수입니다.");
+        }
+
+        if (StringUtils.isEmpty(request.getBusinessType())) {
+            throw new IllegalArgumentException("사업 구분은 필수입니다.");
+        }
+
+        // 연락처 형식 검증
+        if (request.getManagerPhoneNumber() != null && !request.getManagerPhoneNumber().matches("^01[0-9]{8,9}$")) {
+            throw new IllegalArgumentException("유효하지 않은 핸드폰 번호 형식입니다.");
+        }
+    }
+
+    /**
+     * 날짜 유효성 검증
+     */
+    private void validateDates(PurchaseRequest request) {
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+
+        // 요청 유형에 따라 날짜 필드 가져오기
+        if (request instanceof SIRequest) {
+            SIRequest siRequest = (SIRequest) request;
+            startDate = siRequest.getProjectStartDate();
+            endDate = siRequest.getProjectEndDate();
+        } else if (request instanceof MaintenanceRequest) {
+            MaintenanceRequest maintenanceRequest = (MaintenanceRequest) request;
+            startDate = maintenanceRequest.getContractStartDate();
+            endDate = maintenanceRequest.getContractEndDate();
+        }
+
+        // 날짜 검증
+        if (startDate != null && endDate != null) {
+            // 시작일이 종료일보다 앞에 있어야 함
+            if (startDate.isAfter(endDate)) {
+                throw new IllegalArgumentException("시작일이 종료일보다 늦을 수 없습니다.");
+            }
+
+            // 시작일이 현재 또는 미래 날짜인지 검증 (선택 사항)
+            LocalDate today = LocalDate.now();
+            if (startDate.isBefore(today)) {
+                log.warn("구매요청 시작일이 과거 날짜입니다: {}", startDate);
+                // 경고만 하거나 예외 발생 가능
+                // throw new IllegalArgumentException("시작일은 오늘 이후 날짜여야 합니다.");
+            }
+        }
+    }
+
+    /**
+     * 예산 유효성 검증
+     */
+    private void validateBudget(PurchaseRequest request) {
+        BigDecimal budget = request.getBusinessBudget();
+
+        // 예산이 음수가 아닌지 확인
+        if (budget != null && budget.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("사업 예산은 0 이상이어야 합니다.");
+        }
+
+        // 물품 요청인 경우 품목 가격의 합과 비교
+        if (request instanceof GoodsRequest) {
+            GoodsRequest goodsRequest = (GoodsRequest) request;
+
+            if (goodsRequest.getItems() != null && !goodsRequest.getItems().isEmpty()) {
+                BigDecimal totalItemsPrice = goodsRequest.getItems().stream()
+                        .map(PurchaseRequestItem::getTotalPrice)
+                        .filter(price -> price != null)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                // 예산이 물품 가격 합계와 일치하는지 확인
+                if (budget != null && totalItemsPrice.compareTo(budget) != 0) {
+                    log.warn("구매요청 예산({})과 물품 가격 합계({})가 일치하지 않습니다",
+                            budget, totalItemsPrice);
+
+                    // 자동으로 예산 맞추기 (선택 사항)
+                    // request.setBusinessBudget(totalItemsPrice);
+
+                    // 또는 예외 발생
+                    // throw new IllegalArgumentException(
+                    //    "구매요청 예산과 물품 가격 합계가 일치해야 합니다.");
+                }
+            }
+        }
+    }
+
+    /**
+     * GoodsRequest 타입별 추가 검증
+     */
+    private void validateGoodsRequest(GoodsRequest request) {
+        // 품목 존재 여부 확인
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new IllegalArgumentException("물품 요청에는 최소 하나 이상의 품목이 필요합니다.");
+        }
+
+        // 각 품목 유효성 검증
+        for (PurchaseRequestItem item : request.getItems()) {
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+                throw new IllegalArgumentException("품목 수량은 0보다 커야 합니다.");
+            }
+
+            if (item.getUnitPrice() == null || item.getUnitPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("품목 단가는 0보다 커야 합니다.");
+            }
+
+            // 배송 요청 날짜가 과거인지 확인
+            if (item.getDeliveryRequestDate() != null &&
+                    item.getDeliveryRequestDate().isBefore(LocalDate.now())) {
+                log.warn("품목의 배송 요청일이 과거 날짜입니다: {}", item.getDeliveryRequestDate());
+                // 경고만 하거나 예외 발생 가능
+            }
+        }
+    }
+
+    /**
+     * SIRequest 타입별 추가 검증
+     */
+    private void validateSIRequest(SIRequest request) {
+        // SI 요청에 필요한 필수 필드 검증
+        if (request.getProjectStartDate() == null || request.getProjectEndDate() == null) {
+            throw new IllegalArgumentException("SI 프로젝트의 시작일과 종료일은 필수입니다.");
+        }
+
+        if (StringUtils.isEmpty(request.getProjectContent())) {
+            throw new IllegalArgumentException("SI 프로젝트 내용은 필수입니다.");
+        }
+    }
+
+    /**
+     * MaintenanceRequest 타입별 추가 검증
+     */
+    private void validateMaintenanceRequest(MaintenanceRequest request) {
+        // 유지보수 요청에 필요한 필수 필드 검증
+        if (request.getContractStartDate() == null || request.getContractEndDate() == null) {
+            throw new IllegalArgumentException("유지보수 계약의 시작일과 종료일은 필수입니다.");
+        }
+
+        if (request.getContractAmount() == null ||
+                request.getContractAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("유지보수 계약 금액은 0보다 커야 합니다.");
+        }
+
+        if (StringUtils.isEmpty(request.getContractDetails())) {
+            throw new IllegalArgumentException("유지보수 계약 세부내용은 필수입니다.");
+        }
+    }
 }
