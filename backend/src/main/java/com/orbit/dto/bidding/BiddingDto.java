@@ -119,10 +119,5 @@ public class BiddingDto {
                 .createdAt(entity.getRegTime())
                 .updatedAt(entity.getUpdateTime())
                 .build();
-        
-        // 상태 텍스트 설정
-        dto.setStatusText(dto.getStatusText());
-        
-        return dto;
     }
 }

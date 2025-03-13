@@ -15,6 +15,7 @@ const StatusChip = styled(Chip)(({ theme, status }) => {
       case 'REJECTED': return theme.palette.error.main;
       case 'IN_REVIEW': return theme.palette.warning.main;
       case 'PENDING': return theme.palette.info.main;
+      case 'REQUESTED': return theme.palette.primary.main;
       default: return theme.palette.grey[500];
     }
   };
@@ -39,31 +40,36 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
   const [activeStep, setActiveStep] = useState(0);
 
   // 상태별 색상 및 라벨 결정 함수
-  const getStepInfo = (statusCode) => {
-    switch(statusCode) {
-      case 'APPROVED': return {
-        color: theme.palette.success.main,
-        label: '승인완료'
-      };
-      case 'REJECTED': return {
-        color: theme.palette.error.main,
-        label: '반려'
-      };
-      case 'IN_REVIEW': return {
-        color: theme.palette.warning.main,
-        label: '검토중'
-      };
-      case 'PENDING': return {
-        color: theme.palette.info.main,
-        label: '대기중'
-      };
-      default: return {
-        color: theme.palette.grey[500],
-        label: '대기중'
-      };
-    }
-  };
+ const getStepInfo = (statusCode) => {
+   switch(statusCode) {
+     case 'APPROVED': return {
+       color: theme.palette.success.main,
+       label: '승인완료'
+     };
+     case 'REJECTED': return {
+       color: theme.palette.error.main,
+       label: '반려'
+     };
+     case 'IN_REVIEW': return {
+       color: theme.palette.warning.main,
+       label: '검토중'
+     };
+     case 'PENDING': return {
+       color: theme.palette.info.main,
+       label: '대기중'
+     };
+     case 'REQUESTED': return { // 추가
+       color: theme.palette.primary.main,
+       label: '요청됨'
+     };
+     default: return {
+       color: theme.palette.grey[500],
+       label: '대기중'
+     };
+   }
+ };
 
+  // 결재선 정보 조회
   // 결재선 정보 조회
   useEffect(() => {
     if (!purchaseRequestId) return;
