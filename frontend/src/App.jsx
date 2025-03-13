@@ -42,7 +42,7 @@ import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetail
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
-import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
 import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
 import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
 import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
