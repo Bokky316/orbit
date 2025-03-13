@@ -1,8 +1,11 @@
 package com.orbit.entity.approval;
 
 import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.member.Member;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
 import jakarta.persistence.*;
-import jdk.jfr.BooleanFlag;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +16,9 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "approval_lines")
 public class ApprovalLine {
 
@@ -32,30 +37,23 @@ public class ApprovalLine {
     @Column(nullable = false)
     private Integer step; // 결재 단계 (1,2,3...)
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private ApprovalStatus status = ApprovalStatus.PENDING;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_id", nullable = false)
+    private ChildCode status;
 
     private LocalDateTime approvedAt;
     private String comment;
 
     // 결재 처리 메서드
-    public void approve(String comment) {
-        this.status = ApprovalStatus.APPROVED;
+    public void approve(String comment, ChildCode approvedStatus) {
+        this.status = approvedStatus;
         this.approvedAt = LocalDateTime.now();
         this.comment = comment;
     }
 
-    public void reject(String comment) {
-        this.status = ApprovalStatus.REJECTED;
+    public void reject(String comment, ChildCode rejectedStatus) {
+        this.status = rejectedStatus;
         this.approvedAt = LocalDateTime.now();
         this.comment = comment;
-    }
-
-    public enum ApprovalStatus {
-        PENDING,    // 대기 중
-        IN_REVIEW,  // 검토 중(현재 단계)
-        APPROVED,   // 승인
-        REJECTED    // 반려
     }
 }

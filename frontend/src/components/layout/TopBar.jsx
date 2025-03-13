@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
+import NotificationBadgeIcon from "./NotificationBadgeIcon";
 import "/public/css/layout/Layout.css";
 
 function TopBar() {
@@ -34,9 +35,6 @@ function TopBar() {
       { label: "발주리스트", path: "/biddings/orders" }
       { label: "협력사평가리스트", path: "/biddings/evaluations" },
       { label: "발주리스트", path: "/biddings/orders" }
-    ],
-    "/biddings/contracts": [
-      { label: "계약리스트", path: "/biddings/contracts" }
     ],
     "/biddings/contracts": [
       { label: "계약리스트", path: "/biddings/contracts" }
@@ -128,6 +126,9 @@ function TopBar() {
             </svg>
           </div>
         </div>
+
+        {/* 알림 아이콘 */}
+        <NotificationBadgeIcon />
 
         {/* 로그인 정보 */}
         <div className="login_info">

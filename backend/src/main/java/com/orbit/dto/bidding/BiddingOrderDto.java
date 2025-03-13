@@ -36,7 +36,7 @@ public class BiddingOrderDto {
     private LocalDate expectedDeliveryDate;
     private Long evaluationId;
     private LocalDateTime approvedAt;
-    private Long createdBy;
+    private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

@@ -1,6 +1,6 @@
 package com.orbit.repository.procurement;
 
-import com.orbit.entity.procurement.ProjectAttachment;
+import com.orbit.entity.project.ProjectAttachment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
