@@ -445,7 +445,42 @@ export const registerSupplier = createAsyncThunk(
   }
 );
 
-// 협력업체 승인/거절
+// 협력업체 수정 요청 - 새로 추가한 액션
+export const updateSupplier = createAsyncThunk(
+  'supplier/updateSupplier',
+  async ({ id, formData }, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}supplier-registrations/${id}`, {
+        method: 'PUT',
+        body: formData, // FormData 객체 그대로 전송 (Content-Type 헤더 자동 설정)
+      });
+
+      // HTML 응답 방지 처리
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return rejectWithValue(errorData.message || '수정 실패');
+      }
+
+      const responseData = await response.json();
+      return responseData;
+    } catch (error) {
+      // HTML 응답 시 별도 처리
+      if (error.message.includes('Invalid content type')) {
+        return rejectWithValue('서버 응답 형식 오류');
+      }
+
+      console.error('API 요청 실패:', error);
+      return rejectWithValue(error.message || '수정 요청 중 오류 발생');
+    }
+  }
+);
+
+// 협력업체 승인/거절/비활성화
 export const updateSupplierStatus = createAsyncThunk(
   'supplier/updateSupplierStatus',
   async ({ id, statusCode, rejectionReason }, { rejectWithValue }) => {
@@ -536,66 +571,9 @@ const initialState = {
   error: null,
   success: false,
   message: '',
-  sourcingCategories: [
-    { value: "전자", label: "전자" },
-    { value: "원료", label: "원료" },
-    { value: "소프트웨어", label: "소프트웨어" },
-    { value: "부품", label: "부품" },
-    { value: "경영", label: "경영" },
-    { value: "기타", label: "기타" }
-  ],
-  sourcingSubCategories: {
-    "전자": [
-      { value: "반도체", label: "반도체" },
-      { value: "디스플레이", label: "디스플레이" },
-      { value: "배터리", label: "배터리" }
-    ],
-    "원료": [
-      { value: "금속", label: "금속" },
-      { value: "화학", label: "화학" },
-      { value: "섬유", label: "섬유" }
-    ],
-    "소프트웨어": [
-      { value: "개발", label: "개발" },
-      { value: "설계", label: "설계" },
-      { value: "유지보수", label: "유지보수" }
-    ],
-    "부품": [
-      { value: "자동차부품", label: "자동차부품" },
-      { value: "전자부품", label: "전자부품" },
-      { value: "기계부품", label: "기계부품" }
-    ],
-    "경영": [
-      { value: "조직관리", label: "조직관리" },
-      { value: "인사", label: "인사" },
-      { value: "회계", label: "회계" }
-    ],
-    "기타": [
-      { value: "기타", label: "기타" }
-    ]
-  },
-  sourcingDetailCategories: {
-    "반도체": [
-      { value: "메모리", label: "메모리" },
-      { value: "프로세서", label: "프로세서" }
-    ],
-    "금속": [
-      { value: "철강", label: "철강" },
-      { value: "알루미늄", label: "알루미늄" }
-    ],
-    "개발": [
-      { value: "웹서비스", label: "웹서비스" },
-      { value: "모바일앱", label: "모바일앱" }
-    ],
-    "자동차부품": [
-      { value: "엔진부품", label: "엔진부품" },
-      { value: "섀시부품", label: "섀시부품" }
-    ],
-    "조직관리": [
-      { value: "인사관리", label: "인사관리" },
-      { value: "조직문화", label: "조직문화" }
-    ]
-  }
+  sourcingCategories: [], // 빈 배열로 변경
+  sourcingSubCategories: {}, // 빈 객체로 변경
+  sourcingDetailCategories: {} // 빈 객체로 변경
 };
 
 const supplierSlice = createSlice({
@@ -609,6 +587,43 @@ const supplierSlice = createSlice({
     },
     clearCurrentSupplier: (state) => {
       state.currentSupplier = null;
+    },
+    initializeCategoriesFromSuppliers: (state, action) => {
+      const suppliers = action.payload;
+      // 고유한 대분류 추출
+      const uniqueCategories = [...new Set(suppliers.map(s => s.sourcingCategory))].filter(Boolean)
+        .map(category => ({ value: category, label: category }));
+      state.sourcingCategories = uniqueCategories;
+
+      // 고유한 중분류 추출
+      const uniqueSubCategories = {};
+      uniqueCategories.forEach(category => {
+        const subCats = [...new Set(
+          suppliers
+            .filter(s => s.sourcingCategory === category.value)
+            .map(s => s.sourcingSubCategory)
+        )].filter(Boolean)
+        .map(subCat => ({ value: subCat, label: subCat }));
+
+        uniqueSubCategories[category.value] = subCats;
+      });
+      state.sourcingSubCategories = uniqueSubCategories;
+
+      // 고유한 소분류 추출
+      const uniqueDetailCategories = {};
+      Object.keys(uniqueSubCategories).forEach(category => {
+        uniqueSubCategories[category].forEach(subCat => {
+          const detailCats = [...new Set(
+            suppliers
+              .filter(s => s.sourcingCategory === category && s.sourcingSubCategory === subCat.value)
+              .map(s => s.sourcingDetailCategory)
+          )].filter(Boolean)
+          .map(detailCat => ({ value: detailCat, label: detailCat }));
+
+          uniqueDetailCategories[subCat.value] = detailCats;
+        });
+      });
+      state.sourcingDetailCategories = uniqueDetailCategories;
     }
   },
   extraReducers: (builder) => {
@@ -661,6 +676,34 @@ const supplierSlice = createSlice({
         state.success = false;
       })
 
+      // updateSupplier - 새로 추가된 액션 리듀서
+      .addCase(updateSupplier.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.success = false;
+      })
+      .addCase(updateSupplier.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.message = '협력업체 정보가 성공적으로 수정되었습니다.';
+
+        // 현재 공급업체 정보 업데이트
+        if (action.payload) {
+          state.currentSupplier = action.payload;
+
+          // 목록에서도 해당 항목 업데이트
+          const index = state.suppliers.findIndex(supplier => supplier.id === action.payload.id);
+          if (index !== -1) {
+            state.suppliers[index] = action.payload;
+          }
+        }
+      })
+      .addCase(updateSupplier.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || '협력업체 정보 수정에 실패했습니다.';
+        state.success = false;
+      })
+
       // updateSupplierStatus
       .addCase(updateSupplierStatus.pending, (state) => {
         state.loading = true;
@@ -705,6 +748,12 @@ const supplierSlice = createSlice({
             break;
           case 'BLACKLIST':
             state.message = '협력업체가 블랙리스트에 등록되었습니다.';
+            break;
+          case 'INACTIVE':
+            state.message = '협력업체가 비활성화되었습니다.';
+            break;
+          case 'ACTIVE':
+            state.message = '협력업체가 다시 활성화되었습니다.';
             break;
           default:
             state.message = '협력업체 상태가 변경되었습니다.';

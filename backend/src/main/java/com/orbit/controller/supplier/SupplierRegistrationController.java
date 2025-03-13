@@ -222,6 +222,12 @@ public class SupplierRegistrationController {
             case "BLACKLIST":
                 supplierRegistrationService.blacklistSupplier(id, requestDto.getRejectionReason());
                 break;
+            case "INACTIVE":  // 비활성화 상태 추가
+                supplierRegistrationService.inactivateSupplier(id, requestDto.getRejectionReason());
+                break;
+            case "ACTIVE": // 활성화 상태 추가
+                supplierRegistrationService.activateSupplier(id);
+                break;
             default:
                 throw new IllegalArgumentException("Invalid status code");
         }

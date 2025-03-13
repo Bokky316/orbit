@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { registerSupplier, resetSupplierState } from '../../redux/supplier/supplierSlice';
+import { useNavigate, useParams } from 'react-router-dom'; // useParams 추가
+import { registerSupplier, resetSupplierState, fetchSupplierById, updateSupplier } from '../../redux/supplier/supplierSlice';
 import {
   Box,
   Container,
@@ -29,13 +29,19 @@ import { API_URL } from '@/utils/constants';
 const SupplierRegistrationPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { id } = useParams(); // URL에서 id 파라미터 가져오기 (수정 모드)
+
+  // 수정 모드 여부 확인
+  const isEditMode = !!id;
+
   const supplierState = useSelector((state) => state.supplier) || {
     loading: false,
     error: null,
     success: false,
-    message: ''
+    message: '',
+    currentSupplier: null
   };
-  const { loading = false, error = null, success = false, message = '' } = supplierState;
+  const { loading = false, error = null, success = false, message = '', currentSupplier = null } = supplierState;
   const authState = useSelector((state) => state.auth) || { user: null };
   const { user = null } = authState;
   // ROLE 확인 (응답 형식: {"roles":["ROLE_SUPPLIER"]} 또는 {"roles":["ROLE_ADMIN"]})
@@ -61,27 +67,34 @@ const SupplierRegistrationPage = () => {
 
   // 첨부 파일 상태 관리
   const [attachments, setAttachments] = useState([]);
+  const [existingAttachments, setExistingAttachments] = useState([]); // 기존 첨부파일 상태 추가
   const [errors, setErrors] = useState({});
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [pageTitle, setPageTitle] = useState('협력업체 등록'); // 페이지 제목 상태 추가
 
   useEffect(() => {
-    // 컴포넌트가 마운트될 때 토큰 확인 - 기존 로직 제거(fetchWithAuth가 처리)
+    // 수정 모드인 경우 데이터 불러오기
+    if (isEditMode) {
+      setPageTitle('협력업체 정보 수정');
+      dispatch(fetchSupplierById(id));
+    }
 
+    // 사용자 정보가 있으면 supplier ID 설정
     if (user) {
       setFormData(prev => ({
         ...prev,
         supplierId: user.id
       }));
     } else {
-       setFormData(prev => ({
+      setFormData(prev => ({
         ...prev,
         supplierId: '1'
       }));
     }
 
     if (success) {
-      setSnackbarMessage(message || '협력업체 등록이 완료되었습니다.');
+      setSnackbarMessage(message || (isEditMode ? '협력업체 정보가 수정되었습니다.' : '협력업체 등록이 완료되었습니다.'));
       setOpenSnackbar(true);
       const timer = setTimeout(() => {
         dispatch(resetSupplierState());
@@ -97,7 +110,57 @@ const SupplierRegistrationPage = () => {
         console.error('Error resetting supplier state:', err);
       }
     };
-  }, [user, success, dispatch, navigate, message]);
+  }, [user, success, dispatch, navigate, message, isEditMode, id]);
+
+  // 수정 모드에서 데이터 로드 시 폼 채우기
+  useEffect(() => {
+    if (isEditMode && currentSupplier) {
+      // 전화번호 포맷팅 함수
+      const formatPhoneNumber = (phoneNumber) => {
+        if (!phoneNumber || phoneNumber.includes("-")) {
+          return phoneNumber;
+        }
+
+        if (phoneNumber.length === 8) {
+          return phoneNumber.replace(/(\d{4})(\d{4})/, "$1-$2");
+        } else if (phoneNumber.length === 9) {
+          return phoneNumber.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3");
+        } else if (phoneNumber.length === 10) {
+          if (phoneNumber.startsWith("02")) {
+            return phoneNumber.replace(/(\d{2})(\d{4})(\d{4})/, "$1-$2-$3");
+          } else {
+            return phoneNumber.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+          }
+        } else if (phoneNumber.length === 11) {
+          return phoneNumber.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+        }
+
+        return phoneNumber;
+      };
+
+      setFormData({
+        supplierId: currentSupplier.supplierId || user?.id || '',
+        businessNo: currentSupplier.businessNo || '',
+        ceoName: currentSupplier.ceoName || '',
+        businessType: currentSupplier.businessType || '',
+        businessCategory: currentSupplier.businessCategory || '',
+        sourcingCategory: currentSupplier.sourcingCategory || '',
+        sourcingSubCategory: currentSupplier.sourcingSubCategory || '',
+        sourcingDetailCategory: currentSupplier.sourcingDetailCategory || '',
+        phoneNumber: formatPhoneNumber(currentSupplier.phoneNumber) || '',
+        headOfficeAddress: currentSupplier.headOfficeAddress || '',
+        contactPerson: currentSupplier.contactPerson || '',
+        contactPhone: formatPhoneNumber(currentSupplier.contactPhone) || '',
+        contactEmail: currentSupplier.contactEmail || '',
+        comments: currentSupplier.comments || ''
+      });
+
+      // 기존 첨부파일 설정
+      if (currentSupplier.attachments && currentSupplier.attachments.length > 0) {
+        setExistingAttachments(currentSupplier.attachments);
+      }
+    }
+  }, [currentSupplier, isEditMode, user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -165,6 +228,11 @@ const SupplierRegistrationPage = () => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  // 기존 첨부파일 제거 처리 함수 추가
+  const handleRemoveExistingFile = (index) => {
+    setExistingAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const validateForm = () => {
     const newErrors = {};
     if (!formData.businessNo) {
@@ -210,6 +278,16 @@ const SupplierRegistrationPage = () => {
           comments: formData.comments || ''
       };
 
+      // 수정 모드인 경우 ID 추가
+      if (isEditMode) {
+        processedFormData.id = Number(id);
+
+        // 남겨둘 첨부파일 ID 목록 추가
+        if (existingAttachments.length > 0) {
+          processedFormData.remainingAttachmentIds = existingAttachments.map(attachment => attachment.id);
+        }
+      }
+
       // JSON 문자열로 변환하여 추가
       const supplierDTO = JSON.stringify(processedFormData);
       // 문자열 형태로 전송 (백엔드 컨트롤러 로직과 일치)
@@ -232,16 +310,24 @@ const SupplierRegistrationPage = () => {
         console.log(`- ${pair[0]}: ${typeof pair[1] === 'string' ? pair[1] : '(파일)'}`);
       }
 
-      // PurchaseRequestCreatePage 참고하여 직접 fetch 호출로 변경
-      console.log('API 요청 전송 URL:', `${API_URL}supplier-registrations`);
+      // API URL 설정 (수정/등록에 따라 다름)
+      const apiUrl = isEditMode
+        ? `${API_URL}supplier-registrations/${id}`
+        : `${API_URL}supplier-registrations`;
+
+      // HTTP 메서드 설정 (수정/등록에 따라 다름)
+      const httpMethod = isEditMode ? 'PUT' : 'POST';
+
+      console.log('API 요청 전송 URL:', apiUrl);
+      console.log('HTTP Method:', httpMethod);
 
       // 토큰 가져오기
       const token = localStorage.getItem('token');
       console.log('토큰 존재 여부:', !!token);
 
       // 직접 fetch 호출 - 핸들링이 더 간단함
-      const response = await fetch(`${API_URL}supplier-registrations`, {
-        method: 'POST',
+      const response = await fetch(apiUrl, {
+        method: httpMethod,
         credentials: 'include', // 쿠키 포함
         headers: {
           // 토큰이 있으면 Authorization 헤더 추가
@@ -279,7 +365,7 @@ const SupplierRegistrationPage = () => {
       }
 
       // 성공 메시지 표시
-      setSnackbarMessage('협력업체 등록이 완료되었습니다.');
+      setSnackbarMessage(isEditMode ? '협력업체 정보가 수정되었습니다.' : '협력업체 등록이 완료되었습니다.');
       setOpenSnackbar(true);
 
       // 목록 페이지로 이동
@@ -288,7 +374,7 @@ const SupplierRegistrationPage = () => {
       }, 2000);
 
     } catch (error) {
-      console.error('등록 오류:', error);
+      console.error('등록/수정 오류:', error);
       setSnackbarMessage(`오류가 발생했습니다: ${error.message}`);
       setOpenSnackbar(true);
     }
@@ -302,6 +388,15 @@ const SupplierRegistrationPage = () => {
   // 관리자 경고 표시 여부
   const showAdminWarning = isAdmin && !isSupplier;
 
+  // 로딩 중 표시
+  if (isEditMode && loading && !currentSupplier) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="md">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -312,7 +407,7 @@ const SupplierRegistrationPage = () => {
         )}
         <Paper elevation={3} sx={{ padding: 3 }}>
           <Typography variant="h5" gutterBottom>
-            협력업체 등록
+            {pageTitle}
           </Typography>
           {error && (
             <Alert severity="error">{error}</Alert>
@@ -333,6 +428,7 @@ const SupplierRegistrationPage = () => {
                   error={!!errors.businessNo}
                   helperText={errors.businessNo}
                   required
+                  disabled={isEditMode} // 수정 모드에서는 사업자번호 변경 불가
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -470,9 +566,43 @@ const SupplierRegistrationPage = () => {
 
             <Divider sx={{ mt: 3, mb: 3 }} />
 
+            {/* 기존 첨부 파일 목록 (수정 모드에서만 표시) */}
+            {isEditMode && existingAttachments.length > 0 && (
+              <Grid container spacing={2} sx={{ mt: 2 }}>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>기존 첨부 파일</Typography>
+                  {existingAttachments.map((file, index) => (
+                    <List key={index} sx={{ mt: 1 }}>
+                      <ListItem>
+                        <ListItemAvatar>
+                          <Avatar><AttachFileIcon /></Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={file.fileName}
+                          secondary={file.fileSize ? `${(file.fileSize / 1024).toFixed(2)} KB` : ''}
+                        />
+                        {/* 삭제 버튼 */}
+                        <IconButton
+                          edge="end"
+                          aria-label="delete"
+                          onClick={() => handleRemoveExistingFile(index)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </ListItem>
+                    </List>
+                  ))}
+                  <Divider sx={{ mt: 2, mb: 2 }} />
+                </Grid>
+              </Grid>
+            )}
+
             {/* 파일 업로드 */}
             <Grid container spacing={2} sx={{ mt: 2 }}>
               <Grid item xs={12}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                  {isEditMode ? '새 첨부 파일 추가' : '파일 첨부'}
+                </Typography>
                 <input
                   type="file"
                   accept=".pdf, .jpg, .jpeg, .png"
@@ -522,7 +652,7 @@ const SupplierRegistrationPage = () => {
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
               <Button
                 variant="outlined"
-                onClick={() => navigate('/supplier')}
+                onClick={() => isEditMode ? navigate(`/supplier/review/${id}`) : navigate('/supplier')}
                 disabled={loading}
               >
                 취소
@@ -536,9 +666,9 @@ const SupplierRegistrationPage = () => {
                 {loading ? (
                   <>
                     <CircularProgress size={20} sx={{ mr: 1 }} />
-                    등록 중...
+                    {isEditMode ? '수정 중...' : '등록 중...'}
                   </>
-                ) : '등록하기'}
+                ) : isEditMode ? '수정하기' : '등록하기'}
               </Button>
             </Box>
           </form>

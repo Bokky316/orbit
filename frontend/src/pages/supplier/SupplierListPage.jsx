@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { fetchSuppliers } from '../../redux/supplier/supplierSlice';
-import { fetchWithAuth } from '../../utils/fetchWithAuth'; // fetchWithAuth 임포트 추가
+import { fetchSuppliers, updateSupplierStatus } from '../../redux/supplier/supplierSlice';
+import { fetchWithAuth } from '../../utils/fetchWithAuth';
 import {
   Box,
   Typography,
@@ -35,7 +35,10 @@ import {
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  Block as BlockIcon,
+  CheckCircle as CheckCircleIcon,
+  ErrorOutline as ErrorOutlineIcon
 } from '@mui/icons-material';
 
 const SupplierListPage = () => {
@@ -75,8 +78,10 @@ const SupplierListPage = () => {
   });
 
   // 모달 상태
-  const [openModal, setOpenModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+const [openModal, setOpenModal] = useState(false);
+const [rejectionReason, setRejectionReason] = useState('');
+const [selectedSupplierId, setSelectedSupplierId] = useState(null);
+const [selectedSupplierName, setSelectedSupplierName] = useState('');
 
   // 사용 가능한 소싱 중분류 및 소분류 옵션
   const [availableSubCategories, setAvailableSubCategories] = useState([]);
@@ -163,6 +168,7 @@ const SupplierListPage = () => {
 
     switch(statusCode) {
       case 'APPROVED':
+      case 'ACTIVE':
         return <Chip label="승인" color="success" size="small" />;
       case 'PENDING':
         return <Chip label="심사대기" color="warning" size="small" />;
@@ -172,6 +178,8 @@ const SupplierListPage = () => {
         return <Chip label="일시정지" color="default" size="small" />;
       case 'BLACKLIST':
         return <Chip label="블랙리스트" color="error" size="small" />;
+      case 'INACTIVE':
+        return <Chip label="비활성" color="default" size="small" />;
       default:
         return <Chip label="미확인" size="small" />;
     }
@@ -313,6 +321,7 @@ const SupplierListPage = () => {
                   <>
                     <MenuItem value="SUSPENDED">일시정지</MenuItem>
                     <MenuItem value="BLACKLIST">블랙리스트</MenuItem>
+                    <MenuItem value="INACTIVE">비활성</MenuItem>
                   </>
                 )}
               </Select>
@@ -419,6 +428,29 @@ const SupplierListPage = () => {
                         상세
                       </Button>
 
+                      {/* ADMIN에게만 활성화 상태 표시 */}
+                      {isAdmin && (
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          {(supplier.status === 'INACTIVE' || supplier.status?.childCode === 'INACTIVE') ? (
+                            <Chip
+                              label="비활성"
+                              icon={<BlockIcon />}
+                              color="default"
+                              variant="outlined"
+                              size="small"
+                            />
+                          ) : (
+                            <Chip
+                              label="활성"
+                              icon={<CheckCircleIcon />}
+                              color="success"
+                              variant="outlined"
+                              size="small"
+                            />
+                          )}
+                        </Box>
+                      )}
+
                       {/* 반려 상태일 때만 반려사유 버튼 표시 */}
                       {(supplier.status === 'REJECTED' || supplier.status?.childCode === 'REJECTED') &&
                         supplier.rejectionReason && (
@@ -434,12 +466,12 @@ const SupplierListPage = () => {
 
                       {/* 일시정지 상태일 때 정지사유 버튼 표시 */}
                       {(supplier.status === 'SUSPENDED' || supplier.status?.childCode === 'SUSPENDED') &&
-                        supplier.suspensionReason && (
+                        supplier.rejectionReason && (
                         <Button
                           size="small"
                           color="warning"
                           variant="outlined"
-                          onClick={() => handleShowRejectionReason(supplier.suspensionReason)}
+                          onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
                         >
                           정지사유
                         </Button>
@@ -455,6 +487,19 @@ const SupplierListPage = () => {
                           onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
                         >
                           블랙리스트 사유
+                        </Button>
+                      )}
+
+                      {/* 비활성 상태일 때 비활성 사유 버튼 표시 */}
+                      {(supplier.status === 'INACTIVE' || supplier.status?.childCode === 'INACTIVE') &&
+                        supplier.rejectionReason && (
+                        <Button
+                          size="small"
+                          color="default"
+                          variant="outlined"
+                          onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                        >
+                          비활성 사유
                         </Button>
                       )}
                     </Box>

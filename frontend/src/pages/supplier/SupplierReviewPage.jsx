@@ -32,7 +32,10 @@ import {
   Cancel as CancelIcon,
   ArrowBack as ArrowBackIcon,
   Download as DownloadIcon,
-  AttachFile as AttachFileIcon
+  AttachFile as AttachFileIcon,
+  Block as BlockIcon,
+  ErrorOutline as ErrorOutlineIcon,
+  Edit as EditIcon // 수정 아이콘 추가
 } from '@mui/icons-material';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
@@ -90,13 +93,23 @@ const SupplierReviewPage = () => {
   const { user = null } = authState;
 
   const [openRejectModal, setOpenRejectModal] = useState(false);
+  const [openApproveModal, setOpenApproveModal] = useState(false); // 승인 확인 모달 상태 추가
   const [rejectionReason, setRejectionReason] = useState('');
   const [rejectionError, setRejectionError] = useState('');
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
   const [loadingAttachmentId, setLoadingAttachmentId] = useState(null);
+  const [openInactivateModal, setOpenInactivateModal] = useState(false);
+  const [inactivateReason, setInactivateReason] = useState('');
+  const [openActivateModal, setOpenActivateModal] = useState(false);
 
-  const isAdmin = user && user.role === 'ADMIN';
+  // ADMIN 권한 체크 수정
+  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
+  // SUPPLIER 권한 체크 추가
+  const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
+
+  // 현재 사용자가 해당 업체의 소유자인지 확인
+  const isOwner = user && currentSupplier && user.id === currentSupplier.supplierId;
 
   useEffect(() => {
     try {
@@ -114,6 +127,22 @@ const SupplierReviewPage = () => {
     };
   }, [dispatch, id]);
 
+  // 수정 기능 추가 - PENDING 상태의 공급업체를 수정 페이지로 이동
+  const handleEdit = () => {
+    // 공급업체 ID와 함께 수정 페이지로 이동
+    navigate(`/supplier/edit/${currentSupplier.id}`);
+  };
+
+  // 승인 모달 열기
+  const handleOpenApproveModal = () => {
+    setOpenApproveModal(true);
+  };
+
+  // 승인 모달 닫기
+  const handleCloseApproveModal = () => {
+    setOpenApproveModal(false);
+  };
+
   // 승인 처리
   const handleApprove = () => {
     try {
@@ -121,6 +150,7 @@ const SupplierReviewPage = () => {
         id: currentSupplier.id,
         statusCode: 'APPROVED'
       }));
+      setOpenApproveModal(false); // 모달 닫기
     } catch (err) {
       console.error('Error approving supplier:', err);
     }
@@ -162,6 +192,74 @@ const SupplierReviewPage = () => {
     } catch (err) {
       console.error('Error rejecting supplier:', err);
       setRejectionError('처리 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 비활성화 모달 열기 함수 추가
+  const handleOpenInactivateModal = () => {
+    setOpenInactivateModal(true);
+  };
+
+  // 비활성화 모달 닫기 함수 추가
+  const handleCloseInactivateModal = () => {
+    setOpenInactivateModal(false);
+    setInactivateReason('');
+  };
+
+  // 활성화 모달 열기 함수 추가
+  const handleOpenActivateModal = () => {
+    setOpenActivateModal(true);
+  };
+
+  // 활성화 모달 닫기 함수 추가
+  const handleCloseActivateModal = () => {
+    setOpenActivateModal(false);
+  };
+
+  // 비활성화 처리 함수 추가
+  const handleInactivateSupplier = () => {
+    if (currentSupplier?.id) {
+      try {
+        dispatch(updateSupplierStatus({
+          id: currentSupplier.id,
+          statusCode: 'INACTIVE',
+          rejectionReason: inactivateReason
+        }))
+          .unwrap()
+          .then(() => {
+            handleCloseInactivateModal();
+            // 상태 변경 후 목록 페이지로 리다이렉트
+            navigate('/supplier');
+          })
+          .catch(error => {
+            console.error('비활성화 오류:', error);
+          });
+      } catch (err) {
+        console.error('비활성화 오류:', err);
+      }
+    }
+  };
+
+  // 활성화 처리 함수 추가
+  const handleActivateSupplier = () => {
+    if (currentSupplier?.id) {
+      try {
+        dispatch(updateSupplierStatus({
+          id: currentSupplier.id,
+          statusCode: 'ACTIVE'
+        }))
+          .unwrap()
+          .then(() => {
+            handleCloseActivateModal();
+            // 상태 변경 후 목록 페이지로 리다이렉트
+            navigate('/supplier');
+          })
+          .catch(error => {
+            console.error('활성화 오류:', error);
+          });
+      } catch (err) {
+        console.error('활성화 오류:', err);
+      }
     }
   };
 
@@ -222,6 +320,8 @@ const SupplierReviewPage = () => {
         return <Chip label="일시정지" color="default" variant="outlined" />;
       case 'BLACKLIST':
         return <Chip label="블랙리스트" color="error" variant="outlined" />;
+      case 'INACTIVE':
+        return <Chip label="비활성" color="default" variant="outlined" />;
       default:
         return <Chip label="미확인" variant="outlined" />;
     }
@@ -274,7 +374,49 @@ const SupplierReviewPage = () => {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">{currentSupplier.supplierName || '이름 없음'}</Typography>
-          {getStatusChip(currentSupplier.status)}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {getStatusChip(currentSupplier.status)}
+
+            {/* SUPPLIER 본인이고 상태가 PENDING일 때 수정 버튼 표시 */}
+            {isSupplier && isOwner && currentSupplier.status?.childCode === 'PENDING' && (
+              <Button
+                size="small"
+                color="primary"
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={handleEdit}
+              >
+                수정하기
+              </Button>
+            )}
+
+            {/* ADMIN에게만 활성화/비활성화 버튼 표시 */}
+            {isAdmin && currentSupplier.status?.childCode !== 'PENDING' && (
+              <>
+                {currentSupplier.status === 'INACTIVE' || currentSupplier.status?.childCode === 'INACTIVE' ? (
+                  <Button
+                    size="small"
+                    color="success"
+                    variant="contained"
+                    startIcon={<CheckCircleIcon />}
+                    onClick={handleOpenActivateModal}
+                  >
+                    활성화 하기
+                  </Button>
+                ) : (
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="contained"
+                    startIcon={<BlockIcon />}
+                    onClick={handleOpenInactivateModal}
+                  >
+                    비활성화 하기
+                  </Button>
+                )}
+              </>
+            )}
+          </Box>
         </Box>
 
         <Divider sx={{ mb: 3 }} />
@@ -479,9 +621,23 @@ const SupplierReviewPage = () => {
             variant="contained"
             color="success"
             startIcon={<CheckCircleIcon />}
-            onClick={handleApprove}
+            onClick={handleOpenApproveModal} // 모달 열기로 변경
           >
             승인
+          </Button>
+        </Paper>
+      )}
+
+      {/* SUPPLIER 본인이고 PENDING 상태일 때 수정 버튼 (하단) */}
+      {isSupplier && isOwner && currentSupplier.status?.childCode === 'PENDING' && (
+        <Paper sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={handleEdit}
+          >
+            정보 수정하기
           </Button>
         </Paper>
       )}
@@ -527,6 +683,92 @@ const SupplierReviewPage = () => {
           </Button>
           <Button onClick={handleReject} color="error" variant="contained">
             반려하기
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 승인 확인 모달 */}
+      <Dialog open={openApproveModal} onClose={handleCloseApproveModal}>
+        <DialogTitle>협력업체 승인</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체의 등록 요청을 승인하시겠습니까?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseApproveModal} color="inherit">
+            취소
+          </Button>
+          <Button onClick={handleApprove} color="success" variant="contained">
+            승인하기
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 비활성화 확인 모달 */}
+      <Dialog
+        open={openInactivateModal}
+        onClose={handleCloseInactivateModal}
+        aria-labelledby="inactivate-dialog-title"
+      >
+        <DialogTitle id="inactivate-dialog-title">협력업체 비활성화</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 비활성화하시겠습니까?
+            비활성화 후에는 해당 업체와 더 이상 거래가 불가능합니다.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="inactivate-reason"
+            label="비활성화 사유"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={inactivateReason}
+            onChange={(e) => setInactivateReason(e.target.value)}
+            variant="outlined"
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseInactivateModal} color="inherit">
+            취소
+          </Button>
+          <Button onClick={handleInactivateSupplier} color="error" variant="contained">
+            비활성화
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 활성화 확인 모달 */}
+      <Dialog
+        open={openActivateModal}
+        onClose={handleCloseActivateModal}
+        aria-labelledby="activate-dialog-title"
+      >
+        <DialogTitle id="activate-dialog-title">협력업체 활성화</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <ErrorOutlineIcon color="warning" sx={{ mr: 1 }} />
+              <Typography variant="subtitle1" fontWeight="bold">
+                '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 다시 활성화하시겠습니까?
+              </Typography>
+            </Box>
+            <Typography>
+              활성화하면 해당 업체와 다시 거래가 가능해집니다. 비활성 사유는 삭제되며,
+              업체 상태는 '승인'으로 변경됩니다.
+            </Typography>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseActivateModal} color="inherit">
+            취소
+          </Button>
+          <Button onClick={handleActivateSupplier} color="success" variant="contained">
+            활성화
           </Button>
         </DialogActions>
       </Dialog>

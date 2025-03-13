@@ -271,4 +271,22 @@ public class SupplierRegistrationService {
         registration.setStatus(new SystemStatus("SUPPLIER", "BLACKLIST"));
         registration.setRejectionReason(reason);
     }
+
+    /**
+     * 🔹 협력업체 비활성화
+     */
+    public void inactivateSupplier(Long id, String reason) {
+        SupplierRegistration registration = getSupplierById(id);
+        registration.setStatus(new SystemStatus("SUPPLIER", "INACTIVE"));
+        registration.setRejectionReason(reason);
+    }
+
+    /**
+     * 🔹 협력업체 활성화 (비활성화된 업체를 다시 활성화)
+     */
+    public void activateSupplier(Long id) {
+        SupplierRegistration registration = getSupplierById(id);
+        registration.setStatus(new SystemStatus("SUPPLIER", "APPROVED"));
+        registration.setRejectionReason(null); // 비활성화 사유 제거
+    }
 }

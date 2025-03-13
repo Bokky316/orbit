@@ -116,6 +116,7 @@ function AppContent() {
                 <Route path="/supplier/registrations" element={<SupplierRegistrationPage />} />
                 <Route path="/supplier/review/:id" element={<SupplierReviewPage />} />
                 <Route path="/supplier/approval" element={<SupplierApprovalListPage />} />
+                <Route path="/supplier/edit/:id" element={<SupplierRegistrationPage />} />
 
 
               {/* 404 페이지 */}

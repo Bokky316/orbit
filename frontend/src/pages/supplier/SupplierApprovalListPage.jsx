@@ -40,8 +40,9 @@ const SupplierApprovalListPage = () => {
   const [openModal, setOpenModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // ADMIN 권한 체크
-  const isAdmin = user && user.role === 'ADMIN';
+  // ADMIN 권한 체크 수정
+  // user.role === 'ADMIN' -> user.roles && user.roles.includes('ROLE_ADMIN')
+  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
 
   // 승인 대기 중인 협력업체만 필터링 (안전하게)
   const pendingSuppliers = Array.isArray(suppliers)
@@ -77,12 +78,24 @@ const SupplierApprovalListPage = () => {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">승인 대기 협력업체 목록</Typography>
-          <Button
-            variant="outlined"
-            onClick={() => navigate('/supplier')}
-          >
-            전체 목록으로
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {/* ADMIN인 경우 추가 버튼 표시 */}
+            {isAdmin && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate('/supplier/management')}
+              >
+                업체 관리
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/supplier')}
+            >
+              전체 목록으로
+            </Button>
+          </Box>
         </Box>
 
         {error && (
