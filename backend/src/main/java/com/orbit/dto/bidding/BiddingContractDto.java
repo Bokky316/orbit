@@ -161,4 +161,31 @@ public class BiddingContractDto {
                 .contractFilePath(this.contractFilePath)
                 .build();
     }
+    
+    // DTO -> Entity 변환
+    public BiddingContract toEntity() {
+        return BiddingContract.builder()
+                .id(this.id)
+                .transactionNumber(this.transactionNumber)
+                .bidding(this.bidding)
+                .biddingParticipation(this.biddingParticipation)
+                .supplier(this.supplier)
+                .startDate(this.startDate)
+                .endDate(this.endDate)
+                .deliveryDate(this.deliveryDate)
+                .totalAmount(this.totalAmount)
+                .quantity(this.quantity)
+                .unitPrice(this.unitPrice)
+                .supplyPrice(this.supplyPrice)
+                .vat(this.vat)
+                .statusParent(this.statusParent)
+                .statusChild(this.statusChild)
+                .buyerSignature(this.buyerSignature)
+                .buyerSignedAt(this.buyerSignedAt)
+                .supplierSignature(this.supplierSignature)
+                .supplierSignedAt(this.supplierSignedAt)
+                .description(this.description)
+                .contractFilePath(this.contractFilePath)
+                .build();
+    }
 }
