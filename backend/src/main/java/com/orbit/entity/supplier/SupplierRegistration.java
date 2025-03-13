@@ -1,8 +1,7 @@
 package com.orbit.entity.supplier;
 
-import com.orbit.constant.SupplierStatus;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.state.SystemStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

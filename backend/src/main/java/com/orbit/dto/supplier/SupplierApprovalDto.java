@@ -1,6 +1,5 @@
 package com.orbit.dto.supplier;
 
-import com.orbit.constant.SupplierStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

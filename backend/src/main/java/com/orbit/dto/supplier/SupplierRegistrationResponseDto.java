@@ -1,6 +1,6 @@
 package com.orbit.dto.supplier;
 
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.supplier.SupplierRegistration;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

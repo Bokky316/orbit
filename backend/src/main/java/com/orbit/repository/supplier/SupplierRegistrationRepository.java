@@ -1,6 +1,5 @@
 package com.orbit.repository.supplier;
 
-import com.orbit.constant.SupplierStatus;
 import com.orbit.entity.supplier.SupplierRegistration;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

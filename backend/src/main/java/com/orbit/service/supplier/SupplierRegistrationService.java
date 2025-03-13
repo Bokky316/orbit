@@ -1,8 +1,8 @@
 package com.orbit.service.supplier;
 
 import com.orbit.dto.supplier.SupplierRegistrationRequestDto;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.state.SystemStatus;
 import com.orbit.entity.supplier.SupplierAttachment;
 import com.orbit.entity.supplier.SupplierRegistration;
 import com.orbit.repository.member.MemberRepository;
