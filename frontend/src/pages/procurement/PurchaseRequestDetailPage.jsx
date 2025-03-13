@@ -17,6 +17,9 @@ import {
 import ApprovalLineComponent from '@/pages/approval/ApprovalLineComponent';
 import ApprovalLineSetupComponent from '@/pages/approval/ApprovalLineSetupComponent';
 import { styled } from '@mui/material/styles';
+import { deletePurchaseRequest } from '@/redux/purchaseRequestSlice';
+import useWebSocket from '@hooks/useWebSocket';
+
 
 // 상태 칩 스타일 커스터마이징
 const StatusChip = styled(Chip)(({ theme, statuscode }) => {
@@ -48,9 +51,9 @@ const StatusChip = styled(Chip)(({ theme, statuscode }) => {
 const PurchaseRequestDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-
-    // 리덕스에서 현재 사용자 정보 가져오기
+    const dispatch = useDispatch();
     const currentUser = useSelector(state => state.auth.user);
+    const { sendStatusChange } = useWebSocket(currentUser);
 
     // 로컬 상태
     const [request, setRequest] = useState(null);
