@@ -45,7 +45,7 @@ import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetail
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
-import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
