@@ -37,15 +37,6 @@ public class CommonCodeDataInitializer {
                 List.of("REGISTERED", "REREGISTERED", "IN_PROGRESS", "TERMINATED", "COMPLETED"),
                 List.of("등록", "정정등록", "진행중", "중도종결", "완료")
         );
-
-        // 프로젝트 조달 상태 코드
-        ParentCode projectProcurementStatus = initParentCode("PROJECT", "PROCUREMENT_STATUS", "프로젝트 조달 상태");
-        initChildCodes(projectProcurementStatus,
-                List.of("PROJECT_CREATED", "PURCHASE_REQUESTED", "PURCHASE_RECEIVED", "VENDOR_SELECTION",
-                        "CONTRACT_PENDING", "INSPECTION", "INVOICE_ISSUED", "PAYMENT_COMPLETED"),
-                List.of("프로젝트 생성", "구매 요청", "구매요청 접수", "업체 선정",
-                        "계약 대기", "검수 진행", "인보이스 발행", "대금지급 완료")
-        );
     }
 
     //▶▶▶ 구매 요청 코드

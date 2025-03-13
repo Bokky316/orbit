@@ -44,8 +44,6 @@ function ProjectDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // src/pages/procurement/ProjectDetailPage.jsx의 useEffect 부분 수정
-
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -104,7 +102,6 @@ function ProjectDetailPage() {
     };
 
     // 첨부파일 다운로드 함수
-    // downloadFile 함수 부분만 수정
     const downloadFile = async (attachmentId) => {
         try {
             console.log("첨부파일 다운로드 시작, attachmentId:", attachmentId);
@@ -118,7 +115,6 @@ function ProjectDetailPage() {
             );
 
             if (response.ok) {
-                // Blob으로 응답 변환
                 const blob = await response.blob();
 
                 // 파일명 추출 시도
@@ -162,40 +158,6 @@ function ProjectDetailPage() {
         }
     };
 
-//     // 첨부파일 업로드 함수
-//     // uploadFiles 함수 부분만 수정
-//     const uploadFiles = async (files) => {
-//         if (!files || files.length === 0) return;
-//
-//         const formData = new FormData();
-//         for (let i = 0; i < files.length; i++) {
-//             formData.append('files', files[i]);
-//         }
-//
-//         try {
-//             // Content-Type 헤더를 명시적으로 지정하지 않음 (브라우저가 자동으로 설정)
-//             const response = await fetchWithAuth(`${API_URL}projects/${id}/attachments`, {
-//                 method: 'POST',
-//                 body: formData,
-//             });
-//
-//             if (response.ok) {
-//                 // 프로젝트 정보 다시 불러오기
-//                 const projectRes = await fetchWithAuth(`${API_URL}projects/${id}`);
-//                 if (projectRes.ok) {
-//                     setProject(await projectRes.json());
-//                     alert('첨부파일이 성공적으로 업로드되었습니다.');
-//                 }
-//             } else {
-//                 const errorData = await response.text();
-//                 alert(`첨부파일 업로드에 실패했습니다: ${errorData}`);
-//             }
-//         } catch (error) {
-//             console.error('업로드 오류:', error);
-//             alert(`첨부파일 업로드 중 오류가 발생했습니다: ${error.message}`);
-//         }
-//     };
-
     if (loading) return <Typography>로딩 중...</Typography>;
     if (error) return <Typography color="error">{error}</Typography>;
 
@@ -219,11 +181,6 @@ function ProjectDetailPage() {
                         <Chip
                             label={project.basicStatus ? project.basicStatus.split('-')[2] : '미설정'}
                             sx={{...statusChipStyle, backgroundColor: '#e3f2fd'}}
-                        />
-                        <Typography sx={{ mt: 1 }}><strong>조달 상태:</strong></Typography>
-                        <Chip
-                            label={project.procurementStatus ? project.procurementStatus.split('-')[2] : '미설정'}
-                            sx={{...statusChipStyle, backgroundColor: '#f0f4c3'}}
                         />
                     </Grid>
                 </Grid>
@@ -251,19 +208,6 @@ function ProjectDetailPage() {
             <Paper sx={{ p: 3, mb: 3 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                     <Typography variant="h6">첨부 파일</Typography>
-{/*                     <Button */}
-{/*                         variant="outlined" */}
-{/*                         component="label" */}
-{/*                         startIcon={<AttachFileIcon />} */}
-{/*                     > */}
-{/*                         파일 추가 */}
-{/*                         <input */}
-{/*                             type="file" */}
-{/*                             multiple */}
-{/*                             hidden */}
-{/*                             onChange={(e) => uploadFiles(e.target.files)} */}
-{/*                         /> */}
-{/*                     </Button> */}
                 </Box>
 
                 {project.attachments && project.attachments.length > 0 ? (

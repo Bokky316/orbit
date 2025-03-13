@@ -199,7 +199,6 @@ function ProjectListPage() {
                                 <TableCell>고객사</TableCell>
                                 <TableCell>계약 유형</TableCell>
                                 <TableCell>기본 상태</TableCell>
-                                <TableCell>조달 상태</TableCell>
                                 <TableCell>액션</TableCell>
                             </TableRow>
                         </TableHead>
@@ -218,9 +217,6 @@ function ProjectListPage() {
                                     <TableCell>{project.contractType}</TableCell>
                                     <TableCell>
                                         {project.basicStatus ? project.basicStatus.split('-')[2] : '미설정'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {project.procurementStatus ? project.procurementStatus.split('-')[2] : '미설정'}
                                     </TableCell>
                                     <TableCell>
                                         <Button size="small" variant="outlined" onClick={() => handleViewDetail(project.id)}>
