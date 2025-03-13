@@ -1,13 +1,11 @@
-package com.orbit.entity.project;
+package com.orbit.entity.procurement;
 
 import com.orbit.entity.BaseEntity;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.PurchaseRequest;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;

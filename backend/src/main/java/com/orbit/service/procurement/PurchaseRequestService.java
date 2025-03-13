@@ -14,7 +14,7 @@ import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.item.Item;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.project.Project;
+import com.orbit.entity.procurement.Project;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.DepartmentRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
@@ -27,7 +27,6 @@ import com.orbit.repository.procurement.PurchaseRequestAttachmentRepository;
 import com.orbit.entity.item.Category;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.security.dto.MemberSecurityDto;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -838,4 +837,6 @@ public class PurchaseRequestService {
                 .filter(budget -> budget != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
+
 }
