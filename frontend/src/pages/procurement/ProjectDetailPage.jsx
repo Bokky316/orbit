@@ -86,18 +86,38 @@ function ProjectDetailPage() {
         fetchData();
     }, [id]);
 
+    // 프로젝트가 수정 가능한지 확인하는 함수
+    const canEditProject = () => {
+        if (!project || !project.basicStatus) return false;
+
+        // 상태 코드 추출
+        const statusCode = project.basicStatus.split('-')[2];
+
+        // '등록' 또는 '정정등록' 상태일 때만 수정 가능
+        return statusCode === 'REGISTERED' || statusCode === 'REREGISTERED';
+    };
+
+    // 프로젝트가 삭제 가능한지 확인하는 함수
+    const canDeleteProject = () => {
+        if (!project || !project.basicStatus) return false;
+
+        // 상태 코드 추출
+        const statusCode = project.basicStatus.split('-')[2];
+
+        // '등록' 또는 '정정등록' 상태이고, 연결된 구매요청이 없을 때만 삭제 가능
+        return (statusCode === 'REGISTERED' || statusCode === 'REREGISTERED') &&
+               (!purchaseRequests || purchaseRequests.length === 0);
+    };
+
     const handleDelete = async () => {
         if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
         try {
-            const res = await fetchWithAuth(`${API_URL}projects/${id}`, {
-                method: 'DELETE'
-            });
-            if (!res.ok) throw new Error('삭제 실패');
-            dispatch(deleteProject(id));
+            await dispatch(deleteProject(id)).unwrap();
+            alert('프로젝트가 삭제되었습니다.');
             navigate('/projects');
         } catch (err) {
-            alert(`삭제 오류: ${err.message}`);
+            alert(`삭제 오류: ${err}`);
         }
     };
 
@@ -285,19 +305,23 @@ function ProjectDetailPage() {
 
             {/* 액션 버튼 그룹 */}
             <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                <Button
-                    variant="contained"
-                    onClick={() => navigate(`/projects/edit/${id}`)}
-                >
-                    수정
-                </Button>
-                <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={handleDelete}
-                >
-                    삭제
-                </Button>
+                {canEditProject() && (
+                    <Button
+                        variant="contained"
+                        onClick={() => navigate(`/projects/edit/${id}`)}
+                    >
+                        수정
+                    </Button>
+                )}
+                {canDeleteProject() && (
+                    <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleDelete}
+                    >
+                        삭제
+                    </Button>
+                )}
                 <Button
                     variant="outlined"
                     onClick={() => navigate('/projects')}
