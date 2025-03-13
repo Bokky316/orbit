@@ -62,24 +62,43 @@ export const createPurchaseRequest = createAsyncThunk(
  */
 const createWebsocketMiddleware = () => {
   let socket = null;
+  let stompClient = null;
 
   return ({ dispatch }) => next => action => {
     switch (action.type) {
       case 'WS_CONNECT':
         if (!socket) {
-          socket = new WebSocket(`${API_URL.replace('http', 'ws')}purchase-requests/updates`);
+          socket = new SockJS(`${SERVER_URL}ws`);
+          stompClient = Stomp.over(socket);
 
-          socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            dispatch({ type: 'purchaseRequest/wsUpdate', payload: data });
-          };
+          stompClient.connect({}, function(frame) {
+            dispatch({ type: 'WS_CONNECTED' });
+
+            // 특정 구매요청의 상태 변경 구독
+            stompClient.subscribe(`/topic/purchase-request/{id}`, function(message) {
+              const data = JSON.parse(message.body);
+              dispatch({
+                type: 'purchaseRequest/wsUpdate',
+                payload: data
+              });
+            });
+          });
         }
         break;
 
       case 'WS_DISCONNECT':
-        if (socket) {
-          socket.close();
+        if (stompClient) {
+          stompClient.disconnect();
           socket = null;
+          stompClient = null;
+        }
+        break;
+
+      case 'purchaseRequest/changeStatus':
+        if (stompClient) {
+          stompClient.send("/app/purchase-request/{id}/status", {},
+            JSON.stringify(action.payload)
+          );
         }
         break;
 
@@ -88,6 +107,31 @@ const createWebsocketMiddleware = () => {
     }
   };
 };
+
+// 상태 변경 액션 추가
+export const changePurchaseRequestStatus = createAsyncThunk(
+  'purchaseRequest/changeStatus',
+  async ({ id, fromStatus, toStatus }, { rejectWithValue }) => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fromStatus, toStatus })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '상태 변경 실패');
+      }
+
+      return await response.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 // 파일 다운로드 액션 추가
 export const downloadAttachment = createAsyncThunk(
@@ -260,6 +304,7 @@ const purchaseRequestSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
+
             // fetchCategories 액션 처리 (추가)
             .addCase(fetchCategories.pending, (state) => {
                 state.loading = true;
