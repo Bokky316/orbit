@@ -19,6 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
@@ -39,36 +42,77 @@ public class SupplierRegistrationController {
 
     private final SupplierRegistrationService supplierRegistrationService;
 
-    // 🟢 협력업체 목록 조회
+    // 🟢 협력업체 목록 조회 - 권한별 처리 추가
     @GetMapping
     public ResponseEntity<List<SupplierRegistrationResponseDto>> getSuppliers(
             @RequestParam(required = false) String status) {
 
         try {
+            // 현재 로그인한 사용자의 권한과 정보 확인
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+
             List<SupplierRegistration> suppliers;
-            if (status == null || status.isEmpty()) {
-                suppliers = supplierRegistrationService.getSuppliers(null);
-            } else {
-                if (!Arrays.asList("PENDING", "APPROVED", "REJECTED", "SUSPENDED", "BLACKLIST")
-                        .contains(status.toUpperCase())) {
-                    return ResponseEntity.badRequest().body(List.of());
+            if (isAdmin) {
+                // 관리자는 모든 업체 조회 가능
+                if (status == null || status.isEmpty()) {
+                    suppliers = supplierRegistrationService.getSuppliers(null);
+                } else {
+                    if (!Arrays.asList("PENDING", "APPROVED", "REJECTED", "SUSPENDED", "BLACKLIST")
+                            .contains(status.toUpperCase())) {
+                        return ResponseEntity.badRequest().body(List.of());
+                    }
+                    suppliers = supplierRegistrationService.getSuppliers(status.toUpperCase());
                 }
-                suppliers = supplierRegistrationService.getSuppliers(status.toUpperCase());
+            } else {
+                // 일반 업체는 자신의 정보만 조회 가능
+                String username = authentication.getName(); // 현재 로그인한 사용자 아이디
+
+                if (status == null || status.isEmpty()) {
+                    suppliers = supplierRegistrationService.getSuppliersByUsername(username, null);
+                } else {
+                    if (!Arrays.asList("PENDING", "APPROVED", "REJECTED", "SUSPENDED", "BLACKLIST")
+                            .contains(status.toUpperCase())) {
+                        return ResponseEntity.badRequest().body(List.of());
+                    }
+                    suppliers = supplierRegistrationService.getSuppliersByUsername(username, status.toUpperCase());
+                }
             }
+
             List<SupplierRegistrationResponseDto> response = suppliers.stream()
                     .map(SupplierRegistrationResponseDto::fromEntity)
                     .collect(Collectors.toList());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("협력업체 목록 조회 오류", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }
 
-    // 🟢 협력업체 상세 조회
+    // 🟢 협력업체 상세 조회 - 권한별 처리 추가
     @GetMapping("/{id}/detail")
     public ResponseEntity<SupplierRegistrationResponseDto> getSupplier(@PathVariable Long id) {
-        SupplierRegistration supplier = supplierRegistrationService.getSupplierById(id);
-        return ResponseEntity.ok(SupplierRegistrationResponseDto.fromEntity(supplier));
+        try {
+            // 현재 로그인한 사용자의 권한과 정보 확인
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            String username = authentication.getName();
+
+            SupplierRegistration supplier = supplierRegistrationService.getSupplierById(id);
+
+            // 관리자가 아니면서 자신의 등록 정보가 아니면 접근 불가
+            if (!isAdmin && !supplier.getSupplier().getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            }
+
+            return ResponseEntity.ok(SupplierRegistrationResponseDto.fromEntity(supplier));
+        } catch (IllegalArgumentException e) {
+            log.error("존재하지 않는 협력업체 ID: {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("협력업체 상세 조회 오류", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     // 🟢 협력업체 등록 - JSON 요청 (파일 없음)
@@ -135,9 +179,25 @@ public class SupplierRegistrationController {
             @RequestParam("files") MultipartFile[] files) {
 
         try {
+            // 현재 로그인한 사용자의 권한과 정보 확인
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            String username = authentication.getName();
+
+            SupplierRegistration supplier = supplierRegistrationService.getSupplierById(id);
+
+            // 관리자가 아니면서 자신의 등록 정보가 아니면 접근 불가
+            if (!isAdmin && !supplier.getSupplier().getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            }
+
             SupplierRegistration updatedSupplier = supplierRegistrationService.addAttachmentsToSupplier(id, files);
             return ResponseEntity.ok(SupplierRegistrationResponseDto.fromEntity(updatedSupplier));
+        } catch (IllegalArgumentException e) {
+            log.error("존재하지 않는 협력업체 ID: {}", id);
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
+            log.error("첨부파일 업로드 오류", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
@@ -175,6 +235,17 @@ public class SupplierRegistrationController {
             @RequestHeader(value = "User-Agent", required = false) String userAgent) {
 
         try {
+            // 현재 로그인한 사용자의 권한과 정보 확인
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            String username = authentication.getName();
+
+            // 파일 다운로드 권한 체크
+            boolean hasAccess = supplierRegistrationService.checkAttachmentAccess(attachmentId, username, isAdmin);
+            if (!hasAccess) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             Resource resource = supplierRegistrationService.downloadAttachment(attachmentId);
 
             // 파일명 인코딩 처리

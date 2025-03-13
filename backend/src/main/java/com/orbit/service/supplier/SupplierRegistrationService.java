@@ -25,6 +25,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +56,35 @@ public class SupplierRegistrationService {
         log.info("✅ 상태별 조회, 총 개수: {}", filteredSuppliers.size());
 
         return filteredSuppliers;
+    }
+
+    /**
+     * 🔹 협력업체 목록 조회 - 사용자별
+     */
+    @Transactional(readOnly = true)
+    public List<SupplierRegistration> getSuppliersByUsername(String username, String statusCode) {
+        log.info("🔍 Username: {}, StatusCode: {}", username, statusCode);
+
+        // 먼저 사용자 정보 조회
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + username));
+
+        // 사용자 ID로 등록된 업체 목록 필터링
+        List<SupplierRegistration> userSuppliers;
+        if (statusCode == null) {
+            userSuppliers = supplierRegistrationRepository.findAll()
+                    .stream()
+                    .filter(supplier -> supplier.getSupplier().getId().equals(member.getId()))
+                    .collect(Collectors.toList());
+        } else {
+            userSuppliers = supplierRegistrationRepository.findByStatusChildCode(statusCode)
+                    .stream()
+                    .filter(supplier -> supplier.getSupplier().getId().equals(member.getId()))
+                    .collect(Collectors.toList());
+        }
+
+        log.info("✅ 사용자별 조회, 총 개수: {}", userSuppliers.size());
+        return userSuppliers;
     }
 
     /**
@@ -188,6 +218,23 @@ public class SupplierRegistrationService {
         } else {
             throw new RuntimeException("파일을 다운로드 할 수 없습니다: " + attachment.getFileName());
         }
+    }
+
+    /**
+     * 첨부파일 접근 권한 확인
+     */
+    @Transactional(readOnly = true)
+    public boolean checkAttachmentAccess(Long attachmentId, String username, boolean isAdmin) {
+        if (isAdmin) {
+            return true;  // 관리자는 항상 접근 가능
+        }
+
+        SupplierAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new IllegalArgumentException("첨부파일을 찾을 수 없습니다: " + attachmentId));
+
+        // 파일을 업로드한 사용자와 현재 사용자가 동일한지 확인
+        String ownerUsername = attachment.getSupplierRegistration().getSupplier().getUsername();
+        return ownerUsername.equals(username);
     }
 
     /**

@@ -29,7 +29,8 @@ import {
   TextField,
   Grid,
   IconButton,
-  Divider
+  Divider,
+  Alert
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -84,23 +85,7 @@ const SupplierListPage = () => {
   useEffect(() => {
     // API 호출 시 권한에 맞는 API 호출
     try {
-      // fetchWithAuth를 사용하여 실제 API 호출을 할 경우를 위한 예시 코드
-      // const fetchData = async () => {
-      //   const queryParams = new URLSearchParams();
-      //   if (filters.status) queryParams.append('status', filters.status);
-      //   if (filters.supplierName) queryParams.append('supplierName', filters.supplierName);
-      //   // 추가 필터 파라미터...
-      //
-      //   const url = `/api/supplier-registrations?${queryParams.toString()}`;
-      //   const response = await fetchWithAuth(url);
-      //   if (response.ok) {
-      //     const data = await response.json();
-      //     // 데이터 처리 로직
-      //   }
-      // };
-      // fetchData();
-
-      // 현재는 supplierSlice의 fetchSuppliers를 이용
+      // 실제 API 호출
       dispatch(fetchSuppliers(filters));
     } catch (err) {
       console.error('Error fetching suppliers:', err);
@@ -123,7 +108,7 @@ const SupplierListPage = () => {
     } else {
       setAvailableSubCategories([]);
     }
-  }, [filters.sourcingCategory]); // ✅ `sourcingSubCategories` 제외
+  }, [filters.sourcingCategory, sourcingSubCategories]);
 
   // 중분류 변경 시 소분류 옵션 업데이트
   useEffect(() => {
@@ -139,7 +124,7 @@ const SupplierListPage = () => {
     } else {
       setAvailableDetailCategories([]);
     }
-  }, [filters.sourcingSubCategory]); // ✅ `sourcingDetailCategories` 제외
+  }, [filters.sourcingSubCategory, sourcingDetailCategories]);
 
   // 필터 변경 핸들러
   const handleFilterChange = (e) => {
@@ -168,7 +153,6 @@ const SupplierListPage = () => {
   };
 
   // 사용자의 역할에 따른 권한 확인
-  // roles 배열에서 권한 확인 (응답 형식: {"roles":["ROLE_SUPPLIER"]} 또는 {"roles":["ROLE_ADMIN"]})
   const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
   const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
 
@@ -203,6 +187,11 @@ const SupplierListPage = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           협력업체 목록
+          {!isAdmin && (
+            <Typography variant="subtitle1" color="text.secondary">
+              (본인이 등록한 업체만 표시됩니다)
+            </Typography>
+          )}
         </Typography>
         {/* SUPPLIER 역할일 때만 신규 등록 버튼 표시 */}
         {isSupplier && (
@@ -210,6 +199,13 @@ const SupplierListPage = () => {
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
+            size="small" // 버튼 크기 줄이기
+            sx={{
+              padding: '4px 12px', // 내부 여백 조정 (기본값보다 작게)
+              minWidth: 'auto', // 기본 너비 제한 해제
+              height: '45px', // 버튼 높이 조정
+              fontSize: '0.875rem' // 글자 크기 줄이기
+            }}
             onClick={() => navigate('/supplier/registrations')}
           >
             신규 협력업체 등록
@@ -348,7 +344,20 @@ const SupplierListPage = () => {
           </Box>
         ) : !Array.isArray(suppliers) || suppliers.length === 0 ? (
           <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="subtitle1">등록된 협력업체가 없습니다.</Typography>
+            <Typography variant="subtitle1">
+              {isAdmin ? '등록된 협력업체가 없습니다.' : '등록한 협력업체가 없습니다.'}
+            </Typography>
+            {isSupplier && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/supplier/registrations')}
+                sx={{ mt: 2 }}
+              >
+                협력업체 등록하기
+              </Button>
+            )}
           </Box>
         ) : (
           <Table>

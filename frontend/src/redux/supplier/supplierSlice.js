@@ -26,10 +26,11 @@ const formatPhoneNumber = (phoneNumber) => {
   return phoneNumber;
 };
 
-// 더미 데이터
+// 더미 데이터 - 인증된 사용자별로 구분
 const dummySuppliers = [
   {
     id: 1,
+    supplierId: 100, // 해당 업체를 등록한 사용자 ID
     supplierName: "(주)가나다전자",
     businessNo: "123-45-67890",
     ceoName: "김대표",
@@ -62,6 +63,7 @@ const dummySuppliers = [
   },
   {
     id: 2,
+    supplierId: 101, // 해당 업체를 등록한 사용자 ID
     supplierName: "라마바물산(주)",
     businessNo: "234-56-78901",
     ceoName: "이사장",
@@ -94,6 +96,7 @@ const dummySuppliers = [
   },
   {
     id: 3,
+    supplierId: 100, // 해당 업체를 등록한 사용자 ID (첫 번째 사용자의 또 다른 등록)
     supplierName: "사아자테크",
     businessNo: "345-67-89012",
     ceoName: "박사장",
@@ -127,6 +130,7 @@ const dummySuppliers = [
   },
   {
     id: 4,
+    supplierId: 102, // 해당 업체를 등록한 사용자 ID
     supplierName: "(주)차카타",
     businessNo: "456-78-90123",
     ceoName: "최회장",
@@ -159,6 +163,7 @@ const dummySuppliers = [
   },
   {
     id: 5,
+    supplierId: 101, // 해당 업체를 등록한 사용자 ID
     supplierName: "파하솔루션",
     businessNo: "567-89-01234",
     ceoName: "정이사",
@@ -191,6 +196,7 @@ const dummySuppliers = [
   },
   {
     id: 6,
+    supplierId: 103, // 해당 업체를 등록한 사용자 ID
     supplierName: "블랙리스트업체(주)",
     businessNo: "678-90-12345",
     ceoName: "한대표",
@@ -224,6 +230,7 @@ const dummySuppliers = [
   },
   {
     id: 7,
+    supplierId: 102, // 해당 업체를 등록한 사용자 ID
     supplierName: "일시정지물산(주)",
     businessNo: "789-01-23456",
     ceoName: "노사장",
@@ -260,8 +267,13 @@ const dummySuppliers = [
 // 협력업체 목록 조회
 export const fetchSuppliers = createAsyncThunk(
   'supplier/fetchSuppliers',
-  async (filters = {}, { rejectWithValue }) => {
+  async (filters = {}, { rejectWithValue, getState }) => {
     try {
+      // 현재 로그인한 사용자 정보 가져오기
+      const { auth } = getState();
+      const userRole = auth.user?.roles?.[0] || '';  // 첫 번째 역할 가져오기
+      const userId = auth.user?.id;
+
       let url = `${API_URL}supplier-registrations`;
       const queryParams = [];
       if (filters.status) {
@@ -305,7 +317,21 @@ export const fetchSuppliers = createAsyncThunk(
       }
 
       console.log('API 호출 실패, 더미 데이터 사용:', error);
+
+      // 더미 데이터에서 현재 사용자 권한 및 ID에 따라 필터링
+      const { auth } = getState();
+      const userRole = auth.user?.roles?.[0] || '';
+      const userId = auth.user?.id || 0;
+
+      // admin이 아닌 경우 본인의 것만 보이도록 필터링
       let filteredSuppliers = [...dummySuppliers];
+      if (userRole !== 'ROLE_ADMIN') {
+        filteredSuppliers = filteredSuppliers.filter(supplier =>
+          supplier.supplierId === userId
+        );
+      }
+
+      // 추가 필터 적용
       if (filters.status) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
           supplier.status.childCode === filters.status
@@ -339,7 +365,7 @@ export const fetchSuppliers = createAsyncThunk(
 // 협력업체 상세 조회
 export const fetchSupplierById = createAsyncThunk(
   'supplier/fetchSupplierById',
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, getState }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}supplier-registrations/${id}/detail`);
 
@@ -363,7 +389,19 @@ export const fetchSupplierById = createAsyncThunk(
       }
 
       console.log('API 호출 실패, 더미 데이터 사용:', error);
+
+      // 더미 데이터에서 해당 ID의 업체 찾기
+      const { auth } = getState();
+      const userRole = auth.user?.roles?.[0] || '';
+      const userId = auth.user?.id || 0;
+
       const supplier = dummySuppliers.find(sup => sup.id.toString() === id.toString());
+
+      // admin이 아니면서 본인의 등록이 아닌 경우 접근 거부
+      if (supplier && userRole !== 'ROLE_ADMIN' && supplier.supplierId !== userId) {
+        return rejectWithValue('접근 권한이 없습니다.');
+      }
+
       if (supplier) {
         return supplier;
       }
@@ -420,24 +458,23 @@ export const updateSupplierStatus = createAsyncThunk(
         body: JSON.stringify({ statusCode, rejectionReason })
       });
 
-      // HTML 응답 방지 처리
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error(`Invalid content type: ${contentType}`);
-      }
-
       if (!response.ok) {
-        const errorData = await response.json();
-        return rejectWithValue(errorData.message || '상태 업데이트 실패');
+        // 응답이 JSON이 아닐 경우 대비
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            return rejectWithValue(errorData.message || '상태 업데이트 실패');
+          } else {
+            return rejectWithValue('서버 응답 형식 오류');
+          }
+        } catch (error) {
+          return rejectWithValue('상태 업데이트 실패');
+        }
       }
 
       return { id, statusCode, rejectionReason };
     } catch (error) {
-      // HTML 응답 시 별도 처리
-      if (error.message.includes('Invalid content type')) {
-        return rejectWithValue('서버 응답 형식 오류');
-      }
-
       console.log('API 호출 실패:', error);
       return rejectWithValue(error.message || '상태 업데이트 요청 중 오류 발생');
     }
@@ -493,7 +530,7 @@ export const addAttachmentsToSupplier = createAsyncThunk(
  * 초기 상태 정의
  */
 const initialState = {
-  suppliers: [...dummySuppliers], // 초기 상태에 더미 데이터 설정
+  suppliers: [], // 초기 빈 배열로 설정
   currentSupplier: null,
   loading: false,
   error: null,
