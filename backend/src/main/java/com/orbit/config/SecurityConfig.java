@@ -124,9 +124,6 @@ public class SecurityConfig {
                 ).permitAll()
 
 
-                .requestMatchers("/api/common-codes/**").permitAll()
-
-
                 // WebSocket 관련 요청은 인증 검사 제외
                 .requestMatchers("/ws/**", "/topic/**").permitAll()
 
@@ -165,6 +162,7 @@ public class SecurityConfig {
 
                 // 시스템 설정 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/settings/**").hasRole("ADMIN")
+                .requestMatchers("/api/common-codes/**").hasRole("ADMIN")
 
                 // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
@@ -179,16 +177,10 @@ public class SecurityConfig {
                         "/images/**",
                         "/static-images/**",
                         "/css/**",
-                        "/img/**",
+                        "/js/**",
+                        "/assets/**",
                         "/favicon.ico",
                         "/error",
-                        "/**/*.css",
-                        "/**/*.js",
-                        "/**/*.png",
-                        "/**/*.jpg",
-                        "/**/*.jpeg",
-                        "/**/*.svg",
-                        "/**/*.html",
                         "/ping.js"
                 ).permitAll()
 
