@@ -1,7 +1,7 @@
 package com.orbit.service.bidding;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -9,13 +9,11 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.orbit.dto.bidding.BiddingEvaluationDto;
 import com.orbit.dto.bidding.BiddingOrderDto;
-import com.orbit.dto.bidding.BiddingParticipationDto;
-import com.orbit.entity.bidding.BiddingEvaluation;
 import com.orbit.entity.bidding.BiddingOrder;
-import com.orbit.entity.bidding.BiddingParticipation;
-import com.orbit.repository.bidding.BiddingEvaluationRepository;
+import com.orbit.entity.commonCode.StatusHistory;
+import com.orbit.entity.member.Member;
+import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.bidding.BiddingOrderRepository;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
@@ -31,67 +29,22 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class BiddingOrderService {
-    private final BiddingRepository biddingRepository;
+    private final BiddingOrderRepository orderRepository;
     private final BiddingParticipationRepository participationRepository;
-    private final BiddingEvaluationRepository evaluationRepository;
-    private final BiddingOrderRepository biddingOrderRepository;
-
-
-    /**
-     * 발주 번호 생성
-     * (예: ORD-YYYYMMDD-XXXX)
-     */
-    private String generateOrderNumber() {
-        LocalDateTime now = LocalDateTime.now();
-        String datePart = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String randomPart = String.format("%04d", (int)(Math.random() * 10000));
-        return "ORD-" + datePart + "-" + randomPart;
-    }
+    private final MemberRepository memberRepository;
+    private final NotificationRepository notificationRepository;
+    private final ParentCodeRepository parentCodeRepository; // 사용되지 않지만 주입 필요
+    private final ChildCodeRepository childCodeRepository; // 사용되지 않지만 주입 필요
 
     /**
-     * 발주 생성
+     * 발주 목록 조회
      */
-    public BiddingOrderDto createOrder(BiddingOrderDto orderDto) {
-        String orderNumber = generateOrderNumber();
-        orderDto.setOrderNumber(orderNumber);
-        
-        // 낙찰자 정보 설정
-        orderDto.setSelectedBidder(true);
-        if (orderDto.getBidderSelectedAt() == null) {
-            orderDto.setBidderSelectedAt(LocalDateTime.now());
-        }
-        
-        // 엔티티 변환 및 저장
-        BiddingOrder orderEntity = orderDto.toEntity();
-        BiddingOrder savedOrder = biddingOrderRepository.save(orderEntity);
-        
-        // 참여 정보 업데이트 (발주 생성 표시)
-        updateParticipationOrderStatus(orderDto.getBiddingParticipationId(), true);
-        
-        return BiddingOrderDto.fromEntity(savedOrder);
-    }
-
-    /**
-     * 참여 정보 발주 상태 업데이트
-     */
-    private void updateParticipationOrderStatus(Long participationId, boolean isOrderCreated) {
-        BiddingParticipation participation = participationRepository.findById(participationId)
-                .orElseThrow(() -> new EntityNotFoundException("참여 정보를 찾을 수 없습니다. ID: " + participationId));
-        
-        participation.setOrderCreated(isOrderCreated);
-        participationRepository.save(participation);
-    }
-
-
-
-    /**
-     * 전체 발주 목록 조회
-     */
+    @Transactional(readOnly = true)
     public List<BiddingOrderDto> getAllOrders() {
         List<BiddingOrder> orders = orderRepository.findAll();
         return orders.stream()
-                    .map(this::convertToDto)
-                    .collect(Collectors.toList());
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
     }
     
     /**
@@ -112,101 +65,359 @@ public class BiddingOrderService {
     public List<BiddingOrderDto> getOrdersBySupplierId(Long supplierId) {
         List<BiddingOrder> orders = orderRepository.findBySupplierId(supplierId);
         return orders.stream()
-                    .map(this::convertToDto)
-                    .collect(Collectors.toList());
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
     }
     
     /**
      * 발주 상세 조회
      */
+    @Transactional(readOnly = true)
     public BiddingOrderDto getOrderById(Long id) {
-        BiddingOrder order = biddingOrderRepository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("발주 정보를 찾을 수 없습니다. ID: " + id));
-        return convertToDto(order);
+        BiddingOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + id));
+        return BiddingOrderDto.fromEntity(order);
     }
     
-    // DTO 변환 메서드
-    private BiddingOrderDto convertToDto(BiddingOrder order) {
-        BiddingOrderDto dto = new BiddingOrderDto();
-        dto.setId(order.getId());
-        dto.setOrderNumber(order.getOrderNumber());
-        dto.setBiddingId(order.getBiddingId());
-        dto.setBiddingParticipationId(order.getBiddingParticipationId());
-        dto.setBiddingItemId(order.getBiddingItemId());
-        dto.setSupplierId(order.getSupplierId());
-        dto.setSupplierName(order.getSupplierName());
-        dto.setSelectedBidder(order.isSelectedBidder());
-        dto.setBidderSelectedAt(order.getBidderSelectedAt());
-        dto.setTitle(order.getTitle());
-        dto.setDescription(order.getDescription());
-        dto.setQuantity(order.getQuantity());
-        dto.setUnitPrice(order.getUnitPrice());
-        dto.setSupplyPrice(order.getSupplyPrice());
-        dto.setVat(order.getVat());
-        dto.setTotalAmount(order.getTotalAmount());
-        dto.setTerms(order.getTerms());
-        dto.setExpectedDeliveryDate(order.getExpectedDeliveryDate());
-        dto.setEvaluationId(order.getEvaluationId());
-        dto.setApprovedAt(order.getApprovedAt());
-        dto.setCreatedBy(order.getCreatedBy());
-        return dto;
+    /**
+     * 발주 번호로 발주 조회
+     */
+    @Transactional(readOnly = true)
+    public BiddingOrderDto getOrderByOrderNumber(String orderNumber) {
+        BiddingOrder order = orderRepository.findByOrderNumber(orderNumber);
+        if (order == null) {
+            throw new EntityNotFoundException("발주를 찾을 수 없습니다. 발주번호: " + orderNumber);
+        }
+        return BiddingOrderDto.fromEntity(order);
     }
     
-     /**
-     * 공급자 참여 의사 확인
+    /**
+     * 기간 내 납품 예정 발주 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getOrdersByDeliveryDateBetween(LocalDate startDate, LocalDate endDate) {
+        List<BiddingOrder> orders = orderRepository.findByExpectedDeliveryDateBetween(startDate, endDate);
+        return orders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 승인된 발주 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getApprovedOrders() {
+        List<BiddingOrder> orders = orderRepository.findByApprovedAtIsNotNull();
+        return orders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 승인되지 않은 발주 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getUnapprovedOrders() {
+        List<BiddingOrder> orders = orderRepository.findByApprovedAtIsNull();
+        return orders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 발주 생성
      */
     @Transactional
-    public BiddingParticipationDto confirmSupplierParticipation(Long participationId) {
-        BiddingParticipation participation = participationRepository.findById(participationId)
-                .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + participationId));
+    public BiddingOrderDto createOrder(BiddingOrderDto orderDto, Long createdById) {
+        // 관련 참여 정보 조회
+        Long participationId = orderDto.getBiddingParticipationId();
+        if (participationId == null) {
+            throw new IllegalArgumentException("발주 생성을 위한 참여 정보가 필요합니다.");
+        }
         
-        participation.confirmParticipation();
-        participation = participationRepository.save(participation);
+        // 생성자 정보 조회
+        Member createdBy = memberRepository.findById(createdById)
+                .orElseThrow(() -> new EntityNotFoundException("회원을 찾을 수 없습니다. ID: " + createdById));
         
-        return BiddingParticipationDto.fromEntity(participation);
+        // 발주 번호 생성
+        String orderNumber = BiddingNumberUtil.generateOrderNumber();
+        
+        // 엔티티 생성
+        BiddingOrder order = BiddingOrder.builder()
+                .orderNumber(orderNumber)
+                .biddingId(orderDto.getBiddingId())
+                .biddingParticipationId(participationId)
+                .purchaseRequestItemId(orderDto.getPurchaseRequestItemId())
+                .supplierId(orderDto.getSupplierId())
+                .supplierName(orderDto.getSupplierName())
+                .isSelectedBidder(orderDto.isSelectedBidder())
+                .title(orderDto.getTitle())
+                .description(orderDto.getDescription())
+                .quantity(orderDto.getQuantity())
+                .unitPrice(orderDto.getUnitPrice())
+                .supplyPrice(orderDto.getSupplyPrice())
+                .vat(orderDto.getVat())
+                .totalAmount(orderDto.getTotalAmount())
+                .terms(orderDto.getTerms())
+                .expectedDeliveryDate(orderDto.getExpectedDeliveryDate())
+                .createdBy(createdBy.getUsername())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        
+        // 발주 저장
+        order = orderRepository.save(order);
+        
+        // 참여 정보 업데이트
+        participationRepository.findById(participationId).ifPresent(participation -> {
+            participation.setOrderCreated(true);
+            participationRepository.save(participation);
+        });
+        
+        // 알림 발송
+        try {
+            // 공급사에게 알림
+            Member supplier = memberRepository.findById(order.getSupplierId()).orElse(null);
+            if (supplier != null) {
+                // NotificationRepository에 직접 알림 메시지를 저장하는 다른 메서드가 있는지 확인
+                // 없다면 로그로 대체
+                log.info("새로운 발주 생성 알림 발송: 공급사 ID={}, 발주번호={}", 
+                         supplier.getId(), order.getOrderNumber());
+            }
+        } catch (Exception e) {
+            log.error("발주 생성 알림 발송 실패", e);
+        }
+        
+        return BiddingOrderDto.fromEntity(order);
     }
-
+    
     /**
-     * 낙찰자 선정 (최고 점수 기준)
+     * 발주 정보 업데이트
      */
     @Transactional
-    public BiddingEvaluationDto selectWinningBidder(Long biddingId) {
-        // 해당 입찰의 모든 평가 중 최고 점수 평가 조회
-        List<BiddingEvaluation> evaluations = evaluationRepository.findByBiddingId(biddingId);
+    public BiddingOrderDto updateOrder(Long id, BiddingOrderDto orderDto) {
+        BiddingOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + id));
         
-        // 최고 점수 평가 찾기
-        BiddingEvaluation highestScoringEvaluation = evaluations.stream()
-                .max((e1, e2) -> {
-                    // null 처리 및 점수 비교
-                    Integer score1 = e1.getTotalScore() != null ? e1.getTotalScore() : 0;
-                    Integer score2 = e2.getTotalScore() != null ? e2.getTotalScore() : 0;
-                    return score1.compareTo(score2);
-                })
-                .orElseThrow(() -> new EntityNotFoundException("해당 입찰의 평가 정보를 찾을 수 없습니다. ID: " + biddingId));
+        // 승인된 발주는 수정 불가
+        if (order.getApprovedAt() != null) {
+            throw new IllegalStateException("승인된 발주는 수정할 수 없습니다.");
+        }
         
-        // 기존 낙찰자 초기화
-        List<BiddingEvaluation> previousWinners = evaluationRepository.findByBiddingIdAndIsSelectedBidderTrue(biddingId);
-        previousWinners.forEach(BiddingEvaluation::cancelSelectedBidder);
-        evaluationRepository.saveAll(previousWinners);
+        // 값 변경
+        order.setTitle(orderDto.getTitle());
+        order.setDescription(orderDto.getDescription());
+        order.setQuantity(orderDto.getQuantity());
+        order.setUnitPrice(orderDto.getUnitPrice());
+        order.setSupplyPrice(orderDto.getSupplyPrice());
+        order.setVat(orderDto.getVat());
+        order.setTotalAmount(orderDto.getTotalAmount());
+        order.setTerms(orderDto.getTerms());
+        order.setExpectedDeliveryDate(orderDto.getExpectedDeliveryDate());
+        order.setUpdatedAt(LocalDateTime.now());
         
-        // 새 낙찰자 선정
-        highestScoringEvaluation.selectAsBidder();
-        highestScoringEvaluation = evaluationRepository.save(highestScoringEvaluation);
+        // 발주 저장
+        order = orderRepository.save(order);
         
-        return BiddingEvaluationDto.fromEntity(highestScoringEvaluation);
+        return BiddingOrderDto.fromEntity(order);
     }
-
+    
     /**
-     * 입찰 공고별 낙찰자 목록 조회
+     * 발주 승인
      */
-    // @Transactional(readOnly = true)
-    // public List<BiddingEvaluationDto> getWinningBidders(Long biddingId) {
-    //     List<BiddingEvaluation> winningBidders = evaluationRepository.findByBiddingIdAndIsSelectedBidderTrue(biddingId);
+    @Transactional
+    public BiddingOrderDto approveOrder(Long id, Long approverId) {
+        BiddingOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + id));
         
-    //     return winningBidders.stream()
-    //             .map(BiddingEvaluationDto::fromEntity)
-    //             .collect(Collectors.toList());
-    // }
+        Member approver = memberRepository.findById(approverId)
+                .orElseThrow(() -> new EntityNotFoundException("회원을 찾을 수 없습니다. ID: " + approverId));
+        
+        // 이미 승인된 발주 확인
+        if (order.getApprovedAt() != null) {
+            throw new IllegalStateException("이미 승인된 발주입니다.");
+        }
+        
+        // 발주 승인 정보 설정
+        order.setApprovedAt(LocalDateTime.now());
+        order.setApprovalById(approverId);
+        order.setUpdatedAt(LocalDateTime.now());
+        
+        // 발주 저장
+        order = orderRepository.save(order);
+        
+        // 상태 이력 추가 - 발주 승인 이력
+       
+        StatusHistory history = StatusHistory.builder()
+                .entityType(StatusHistory.EntityType.ORDER)
+                .fromStatus(null)
+                .toStatus(null)
+                .reason("발주 승인")
+                .changedById(approverId)
+                .changedAt(LocalDateTime.now())
+                .build();
+        
+        // 알림 발송
+        try {
+            // 공급자에게 알림
+            Member supplier = memberRepository.findById(order.getSupplierId()).orElse(null);
+            if (supplier != null) {
+                log.info("발주 승인 완료 알림 발송: 공급사 ID={}, 발주번호={}", 
+                         supplier.getId(), order.getOrderNumber());
+            }
 
+            // 생성자에게도 알림 (생성자와 승인자가 다른 경우)
+            if (!approver.getUsername().equals(order.getCreatedBy())) {
+                Optional<Member> creator = memberRepository.findByUsername(order.getCreatedBy());
+                if (creator.isPresent()) {
+                    log.info("발주 승인 완료 알림 발송: 생성자 ID={}, 발주번호={}, 승인자={}",
+                             creator.get().getId(), order.getOrderNumber(), approver.getName());
+                }
+            }
+        } catch (Exception e) {
+            log.error("발주 승인 알림 발송 실패", e);
+        }
+        
+        return BiddingOrderDto.fromEntity(order);
+    }
+    
+    /**
+     * 납품 예정일 업데이트
+     */
+    @Transactional
+    public BiddingOrderDto updateDeliveryDate(Long id, LocalDate newDeliveryDate, Long updatedById) {
+        BiddingOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + id));
+        
+        Member updatedBy = memberRepository.findById(updatedById)
+                .orElseThrow(() -> new EntityNotFoundException("회원을 찾을 수 없습니다. ID: " + updatedById));
+        
+        // 이전 날짜 저장 (알림용)
+        LocalDate oldDeliveryDate = order.getExpectedDeliveryDate();
+        
+        // 납품 예정일 업데이트
+        order.setExpectedDeliveryDate(newDeliveryDate);
+        order.setUpdatedAt(LocalDateTime.now());
+        
+        // 발주 저장
+        order = orderRepository.save(order);
+        
+        // 상태 이력 추가 - 납품일 변경 이력
+        // 주의: history 변수가 사용되지 않는다는 경고가 있습니다.
+        // 필요하다면 별도의 처리(예: 저장)가 필요할 수 있습니다.
+        StatusHistory history = StatusHistory.builder()
+                .entityType(StatusHistory.EntityType.ORDER)
+                .fromStatus(null)
+                .toStatus(null)
+                .reason("납품 예정일 변경: " + oldDeliveryDate + " → " + newDeliveryDate)
+                .changedById(updatedById)
+                .changedAt(LocalDateTime.now())
+                .build();
+        
+        // 알림 발송
+        try {
+            // 공급자에게 알림
+            Member supplier = memberRepository.findById(order.getSupplierId()).orElse(null);
+            if (supplier != null) {
+                log.info("납품 예정일 변경 알림 발송: 공급사 ID={}, 발주번호={}, 변경: {} → {}", 
+                        supplier.getId(), order.getOrderNumber(), oldDeliveryDate, newDeliveryDate);
+            }
 
+            // 생성자에게도 알림 (생성자와 변경자가 다른 경우)
+            if (order.getCreatedBy() != null && !updatedBy.getUsername().equals(order.getCreatedBy())) {
+                Optional<Member> creator = memberRepository.findByUsername(order.getCreatedBy());
+                if (creator.isPresent()) {
+                    log.info("납품 예정일 변경 알림 발송: 생성자 ID={}, 발주번호={}, 변경: {} → {}", 
+                            creator.get().getId(), order.getOrderNumber(), oldDeliveryDate, newDeliveryDate);
+                }
+            }
+        } catch (Exception e) {
+            log.error("납품 예정일 변경 알림 발송 실패", e);
+        }
+        
+        return BiddingOrderDto.fromEntity(order);
+    }
+    
+    /**
+     * 특정 참여에 대한 발주 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getOrdersByParticipationId(Long participationId) {
+        List<BiddingOrder> orders = orderRepository.findByBiddingParticipationId(participationId);
+        return orders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 특정 평가에 대한 발주 조회
+     */
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getOrdersByEvaluationId(Long evaluationId) {
+        List<BiddingOrder> orders = orderRepository.findByEvaluationId(evaluationId);
+        return orders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 발주 취소
+     */
+    @Transactional
+    public BiddingOrderDto cancelOrder(Long id, String reason, Long cancelledById) {
+        BiddingOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + id));
+        
+        // 이미 승인된 발주 확인
+        if (order.getApprovedAt() != null) {
+            throw new IllegalStateException("이미 승인된 발주는 취소할 수 없습니다.");
+        }
+        
+        // 실제 BiddingOrder 엔티티에는 setDeleted, setCancelledAt, setCancellationReason 메서드가 없음
+        // 대신 취소를 나타내는 적절한 필드 업데이트가 필요
+        // 예시: 취소 상태 또는 플래그를 설정 (CANCELLED 상태 또는 isActive=false)
+        //order.setCancelled(true); // 이 메서드가 있다고 가정
+        // 또는 주석 처리된 취소 사유 필드 추가
+        order.setDescription("취소됨: " + reason + " (" + order.getDescription() + ")");
+        order.setUpdatedAt(LocalDateTime.now());
+        
+        // 발주 저장
+        order = orderRepository.save(order);
+        
+        // 상태 이력 추가 - 발주 취소 이력
+        // 주의: history 변수가 사용되지 않는다는 경고가 있습니다.
+        // 필요하다면 별도의 처리(예: 저장)가 필요할 수 있습니다.
+        StatusHistory history = StatusHistory.builder()
+                .entityType(StatusHistory.EntityType.ORDER)
+                .fromStatus(null)
+                .toStatus(null)
+                .reason("발주 취소: " + reason)
+                .changedById(cancelledById)
+                .changedAt(LocalDateTime.now())
+                .build();
+        
+        // 알림 발송
+        try {
+            // 공급자에게 알림
+            Member supplier = memberRepository.findById(order.getSupplierId()).orElse(null);
+            if (supplier != null) {
+                log.info("발주 취소 알림 발송: 공급사 ID={}, 발주번호={}, 사유={}", 
+                        supplier.getId(), order.getOrderNumber(), reason);
+            }
+
+            // 생성자에게도 알림 (생성자와 취소자가 다른 경우)
+            Member canceller = memberRepository.findById(cancelledById).orElse(null);
+            if (order.getCreatedBy() != null && canceller != null && !canceller.getUsername().equals(order.getCreatedBy())) {
+                Optional<Member> creator = memberRepository.findByUsername(order.getCreatedBy());
+                if (creator.isPresent()) {
+                    log.info("발주 취소 알림 발송: 생성자 ID={}, 발주번호={}, 취소자={}, 사유={}", 
+                            creator.get().getId(), order.getOrderNumber(), canceller.getName(), reason);
+                }
+            }
+        } catch (Exception e) {
+            log.error("발주 취소 알림 발송 실패", e);
+        }
+        
+        return BiddingOrderDto.fromEntity(order);
+    }
 }

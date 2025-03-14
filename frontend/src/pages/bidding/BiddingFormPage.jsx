@@ -49,9 +49,6 @@ function BiddingFormPage() {
   // Redux에서 인증 상태 가져오기
   const { user } = useSelector((state) => state.auth);
 
-  // Redux에서 인증 상태 가져오기
-  const { user } = useSelector((state) => state.auth);
-
   // 상태 관리
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [errors, setErrors] = useState({});
@@ -61,17 +58,10 @@ function BiddingFormPage() {
   const [originalBidMethod, setOriginalBidMethod] = useState(null);
 
   // 모달 상태
-  const [isPurchaseRequestModalOpen, setIsPurchaseRequestModalOpen] =
-    useState(false);
+  const [isPurchaseRequestModalOpen, setIsPurchaseRequestModalOpen] = useState(false);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
-
-  // 데이터 상태 (초기값을 샘플 데이터로 설정)
-  const [purchaseRequests, setPurchaseRequests] = useState(
-    samplePurchaseRequests
-  );
-  const [suppliers, setSuppliers] = useState(sampleSuppliers);
 
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
@@ -421,12 +411,12 @@ function BiddingFormPage() {
           ) {
             // 공급자 정보가 없는 경우, description에서 추출 시도
             if (mappedFormData.description) {
-              const supplierNames = mappedFormData.description
+              const companyName = mappedFormData.description
                 .split(",")
                 .map((name) => name.trim());
               // 가능하다면 이름으로 공급자 객체 찾기
               const foundSuppliers = suppliers.filter((s) =>
-                supplierNames.includes(s.name)
+                companyName.includes(s.name)
               );
 
               if (foundSuppliers.length > 0) {

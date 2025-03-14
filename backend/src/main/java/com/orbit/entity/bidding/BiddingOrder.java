@@ -33,7 +33,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BiddingOrder {
+public class BiddingOrder extends BaseEntity {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,8 +56,8 @@ public class BiddingOrder {
     @Column(name = "bidding_participation_id", nullable = false)
     private Long biddingParticipationId; // 입찰 참여 ID
     
-    @Column(name = "bidding_item_id", nullable = false)
-    private Long biddingItemId; // 입찰 품목 ID
+    @Column(name = "purchase_request_item_id", nullable = false)
+    private Long purchaseRequestItemId; // 구매 요청 품목 ID    
     
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId; // 공급자 ID
@@ -99,9 +99,6 @@ public class BiddingOrder {
     private LocalDate expectedDeliveryDate; // 예상 납품일
     
     private LocalDateTime approvedAt; // 승인 일시
-
-    @Column(name = "evaluation_id")
-    private Long evaluationId; // 평가 ID
     
     @Column(name = "approval_by_id")
     private Long approvalById; // 승인자 ID

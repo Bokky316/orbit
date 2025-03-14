@@ -76,7 +76,7 @@ public class BiddingEvaluation extends BaseEntity {
     private LocalDateTime updatedAt;
 
     @Column(name = "evaluated_at")
-    private LocalDateTime evaluatedAt; // 평가 일시 추가
+    private LocalDateTime evaluatedAt; 
 
     @Column(name = "is_selected_bidder", columnDefinition = "boolean default false")
     private boolean isSelectedBidder;
@@ -89,7 +89,7 @@ public class BiddingEvaluation extends BaseEntity {
 
     /**
      * 낙찰자로 선정
-     * 낙찰자로 선정하고 선정 일시를 현재 시간으로 업데이트합니다.
+     * 수정버전: 레포지토리 파라미터를 받도록 수정
      */
     public void selectAsBidder(NotificationRepository notificationRepo, MemberRepository memberRepo) {
         this.isSelectedBidder = true;
@@ -107,7 +107,6 @@ public class BiddingEvaluation extends BaseEntity {
 
     /**
      * 낙찰자 선정 취소
-     * 낙찰자 선정 상태와 선정 일시를 초기화합니다.
      */
     public void cancelSelectedBidder() {
         this.isSelectedBidder = false;
@@ -160,62 +159,6 @@ public class BiddingEvaluation extends BaseEntity {
         calculateTotalScore();
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-        calculateTotalScore();
-    }
-    
-   
-
-    /**
-     * 총점 계산
-     * 각 점수(가격, 품질, 납품, 신뢰도)의 평균을 계산하여 총점을 설정합니다.
-     */
-    private void calculateTotalScore() {
-        int totalPoints = 0;
-        int count = 0;
-        
-        if (this.priceScore != null) {
-            totalPoints += this.priceScore;
-            count++;
-        }
-        if (this.qualityScore != null) {
-            totalPoints += this.qualityScore;
-            count++;
-        }
-        if (this.deliveryScore != null) {
-            totalPoints += this.deliveryScore;
-            count++;
-        }
-        if (this.reliabilityScore != null) {
-            totalPoints += this.reliabilityScore;
-            count++;
-        }
-        
-        if (count > 0) {
-            this.totalScore = totalPoints / count;
-        } else {
-            this.totalScore = 0;
-        }
-    }
-
-    /**
-     * 엔티티 생성 시 호출되는 메서드
-     * 생성 시간, 업데이트 시간, 평가 일시를 현재 시간으로 설정하고 총점을 계산합니다.
-     */
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        this.evaluatedAt = LocalDateTime.now(); // 평가 일시 설정
-        calculateTotalScore();
-    }
-
-    /**
-     * 엔티티 업데이트 시 호출되는 메서드
-     * 업데이트 시간을 갱신하고 총점을 다시 계산합니다.
-     */
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();

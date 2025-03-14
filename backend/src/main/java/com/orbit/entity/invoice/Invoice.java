@@ -1,6 +1,6 @@
 package com.orbit.entity.invoice;
 
-import com.orbit.entity.bidding.SimplifiedContract;
+import com.orbit.entity.bidding.BiddingContract;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -25,7 +25,7 @@ public class Invoice {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id", nullable = false)
-    private SimplifiedContract contract;
+    private BiddingContract contract;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)

@@ -1,25 +1,8 @@
 import React from "react";
 import { useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Provider } from 'react-redux';
-import { store } from './redux/store';
-import Home from "./pages/Home";
-import BiddingListPage from "./pages/bidding/BiddingListPage";
-import BiddingFormPage from "./pages/bidding/BiddingFormPage";
-import ErrorPage from "./pages/error/ErrorPage";
-import ProjectListPage from "./pages/procurement/ProjectListPage";
-import ProjectDetailPage from "./pages/procurement/ProjectDetailPage";
-import PurchaseRequestListPage from "./pages/procurement/PurchaseRequestListPage";
-import PurchaseRequestDetailPage from "./pages/procurement/PurchaseRequestDetailPage";
-import ApprovalListPage from "./pages/procurement/ApprovalListPage";
-import ApprovalDetailPage from "./pages/procurement/ApprovalDetailPage";
-import InspectionsListPage from "./pages/inspection/InspectionsListPage";
-import InspectionDetailPage from "./pages/inspection/InspectionDetailPage";
-import InspectionFormPage from "./pages/inspection/InspectionFormPage";
-import Login from "./pages/member/Login";
-// import Header from "./layouts/Header";
-// import Footer from "./layouts/Footer";
-// import Layout from "./layouts/Layout";
+import { Provider } from "react-redux";
+import { store } from "./redux/store";
 
 import Home from "@/pages/Home";
 import Login from "@/pages/member/Login";
@@ -117,32 +100,49 @@ function AppContent() {
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/projects/new" element={<ProjectCreatePage />} />
               <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
-
               {/* 구매 요청 관리 */}
               <Route
                 path="/purchase-requests"
                 element={<PurchaseRequestListPage />}
               />
-              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-              <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
-              <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />}/>
-
+              <Route
+                path="/purchase-requests/:id"
+                element={<PurchaseRequestDetailPage />}
+              />
+              <Route
+                path="/purchase-requests/new"
+                element={<PurchaseRequestCreatePage />}
+              />
+              <Route
+                path="/purchase-requests/edit/:id"
+                element={<PurchaseRequestEditPage />}
+              />
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
-              <Route path="/approval-management" element={<ApprovalManagementPage />} /> {/* 추가 */}
-
-                {/* 검수 관리 */}
-                <Route path="/inspections" element={<InspectionsListPage />} />
-                <Route path="/inspections/:id" element={<InspectionDetailPage />} />
-                <Route path="/inspections/:id/edit" element={<InspectionFormPage />} />
-
-                {/* 송장 관리 */}
-                <Route path="/invoices" element={<InvoicesListPage />} />
-                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
-                <Route path="/payments" element={<PaymentListPage />} />
-                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
-
+              <Route
+                path="/approval-management"
+                element={<ApprovalManagementPage />}
+              />{" "}
+              {/* 추가 */}
+              {/* 검수 관리 */}
+              <Route path="/inspections" element={<InspectionsListPage />} />
+              <Route
+                path="/inspections/:id"
+                element={<InspectionDetailPage />}
+              />
+              <Route
+                path="/inspections/:id/edit"
+                element={<InspectionFormPage />}
+              />
+              {/* 송장 관리 */}
+              <Route path="/invoices" element={<InvoicesListPage />} />
+              <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+              <Route path="/payments" element={<PaymentListPage />} />
+              <Route
+                path="/payments/:invoiceId"
+                element={<PaymentProcessPage />}
+              />
               <Route path="/projects" element={<ProjectListPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/projects/new" element={<ProjectCreatePage />} />

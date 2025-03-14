@@ -16,14 +16,11 @@ import java.util.List;
 
 @Entity
 @Getter @Setter
-@Getter @Setter
 @Table(name = "purchase_requests")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "request_type")
 public abstract class PurchaseRequest {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "purchase_request_id")
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "purchase_request_id")
     private Long id;

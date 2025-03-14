@@ -20,7 +20,7 @@ public class BiddingOrderDto {
     private String orderNumber;
     private Long biddingId;
     private Long biddingParticipationId;
-    private Long biddingItemId;
+    private Long purchaseRequestItemId;
     private Long supplierId;
     private String supplierName;
     private boolean isSelectedBidder;
@@ -51,7 +51,7 @@ public class BiddingOrderDto {
                 .orderNumber(entity.getOrderNumber())
                 .biddingId(entity.getBiddingId())
                 .biddingParticipationId(entity.getBiddingParticipationId())
-                .biddingItemId(entity.getBiddingItemId())
+                .purchaseRequestItemId(entity.getPurchaseRequestItemId())
                 .supplierId(entity.getSupplierId())
                 .supplierName(entity.getSupplierName())
                 .isSelectedBidder(entity.isSelectedBidder())
@@ -79,7 +79,7 @@ public class BiddingOrderDto {
                 .orderNumber(this.orderNumber)
                 .biddingId(this.biddingId)
                 .biddingParticipationId(this.biddingParticipationId)
-                .biddingItemId(this.biddingItemId)
+                .purchaseRequestItemId(this.purchaseRequestItemId)
                 .supplierId(this.supplierId)
                 .supplierName(this.supplierName)
                 .isSelectedBidder(this.isSelectedBidder)

@@ -32,10 +32,19 @@ import { API_URL } from "@/utils/constants";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { saveAs } from "file-saver";
 
+import { NotificationPanel, NotificationToast } from "./NotificationComponents";
 import {
-  mapBiddingDataToFormData,
-  getStatusText
-} from "./helpers/biddingHelpers";
+  useNotifications,
+  useWebSocketNotifications
+} from "./notificationHooks";
+import {
+  canParticipateInBidding,
+  canSelectWinner,
+  canCreateOrder,
+  canCreateContractDraft,
+  canEvaluateParticipation,
+  getBiddingProcessSummary
+} from "./biddingHelpers";
 
 function BiddingDetailPage() {
   const navigate = useNavigate();
@@ -56,6 +65,10 @@ function BiddingDetailPage() {
     reason: ""
   });
   const [statusHistories, setStatusHistories] = useState([]);
+
+  // 알림 훅
+  const { notifications, unreadCount, fetchNotifications } = useNotifications();
+  const { notifications: webSocketNotifications } = useWebSocketNotifications();
 
   // 데이터 가져오기 함수
   const fetchBiddingDetail = async () => {
@@ -87,6 +100,12 @@ function BiddingDetailPage() {
         const data = JSON.parse(responseText);
         console.log("입찰 공고 상세 정보:", data);
         setBidding(data);
+
+        // 입찰 공고와 관련된 알림 가져오기
+        fetchNotifications({
+          referenceId: data.id,
+          entityType: "BIDDING"
+        });
 
         // 참여 목록 가져오기
         fetchParticipations(id);
@@ -124,6 +143,27 @@ function BiddingDetailPage() {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 알림 처리
+  const handleNotificationAction = async (notification) => {
+    switch (notification.type) {
+      case "BIDDING_INVITE":
+        // 초대 수락 로직
+        await acceptBiddingInvitation(notification.referenceId);
+        break;
+      case "BIDDING_WINNER_SELECTED":
+        // 낙찰자 확인 로직
+        await viewBiddingWinnerDetails(notification.referenceId);
+        break;
+      case "CONTRACT_DRAFT_READY":
+        // 계약 초안 보기 로직
+        await viewContractDraft(notification.referenceId);
+        break;
+      default:
+        // 기본 알림 처리
+        console.log("알림 처리:", notification);
     }
   };
 
@@ -856,32 +896,45 @@ function BiddingDetailPage() {
                         </Link>
                       )}
 
-                      {/* 낙찰자 표시 및 발주 버튼 */}
-                      {isWinningBidder && (
-                        <>
-                          <Chip
-                            label="낙찰"
-                            color="success"
-                            size="small"
-                            sx={{ mr: 1 }}
-                          />
-                          {participation.isOrderCreated ? (
-                            <Chip
-                              label="발주완료"
-                              color="primary"
-                              size="small"
-                            />
-                          ) : (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              size="small"
-                              onClick={() => handleOrder(evaluation.id)}>
-                              발주하기
-                            </Button>
-                          )}
-                        </>
-                      )}
+                      {/* 입찰 프로세스 액션 버튼들 */}
+                      <section className="bidding-actions">
+                        {canParticipateInBidding(
+                          bidding,
+                          userRole,
+                          userSupplierInfo
+                        ) && (
+                          <button onClick={handleParticipate}>입찰 참여</button>
+                        )}
+
+                        {canSelectWinner(bidding, userRole) && (
+                          <button onClick={handleSelectWinner}>
+                            낙찰자 선정
+                          </button>
+                        )}
+
+                        {canCreateOrder(bidding, userRole) && (
+                          <button onClick={handleCreateOrder}>발주 생성</button>
+                        )}
+
+                        {canCreateContractDraft(bidding, userRole) && (
+                          <button onClick={handleCreateContractDraft}>
+                            계약 초안 생성
+                          </button>
+                        )}
+
+                        {bidding.participations?.map(
+                          (participation) =>
+                            canEvaluateParticipation(bidding, userRole) && (
+                              <button
+                                key={participation.id}
+                                onClick={() =>
+                                  handleEvaluateParticipation(participation.id)
+                                }>
+                                {participation.companyName} 평가
+                              </button>
+                            )
+                        )}
+                      </section>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -34,5 +34,11 @@ public class ParentCode {
 
     // 사용 여부
     @Column(name = "is_active", nullable = false)
+    @Builder.Default // Lombok 빌더 기본값 설정
     private Boolean isActive = true;
+
+
+    public String getCodeValue() {
+        return this.entityType + "-" + this.codeGroup;
+    }
 }
