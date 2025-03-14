@@ -17,6 +17,7 @@ const buyerAdminMenuItems = [
   { label: "계약관리", path: "/contracts" },
   { label: "발주관리", path: "/orders" },
   { label: "입고 관리", path: "/deliveries" },
+  { label: "검수 관리", path: "/inspections" },
   { label: "송장 관리", path: "/invoices" },
   {
     label: "자금 관리",
