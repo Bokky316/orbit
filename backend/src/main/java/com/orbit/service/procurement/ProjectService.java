@@ -1,8 +1,8 @@
 package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.ProjectAttachmentDTO;
-import com.orbit.dto.procurement.ProjectRequestDTO;
-import com.orbit.dto.procurement.ProjectResponseDTO;
+import com.orbit.dto.procurement.ProjectDTO;
+import com.orbit.dto.procurement.ProjectDTO;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
@@ -56,7 +56,7 @@ public class ProjectService {
      * 모든 프로젝트 조회
      */
     @Transactional(readOnly = true)
-    public List<ProjectResponseDTO> getAllProjects() {
+    public List<ProjectDTO> getAllProjects() {
         return projectRepository.findAll().stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
@@ -66,7 +66,7 @@ public class ProjectService {
      * 단일 프로젝트 조회
      */
     @Transactional(readOnly = true)
-    public ProjectResponseDTO getProjectById(Long id) {
+    public ProjectDTO getProjectById(Long id) {
         return projectRepository.findById(id)
                 .map(this::convertToDto)
                 .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
@@ -76,13 +76,13 @@ public class ProjectService {
      * 프로젝트 생성
      */
     @Transactional
-    public ProjectResponseDTO createProject(ProjectRequestDTO projectRequestDTO, String requesterUsername) {
+    public ProjectDTO createProject(ProjectDTO ProjectDTO, String requesterUsername) {
         // 1. 요청자 정보 조회
         Member requester = memberRepository.findByUsername(requesterUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + requesterUsername));
 
         // 2. DTO를 엔티티로 변환
-        Project project = convertToEntity(projectRequestDTO);
+        Project project = convertToEntity(ProjectDTO);
 
         // 3. 요청자 설정
         project.setRequester(requester);
@@ -97,8 +97,8 @@ public class ProjectService {
         Project savedProject = projectRepository.save(project);
 
         // 7. 첨부 파일 처리
-        if (projectRequestDTO.getFiles() != null && projectRequestDTO.getFiles().length > 0) {
-            processProjectAttachments(savedProject, projectRequestDTO.getFiles(), requester);
+        if (ProjectDTO.getFiles() != null && ProjectDTO.getFiles().length > 0) {
+            processProjectAttachments(savedProject, ProjectDTO.getFiles(), requester);
         }
 
         // 8. 저장된 엔티티를 DTO로 변환하여 반환
@@ -186,7 +186,7 @@ public class ProjectService {
      * 프로젝트 업데이트
      */
     @Transactional
-    public ProjectResponseDTO updateProject(Long id, ProjectRequestDTO dto) {
+    public ProjectDTO updateProject(Long id, ProjectDTO dto) {
         // 1. 프로젝트 조회
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
@@ -232,7 +232,7 @@ public class ProjectService {
      * 첨부파일 추가
      */
     @Transactional
-    public ProjectResponseDTO addAttachmentsToProject(Long id, MultipartFile[] files, String username) {
+    public ProjectDTO addAttachmentsToProject(Long id, MultipartFile[] files, String username) {
         // 1. 프로젝트 조회
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
@@ -356,12 +356,10 @@ public class ProjectService {
     /**
      * 프로젝트 업데이트 (세부 정보)
      */
-    private void updateProjectDetails(Project project, ProjectRequestDTO dto) {
+    private void updateProjectDetails(Project project, ProjectDTO dto) {
         project.setProjectName(dto.getProjectName());
         project.setBusinessCategory(dto.getBusinessCategory());
         project.setTotalBudget(dto.getTotalBudget());
-        project.setClientCompany(dto.getClientCompany());
-        project.setContractType(dto.getContractType());
         project.setRequestDepartment(dto.getRequestDepartment());
         project.setBudgetCode(dto.getBudgetCode());
         project.setRemarks(dto.getRemarks());
@@ -379,13 +377,11 @@ public class ProjectService {
     /**
      * DTO -> 엔티티 변환
      */
-    private Project convertToEntity(ProjectRequestDTO dto) {
+    private Project convertToEntity(ProjectDTO dto) {
         Project project = Project.builder()
                 .projectName(dto.getProjectName())
                 .businessCategory(dto.getBusinessCategory())
                 .totalBudget(dto.getTotalBudget())
-                .clientCompany(dto.getClientCompany())
-                .contractType(dto.getContractType())
                 .requestDepartment(dto.getRequestDepartment())
                 .budgetCode(dto.getBudgetCode())
                 .remarks(dto.getRemarks())
@@ -404,8 +400,8 @@ public class ProjectService {
     /**
      * 엔티티 -> DTO 변환
      */
-    private ProjectResponseDTO convertToDto(Project project) {
-        ProjectResponseDTO dto = new ProjectResponseDTO();
+    private ProjectDTO convertToDto(Project project) {
+        ProjectDTO dto = new ProjectDTO();
 
         // 기본 정보 설정
         dto.setId(project.getId());
@@ -413,8 +409,6 @@ public class ProjectService {
         dto.setProjectName(project.getProjectName());
         dto.setBusinessCategory(project.getBusinessCategory());
         dto.setTotalBudget(project.getTotalBudget());
-        dto.setClientCompany(project.getClientCompany());
-        dto.setContractType(project.getContractType());
         dto.setRequestDepartment(project.getRequestDepartment());
         dto.setBudgetCode(project.getBudgetCode());
         dto.setRemarks(project.getRemarks());
@@ -428,7 +422,7 @@ public class ProjectService {
         setDtoStatusCodes(project, dto);
 
         // 프로젝트 기간 설정
-        ProjectResponseDTO.PeriodInfo periodInfo = new ProjectResponseDTO.PeriodInfo();
+        ProjectDTO.PeriodInfo periodInfo = new ProjectDTO.PeriodInfo();
         if (project.getProjectPeriod() != null) {
             periodInfo.setStartDate(project.getProjectPeriod().getStartDate());
             periodInfo.setEndDate(project.getProjectPeriod().getEndDate());
@@ -450,7 +444,7 @@ public class ProjectService {
     /**
      * DTO에 상태 코드 설정
      */
-    private void setDtoStatusCodes(Project project, ProjectResponseDTO dto) {
+    private void setDtoStatusCodes(Project project, ProjectDTO dto) {
         // 기본 상태 코드 설정
         if (project.getBasicStatusParent() != null && project.getBasicStatusChild() != null) {
             dto.setBasicStatus(

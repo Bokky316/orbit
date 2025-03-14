@@ -87,7 +87,7 @@ export const createProjectWithFiles = createAsyncThunk(
             const formData = new FormData();
 
             // 프로젝트 데이터를 JSON 문자열로 추가
-            formData.append('projectRequestDTO', JSON.stringify(projectData));
+            formData.append('projectDTO', JSON.stringify(projectData));
 
             // 파일 추가
             for (let i = 0; i < files.length; i++) {
@@ -189,7 +189,7 @@ export const updateProjectWithFiles = createAsyncThunk(
             const formData = new FormData();
 
             // 프로젝트 데이터를 JSON 문자열로 추가
-            formData.append('projectRequestDTO', JSON.stringify(projectData));
+            formData.append('projectDTO', JSON.stringify(projectData));
 
             // 파일 추가
             for (let i = 0; i < files.length; i++) {
