@@ -7,7 +7,6 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.entity.bidding.Bidding;
-import com.orbit.entity.state.SystemStatus;
 
 import com.orbit.entity.commonCode.SystemStatus;
 import lombok.AllArgsConstructor;

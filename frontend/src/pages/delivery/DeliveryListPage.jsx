@@ -4,8 +4,7 @@ import { useSelector } from 'react-redux';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, Button,
-    Grid, CircularProgress, InputAdornment, TablePagination,
-    Snackbar, Alert, Container, Chip, FormControl, InputLabel, Select, MenuItem, Card, CardContent
+    Grid, CircularProgress, IconButton, InputAdornment
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -21,57 +20,6 @@ const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   boxShadow: theme.shadows[2]
 }));
-
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-    '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover,
-    },
-    '&:hover': {
-        backgroundColor: theme.palette.action.selected,
-    },
-}));
-
-// 송장 발행 상태에 따른 Chip 색상 및 라벨
-const getInvoiceStatusProps = (invoiceIssued) => {
-  if (invoiceIssued === true) {
-    return { color: 'success', label: '발행됨' };
-  } else {
-    return { color: 'warning', label: '미발행' };
-  }
-};
-
-// 금액 형식 변환 함수
-const formatCurrency = (amount) => {
-  if (!amount) return '0원';
-  return new Intl.NumberFormat('ko-KR').format(amount) + '원';
-};
-
-// 배송 상태에 따른 통계 계산
-const calculateStatistics = (deliveries) => {
-  const stats = {
-    totalCount: deliveries.length,
-    invoicedCount: 0,
-    notInvoicedCount: 0,
-    totalAmount: 0,
-    invoicedAmount: 0,
-    notInvoicedAmount: 0,
-  };
-
-  deliveries.forEach(delivery => {
-    const amount = parseFloat(delivery.totalAmount) || 0;
-    stats.totalAmount += amount;
-
-    if (delivery.invoiceIssued) {
-      stats.invoicedCount++;
-      stats.invoicedAmount += amount;
-    } else {
-      stats.notInvoicedCount++;
-      stats.notInvoicedAmount += amount;
-    }
-  });
-
-  return stats;
-};
 
 function DeliveryListPage() {
     const navigate = useNavigate();
@@ -89,14 +37,7 @@ function DeliveryListPage() {
     const [supplier, setSupplier] = useState('');
     const [invoiceStatus, setInvoiceStatus] = useState('');
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
-    const [totalPages, setTotalPages] = useState(0);
-    const [totalElements, setTotalElements] = useState(0);
-    const [error, setError] = useState('');
-    const [showError, setShowError] = useState(false);
-    const [companyName, setCompanyName] = useState('');
-    const [sortBy, setSortBy] = useState('regTime');
-    const [sortDir, setSortDir] = useState('desc');
+    const [rowsPerPage] = useState(10);
 
     // 통계 정보
     const [statistics, setStatistics] = useState({
@@ -287,87 +228,20 @@ function DeliveryListPage() {
             params.append('page', page);
             params.append('size', rowsPerPage);
 
-            // 원래 API 엔드포인트 사용
-            const apiEndpoint = `${API_URL}deliveries`;
-
-            console.log('API 호출:', apiEndpoint, '역할:', currentUser?.roles || currentUser?.role);
-
-            const response = await fetchWithAuth(`${apiEndpoint}?${params.toString()}`);
+            const response = await fetchWithAuth(`${API_URL}deliveries?${params.toString()}`);
 
             if (!response.ok) {
                 throw new Error(`입고 목록 조회 실패: ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('API 응답 데이터:', data);
-
             if (data) {
-                if (data.content) {
-                    // 역할 기반 필터링 적용
-                    const allDeliveries = data.content;
-                    setDeliveries(allDeliveries);
-
-                    const filtered = filterDeliveriesByRole(allDeliveries);
-                    setFilteredDeliveries(filtered);
-
-                    // 페이지네이션 정보 설정 (필터링된 데이터 기준)
-                    setTotalElements(filtered.length);
-                    setTotalPages(Math.ceil(filtered.length / rowsPerPage));
-
-                    // 통계 계산
-                    const calculatedStats = calculateStatistics(filtered);
-                    setStatistics(calculatedStats);
-                } else if (Array.isArray(data)) {
-                    const allDeliveries = data;
-                    setDeliveries(allDeliveries);
-
-                    const filtered = filterDeliveriesByRole(allDeliveries);
-                    setFilteredDeliveries(filtered);
-
-                    setTotalElements(filtered.length);
-                    setTotalPages(Math.ceil(filtered.length / rowsPerPage));
-
-                    // 통계 계산
-                    const calculatedStats = calculateStatistics(filtered);
-                    setStatistics(calculatedStats);
-                } else {
-                    console.error('예상치 못한 응답 형식:', data);
-                    setDeliveries([]);
-                    setFilteredDeliveries([]);
-                    setTotalElements(0);
-                    setTotalPages(0);
-
-                    // 빈 통계 설정
-                    setStatistics({
-                      totalCount: 0,
-                      invoicedCount: 0,
-                      notInvoicedCount: 0,
-                      totalAmount: 0,
-                      invoicedAmount: 0,
-                      notInvoicedAmount: 0,
-                    });
-                }
+                setDeliveries(data);
             } else {
                 throw new Error('입고 목록 조회 실패');
             }
         } catch (error) {
             console.error('입고 목록을 불러오는 중 오류 발생:', error);
-            setDeliveries([]);
-            setFilteredDeliveries([]);
-            setTotalElements(0);
-            setTotalPages(0);
-            setError('데이터를 불러오는 중 오류가 발생했습니다.');
-            setShowError(true);
-
-            // 빈 통계 설정
-            setStatistics({
-              totalCount: 0,
-              invoicedCount: 0,
-              notInvoicedCount: 0,
-              totalAmount: 0,
-              invoicedAmount: 0,
-              notInvoicedAmount: 0,
-            });
         } finally {
             setLoading(false);
         }
@@ -375,12 +249,8 @@ function DeliveryListPage() {
 
     // 컴포넌트 마운트 시 데이터 로드
     useEffect(() => {
-        if (isLoggedIn && currentUser) {
-            fetchDeliveries();
-        } else {
-            setLoading(false);
-        }
-    }, [isLoggedIn, currentUser, page, rowsPerPage]);
+        fetchDeliveries();
+    }, [searchTerm, deliveryDate, supplier, page, rowsPerPage]); // 검색 조건이 변경될 때마다 실행
 
     // 필터링 변경 시 데이터 재필터링
     useEffect(() => {
@@ -414,61 +284,21 @@ function DeliveryListPage() {
     // 이벤트 핸들러
     const handleSearch = () => {
         setPage(0);
-        fetchDeliveries();
     };
 
     const handleCreateDelivery = () => {
         navigate('/deliveries/new');
     };
 
-    const handleRefresh = () => {
-        fetchDeliveries();
-    };
-
-    const handleChangePage = (event, newPage) => {
-        setPage(newPage);
-    };
-
-    const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
-    };
-
-    const handleInvoiceStatusChange = (event) => {
-        setInvoiceStatus(event.target.value);
-        setPage(0);
-    };
-
-    const handleSortChange = (field, direction) => {
-        setSortBy(field);
-        setSortDir(direction);
-        setPage(0);
-    };
-
-    const handleCloseError = () => {
-        setShowError(false);
-    };
-
-    // 행 클릭 핸들러
-    const handleRowClick = (deliveryId) => {
-        const delivery = deliveries.find(d => d.id === deliveryId);
-
-        // 접근 권한 확인
-        if (!canAccessDelivery(delivery)) {
-            setError('접근 권한이 없습니다. 담당자만 접근할 수 있습니다.');
-            setShowError(true);
-            return;
-        }
-
-        navigate(`/deliveries/${deliveryId}`);
-    };
-
-    // 페이지네이션된 데이터 계산
-    const getCurrentPageData = () => {
-        const startIndex = page * rowsPerPage;
-        const endIndex = startIndex + rowsPerPage;
-        return filteredDeliveries.slice(startIndex, endIndex);
-    };
+    const filteredDeliveries = deliveries.filter(delivery => {
+        const searchMatch = searchTerm
+            ? delivery.deliveryNumber.includes(searchTerm) ||
+            delivery.orderNumber.includes(searchTerm)
+            : true;
+        const dateMatch = !deliveryDate || moment(delivery.deliveryDate).isSame(deliveryDate, 'day');
+        const supplierMatch = !supplier || delivery.supplierName.includes(supplier);
+        return searchMatch && dateMatch && supplierMatch;
+    });
 
     return (
         <Box sx={{ p: 3 }}>
@@ -549,13 +379,6 @@ function DeliveryListPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon />
-                                    </InputAdornment>
-                                ),
-                            }}
                         />
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
@@ -605,77 +428,43 @@ function DeliveryListPage() {
                 </Grid>
             </Paper>
 
-            {/* 테이블 영역 */}
-            <Paper variant="outlined">
-                <TableContainer sx={{ maxHeight: 440 }}>
-                    {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                            <CircularProgress />
-                        </Box>
-                    ) : (
-                        <Table stickyHeader>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell align="center">입고번호</TableCell>
-                                    <TableCell align="center">발주번호</TableCell>
-                                    <TableCell align="center">공급업체명</TableCell>
-                                    <TableCell align="center">입고일</TableCell>
-                                    <TableCell align="center">입고 담당자</TableCell>
-                                    <TableCell align="center">총 금액</TableCell>
-                                    <TableCell align="center">송장 상태</TableCell>
+            <StyledTableContainer component={Paper}>
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                        <CircularProgress />
+                    </Box>
+                ) : (
+                    <Table stickyHeader>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>입고번호</TableCell>
+                                <TableCell>발주번호</TableCell>
+                                <TableCell>공급업체명</TableCell>
+                                <TableCell>입고일</TableCell>
+                                <TableCell>입고 담당자</TableCell>
+                                <TableCell>총 금액</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredDeliveries.map(delivery => (
+                                <TableRow
+                                    key={delivery.id}
+                                    hover
+                                    onClick={() => navigate(`/deliveries/${delivery.id}`)}
+                                    sx={{ cursor: 'pointer' }}
+                                >
+                                    <TableCell>{delivery.deliveryNumber}</TableCell>
+                                    <TableCell>{delivery.orderNumber}</TableCell>
+                                    <TableCell>{delivery.supplierName}</TableCell>
+                                    <TableCell>{moment(delivery.deliveryDate).format('YYYY-MM-DD')}</TableCell>
+                                    <TableCell>{delivery.receiverName || '-'}</TableCell>
+                                    <TableCell>{delivery.totalAmount?.toLocaleString() || '-'}</TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {getCurrentPageData().length > 0 ? (
-                                    getCurrentPageData().map(delivery => (
-                                        <StyledTableRow
-                                            key={delivery.id}
-                                            hover
-                                            onClick={() => handleRowClick(delivery.id)}
-                                            sx={{
-                                                cursor: canAccessDelivery(delivery) ? 'pointer' : 'not-allowed',
-                                                opacity: canAccessDelivery(delivery) ? 1 : 0.5
-                                            }}
-                                        >
-                                            <TableCell align="center">{delivery.deliveryNumber}</TableCell>
-                                            <TableCell align="center">{delivery.orderNumber}</TableCell>
-                                            <TableCell align="center">{delivery.supplierName}</TableCell>
-                                            <TableCell align="center">{delivery.deliveryDate ? moment(delivery.deliveryDate).format('YYYY-MM-DD') : '-'}</TableCell>
-                                            <TableCell align="center">{delivery.receiverName || '-'}</TableCell>
-                                            <TableCell align="center">{delivery.totalAmount ? delivery.totalAmount.toLocaleString() + '원' : '-'}</TableCell>
-                                            <TableCell align="center">
-                                                <Chip
-                                                    label={getInvoiceStatusProps(delivery.invoiceIssued).label}
-                                                    color={getInvoiceStatusProps(delivery.invoiceIssued).color}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                        </StyledTableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={7} align="center">
-                                            데이터가 없습니다.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    )}
-                </TableContainer>
-                {!loading && (
-                    <TablePagination
-                        rowsPerPageOptions={[5, 10, 25, 50]}
-                        component="div"
-                        count={totalElements}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={handleChangePage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        labelRowsPerPage="페이지당 행 수"
-                    />
+                            ))}
+                        </TableBody>
+                    </Table>
                 )}
-            </Paper>
+            </StyledTableContainer>
         </Box>
     );
 }
