@@ -208,9 +208,8 @@ function ProjectCreatePage() {
         const requestData = {
             projectName,
             businessCategory,
-            clientCompany,
-            contractType,
             totalBudget: parseFloat(totalBudget) || 0,
+            budgetCode,
             remarks,
             projectPeriod: {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
@@ -254,9 +253,8 @@ function ProjectCreatePage() {
             // 각 필드를 개별적으로 추가 (JSON 문자열 대신)
             formData.append('projectName', projectName);
             formData.append('businessCategory', businessCategory);
-            formData.append('clientCompany', clientCompany);
-            formData.append('contractType', contractType);
             formData.append('totalBudget', parseFloat(totalBudget) || 0);
+            formData.append('budgetCode', budgetCode);
             formData.append('remarks', remarks);
 
             // 날짜 필드
@@ -313,63 +311,21 @@ function ProjectCreatePage() {
 
                         {/* 사업 유형 드롭다운 */}
                         <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel id="business-category-label">사업 유형</InputLabel>
-                                <Select
-                                    labelId="business-category-label"
-                                    value={businessCategory}
-                                    label="사업 유형"
-                                    onChange={(e) => setBusinessCategory(e.target.value)}
-                                >
-                                    {businessCategories.map(category => (
-                                        <MenuItem key={category.id} value={category.codeValue}>
-                                            {category.codeName}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                            <TextField
+                                fullWidth
+                                label="사업 유형"
+                                value={businessCategory}
+                                onChange={(e) => setBusinessCategory(e.target.value)}
+                            />
                         </Grid>
 
                         {/* 부서 Autocomplete */}
                         <Grid item xs={6}>
-                            <Autocomplete
-                                id="request-department-select"
-                                options={departments}
-                                getOptionLabel={(option) => option.name}
-                                isOptionEqualToValue={(option, value) => option.id === value.id}
-                                value={selectedDepartment}
-                                onChange={(event, newValue) => {
-                                    setSelectedDepartment(newValue);
-                                    setSelectedManager(null);
-                                }}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="요청 부서"
-                                    />
-                                )}
-                            />
-                        </Grid>
-
-                        {/* 담당자 Autocomplete */}
-                        <Grid item xs={6}>
-                            <Autocomplete
-                                id="requester-select"
-                                options={departmentMembers}
-                                getOptionLabel={(option) => `${option.name} (${option.position ? option.position.name : '직급없음'})`}
-                                isOptionEqualToValue={(option, value) => option.id === value.id}
-                                value={selectedManager}
-                                onChange={(event, newValue) => {
-                                    setSelectedManager(newValue);
-                                }}
-                                disabled={!selectedDepartment}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="담당자"
-                                        helperText={!selectedDepartment ? "먼저 요청 부서를 선택해주세요" : ""}
-                                    />
-                                )}
+                            <TextField
+                                fullWidth
+                                label="요청 부서"
+                                value={requestDepartment}
+                                onChange={(e) => setRequestDepartment(e.target.value)}
                             />
                         </Grid>
 
@@ -382,26 +338,14 @@ function ProjectCreatePage() {
                                 onChange={(e) => setTotalBudget(e.target.value.replace(/[^0-9]/g, ''))}
                             />
                         </Grid>
-
-                        {/* 예산 코드 드롭다운 */}
                         <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel id="budget-code-label">예산 코드</InputLabel>
-                                <Select
-                                    labelId="budget-code-label"
-                                    value={budgetCode}
-                                    label="예산 코드"
-                                    onChange={(e) => setBudgetCode(e.target.value)}
-                                >
-                                    {budgetCodes.map(code => (
-                                        <MenuItem key={code.id} value={code.codeValue}>
-                                            {code.codeName}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                            <TextField
+                                fullWidth
+                                label="예산 코드"
+                                value={budgetCode}
+                                onChange={(e) => setBudgetCode(e.target.value)}
+                            />
                         </Grid>
-
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
@@ -412,7 +356,7 @@ function ProjectCreatePage() {
                                 onChange={(e) => setRemarks(e.target.value)}
                             />
                         </Grid>
-                         <Grid item xs={6}>
+                        <Grid item xs={6}>
                             <FormControl fullWidth>
                                 <InputLabel id="basic-status-label">기본 상태</InputLabel>
                                 <Select
