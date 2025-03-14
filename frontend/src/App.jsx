@@ -45,7 +45,7 @@ import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
-import ApprovalLineAdministration from '@/pages/approval/ApprovalLineAdministration'; // 결재선 관리 페이지 추가
+import ApprovalLineAdministration from '@/pages/approval/ApprovalLineAdministration';
 import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
 import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
 import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
@@ -53,7 +53,8 @@ import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
-import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement'; // 공통 코드 관리 페이지 추가
+import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
+import RegisterMember from "@/pages/member/RegisterMember";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -69,6 +70,10 @@ function AppContent() {
     <BrowserRouter>
       <div className="App">
         <Routes>
+          {/* 로그인/회원가입 페이지는 로그인 여부와 상관없이 접근 가능 */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<RegisterMember />} />
+
           {isLoggedIn ? (
             <Route element={<Home />}>
               <Route path="/" element={<DashboardPage />} />
@@ -90,19 +95,10 @@ function AppContent() {
               />
 
               {/* 프로젝트 관리 */}
-                <Route path="/projects" element={<ProjectListPage />} />
-                <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                <Route path="/projects/new" element={<ProjectCreatePage />} />
-                <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
-
-                {/* 구매 요청 관리 */}
-                <Route
-                  path="/purchase-requests"
-                  element={<PurchaseRequestListPage />}
-                />
-                <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-                <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
-                <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />}/>
+              <Route path="/projects" element={<ProjectListPage />} />
+              <Route path="/projects/:id" element={<ProjectDetailPage />} />
+              <Route path="/projects/new" element={<ProjectCreatePage />} />
+              <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
 
               {/* 구매 요청 관리 */}
               <Route
@@ -110,14 +106,14 @@ function AppContent() {
                 element={<PurchaseRequestListPage />}
               />
               <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-              <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />}/>
               <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
+              <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />}/>
 
               {/* 승인 관리 */}
               <Route path="/approvals" element={<ApprovalListPage />} />
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
               <Route path="/approval-management" element={<ApprovalManagementPage />} />
-              <Route path="/approval-lines" element={<ApprovalLineAdministration />} /> {/* 결재선 관리 페이지 추가 */}
+              <Route path="/approval-lines" element={<ApprovalLineAdministration />} />
 
               {/* 검수 관리 */}
               <Route path="/inspections" element={<InspectionsListPage />} />
@@ -126,19 +122,19 @@ function AppContent() {
 
               {/* 송장 관리 */}
               <Route path="/invoices" element={<InvoicesListPage />} />
-              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="/invoices/:id/edit" element={<InvoiceEditPage />} />
+              <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+              <Route path="/payments" element={<PaymentListPage />} />
+              <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
 
-                {/* 공통 코드 관리 */}
-                <Route path="/common-codes" element={<CommonCodeManagement />} />
+              {/* 공통 코드 관리 */}
+              <Route path="/common-codes" element={<CommonCodeManagement />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>
           ) : (
             <>
-              <Route path="/login" element={<Login />} />
+              {/* 로그인하지 않은 상태에서 대부분의 페이지는 로그인 페이지로 리다이렉트 */}
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
           )}

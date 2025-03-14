@@ -66,7 +66,9 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             path.equals("/api/members/register") || path.equals("/api/members/checkUsername") ||
             path.equals("/ping.js") ||
             path.startsWith("/ws") || path.startsWith("/ws/info") ||
-            path.startsWith("/topic/chat/")) {
+                path.startsWith("/topic/chat/") ||
+                path.equals("/api/email/send") ||
+                path.equals("/api/email/verify")) {
 
             filterChain.doFilter(request, response);
             return;

@@ -5,7 +5,7 @@ import { fetchWithAuth } from "@/features/auth/fetchWithAuth";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button, TextField, Typography, Snackbar } from "@mui/material";
-import KakaoAddressSearch from "@/features/auth/KakaoAddressSearch"; // ✅ 카카오 주소 검색 추가
+import KakaoAddressSearch from "@pages/member/KakaoAddressSearch"; // ✅ 카카오 주소 검색 추가
 import "@/styles/MyPage.css"; // CSS 파일 import
 
 export default function MyPage() {
