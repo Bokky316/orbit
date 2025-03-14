@@ -84,14 +84,14 @@ public class BiddingService {
     @Value("${uploadPath}")
     private String uploadPath;
 
-    @Transactional(readOnly = true)
+/*    @Transactional(readOnly = true)
     public List<String> getBiddingStatusHistoryReasons(Long biddingId) {
         List<StatusHistory> histories = biddingRepository.findStatusHistoriesByBiddingId(biddingId);
         return histories.stream()
                 .map(StatusHistory::getReason)
                 .filter(reason -> reason != null)
                 .collect(Collectors.toList());
-    }
+    }*/
 
     // 파일 유효성 검사 메서드 추가
     private void validateFile(MultipartFile file) {
