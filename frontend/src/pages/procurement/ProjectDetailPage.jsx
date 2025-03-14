@@ -195,6 +195,7 @@ function ProjectDetailPage() {
                     <Grid item xs={4}>
                         <Typography><strong>시작일:</strong> {formatDate(project.projectPeriod.startDate)}</Typography>
                         <Typography><strong>종료일:</strong> {formatDate(project.projectPeriod.endDate)}</Typography>
+                        <Typography><strong>요청 부서:</strong> {project.requestDepartment || '정보 없음'}</Typography>
                     </Grid>
                     <Grid item xs={4}>
                         <Typography><strong>기본 상태:</strong></Typography>
@@ -211,9 +212,9 @@ function ProjectDetailPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>상세 정보</Typography>
                 <Grid container spacing={2}>
                     <Grid item xs={6}>
-                        <Typography><strong>고객사:</strong> {project.clientCompany || '정보 없음'}</Typography>
-                        <Typography><strong>계약 유형:</strong> {project.contractType || '정보 없음'}</Typography>
+                        <Typography><strong>사업 유형:</strong> {project.businessCategory || '정보 없음'}</Typography>
                         <Typography><strong>총 예산:</strong> {project.totalBudget ? project.totalBudget.toLocaleString() + ' 원' : '정보 없음'}</Typography>
+                        <Typography><strong>예산 코드:</strong> {project.budgetCode || '정보 없음'}</Typography>
                     </Grid>
                     <Grid item xs={6}>
                         <Typography><strong>특이 사항:</strong></Typography>
