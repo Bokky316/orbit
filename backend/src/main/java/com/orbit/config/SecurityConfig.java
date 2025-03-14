@@ -122,6 +122,10 @@ public class SecurityConfig {
                         "/swagger-ui.html"
                 ).permitAll()
 
+
+                .requestMatchers("/api/common-codes/**").permitAll()
+
+
                 // WebSocket 관련 요청은 인증 검사 제외
                 .requestMatchers("/ws/**", "/topic/**").permitAll()
 
@@ -135,7 +139,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN")
 
                 // 구매 요청 관리 (BUYER 및 ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/purchase-requests/**").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/purchase-requests/**", "/api/organization/**").hasAnyRole("BUYER", "ADMIN")
                 .requestMatchers("/api/approvals/**").hasAnyRole("BUYER", "ADMIN")
                 .requestMatchers("/api/projects/**").hasAnyRole("BUYER", "ADMIN")
                 .requestMatchers("/api/purchase-requests/attachments/{attachmentId}/download").hasAnyRole("BUYER", "ADMIN")
