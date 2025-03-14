@@ -32,6 +32,7 @@ import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
+import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement'; // 공통 코드 관리 페이지 추가
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -108,6 +109,9 @@ function AppContent() {
                 <Route path="/invoices/create" element={<InvoiceCreatePage />} />
                 <Route path="/payments" element={<PaymentListPage />} />
                 <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
+
+                {/* 공통 코드 관리 */}
+                <Route path="/common-codes" element={<CommonCodeManagement />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
