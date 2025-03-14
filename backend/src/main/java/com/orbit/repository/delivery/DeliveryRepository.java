@@ -80,4 +80,11 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
      * 입고번호 중복 확인
      */
     boolean existsByDeliveryNumber(String deliveryNumber);
+
+    /**
+     * 이미 입고된 발주 ID 목록을 조회합니다.
+     */
+    @Query("SELECT d.biddingOrder.id FROM Delivery d")
+    List<Long> findDeliveredOrderIds();
+
 }
