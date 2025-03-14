@@ -61,6 +61,15 @@ import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 import SupplierDashboard from "@/pages/dashboard/SupplierDashboard";
+import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
+import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
+import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
+import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import PaymentListPage from '@/pages/payment/PaymentListPage';
+import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -259,25 +268,17 @@ function AppContent() {
                     element={<SupplierRegistrationPage />}
                   />
 
-                  <Route path="/categories" element={<CategoryListPage />} />
-                  <Route
-                    path="/categories/new"
-                    element={<CategoryFormPage mode="create" />}
-                  />
-                  <Route
-                    path="/categories/edit/:id"
-                    element={<CategoryFormPage mode="edit" />}
-                  />
+                {/* 입고 관리 */}
+                <Route path="/deliveries" element={<DeliveryListPage />} />
+                <Route path="/deliveries/new" element={<DeliveryCreatePage />} />
 
-                  <Route path="/items" element={<ItemListPage />} />
-                  <Route
-                    path="/items/new"
-                    element={<ItemFormPage mode="create" />}
-                  />
-                  <Route
-                    path="/items/edit/:id"
-                    element={<ItemFormPage mode="edit" />}
-                  />
+                {/* 송장 관리 */}
+                <Route path="/invoices" element={<InvoicesListPage />} />
+                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+
+                {/* 지불 관리 */}
+                <Route path="/payments" element={<PaymentListPage />} />
+                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
 
                   {/* 통계 관리 */}
                   <Route path="/chart" element={<ChartDashboard />} />

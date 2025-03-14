@@ -84,14 +84,14 @@ public class BiddingService {
     @Value("${uploadPath}")
     private String uploadPath;
 
-    @Transactional(readOnly = true)
+/*    @Transactional(readOnly = true)
     public List<String> getBiddingStatusHistoryReasons(Long biddingId) {
         List<StatusHistory> histories = biddingRepository.findStatusHistoriesByBiddingId(biddingId);
         return histories.stream()
                 .map(StatusHistory::getReason)
                 .filter(reason -> reason != null)
                 .collect(Collectors.toList());
-    }
+    }*/
 
     // 파일 유효성 검사 메서드 추가
     private void validateFile(MultipartFile file) {
@@ -551,14 +551,14 @@ public BiddingDto getBiddingById(Long id) {
         bidding = biddingRepository.save(bidding);
         
         // 상태 이력 추가
-        StatusHistory history = StatusHistory.builder()
+        /*StatusHistory history = StatusHistory.builder()
                 .fromStatus(null)
                 .toStatus(bidding.getStatus())
                 .entityType(StatusHistory.EntityType.BIDDING)
                 .changedAt(LocalDateTime.now())
                 .bidding(bidding)
                 .build();
-        bidding.addStatusHistory(history);
+        bidding.addStatusHistory(history);*/
         
         return BiddingDto.fromEntity(bidding);
     }
@@ -891,7 +891,7 @@ public BiddingDto getBiddingById(Long id) {
         bidding.setStatus(newStatus);
         
         // 상태 이력 추가
-        StatusHistory history = StatusHistory.builder()
+        /*StatusHistory history = StatusHistory.builder()
                 .fromStatus(oldStatus)
                 .toStatus(newStatus)
                 .entityType(StatusHistory.EntityType.BIDDING)
@@ -900,7 +900,7 @@ public BiddingDto getBiddingById(Long id) {
                 .reason(reason)  // reason 추가
                 .build();
         
-        bidding.addStatusHistory(history);
+        bidding.addStatusHistory(history);*/
         
         return BiddingDto.fromEntity(bidding);
     }
@@ -908,10 +908,10 @@ public BiddingDto getBiddingById(Long id) {
     /**
      * 상태 변경 이력 조회
      */
-    @Transactional(readOnly = true)
+/*    @Transactional(readOnly = true)
     public List<StatusHistory> getBiddingStatusHistories(Long biddingId) {
         return biddingRepository.findStatusHistoriesByBiddingId(biddingId);
-    }
+    }*/
 
     /**
      * 입찰 참여 검증
