@@ -65,4 +65,3 @@ public class ProjectDTO {
         private LocalDate endDate;
     }
 }
-

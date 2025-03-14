@@ -61,11 +61,9 @@ public class Project extends BaseEntity {
     @JoinColumn(name = "requester_id")
     private Member requester;
 
-    // 예산 코드
     @Column(name = "budget_code", length = 50)
     private String budgetCode;
 
-    // 프로젝트 예산
     @Column(name = "total_budget")
     private Long totalBudget;
 
