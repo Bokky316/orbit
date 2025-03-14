@@ -526,7 +526,7 @@ const SupplierRegistrationPage = () => {
               <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
-                  label="소싱 카테고리"
+                  label="소싱 대분류"
                   name="sourcingCategory"
                   value={formData.sourcingCategory}
                   onChange={handleChange}
@@ -535,7 +535,7 @@ const SupplierRegistrationPage = () => {
               <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
-                  label="소싱 하위 카테고리"
+                  label="소싱 중분류"
                   name="sourcingSubCategory"
                   value={formData.sourcingSubCategory}
                   onChange={handleChange}
@@ -544,7 +544,7 @@ const SupplierRegistrationPage = () => {
               <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
-                  label="소싱 상세 카테고리"
+                  label="소싱 소분류"
                   name="sourcingDetailCategory"
                   value={formData.sourcingDetailCategory}
                   onChange={handleChange}
