@@ -237,8 +237,8 @@ public class MemberDataInitializer {
         for (Department dept : departments) {
             if ("임원".equals(dept.getName())) {
                 // 임원 부서는 따로 처리
-                members.add(createMember(dept.getCode() + "-001", "김임원", "exec001", dept, executive, Member.Role.ADMIN));
-                members.add(createMember(dept.getCode() + "-002", "이대표", "ceo001", dept, ceo, Member.Role.ADMIN));
+                members.add(createMember(dept.getCode() + "-001", "김임원", "1234", dept, executive, Member.Role.ADMIN));
+                members.add(createMember(dept.getCode() + "-002", "이대표", "1234", dept, ceo, Member.Role.ADMIN));
                 continue;
             }
 
@@ -246,19 +246,19 @@ public class MemberDataInitializer {
             String deptPrefix = dept.getCode().substring(5);  // "DEPT-001" -> "001"
 
             // 각 직급별 직원 추가
-            members.add(createMember(deptPrefix + "-staff-1", dept.getName() + " 직원1", "staff" + deptPrefix + "1", dept, staff, Member.Role.BUYER));
-            members.add(createMember(deptPrefix + "-staff-2", dept.getName() + " 직원2", "staff" + deptPrefix + "2", dept, staff, Member.Role.BUYER));
+            members.add(createMember(deptPrefix + "-staff-1", dept.getName() + " 직원1", "1234", dept, staff, Member.Role.BUYER));
+            members.add(createMember(deptPrefix + "-staff-2", dept.getName() + " 직원2", "1234", dept, staff, Member.Role.BUYER));
 
-            members.add(createMember(deptPrefix + "-asst-1", dept.getName() + " 대리1", "asst" + deptPrefix + "1", dept, assistant, Member.Role.BUYER));
-            members.add(createMember(deptPrefix + "-asst-2", dept.getName() + " 대리2", "asst" + deptPrefix + "2", dept, assistant, Member.Role.BUYER));
+            members.add(createMember(deptPrefix + "-asst-1", dept.getName() + " 대리1", "1234", dept, assistant, Member.Role.BUYER));
+            members.add(createMember(deptPrefix + "-asst-2", dept.getName() + " 대리2", "1234", dept, assistant, Member.Role.BUYER));
 
-            members.add(createMember(deptPrefix + "-mgr-1", dept.getName() + " 과장1", "mgr" + deptPrefix + "1", dept, manager, Member.Role.BUYER));
+            members.add(createMember(deptPrefix + "-mgr-1", dept.getName() + " 과장1", "1234", dept, manager, Member.Role.BUYER));
 
             // 차장은 부서당 한 명
-            members.add(createMember(deptPrefix + "-sr-1", dept.getName() + " 차장", "sr" + deptPrefix + "1", dept, seniorManager, Member.Role.BUYER));
+            members.add(createMember(deptPrefix + "-sr-1", dept.getName() + " 차장", "1234", dept, seniorManager, Member.Role.BUYER));
 
             // 부장은 부서당 한 명
-            members.add(createMember(deptPrefix + "-dir-1", dept.getName() + " 부장", "dir" + deptPrefix + "1", dept, director, Member.Role.ADMIN));
+            members.add(createMember(deptPrefix + "-dir-1", dept.getName() + " 부장", "1234", dept, director, Member.Role.ADMIN));
         }
 
         // 테스트용 추가 계정

@@ -1,4 +1,3 @@
-// src/redux/store.js
 
 import { configureStore } from "@reduxjs/toolkit";
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from "redux-persist";
@@ -7,10 +6,11 @@ import { combineReducers } from 'redux';
 import projectReducer from "./projectSlice";
 import purchaseRequestReducer from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
-import approvalAdminReducer from "./approvalAdminSlice"; // 결재선 관리 리듀서 추가
+import approvalAdminReducer from "./approvalAdminSlice";
 import authReducer from "./authSlice";
-import supplierReducer from "./supplier/supplierSlice";
 import commonCodeReducer from "./commonCodeSlice";
+import itemCategoryReducer from "./itemCategorySlice";
+
 
 /**
  * Redux Persist의 설정을 정의합니다.
@@ -21,7 +21,15 @@ import commonCodeReducer from "./commonCodeSlice";
 const persistConfig = {
     key: "root",
     storage,
-    whitelist: ["project", "purchaseRequest", "approval", "approvalAdmin", "auth", "supplier", "commonCode"], // approvalAdmin 추가
+    whitelist: [
+        "project",
+        "purchaseRequest",
+        "approval",
+        "approvalAdmin",
+        "auth",
+        "commonCode",
+        "itemCategory"
+    ],
 };
 
 /**
@@ -33,10 +41,10 @@ const rootReducer = combineReducers({
     project: projectReducer,
     purchaseRequest: purchaseRequestReducer,
     approval: approvalReducer,
-    approvalAdmin: approvalAdminReducer, // 결재선 관리 리듀서 추가
+    approvalAdmin: approvalAdminReducer,
     auth: authReducer,
-    supplier: supplierReducer,
     commonCode: commonCodeReducer,
+    itemCategory: itemCategoryReducer,
 });
 
 /**

@@ -33,12 +33,12 @@ import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
-import SupplierListPage from "@/pages/supplier/SupplierListPage";
-import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
-import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
-import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
 import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
 import RegisterMember from "@/pages/member/RegisterMember";
+import CategoryListPage from "@pages/item/CategoryListPage";
+import CategoryFormPage from "@pages/item/CategoryFormPage";
+import ItemListPage from "@pages/item/ItemListPage";
+import ItemFormPage from "@pages/item/ItemFormPage";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -120,12 +120,15 @@ function AppContent() {
               <Route path="/payments" element={<PaymentListPage />} />
               <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
 
-              {/* 협력사 관리 */}
-              <Route path="/supplier" element={<SupplierListPage />} />
-              <Route path="/supplier/registrations" element={<SupplierRegistrationPage />} />
-              <Route path="/supplier/review/:id" element={<SupplierReviewPage />} />
-              <Route path="/supplier/approval" element={<SupplierApprovalListPage />} />
-              <Route path="/supplier/edit/:id" element={<SupplierRegistrationPage />} />
+
+              <Route path="/categories" element={<CategoryListPage />} />
+              <Route path="/categories/new" element={<CategoryFormPage mode="create" />} />
+              <Route path="/categories/edit/:id" element={<CategoryFormPage mode="edit" />} />
+
+
+              <Route path="/items" element={<ItemListPage />} />
+              <Route path="/items/new" element={<ItemFormPage mode="create" />} />
+              <Route path="/items/edit/:id" element={<ItemFormPage mode="edit" />} />
 
               {/* 공통 코드 관리 */}
               <Route path="/common-codes" element={<CommonCodeManagement />} />
