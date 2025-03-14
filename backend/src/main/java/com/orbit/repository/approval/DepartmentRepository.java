@@ -32,8 +32,4 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
     // 특정 Team Leader 레벨 이상을 가진 부서 검색 (관리 기능)
     @Query("SELECT d FROM Department d WHERE d.teamLeaderLevel >= :minLevel AND d.isActive = true")
     List<Department> findDepartmentsWithMinTeamLeaderLevel(@Param("minLevel") Integer minLevel);
-
-    // 특정 부서와 그 하위 부서를 모두 조회 (계층 구조 관리에 필요)
-    @Query("SELECT d FROM Department d WHERE d.parentDepartment.id = :parentId AND d.isActive = true")
-    List<Department> findSubDepartments(@Param("parentId") Long parentId);
 }
