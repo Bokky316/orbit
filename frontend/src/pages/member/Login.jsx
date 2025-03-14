@@ -6,13 +6,14 @@ import {
   IconButton,
   InputAdornment,
   Box,
-  Typography
+  Typography,
+  Link
 } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setUser, setLoading } from "@/redux/authSlice";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { API_URL } from "@/utils/constants";
+import { API_URL } from "@utils/constants";
 
 export default function Login() {
   const [credentials, setCredentials] = useState({
@@ -119,6 +120,10 @@ export default function Login() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [credentials, showLoginFields]);
 
+  const handleSignupNavigation = () => {
+    navigate("/signup");
+  };
+
   return (
     <Box
       sx={{
@@ -127,7 +132,8 @@ export default function Login() {
         alignItems: "center",
         justifyContent: "center",
         height: "100vh",
-        backgroundColor: "#f9f9f9"
+        backgroundColor: "#f9f9f9",
+        p: 2
       }}>
       <Typography variant="h5" sx={{ mb: 2 }}>
         로그인
@@ -189,6 +195,25 @@ export default function Login() {
           </Button>
         </Box>
       )}
+
+      <Box sx={{ mt: 2, textAlign: 'center', width: '100%' }}>
+        <Typography variant="body2">
+          아직 회원이 아니신가요?{" "}
+          <Link
+            component="button"
+            onClick={handleSignupNavigation}
+            sx={{
+              color: 'primary.main',
+              textDecoration: 'underline',
+              '&:hover': {
+                color: 'primary.dark'
+              }
+            }}
+          >
+            회원가입
+          </Link>
+        </Typography>
+      </Box>
 
       <Snackbar
         open={openSnackbar}

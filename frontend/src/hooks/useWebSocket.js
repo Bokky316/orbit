@@ -1,70 +1,87 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
-import { showSnackbar } from "@/store/snackbarSlice";
-import { API_URL, SERVER_URL } from "@/utils/constants";
-import { fetchWithAuth, fetchWithoutAuth } from "@/features/auth/fetchWithAuth";
-import { setMessages, addMessage } from "@/store/messageSlice";
-
-let stompClient = null;
+import { SERVER_URL } from "@/utils/constants";
+import { changePurchaseRequestStatus } from "@/redux/purchaseRequestSlice";
 
 const useWebSocket = (user) => {
     const dispatch = useDispatch();
+    const [isConnected, setIsConnected] = useState(false);
+    const [stompClient, setStompClient] = useState(null);
 
     useEffect(() => {
-        if (!user?.id || stompClient) return;
-
-        console.log("🛠 WebSocket 연결 시도 - user ID:", user?.id);
+        if (!user?.id) return;
 
         const socket = new SockJS(`${SERVER_URL}ws`);
-        stompClient = new Client({
+        const client = new Client({
             webSocketFactory: () => socket,
-            debug: (str) => console.log(`🔍 WebSocket Debug: ${str}`),
+            debug: (str) => console.log('🔍 WebSocket Debug:', str),
             reconnectDelay: 5000,
+            heartbeatIncoming: 4000,
+            heartbeatOutgoing: 4000,
 
-            onConnect: async () => {
-                console.log("📡 WebSocket 연결 성공!");
+            onConnect: () => {
+                console.log("📡 WebSocket 구매요청 연결 성공!");
+                setIsConnected(true);
 
-                await fetchMessages(user.id, dispatch);
-
-                stompClient.subscribe(`/topic/chat/${user.id}`, async (message) => {
-                    console.log("📨 useWebSocket > stompClient.subscribe 새로운 메시지 도착! message.body : ", message.body);
-
-                    const parsedMessage = JSON.parse(message.body);
-
-                    dispatch(addMessage(parsedMessage));
-
-                    await fetchMessages(user.id, dispatch);
+                // 사용자별 구매요청 상태 변경 구독
+                client.subscribe(`/topic/purchase-request/user/${user.id}`, (message) => {
+                    try {
+                        const updateData = JSON.parse(message.body);
+                        dispatch(changePurchaseRequestStatus({
+                            id: updateData.purchaseRequestId,
+                            fromStatus: updateData.fromStatus,
+                            toStatus: updateData.toStatus
+                        }));
+                    } catch (error) {
+                        console.error("❌ 상태 업데이트 오류:", error);
+                    }
                 });
             },
 
             onStompError: (frame) => {
-                console.error("❌ STOMP 오류 발생:", frame);
+                console.error("❌ WebSocket 연결 오류:", frame);
+                setIsConnected(false);
             },
+
+            onDisconnect: () => {
+                console.log("🔌 WebSocket 연결 해제");
+                setIsConnected(false);
+            }
         });
 
-        stompClient.activate();
+        client.activate();
+        setStompClient(client);
 
         return () => {
-            if (stompClient) {
-                stompClient.deactivate();
-                stompClient = null;
+            if (client) {
+                client.deactivate();
             }
         };
     }, [user, dispatch]);
-};
 
-const fetchMessages = async (userId, dispatch) => {
-    try {
-        const response = await fetchWithAuth(`${API_URL}messages/${userId}`);
-        if (response.ok) {
-            const data = await response.json();
-            dispatch(setMessages(data));
+    const sendStatusChange = (purchaseRequestId, fromStatus, toStatus) => {
+        if (stompClient && isConnected) {
+            try {
+                stompClient.publish({
+                    destination: "/app/purchase-request/status",
+                    body: JSON.stringify({
+                        purchaseRequestId,
+                        fromStatus,
+                        toStatus
+                    })
+                });
+            } catch (error) {
+                console.error("❌ 상태 변경 전송 실패:", error);
+            }
         }
-    } catch (error) {
-        console.error("🚨 메시지 목록 조회 실패:", error.message);
-    }
+    };
+
+    return {
+        sendStatusChange,
+        isConnected
+    };
 };
 
 export default useWebSocket;

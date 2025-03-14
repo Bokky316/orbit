@@ -1,343 +1,724 @@
-import { Button, TextField } from "@mui/material";
 import { useState, useEffect } from "react";
-import { API_URL } from "@/utils/constants";
 import { useNavigate } from "react-router-dom";
-import useDebounce from '@/hooks/useDebounce';
-import KakaoAddressSearch from "@/features/auth/KakaoAddressSearch";
-
+import {
+  Button,
+  TextField,
+  Typography,
+  Container,
+  Paper,
+  Grid,
+  Stepper,
+  Step,
+  StepLabel,
+  CircularProgress,
+  Alert,
+  Snackbar,
+  InputAdornment,
+  IconButton,
+  Box
+} from "@mui/material";
+import { Visibility, VisibilityOff, CheckCircle, Error } from "@mui/icons-material";
+import { API_URL } from "@utils/constants";
+import useDebounce from '@hooks/useDebounce';
+import KakaoAddressSearch from "@pages/member/KakaoAddressSearch";
 
 export default function RegisterMember() {
-    //  회원가입 정보 상태
-    const [credentials, setCredentials] = useState({ birthDate: "2025-02-05"});
-    const [member, setMember] = useState({
-        name: "",
-        username: "",  // 추가: 사용자 아이디 필드
-        email: "",
-        password: "",
-        confirmPassword: "",
-        phone: "",
-        birthDate: "",
-        gender: "",
-        postalCode: "",
-        roadAddress: "",
-        detailAddress: "",
-    });
-    const [email, setEmail] = useState(""); // 이메일 상태
-    const [username, setUsername] = useState(""); // 추가: username 상태
-    const debouncedEmail = useDebounce(email, 500); // 500ms 디바운스 적용
-    const debouncedUsername = useDebounce(username, 500); // 추가: username 디바운스
+  // 회원가입 단계 관리
+  const [activeStep, setActiveStep] = useState(0);
+  const steps = ['기본 정보 입력', '이메일 인증', '주소 정보 입력', '회원가입 완료'];
 
-    const [emailError, setEmailError] = useState(""); // 이메일 중복 체크 에러 메시지
-    const [usernameError, setUsernameError] = useState(""); // 추가: username 중복 체크 에러 메시지
-    const [passwordError, setPasswordError] = useState(""); // 비밀번호 확인 메시지
-    const navigate = useNavigate();
+  // 회원가입 정보 상태
+  const [member, setMember] = useState({
+    username: "",
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    companyName: "",
+    contactNumber: "",
+    postalCode: "",
+    roadAddress: "",
+    detailAddress: "",
+  });
 
-    const [verificationCode, setVerificationCode] = useState(""); // 입력받은 인증 코드
-    const [isVerified, setIsVerified] = useState(false); // 인증 완료 여부
+  // UI 상태 관리
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
+  const [email, setEmail] = useState("");
+  const debouncedEmail = useDebounce(email, 500); // 500ms 디바운스 적용
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // debounce된 이메일 값 체크
-    useEffect(() => {
-        if (debouncedEmail) {
-            checkEmail(debouncedEmail);
-        }
-    }, [debouncedEmail]);
+  // 유효성 검증 상태
+  const [errors, setErrors] = useState({});
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
-    // 추가: debounce된 username 값 체크
-    useEffect(() => {
-        if (debouncedUsername) {
-            checkUsername(debouncedUsername);
-        }
-    }, [debouncedUsername]);
+  // 이메일 인증 관련 상태
+  const [verificationCode, setVerificationCode] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
 
-    // 입력 필드 변경 처리
-    const onMemberChange = (event) => {
-        const { name, value } = event.target;
-        setMember({ ...member, [name]: value }); // 입력 필드 값 업데이트
+  const navigate = useNavigate();
 
-        if (name === "email") {
-            setEmail(value);
-        }
+  // debounce된 이메일 값이 변경될 때마다 중복 체크
+  useEffect(() => {
+    if (debouncedEmail && debouncedEmail.length > 0) {
+      checkEmail(debouncedEmail);
+    }
+  }, [debouncedEmail]);
 
-        // 추가: username 변경 처리
-        if (name === "username") {
-            setUsername(value);
-        }
-    };
+  // 비밀번호 확인 체크
+  useEffect(() => {
+    if (member.confirmPassword) {
+      if (member.password === member.confirmPassword) {
+        setPasswordError("비밀번호가 일치합니다");
+      } else {
+        setPasswordError("비밀번호가 일치하지 않습니다");
+      }
+    } else {
+      setPasswordError("");
+    }
+  }, [member.password, member.confirmPassword]);
 
-    // 비밀번호 확인 체크
-    useEffect(() => {
-        if (member.confirmPassword) {
-            if (member.password === member.confirmPassword) {
-                setPasswordError("비밀번호가 일치합니다."); // 초록색 표시
-            } else {
-                setPasswordError("비밀번호가 맞지 않습니다."); // 빨간색 표시
-            }
+  // 인증 코드 타이머
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    } else if (codeSent && countdown === 0) {
+      setSnackbar({
+        open: true,
+        message: "인증 시간이 만료되었습니다. 다시 요청해주세요.",
+        severity: "warning"
+      });
+      setCodeSent(false);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown, codeSent]);
+
+  // 입력 필드 변경 처리
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setMember({ ...member, [name]: value });
+
+    // 이메일 필드 변경 시 debounce를 위한 상태 업데이트
+    if (name === "email") {
+      setEmail(value);
+    }
+
+    // 필드별 유효성 검사
+    validateField(name, value);
+  };
+
+  // 필드별 유효성 검사
+  const validateField = (name, value) => {
+    let newErrors = { ...errors };
+
+    switch (name) {
+      case "username":
+        if (!value) newErrors.username = "아이디를 입력해주세요";
+        else if (value.length < 4) newErrors.username = "아이디는 4자 이상이어야 합니다";
+        else delete newErrors.username;
+        break;
+      case "name":
+        if (!value) newErrors.name = "이름을 입력해주세요";
+        else delete newErrors.name;
+        break;
+      case "password":
+        if (!value) newErrors.password = "비밀번호를 입력해주세요";
+        else if (value.length < 4 || value.length > 16)
+          newErrors.password = "비밀번호는 4자 이상 16자 이하여야 합니다";
+        else delete newErrors.password;
+        break;
+      case "email":
+        const emailRegex = /^[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,6}$/;
+        if (!value) newErrors.email = "이메일을 입력해주세요";
+        else if (!emailRegex.test(value)) newErrors.email = "올바른 이메일 형식이 아닙니다";
+        else delete newErrors.email;
+        break;
+      case "companyName":
+        if (!value) newErrors.companyName = "회사 이름을 입력해주세요";
+        else delete newErrors.companyName;
+        break;
+      case "contactNumber":
+        const phoneRegex = /^\d{2,3}-\d{3,4}-\d{4}$/;
+        if (value && !phoneRegex.test(value))
+          newErrors.contactNumber = "올바른 전화번호 형식이 아닙니다 (예: 010-1234-5678)";
+        else delete newErrors.contactNumber;
+        break;
+      case "detailAddress":
+        if (!value && member.postalCode) newErrors.detailAddress = "상세 주소를 입력해주세요";
+        else delete newErrors.detailAddress;
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // username 중복 체크 함수 추가
+  const checkUsername = async (username) => {
+    try {
+      const response = await fetch(`${API_URL}members/checkUsername?username=${username}`);
+      const data = await response.json();
+
+      if (data.status === "duplicate") {
+        return {
+          isValid: false,
+          message: "이미 사용 중인 아이디입니다."
+        };
+      }
+
+      return {
+        isValid: true,
+        message: ""
+      };
+    } catch (error) {
+      console.error("Username 중복 체크 중 오류 발생:", error);
+      return {
+        isValid: false,
+        message: "아이디 확인 중 오류가 발생했습니다"
+      };
+    }
+  };
+
+  // 이메일 중복 체크
+  const checkEmail = (email) => {
+    fetch(`${API_URL}members/checkEmail?email=${email}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "duplicate") {
+          setEmailError(data.message);
         } else {
-            setPasswordError("");
+          setEmailError("");
         }
-    }, [member.password, member.confirmPassword]);
+      })
+      .catch((error) => {
+        console.error("이메일 중복 체크 중 오류 발생:", error);
+        setEmailError("이메일 확인 중 오류가 발생했습니다");
+      });
+  };
 
-    // 이메일 중복 체크
-    const checkEmail = (email) => {
-        fetch(`${API_URL}members/checkEmail?email=${email}`)
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.status === "duplicate") {
-                    setEmailError(data.message);
-                } else {
-                    setEmailError("");
-                }
-            })
-            .catch((error) => {
-                console.error("이메일 중복 체크 중 오류 발생:", error);
-                setEmailError("이메일 확인 중 오류가 발생했습니다.");
-            });
-    };
+  // 이메일 인증 코드 요청
+  const sendVerificationCode = () => {
+    if (!member.email || emailError || errors.email) {
+      setSnackbar({
+        open: true,
+        message: "유효한 이메일을 입력해주세요",
+        severity: "error"
+      });
+      return;
+    }
 
-    // 추가: username 중복 체크
-    const checkUsername = (username) => {
-        fetch(`${API_URL}members/checkUsername?username=${username}`)
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.status === "duplicate") {
-                    setUsernameError(data.message);
-                } else {
-                    setUsernameError("");
-                }
-            })
-            .catch((error) => {
-                console.error("아이디 중복 체크 중 오류 발생:", error);
-                setUsernameError("아이디 확인 중 오류가 발생했습니다.");
-            });
-    };
-
-    /**
-         * 이메일 인증 코드 요청
-         * - 사용자가 이메일 인증 코드 전송 버튼 클릭 시 실행
-         */
-    const sendVerificationCode = () => {
-        fetch(`${API_URL}email/send`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ email: member.email }) // JSON body로 이메일 전달
-        })
-        .then((response) => response.json()) // JSON 응답으로 변환
-        .then((data) => {
-            if (data.error) {
-                alert(`인증 코드 전송 실패: ${data.details || data.error}`);
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch((error) => {
-            console.error("인증 코드 전송 오류:", error);
-            alert("서버 오류가 발생했습니다. 다시 시도해주세요.");
+    setLoading(true);
+    fetch(`${API_URL}email/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: member.email })
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      setLoading(false);
+      if (data.error) {
+        setSnackbar({
+          open: true,
+          message: `인증 코드 전송 실패: ${data.details || data.error}`,
+          severity: "error"
         });
-    };
-
-    /**
-        * 인증 코드 확인 요청
-        * - 사용자가 인증 코드 입력 후 확인 버튼 클릭 시 실행
-     */
-    const verifyCode = async () => {
-        try {
-            const response = await fetch(`${API_URL}email/verify`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, code: verificationCode })
-            });
-
-            // 서버 응답을 JSON 형식으로 변환
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || "인증 코드 확인 실패"); // 서버에서 온 메시지 표시
-            }
-
-            alert(data.message);
-            setIsVerified(true); // 이메일 인증 성공 시 상태 업데이트
-        } catch (error) {
-            console.error("인증 코드 확인 오류:", error.message);
-            alert(error.message); // 서버에서 온 오류 메시지를 표시
-        }
-    };
-
-    /**
-        *  회원가입 요청
-        * - 사용자가 모든 정보를 입력하고 회원가입 버튼을 클릭 시 실행
-     */
-    const handleOnSubmit = () => {
-        if (member.password !== member.confirmPassword) {
-            alert("비밀번호가 일치하지 않습니다.");
-            return;
-        }
-
-        // 추가: username 검증
-        if (!member.username) {
-            alert("아이디를 입력해주세요.");
-            return;
-        }
-
-        if (usernameError) {
-            alert("사용할 수 없는 아이디입니다.");
-            return;
-        }
-
-        console.log("회원가입 요청 데이터:", member);
-
-        fetch(API_URL + "members/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(member),
-        })
-        .then(async (response) => {
-            const message = await response.text();
-            if (response.ok) {
-                alert(message);
-                navigate("/login");
-            } else {
-                alert("회원가입 실패: " + message);
-            }
-        })
-        .catch((error) => {
-            console.error("회원가입 중 오류 발생:", error);
-            alert("서버 오류가 발생했습니다. 다시 시도해주세요.");
+      } else {
+        setSnackbar({
+          open: true,
+          message: "인증 코드가 이메일로 전송되었습니다",
+          severity: "success"
         });
-    };
+        setCodeSent(true);
+        setCountdown(180); // 3분 타이머 설정
+      }
+    })
+    .catch((error) => {
+      setLoading(false);
+      console.error("인증 코드 전송 오류:", error);
+      setSnackbar({
+        open: true,
+        message: "서버 오류가 발생했습니다. 다시 시도해주세요",
+        severity: "error"
+      });
+    });
+  };
 
-    // 카카오 주소 검색 후 선택한 주소를 상태에 저장
-    const handleAddressSelect = (data) => {
-        console.log("[DEBUG] 선택된 주소 데이터:", data);
+  // 인증 코드 확인
+  const verifyCode = async () => {
+    if (!verificationCode) {
+      setSnackbar({
+        open: true,
+        message: "인증 코드를 입력해주세요",
+        severity: "warning"
+      });
+      return;
+    }
 
-        setMember({
-            ...member,
-            postalCode: data.zonecode,  // 우편번호
-            roadAddress: data.roadAddress,  // 도로명 주소
-        });
-    };
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}email/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: member.email, code: verificationCode })
+      });
 
-    return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "20px" }}>
-            <TextField
-                label="Name"
-                name="name"
-                value={member.name}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-            />
-            {/* 추가: Username 입력 필드 */}
-            <TextField
-                label="Username (로그인 아이디)"
+      const data = await response.json();
+      setLoading(false);
+
+      if (!response.ok) {
+        throw new Error(data.error || "인증 코드 확인 실패");
+      }
+
+      setSnackbar({
+        open: true,
+        message: "이메일 인증이 완료되었습니다",
+        severity: "success"
+      });
+      setIsVerified(true);
+      handleNext(); // 인증 완료 후 다음 단계로 자동 이동
+    } catch (error) {
+      setLoading(false);
+      console.error("인증 코드 확인 오류:", error.message);
+      setSnackbar({
+        open: true,
+        message: error.message,
+        severity: "error"
+      });
+    }
+  };
+
+  // 카카오 주소 검색 후 선택한 주소를 상태에 저장
+  const handleAddressSelect = (data) => {
+    setMember({
+      ...member,
+      postalCode: data.zonecode,
+      roadAddress: data.roadAddress,
+    });
+  };
+
+  // 각 단계별 유효성 검사
+  const validateStep = (step) => {
+    switch (step) {
+      case 0: // 기본 정보 단계
+        return (
+          member.username &&
+          member.name &&
+          member.password &&
+          member.confirmPassword &&
+          member.password === member.confirmPassword &&
+          member.email &&
+          !emailError &&
+          !errors.username &&
+          !errors.name &&
+          !errors.password &&
+          !errors.email
+        );
+      case 1: // 이메일 인증 단계
+        return isVerified;
+      case 2: // 주소 정보 단계
+        return (
+          member.postalCode &&
+          member.roadAddress &&
+          member.detailAddress &&
+          member.companyName &&
+          (!member.contactNumber || !errors.contactNumber)
+        );
+      default:
+        return true;
+    }
+  };
+
+  // 다음 단계로 이동
+  const handleNext = () => {
+    if (validateStep(activeStep)) {
+      setActiveStep((prevStep) => prevStep + 1);
+    } else {
+      setSnackbar({
+        open: true,
+        message: "필수 항목을 모두 입력해주세요",
+        severity: "warning"
+      });
+    }
+  };
+
+  // 이전 단계로 이동
+  const handleBack = () => {
+    setActiveStep((prevStep) => prevStep - 1);
+  };
+
+  // 회원가입 제출
+ const handleSubmit = () => {
+   // 백엔드 DTO와 일치하는 필드만 추출
+   const { confirmPassword, ...memberData } = member;
+
+   setLoading(true);
+   fetch(`${API_URL}members/register`, {
+     method: "POST",
+     headers: { "Content-Type": "application/json" },
+     body: JSON.stringify(member)
+   })
+   .then(async (response) => {
+     const message = await response.text();
+     setLoading(false);
+
+     if (response.ok) {
+       setSnackbar({
+         open: true,
+         message: "회원가입이 완료되었습니다",
+         severity: "success"
+       });
+       setActiveStep(3);
+       setTimeout(() => navigate("/login"), 3000);
+     } else {
+       setSnackbar({
+         open: true,
+         message: `회원가입 실패: ${message}`,
+         severity: "error"
+       });
+     }
+   })
+   .catch((error) => {
+     setLoading(false);
+     console.error("회원가입 중 오류 발생:", error);
+     setSnackbar({
+       open: true,
+       message: "서버 오류가 발생했습니다. 다시 시도해주세요",
+       severity: "error"
+     });
+   });
+ };
+
+  // 스낵바 닫기
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  // 폼 렌더링
+  const renderForm = () => {
+    switch (activeStep) {
+      case 0: // 기본 정보 입력
+        return (
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                기본 정보 입력
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="아이디(username) *"
                 name="username"
                 value={member.username}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-                error={!!usernameError}
-                helperText={usernameError}
-            />
-            <TextField
-                label="Email"
+                onChange={handleChange}
+                error={!!errors.username}
+                helperText={errors.username}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이름 *"
+                name="name"
+                value={member.name}
+                onChange={handleChange}
+                error={!!errors.name}
+                helperText={errors.name}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이메일 *"
                 name="email"
+                type="email"
                 value={member.email}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-                error={!!emailError}
-                helperText={emailError}
-            />
-            <Button
-                variant="contained"
-                onClick={sendVerificationCode}
-                disabled={!member.email || !!emailError}>
-                인증 코드 전송
-            </Button>
-            <TextField
-                label="인증 코드 입력"
-                name="verificationCode"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                style={{ width: "400px", marginBottom: "10px", marginTop: "10px" }}
-            />
-            <Button
-                variant="contained"
-                onClick={verifyCode}
-                disabled={!verificationCode}>
-                인증 코드 확인
-            </Button>
-            <TextField
-                label="Password"
+                onChange={handleChange}
+                error={!!emailError || !!errors.email}
+                helperText={emailError || errors.email}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="비밀번호 *"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={member.password}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-            />
-            <TextField
-                label="Confirm Password"
+                onChange={handleChange}
+                error={!!errors.password}
+                helperText={errors.password || "비밀번호는 4자 이상 16자 이하로 입력해주세요"}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="비밀번호 확인 *"
                 name="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 value={member.confirmPassword}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-                error={passwordError === "비밀번호가 맞지 않습니다."}
+                onChange={handleChange}
+                error={passwordError === "비밀번호가 일치하지 않습니다"}
                 helperText={passwordError}
-                sx={{ "& .MuiFormHelperText-root": { color: passwordError === "비밀번호가 맞지 않습니다." ? "red" : "green" } }}
-            />
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        edge="end"
+                      >
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+                sx={{
+                  "& .MuiFormHelperText-root": {
+                    color: passwordError === "비밀번호가 일치합니다" ? "green" : undefined
+                  }
+                }}
+              />
+            </Grid>
+          </Grid>
+        );
 
-             {/* 카카오 주소 검색 컴포넌트 */}
-            <div style={{ display: "flex", width: "400px", marginBottom: "10px" }}>
-                <TextField label="우편번호" name="postalCode" value={member.postalCode} style={{ flex: 1, marginRight: "10px" }} disabled />
-                <KakaoAddressSearch onAddressSelect={handleAddressSelect} />
-            </div>
+      case 1: // 이메일 인증
+        return (
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                이메일 인증
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이메일"
+                value={member.email}
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Box display="flex" alignItems="center">
+                <Button
+                  variant="contained"
+                  onClick={sendVerificationCode}
+                  disabled={loading || codeSent && countdown > 0}
+                  sx={{ mr: 2 }}
+                >
+                  {loading ? <CircularProgress size={24} /> : "인증 코드 전송"}
+                </Button>
+                {codeSent && countdown > 0 && (
+                  <Typography color="primary">
+                    {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")}
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+            {codeSent && (
+              <>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="인증 코드"
+                    name="verificationCode"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    disabled={isVerified}
+                    InputProps={{
+                      endAdornment: isVerified && (
+                        <InputAdornment position="end">
+                          <CheckCircle color="success" />
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    variant="contained"
+                    onClick={verifyCode}
+                    disabled={loading || isVerified || !verificationCode}
+                  >
+                    {loading ? <CircularProgress size={24} /> : "인증 확인"}
+                  </Button>
+                </Grid>
+              </>
+            )}
+            {isVerified && (
+              <Grid item xs={12}>
+                <Alert severity="success">이메일 인증이 완료되었습니다.</Alert>
+              </Grid>
+            )}
+          </Grid>
+        );
 
-            <TextField
-                label="우편번호"
+      case 2: // 주소 정보 입력
+        return (
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                추가 정보 입력
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="회사명 *"
+                name="companyName"
+                value={member.companyName}
+                onChange={handleChange}
+                error={!!errors.companyName}
+                helperText={errors.companyName}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="연락처 (예: 010-1234-5678)"
+                name="contactNumber"
+                value={member.contactNumber}
+                onChange={handleChange}
+                error={!!errors.contactNumber}
+                helperText={errors.contactNumber}
+              />
+            </Grid>
+            <Grid item xs={9}>
+              <TextField
+                fullWidth
+                label="우편번호 *"
                 name="postalCode"
                 value={member.postalCode}
-                style={{ width: "400px", marginBottom: "10px" }}
                 disabled
-            />
-            <TextField
-                label="도로명 주소"
+              />
+            </Grid>
+            <Grid item xs={3}>
+              <KakaoAddressSearch onAddressSelect={handleAddressSelect} />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="도로명 주소 *"
                 name="roadAddress"
                 value={member.roadAddress}
-                style={{ width: "400px", marginBottom: "10px" }}
                 disabled
-            />
-            <TextField
-                label="상세 주소"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="상세 주소 *"
                 name="detailAddress"
                 value={member.detailAddress}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-            />
+                onChange={handleChange}
+                error={!!errors.detailAddress}
+                helperText={errors.detailAddress}
+              />
+            </Grid>
+          </Grid>
+        );
 
-            <TextField
-                label="Phone"
-                name="phone"
-                value={member.phone}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-            />
-             <TextField
-                label="Birth Date"
-                name="birthDate"
-                type="date"
-                value={credentials.birthDate}
-                onChange={onMemberChange}
-                style={{ width: "400px", marginBottom: "10px" }}
-            />
+      case 3: // 회원가입 완료
+        return (
+          <Grid container spacing={2} justifyContent="center">
+            <Grid item xs={12} textAlign="center">
+              <CheckCircle color="success" sx={{ fontSize: 64, mb: 2 }} />
+              <Typography variant="h5" gutterBottom>
+                회원가입이 완료되었습니다!
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                잠시 후 로그인 페이지로 이동합니다...
+              </Typography>
+            </Grid>
+          </Grid>
+        );
 
-            <select name="gender" value={member.gender} onChange={onMemberChange} style={{ width: "400px", height: "40px" }}>
-                <option value="">성별 선택</option>
-                <option value="남성">남성</option>
-                <option value="여성">여성</option>
-            </select>
+      default:
+        return null;
+    }
+  };
 
-            <Button variant="contained" onClick={handleOnSubmit} disabled={!isVerified}>
-                회원가입
+  return (
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Typography variant="h4" align="center" gutterBottom>
+          회원가입
+        </Typography>
+
+        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+
+        {renderForm()}
+
+        {activeStep !== 3 && (
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+            <Button
+              disabled={activeStep === 0}
+              onClick={handleBack}
+            >
+              이전
             </Button>
-        </div>
-    );
+
+            {activeStep === steps.length - 2 ? (
+              <Button
+                variant="contained"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} /> : "회원가입"}
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                disabled={activeStep === 1 && !isVerified}
+              >
+                다음
+              </Button>
+            )}
+          </Box>
+        )}
+      </Paper>
+
+      {/* 알림 메시지 */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Container>
+  );
 }

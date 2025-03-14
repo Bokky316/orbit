@@ -38,12 +38,13 @@ export const deleteProject = createAsyncThunk(
                 method: 'DELETE',
             });
             if (!response.ok) {
+                // 에러 응답 처리 개선
                 const errorText = await response.text();
-                throw new Error(`Failed to delete project: ${response.status} - ${errorText}`);
+                throw new Error(`${errorText || '프로젝트 삭제 실패'}`);
             }
             return id;
         } catch (error) {
-            console.error('Error deleting project:', error);
+            console.error('프로젝트 삭제 중 오류 발생:', error);
             return rejectWithValue(error.message);
         }
     }
@@ -86,7 +87,7 @@ export const createProjectWithFiles = createAsyncThunk(
             const formData = new FormData();
 
             // 프로젝트 데이터를 JSON 문자열로 추가
-            formData.append('projectRequestDTO', JSON.stringify(projectData));
+            formData.append('projectDTO', JSON.stringify(projectData));
 
             // 파일 추가
             for (let i = 0; i < files.length; i++) {
@@ -188,7 +189,7 @@ export const updateProjectWithFiles = createAsyncThunk(
             const formData = new FormData();
 
             // 프로젝트 데이터를 JSON 문자열로 추가
-            formData.append('projectRequestDTO', JSON.stringify(projectData));
+            formData.append('projectDTO', JSON.stringify(projectData));
 
             // 파일 추가
             for (let i = 0; i < files.length; i++) {

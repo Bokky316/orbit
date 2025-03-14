@@ -58,7 +58,7 @@ public class MemberService {
      * @return true(중복) or false(사용 가능)
      */
     public boolean isUsernameDuplicate(String username) {
-        return memberRepository.findByUsername(username) != null;
+        return memberRepository.findByUsername(username).isPresent();
     }
 
     /**
