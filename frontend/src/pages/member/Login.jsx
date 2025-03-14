@@ -154,6 +154,10 @@ export default function Login() {
     navigate("/signup");
   };
 
+  const handleSignupNavigation = () => {
+    navigate("/signup");
+  };
+
   return (
     <Box
       sx={{
@@ -298,6 +302,25 @@ export default function Login() {
                 color: "primary.dark"
               }
             }}>
+            회원가입
+          </Link>
+        </Typography>
+      </Box>
+
+      <Box sx={{ mt: 2, textAlign: 'center', width: '100%' }}>
+        <Typography variant="body2">
+          아직 회원이 아니신가요?{" "}
+          <Link
+            component="button"
+            onClick={handleSignupNavigation}
+            sx={{
+              color: 'primary.main',
+              textDecoration: 'underline',
+              '&:hover': {
+                color: 'primary.dark'
+              }
+            }}
+          >
             회원가입
           </Link>
         </Typography>
