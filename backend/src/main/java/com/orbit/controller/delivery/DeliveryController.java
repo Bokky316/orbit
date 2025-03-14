@@ -1,5 +1,6 @@
 package com.orbit.controller.delivery;
 
+import com.orbit.dto.bidding.BiddingOrderDto;
 import com.orbit.dto.delivery.DeliveryRequestDto;
 import com.orbit.dto.delivery.DeliveryResponseDto;
 import com.orbit.dto.delivery.DeliveryUpdateRequest;
@@ -45,12 +46,26 @@ public class DeliveryController {
         return ResponseEntity.ok(result.getContent());
     }
 
+    @Operation(summary = "발주번호로 발주 상세 조회", description = "발주번호(orderNumber)로 발주 상세 정보를 조회합니다.")
+    @GetMapping("/purchase-orders/{orderNumber}")
+    public ResponseEntity<BiddingOrderDto> getOrderByOrderNumber(@PathVariable String orderNumber) {
+        BiddingOrderDto orderDto = deliveryService.getOrderDetails(orderNumber);
+        return ResponseEntity.ok(orderDto);
+    }
+
 //    @Operation(summary = "전체 입고 목록 조회", description = "모든 입고 목록을 조회합니다.")
 //    @GetMapping("/all")
 //    public ResponseEntity<ApiResponse<List<DeliveryDto.ListResponseDto>>> getAllDeliveries() {
 //        List<DeliveryDto.ListResponseDto> result = deliveryService.getAllDeliveries();
 //        return ResponseEntity.ok(ApiResponse.success(result));
 //    }
+
+    @Operation(summary = "미입고 발주 목록 조회", description = "아직 입고등록이 되지 않은 발주 목록을 조회합니다.")
+    @GetMapping("/available-orders")
+    public ResponseEntity<List<BiddingOrderDto>> getAvailableOrders() {
+        List<BiddingOrderDto> result = deliveryService.getAvailableOrders();
+        return ResponseEntity.ok(result);
+    }
 
     @Operation(summary = "이번달 입고 목록 조회", description = "이번달 입고된 목록을 조회합니다.")
     @GetMapping("/current-month")
