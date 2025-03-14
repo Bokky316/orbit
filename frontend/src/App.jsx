@@ -116,8 +116,19 @@ function AppContent() {
               />
 
               {/* 프로젝트 관리 */}
-              <Route path="/projects" element={<ProjectListPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/projects" element={<ProjectListPage />} />
+                <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/projects/new" element={<ProjectCreatePage />} />
+                <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
+
+                {/* 구매 요청 관리 */}
+                <Route
+                  path="/purchase-requests"
+                  element={<PurchaseRequestListPage />}
+                />
+                <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
+                <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
+                <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />}/>
 
               {/* 구매 요청 관리 */}
               <Route
