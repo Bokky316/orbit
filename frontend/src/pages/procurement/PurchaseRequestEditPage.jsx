@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
-    Box, Typography, Paper, TextField, Button, Grid, Alert,
+    Box, Typography, Paper, TextField, Button, Grid, Alert, CircularProgress,
     IconButton, List, ListItem, ListItemAvatar, ListItemText,
     Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem,
     Chip, Divider, Autocomplete
@@ -14,24 +14,12 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
-import { fetchItems, fetchCategories } from '@/redux/purchaseRequestSlice';
-import ApprovalLineSetupComponent from '@/pages/approval/ApprovalLineSetupComponent';
+import { updatePurchaseRequest, fetchItems, fetchCategories } from '@/redux/purchaseRequestSlice';
 
-const initItem = {
-    itemId: '',
-    quantity: '',
-    unitPrice: '',
-    totalPrice: 0,
-    deliveryRequestDate: null,
-    deliveryLocation: ''
-};
-
-/**
- * 구매 요청 생성 페이지 컴포넌트
- */
-function PurchaseRequestCreatePage() {
+function PurchaseRequestEditPage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { id } = useParams();
 
     // Redux 상태 가져오기
     const { items: availableItems, categories } = useSelector(state => state.purchaseRequest);
@@ -40,6 +28,11 @@ function PurchaseRequestCreatePage() {
 
     // 현재 로그인한 사용자 정보 가져오기
     const { user } = useSelector(state => state.auth);
+
+    // 초기 상태
+    const [purchaseRequest, setPurchaseRequest] = useState(null);
+    const [fetchLoading, setFetchLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
 
     // 프로젝트 목록 상태
     const [projects, setProjects] = useState([]);
@@ -51,10 +44,6 @@ function PurchaseRequestCreatePage() {
     const [departmentMembers, setDepartmentMembers] = useState([]);
     const [selectedDepartment, setSelectedDepartment] = useState(null);
     const [selectedManager, setSelectedManager] = useState(null);
-
-    // 결재선 상태
-    const [showApprovalSetup, setShowApprovalSetup] = useState(false);
-    const [approvalLines, setApprovalLines] = useState([]);
 
     // 공통 필드 상태
     const [businessType, setBusinessType] = useState('');
@@ -78,15 +67,104 @@ function PurchaseRequestCreatePage() {
     const [contractDetails, setContractDetails] = useState('');
 
     // 물품 필드 상태
+    const initItem = {
+        itemId: '',
+        quantity: '',
+        unitPrice: '',
+        totalPrice: 0,
+        deliveryRequestDate: null,
+        deliveryLocation: ''
+    };
     const [items, setItems] = useState([initItem]);
     const [selectedCategory, setSelectedCategory] = useState('');
     const [filteredItems, setFilteredItems] = useState([]);
 
     // 첨부 파일 상태
-    const [attachments, setAttachments] = useState([]);
+    const [existingAttachments, setExistingAttachments] = useState([]);
+    const [newAttachments, setNewAttachments] = useState([]);
+    const [attachmentsToDelete, setAttachmentsToDelete] = useState([]);
 
+    // 구매 요청 정보 가져오기
     useEffect(() => {
-        // 컴포넌트 마운트 시 프로젝트 목록 가져오기
+        const fetchPurchaseRequest = async () => {
+            try {
+                setFetchLoading(true);
+                const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
+                if (!response.ok) {
+                    throw new Error('구매 요청을 불러오는데 실패했습니다.');
+                }
+
+                const data = await response.json();
+                setPurchaseRequest(data);
+
+                // 기본 정보 설정
+                setBusinessType(data.businessType || '');
+                setRequestName(data.requestName || '');
+                setRequestDate(data.requestDate ? moment(data.requestDate) : moment());
+                setCustomer(data.customer || '');
+                setBusinessBudget(data.businessBudget ? data.businessBudget.toString() : '');
+                setSpecialNotes(data.specialNotes || '');
+                setManagerPhoneNumber(data.managerPhoneNumber || '');
+
+                // 프로젝트 ID 설정
+                if (data.projectId) {
+                    setSelectedProjectId(data.projectId);
+                }
+
+                // 사업 구분별 필드 설정
+                if (data.businessType === 'SI') {
+                    setProjectStartDate(data.projectStartDate ? moment(data.projectStartDate) : null);
+                    setProjectEndDate(data.projectEndDate ? moment(data.projectEndDate) : null);
+                    setProjectContent(data.projectContent || '');
+                }
+                else if (data.businessType === 'MAINTENANCE') {
+                    setContractStartDate(data.contractStartDate ? moment(data.contractStartDate) : null);
+                    setContractEndDate(data.contractEndDate ? moment(data.contractEndDate) : null);
+                    setContractAmount(data.contractAmount ? data.contractAmount.toString() : '');
+                    setContractDetails(data.contractDetails || '');
+                }
+                else if (data.businessType === 'GOODS' && Array.isArray(data.items)) {
+                    const formattedItems = data.items.map(item => ({
+                        id: item.id,
+                        itemId: item.itemId,
+                        itemName: item.itemName,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        totalPrice: item.totalPrice,
+                        specification: item.specification,
+                        unitParentCode: item.unitParentCode,
+                        unitChildCode: item.unitChildCode,
+                        deliveryRequestDate: item.deliveryRequestDate ? moment(item.deliveryRequestDate) : null,
+                        deliveryLocation: item.deliveryLocation || ''
+                    }));
+
+                    setItems(formattedItems.length > 0 ? formattedItems : [initItem]);
+                }
+
+                // 첨부파일 설정
+                if (data.attachments && Array.isArray(data.attachments)) {
+                    setExistingAttachments(data.attachments);
+                }
+
+                setFetchError(null);
+            } catch (err) {
+                console.error("구매 요청 로드 오류:", err);
+                setFetchError(err.message);
+            } finally {
+                setFetchLoading(false);
+            }
+        };
+
+        fetchPurchaseRequest();
+
+        // Redux를 통해 아이템과 카테고리 목록 가져오기
+        dispatch(fetchItems());
+        dispatch(fetchCategories());
+    }, [id, dispatch]);
+
+    // 컴포넌트 마운트 시 필요한 데이터 로드
+    useEffect(() => {
+        // 프로젝트 목록 가져오기
         const fetchAllProjects = async () => {
             try {
                 const response = await fetchWithAuth(`${API_URL}projects`, {
@@ -101,7 +179,7 @@ function PurchaseRequestCreatePage() {
                 const projectsData = await response.json();
                 setProjects(projectsData);
             } catch (error) {
-                alert(`프로젝트 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
+                console.error(`프로젝트 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
             }
         };
 
@@ -119,6 +197,14 @@ function PurchaseRequestCreatePage() {
                 }
                 const departmentsData = await response.json();
                 setDepartments(departmentsData);
+
+                // 현재 구매요청의 부서 찾기
+                if (purchaseRequest && purchaseRequest.businessDepartment) {
+                    const requestDept = departmentsData.find(dept => dept.name === purchaseRequest.businessDepartment);
+                    if (requestDept) {
+                        setSelectedDepartment(requestDept);
+                    }
+                }
             } catch (error) {
                 console.error(`부서 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
             }
@@ -143,14 +229,12 @@ function PurchaseRequestCreatePage() {
             }
         };
 
-        fetchAllProjects();
-        fetchDepartments();
-        fetchAllMembers();
-
-        // Redux를 통해 아이템과 카테고리 목록 가져오기
-        dispatch(fetchItems());
-        dispatch(fetchCategories());
-    }, [dispatch]);
+        if (!fetchLoading && purchaseRequest) {
+            fetchAllProjects();
+            fetchDepartments();
+            fetchAllMembers();
+        }
+    }, [purchaseRequest, fetchLoading]);
 
     // 초기에 filteredItems 설정
     useEffect(() => {
@@ -168,7 +252,6 @@ function PurchaseRequestCreatePage() {
     }, [selectedCategory, availableItems]);
 
     // 부서 선택 시 해당 부서의 멤버 필터링
-    // 부서 선택 시 해당 부서의 멤버 조회
     useEffect(() => {
         if (selectedDepartment) {
             const fetchDepartmentMembers = async () => {
@@ -177,6 +260,14 @@ function PurchaseRequestCreatePage() {
                     if (response.ok) {
                         const data = await response.json();
                         setDepartmentMembers(data);
+
+                        // 현재 구매요청의 담당자 찾기
+                        if (purchaseRequest && purchaseRequest.businessManager) {
+                            const manager = data.find(member => member.name === purchaseRequest.businessManager);
+                            if (manager) {
+                                setSelectedManager(manager);
+                            }
+                        }
                     } else {
                         console.error('부서 멤버를 가져오는데 실패했습니다.');
                     }
@@ -189,36 +280,14 @@ function PurchaseRequestCreatePage() {
         } else {
             setDepartmentMembers([]);
         }
-    }, [selectedDepartment]);
+    }, [selectedDepartment, purchaseRequest]);
 
     // 담당자 변경 시 전화번호 자동 설정
     useEffect(() => {
         if (selectedManager && selectedManager.contactNumber) {
             setManagerPhoneNumber(selectedManager.contactNumber.replace(/[^0-9]/g, ''));
-        } else {
-            setManagerPhoneNumber('');
         }
     }, [selectedManager]);
-
-    // 결재선 설정 완료 핸들러
-    const handleApprovalSetupComplete = (setupData) => {
-        setShowApprovalSetup(false);
-
-        // 현재 API 구조에 맞춰 데이터 처리
-        const formattedLines = setupData.map(line => ({
-            id: line.id,
-            approverName: line.approverName,
-            department: line.department,
-            step: line.step
-        }));
-
-        setApprovalLines(formattedLines);
-    };
-
-    // 결재선 설정 취소 핸들러
-    const handleCancelApprovalSetup = () => {
-        setShowApprovalSetup(false);
-    };
 
     // 품목 필드 변경 핸들러
     const handleItemChange = (index, fieldName, value) => {
@@ -279,6 +348,22 @@ function PurchaseRequestCreatePage() {
         }
     };
 
+    // 기존 첨부파일 삭제 핸들러
+    const handleRemoveExistingAttachment = (attachmentId) => {
+        // 삭제할 첨부파일 ID 목록에 추가
+        setAttachmentsToDelete([...attachmentsToDelete, attachmentId]);
+
+        // 화면에서 첨부파일 제거
+        setExistingAttachments(existingAttachments.filter(att => att.id !== attachmentId));
+    };
+
+    // 새 첨부파일 삭제 핸들러
+    const handleRemoveNewAttachment = (index) => {
+        const newFiles = [...newAttachments];
+        newFiles.splice(index, 1);
+        setNewAttachments(newFiles);
+    };
+
     /**
      * 폼 제출 핸들러
      */
@@ -287,6 +372,7 @@ function PurchaseRequestCreatePage() {
 
         // 공통 데이터
         let requestData = {
+            id: purchaseRequest.id,
             businessType,
             requestName,
             requestDate: requestDate.format('YYYY-MM-DD'),
@@ -297,8 +383,7 @@ function PurchaseRequestCreatePage() {
             businessManagerId: selectedManager ? selectedManager.id : null,
             businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0,
             specialNotes,
-            managerPhoneNumber: managerPhoneNumber || '01044737122',
-            // UUID 문자열을 그대로 전송 (숫자로 변환하지 않음)
+            managerPhoneNumber: managerPhoneNumber || '',
             projectId: selectedProjectId,
 
             // 현재 로그인한 사용자 정보 추가
@@ -306,9 +391,8 @@ function PurchaseRequestCreatePage() {
             memberName: user?.name,
             memberCompany: user?.companyName,
 
-            // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
-            prStatusParent: 'PURCHASE_REQUEST',
-            prStatusChild: 'REQUESTED'
+            // 상태 값 유지
+            status: purchaseRequest.status
         };
 
         // 사업 구분별 데이터 추가
@@ -322,7 +406,6 @@ function PurchaseRequestCreatePage() {
             requestData.contractAmount = parseFloat(contractAmount.replace(/,/g, '')) || 0;
             requestData.contractDetails = contractDetails;
         } else if (businessType === 'GOODS') {
-            // 이 부분에서 오류 발생했던 코드 수정
             requestData.items = items.map(item => {
                 // unitPrice가 문자열인지 확인하고 적절히 처리
                 let unitPrice = 0;
@@ -333,7 +416,8 @@ function PurchaseRequestCreatePage() {
                 }
 
                 return {
-                    itemId: item.itemId, // 여기도 UUID 문자열을 그대로 사용
+                    id: item.id, // 기존 아이템 ID 유지
+                    itemId: item.itemId,
                     quantity: parseInt(item.quantity) || 0,
                     unitPrice: unitPrice,
                     totalPrice: parseFloat(item.totalPrice) || 0,
@@ -344,55 +428,55 @@ function PurchaseRequestCreatePage() {
         }
 
         try {
-            console.log('JSON 요청 전송:', JSON.stringify(requestData, null, 2));
+            // Redux 액션을 사용하여 업데이트
+            await dispatch(updatePurchaseRequest({
+                id: purchaseRequest.id,
+                requestData
+            })).unwrap();
 
-            const response = await fetchWithAuth(`${API_URL}purchase-requests`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestData)
-            });
+            // 첨부 파일 처리
+            if (newAttachments.length > 0) {
+                const fileFormData = new FormData();
+                newAttachments.forEach(file => {
+                    fileFormData.append('files', file);
+                });
 
-            if (response.ok) {
-                const createdRequest = await response.json();
-                alert('구매 요청이 성공적으로 생성되었습니다.');
-
-                // 파일 첨부가 있는 경우 처리
-                if (attachments.length > 0) {
-                    const fileFormData = new FormData();
-
-                    attachments.forEach(file => {
-                        fileFormData.append('files', file);
+                try {
+                    const fileResponse = await fetchWithAuth(`${API_URL}purchase-requests/${purchaseRequest.id}/attachments`, {
+                        method: 'POST',
+                        body: fileFormData
                     });
 
+                    if (!fileResponse.ok) {
+                        const errorMsg = await fileResponse.text();
+                        console.error(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                        alert(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                    }
+                } catch (fileError) {
+                    console.error(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
+                    alert(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
+                }
+            }
+
+            // 삭제할 첨부파일이 있으면 처리
+            if (attachmentsToDelete.length > 0) {
+                for (const attachmentId of attachmentsToDelete) {
                     try {
-                        // 기본 fetch API 사용 (Content-Type 헤더 생략)
-                        const fileResponse = await fetch(`${API_URL}purchase-requests/${createdRequest.id}/attachments`, {
-                            method: 'POST',
-                            credentials: 'include', // 쿠키 포함
-                            body: fileFormData
+                        const response = await fetchWithAuth(`${API_URL}purchase-requests/attachments/${attachmentId}`, {
+                            method: 'DELETE'
                         });
 
-                        if (fileResponse.ok) {
-                            alert('첨부 파일이 성공적으로 업로드되었습니다.');
-                            // 목록 페이지로 이동
-                            navigate('/purchase-requests');
-                        } else {
-                            const errorMsg = await fileResponse.text();
-                            alert(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                        if (!response.ok) {
+                            console.warn(`첨부파일 ID ${attachmentId} 삭제 실패`);
                         }
-                    } catch (fileError) {
-                        alert(`첨부 파일 업로드 중 오류 발생: ${fileError.message}`);
+                    } catch (error) {
+                        console.error(`첨부파일 삭제 오류:`, error);
                     }
-                } else {
-                    // 첨부 파일이 없는 경우 바로 목록 페이지로 이동
-                    navigate('/purchase-requests');
                 }
-            } else {
-                const errorData = await response.text();
-                alert(`오류 발생: ${errorData}`);
             }
+
+            alert('구매 요청이 성공적으로 수정되었습니다.');
+            navigate(`/purchase-requests/${purchaseRequest.id}`);
         } catch (error) {
             alert(`오류 발생: ${error.message}`);
         }
@@ -407,20 +491,30 @@ function PurchaseRequestCreatePage() {
                 return (
                     <>
                         <Grid item xs={6}>
-                            <DatePicker
-                                label="프로젝트 시작일"
-                                value={projectStartDate}
-                                onChange={setProjectStartDate}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                            />
+                            <LocalizationProvider dateAdapter={AdapterMoment}>
+                                <DatePicker
+                                    label="프로젝트 시작일"
+                                    value={projectStartDate}
+                                    onChange={setProjectStartDate}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
+                                />
+                            </LocalizationProvider>
                         </Grid>
                         <Grid item xs={6}>
-                            <DatePicker
-                                label="프로젝트 종료일"
-                                value={projectEndDate}
-                                onChange={setProjectEndDate}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                            />
+                            <LocalizationProvider dateAdapter={AdapterMoment}>
+                                <DatePicker
+                                    label="프로젝트 종료일"
+                                    value={projectEndDate}
+                                    onChange={setProjectEndDate}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
+                                />
+                            </LocalizationProvider>
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
@@ -438,20 +532,30 @@ function PurchaseRequestCreatePage() {
                 return (
                     <>
                         <Grid item xs={6}>
-                            <DatePicker
-                                label="계약 시작일"
-                                value={contractStartDate}
-                                onChange={setContractStartDate}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                            />
+                            <LocalizationProvider dateAdapter={AdapterMoment}>
+                                <DatePicker
+                                    label="계약 시작일"
+                                    value={contractStartDate}
+                                    onChange={setContractStartDate}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
+                                />
+                            </LocalizationProvider>
                         </Grid>
                         <Grid item xs={6}>
-                            <DatePicker
-                                label="계약 종료일"
-                                value={contractEndDate}
-                                onChange={setContractEndDate}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                            />
+                            <LocalizationProvider dateAdapter={AdapterMoment}>
+                                <DatePicker
+                                    label="계약 종료일"
+                                    value={contractEndDate}
+                                    onChange={setContractEndDate}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
+                                />
+                            </LocalizationProvider>
                         </Grid>
                         <Grid item xs={6}>
                             <TextField
@@ -501,7 +605,7 @@ function PurchaseRequestCreatePage() {
                             </FormControl>
                         </Grid>
 
-                        {/* 물품 아이템 레이아웃 수정 */}
+                        {/* 물품 아이템 레이아웃 */}
                         {items.map((item, index) => (
                           <Grid container spacing={2} key={index} alignItems="center" sx={{ mb: 2, mx: 0, width: '100%' }}>
                             {/* 아이템 선택 */}
@@ -511,7 +615,7 @@ function PurchaseRequestCreatePage() {
                                 <Select
                                   labelId={`item-select-label-${index}`}
                                   id={`item-select-${index}`}
-                                  value={item.itemId}
+                                  value={item.itemId || ''}
                                   label="품목 선택 *"
                                   onChange={(e) => handleItemSelect(index, e)}
                                   required
@@ -525,7 +629,7 @@ function PurchaseRequestCreatePage() {
                               </FormControl>
                             </Grid>
 
-                            {/* 사양 (필드 크기 조정) */}
+                            {/* 사양 */}
                             <Grid item xs={2}>
                               <TextField
                                 fullWidth
@@ -536,7 +640,7 @@ function PurchaseRequestCreatePage() {
                               />
                             </Grid>
 
-                            {/* 나머지 필드도 size="small" 추가 */}
+                            {/* 단위 */}
                             <Grid item xs={1}>
                               <TextField
                                 fullWidth
@@ -547,23 +651,25 @@ function PurchaseRequestCreatePage() {
                               />
                             </Grid>
 
+                            {/* 수량 */}
                             <Grid item xs={1}>
                               <TextField
                                 fullWidth
                                 size="small"
                                 label="수량 *"
-                                value={item.quantity}
+                                value={item.quantity || ''}
                                 onChange={(e) => handleNumericItemChange(index, 'quantity')(e)}
                                 required
                               />
                             </Grid>
 
+                            {/* 단가 */}
                             <Grid item xs={2}>
                               <TextField
                                 fullWidth
                                 size="small"
                                 label="단가 *"
-                                value={item.unitPrice}
+                                value={item.unitPrice || ''}
                                 onChange={(e) => handleNumericItemChange(index, 'unitPrice')(e)}
                                 InputProps={{
                                   startAdornment: <InputAdornment position="start">₩</InputAdornment>,
@@ -573,12 +679,13 @@ function PurchaseRequestCreatePage() {
                               />
                             </Grid>
 
+                            {/* 총액 */}
                             <Grid item xs={2}>
                               <TextField
                                 fullWidth
                                 size="small"
                                 label="총액"
-                                value={item.totalPrice.toLocaleString()}
+                                value={item.totalPrice ? item.totalPrice.toLocaleString() : '0'}
                                 InputProps={{
                                   readOnly: true,
                                   startAdornment: <InputAdornment position="start">₩</InputAdornment>
@@ -586,7 +693,7 @@ function PurchaseRequestCreatePage() {
                               />
                             </Grid>
 
-                            {/* 삭제 버튼을 오른쪽으로 이동 */}
+                            {/* 삭제 버튼 */}
                             <Grid item xs={1} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <IconButton
                                 aria-label="delete"
@@ -620,22 +727,21 @@ function PurchaseRequestCreatePage() {
         }
     };
 
-    // 로딩 중 표시
-    if (loading && !availableItems.length && !categories.length) {
+    if (fetchLoading) {
         return (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography>데이터를 불러오는 중입니다...</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+                <CircularProgress />
             </Box>
         );
     }
 
-    // 에러 표시
-    if (error) {
+    if (fetchError) {
         return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="error">
-                    {error}
-                </Alert>
+            <Box sx={{ p: 2 }}>
+                <Alert severity="error">{fetchError}</Alert>
+                <Button sx={{ mt: 2 }} onClick={() => navigate('/purchase-requests')}>
+                    목록으로 돌아가기
+                </Button>
             </Box>
         );
     }
@@ -644,7 +750,7 @@ function PurchaseRequestCreatePage() {
         <LocalizationProvider dateAdapter={AdapterMoment}>
             <Box component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
                 <Typography variant="h5" gutterBottom>
-                    구매 요청 생성
+                    구매 요청 수정
                 </Typography>
                 <Paper sx={{ p: 2 }}>
                     <Grid container spacing={3}>
@@ -679,14 +785,19 @@ function PurchaseRequestCreatePage() {
                             />
                         </Grid>
                         <Grid item xs={6}>
-                            <DatePicker
-                                label="요청일 *"
-                                value={requestDate}
-                                onChange={(date) => setRequestDate(date)}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
-                            />
+                            <LocalizationProvider dateAdapter={AdapterMoment}>
+                                <DatePicker
+                                    label="요청일 *"
+                                    value={requestDate}
+                                    onChange={(date) => setRequestDate(date)}
+                                    slotProps={{
+                                      textField: {
+                                        fullWidth: true,
+                                        error: false } }}
+                                />
+                            </LocalizationProvider>
                         </Grid>
-                        {/* 부서 선택 Autocomplete 추가 */}
+                        {/* 부서 선택 Autocomplete */}
                         <Grid item xs={6}>
                             <Autocomplete
                                 id="business-department-select"
@@ -708,7 +819,7 @@ function PurchaseRequestCreatePage() {
                                 )}
                             />
                         </Grid>
-                        {/* 사업 담당자 Autocomplete 추가 */}
+                        {/* 사업 담당자 Autocomplete */}
                         <Grid item xs={6}>
                             <Autocomplete
                                 id="business-manager-select"
@@ -738,6 +849,7 @@ function PurchaseRequestCreatePage() {
                                     value={businessType}
                                     onChange={(e) => setBusinessType(e.target.value)}
                                     required
+                                    disabled={true} // 사업 구분은 수정 불가
                                 >
                                     <MenuItem value="SI">SI</MenuItem>
                                     <MenuItem value="MAINTENANCE">유지보수</MenuItem>
@@ -785,12 +897,40 @@ function PurchaseRequestCreatePage() {
                         {/* 동적 필드 렌더링 */}
                         {renderDynamicFields()}
 
-                        {/* 파일 첨부 */}
+                        {/* 기존 첨부 파일 목록 */}
+                        {existingAttachments.length > 0 && (
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle1">기존 첨부파일</Typography>
+                                <List>
+                                    {existingAttachments.map((attachment) => (
+                                        <ListItem key={attachment.id}>
+                                            <ListItemAvatar>
+                                                <Avatar><AttachFileIcon /></Avatar>
+                                            </ListItemAvatar>
+                                            <ListItemText
+                                                primary={attachment.fileName}
+                                                secondary={`${(attachment.fileSize / 1024).toFixed(2)} KB`}
+                                            />
+                                            <IconButton
+                                                edge="end"
+                                                aria-label="delete"
+                                                onClick={() => handleRemoveExistingAttachment(attachment.id)}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </ListItem>
+                                    ))}
+                                </List>
+                            </Grid>
+                        )}
+
+                        {/* 새 파일 첨부 영역 */}
                         <Grid item xs={12}>
+                            <Typography variant="subtitle1">파일 추가</Typography>
                             <input
                                 type="file"
                                 multiple
-                                onChange={(e) => setAttachments(Array.from(e.target.files))}
+                                onChange={(e) => setNewAttachments(Array.from(e.target.files))}
                                 id="file-upload"
                                 style={{ display: 'none' }}
                             />
@@ -799,43 +939,47 @@ function PurchaseRequestCreatePage() {
                                     파일 첨부
                                 </Button>
                             </label>
-                            {attachments.length > 0 && (
-                                <>
-                                    {attachments.map((file, index) => (
-                                        <List key={index} sx={{ mt: 2 }}>
-                                            <ListItem>
-                                                <ListItemAvatar>
-                                                    <Avatar><AttachFileIcon /></Avatar>
-                                                </ListItemAvatar>
-                                                <ListItemText
-                                                    primary={file.name}
-                                                    secondary={`${(file.size / 1024).toFixed(2)} KB`}
-                                                />
-                                                {/* 삭제 버튼 */}
-                                                <IconButton edge="end" aria-label="delete" onClick={() => {
-                                                    const newFiles = [...attachments];
-                                                    newFiles.splice(index, 1);
-                                                    setAttachments(newFiles);
-                                                }}>
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </ListItem>
-                                        </List>
+                            {newAttachments.length > 0 && (
+                                <List>
+                                    {newAttachments.map((file, index) => (
+                                        <ListItem key={index}>
+                                            <ListItemAvatar>
+                                                <Avatar><AttachFileIcon /></Avatar>
+                                            </ListItemAvatar>
+                                            <ListItemText
+                                                primary={file.name}
+                                                secondary={`${(file.size / 1024).toFixed(2)} KB`}
+                                            />
+                                            <IconButton
+                                                edge="end"
+                                                aria-label="delete"
+                                                onClick={() => handleRemoveNewAttachment(index)}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </ListItem>
                                     ))}
-                                </>
+                                </List>
                             )}
                         </Grid>
 
                         {/* 제출 버튼 */}
-                        <Grid item xs={12} sx={{ textAlign: 'right' }}>
+                        <Grid item xs={12} sx={{ textAlign: 'right', mt: 3 }}>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                onClick={() => navigate(`/purchase-requests/${id}`)}
+                                sx={{ mr: 2 }}
+                            >
+                                취소
+                            </Button>
                             <Button
                                 type="submit"
                                 variant="contained"
                                 color="primary"
                                 size="large"
-                                sx={{ mt: 2 }}
                             >
-                                제출하기
+                                수정하기
                             </Button>
                         </Grid>
                     </Grid>
@@ -845,4 +989,4 @@ function PurchaseRequestCreatePage() {
     );
 }
 
-export default PurchaseRequestCreatePage;
+export default PurchaseRequestEditPage;

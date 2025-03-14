@@ -67,7 +67,6 @@ public class PurchaseRequestService {
     private final CategoryRepository categoryRepository;
     private final MemberRepository memberRepository;
     private final ProjectRepository projectRepository;
-    private final DepartmentRepository departmentRepository;
     private final ApprovalLineService approvalLineService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -740,50 +739,6 @@ public class PurchaseRequestService {
 
         return dto;
     }
-
-    /**
-     * 모든 부서 목록 조회
-     */
-    @Transactional(readOnly = true)
-    public List<DepartmentDTO> getAllDepartments() {
-        List<Department> departments = departmentRepository.findAll();
-        return departments.stream()
-                .map(this::convertToDepartmentDTO)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 특정 부서 정보 조회
-     */
-    @Transactional(readOnly = true)
-    public DepartmentDTO getDepartmentById(Long id) {
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ID " + id + "에 해당하는 부서가 없습니다."));
-        return convertToDepartmentDTO(department);
-    }
-
-    /**
-     * 모든 사용자 목록 조회
-     */
-    @Transactional(readOnly = true)
-    public List<MemberDTO> getAllMembers() {
-        List<Member> members = memberRepository.findAll();
-        return members.stream()
-                .map(this::convertToMemberDTO)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 특정 부서에 속한 사용자 목록 조회
-     */
-    @Transactional(readOnly = true)
-    public List<MemberDTO> getMembersByDepartment(Long departmentId) {
-        List<Member> members = memberRepository.findByDepartmentId(departmentId);
-        return members.stream()
-                .map(this::convertToMemberDTO)
-                .collect(Collectors.toList());
-    }
-
 
     /**
      * 프로젝트와 구매요청 간 제약조건 검증
