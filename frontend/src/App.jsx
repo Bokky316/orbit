@@ -36,10 +36,12 @@ import BiddingOrderPage from "./pages/bidding/BiddingOrderPage";
 import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
-import ProjectCreatePage from "@/pages/procurement/ProjectCreatePage";
+import ProjectCreatePage from '@/pages/procurement/ProjectCreatePage';
+import ProjectEditPage from '@/pages/procurement/ProjectEditPage';
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
+import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
@@ -80,8 +82,19 @@ function AppContent() {
               />
 
               {/* 프로젝트 관리 */}
-              <Route path="/projects" element={<ProjectListPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/projects" element={<ProjectListPage />} />
+                <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/projects/new" element={<ProjectCreatePage />} />
+                <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
+
+                {/* 구매 요청 관리 */}
+                <Route
+                  path="/purchase-requests"
+                  element={<PurchaseRequestListPage />}
+                />
+                <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
+                <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
+                <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />}/>
 
               {/* 구매 요청 관리 */}
               <Route
