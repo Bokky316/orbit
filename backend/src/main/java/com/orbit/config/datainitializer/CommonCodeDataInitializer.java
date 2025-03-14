@@ -59,6 +59,20 @@ public class CommonCodeDataInitializer {
                         "INSPECTION", "INVOICE_ISSUED", "PAYMENT_COMPLETED"),
                 List.of("구매요청 접수", "업체 선정", "계약 대기", "검수 진행", "인보이스 발행", "대급지급 완료")
         );
+
+        // 프로젝트 예산 코드
+        ParentCode projectBudgetCode = initParentCode("PROJECT", "BUDGET_CODE", "프로젝트 예산 코드");
+        initChildCodes(projectBudgetCode,
+                List.of("R_AND_D", "CAPEX", "OPEX", "MARKETING", "TRAINING", "OTHER"),
+                List.of("연구개발", "자본적지출", "운영비용", "마케팅", "교육훈련", "기타")
+        );
+
+        // 프로젝트 사업 유형
+        ParentCode projectBusinessCategory = initParentCode("PROJECT", "BUSINESS_CATEGORY", "프로젝트 사업 유형");
+        initChildCodes(projectBusinessCategory,
+                List.of("SI", "MAINTENANCE", "IMPLEMENTATION", "CONSULTING", "OUTSOURCING", "OTHER"),
+                List.of("SI", "유지보수", "구축", "컨설팅", "아웃소싱", "기타")
+        );
     }
 
     //▶▶▶ 구매 요청 코드

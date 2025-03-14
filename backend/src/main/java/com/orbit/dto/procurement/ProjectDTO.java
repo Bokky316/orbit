@@ -36,11 +36,13 @@ public class ProjectDTO {
     private String businessCategory;
     private Long totalBudget;
     private String requestDepartment;
+    private Long requestDepartmentId;  // 부서 ID 추가
     private String budgetCode;
     private String remarks;
 
     // 요청자 정보 (응답에만 사용)
     private String requesterName;
+    private Long requesterId;  // 요청자(담당자) ID 추가
 
     // 상태 정보
     private String basicStatus;

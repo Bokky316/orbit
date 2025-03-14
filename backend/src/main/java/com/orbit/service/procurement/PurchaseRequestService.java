@@ -53,7 +53,6 @@ public class PurchaseRequestService {
     private final CategoryRepository categoryRepository;
     private final MemberRepository memberRepository;
     private final ProjectRepository projectRepository;
-    private final DepartmentRepository departmentRepository;
     private final ApprovalLineService approvalLineService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -608,6 +607,411 @@ public class PurchaseRequestService {
                 log.error("파일 저장 실패: {}", e.getMessage(), e);
                 throw new RuntimeException("파일 처리 중 오류 발생", e);
             }
+        } catch (IOException e) {
+            log.error("파일 저장 실패: {}", e.getMessage(), e);
+            throw new RuntimeException("파일 처리 중 오류 발생", e);
+        }
+    }
+
+    private void processGoodsRequestItems(GoodsRequest goodsRequest, GoodsRequestDTO goodsRequestDTO) {
+        if (goodsRequestDTO.getItems() != null) {
+            // 1. 기존 아이템 제거
+            goodsRequest.getItems().clear();
+
+            // 2. 새 아이템 추가 (addItem 메서드 활용)
+            goodsRequestDTO.getItems().forEach(itemDto -> {
+                PurchaseRequestItem item = convertToItemEntity(itemDto, goodsRequest);
+                goodsRequest.addItem(item); // GoodsRequest의 addItem 메서드 사용
+            });
+        }
+    }
+
+    // 아이템 전체 조회 메서드 추가
+    @Transactional(readOnly = true)
+    public List<ItemDTO> getAllItems() {
+        List<Item> items = itemRepository.findAll();
+        return items.stream()
+                .map(this::convertToItemDTO)
+                .collect(Collectors.toList());
+    }
+
+    private ItemDTO convertToItemDTO(Item item) {
+        return ItemDTO.builder()
+                .id(item.getId())
+                .name(item.getName())
+                .specification(item.getSpecification())
+                .unitParentCode(
+                        item.getUnitParentCode() != null ?
+                                item.getUnitParentCode().getCodeGroup() : null
+                )
+                .unitChildCode(
+                        item.getUnitChildCode() != null ?
+                                item.getUnitChildCode().getCodeValue() : null
+                )
+                .standardPrice(item.getStandardPrice())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryDTO> getAllCategories() {
+        // 활성화된 카테고리만 조회 (useYn = 'Y')
+        List<Category> categories = categoryRepository.findAllActive();
+        return categories.stream()
+                .map(CategoryDTO::from)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * 부서 엔티티를 DTO로 변환
+     */
+    private DepartmentDTO convertToDepartmentDTO(Department department) {
+        return DepartmentDTO.builder()
+                .id(department.getId())
+                .name(department.getName())
+                .code(department.getCode())
+                .description(department.getDescription())
+                .teamLeaderLevel(department.getTeamLeaderLevel())
+                .middleManagerLevel(department.getMiddleManagerLevel())
+                .upperManagerLevel(department.getUpperManagerLevel())
+                .executiveLevel(department.getExecutiveLevel())
+                .build();
+    }
+
+    /**
+     * 사용자 엔티티를 DTO로 변환
+     */
+    private MemberDTO convertToMemberDTO(Member member) {
+        MemberDTO dto = MemberDTO.builder()
+                .id(member.getId())
+                .username(member.getUsername())
+                .name(member.getName())
+                .email(member.getEmail())
+                .contactNumber(member.getContactNumber())
+                .companyName(member.getCompanyName())
+                .enabled(member.isEnabled())
+                .role(member.getRole().name())
+                .build();
+
+        // 부서 정보 설정
+        if (member.getDepartment() != null) {
+            dto.setDepartment(MemberDTO.DepartmentInfo.builder()
+                    .id(member.getDepartment().getId())
+                    .name(member.getDepartment().getName())
+                    .code(member.getDepartment().getCode())
+                    .build());
+        }
+
+        // 직급 정보 설정
+        if (member.getPosition() != null) {
+            dto.setPosition(MemberDTO.PositionInfo.builder()
+                    .id(member.getPosition().getId())
+                    .name(member.getPosition().getName())
+                    .level(member.getPosition().getLevel())
+                    .build());
+        }
+
+        return dto;
+    }
+
+    /**
+     * 프로젝트와 구매요청 간 제약조건 검증
+     */
+    private void validatePurchaseRequestWithProject(PurchaseRequest purchaseRequest, Project project) {
+        // 1. 예산 검증 - 현재 구매요청과 기존 구매요청의 총합이 프로젝트 예산을 초과하지 않아야 함
+        BigDecimal totalBudget = calculateTotalBudgetUsed(project, purchaseRequest.getId());
+        BigDecimal newRequestBudget = purchaseRequest.getBusinessBudget();
+
+        if (project.getTotalBudget() != null) {
+            BigDecimal projectBudget = BigDecimal.valueOf(project.getTotalBudget());
+
+            if (totalBudget.add(newRequestBudget).compareTo(projectBudget) > 0) {
+                throw new IllegalArgumentException(
+                        "구매요청 예산 총합(" + totalBudget.add(newRequestBudget) +
+                                ")이 프로젝트 예산(" + projectBudget + ")을 초과합니다."
+                );
+            }
+        }
+
+        // 2. 기간 검증 - 타입에 따라 다른 날짜 필드 검증
+        LocalDate requestStartDate = null;
+        LocalDate requestEndDate = null;
+
+        if (purchaseRequest instanceof SIRequest) {
+            SIRequest siRequest = (SIRequest) purchaseRequest;
+            requestStartDate = siRequest.getProjectStartDate();
+            requestEndDate = siRequest.getProjectEndDate();
+        } else if (purchaseRequest instanceof MaintenanceRequest) {
+            MaintenanceRequest maintenanceRequest = (MaintenanceRequest) purchaseRequest;
+            requestStartDate = maintenanceRequest.getContractStartDate();
+            requestEndDate = maintenanceRequest.getContractEndDate();
+        }
+
+        // 날짜 검증 로직
+        if (requestStartDate != null && requestEndDate != null) {
+            // 2.1. 시작일이 종료일보다 앞에 있어야 함
+            if (requestStartDate.isAfter(requestEndDate)) {
+                throw new IllegalArgumentException("구매요청의 시작일이 종료일보다 늦을 수 없습니다.");
+            }
+
+            // 2.2. 구매요청 기간이 프로젝트 기간 내에 있어야 함
+            LocalDate projectStartDate = project.getProjectPeriod().getStartDate();
+            LocalDate projectEndDate = project.getProjectPeriod().getEndDate();
+
+            if (requestStartDate.isBefore(projectStartDate) || requestEndDate.isAfter(projectEndDate)) {
+                throw new IllegalArgumentException(
+                        "구매요청 기간(" + requestStartDate + " ~ " + requestEndDate +
+                                ")이 프로젝트 기간(" + projectStartDate + " ~ " + projectEndDate + ")을 벗어납니다."
+                );
+            }
+        }
+    }
+
+    /**
+     * 프로젝트의 현재 사용된 총 예산 계산 (현재 구매요청 제외)
+     */
+    private BigDecimal calculateTotalBudgetUsed(Project project, Long currentRequestId) {
+        // 프로젝트에 연결된, 현재 요청 외의 모든 구매요청의 예산 합계 계산
+        return project.getPurchaseRequests().stream()
+                .filter(pr -> currentRequestId == null || !pr.getId().equals(currentRequestId))
+                .map(PurchaseRequest::getBusinessBudget)
+                .filter(budget -> budget != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * 구매요청 생성/수정 시 종합적인 유효성 검증
+     */
+    private void validatePurchaseRequest(PurchaseRequest request) {
+        // 1. 기본 필드 검증
+        validateBasicFields(request);
+
+        // 2. 날짜 유효성 검증
+        validateDates(request);
+
+        // 3. 예산 유효성 검증
+        validateBudget(request);
+
+        // 4. 프로젝트 연관관계 검증
+        if (request.getProject() != null) {
+            validatePurchaseRequestWithProject(request, request.getProject());
+        }
+
+        // 5. 요청 타입별 추가 검증
+        if (request instanceof GoodsRequest) {
+            validateGoodsRequest((GoodsRequest) request);
+        } else if (request instanceof SIRequest) {
+            validateSIRequest((SIRequest) request);
+        } else if (request instanceof MaintenanceRequest) {
+            validateMaintenanceRequest((MaintenanceRequest) request);
+        }
+    }
+
+    /**
+     * 기본 필드 유효성 검증
+     */
+    private void validateBasicFields(PurchaseRequest request) {
+        // 필수 필드 검증
+        if (StringUtils.isEmpty(request.getRequestName())) {
+            throw new IllegalArgumentException("구매요청명은 필수입니다.");
+        }
+
+        if (StringUtils.isEmpty(request.getBusinessType())) {
+            throw new IllegalArgumentException("사업 구분은 필수입니다.");
+        }
+
+        // 연락처 형식 검증
+        if (request.getManagerPhoneNumber() != null && !request.getManagerPhoneNumber().matches("^01[0-9]{8,9}$")) {
+            throw new IllegalArgumentException("유효하지 않은 핸드폰 번호 형식입니다.");
+        }
+    }
+
+    /**
+     * 날짜 유효성 검증
+     */
+    private void validateDates(PurchaseRequest request) {
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+
+        // 요청 유형에 따라 날짜 필드 가져오기
+        if (request instanceof SIRequest) {
+            SIRequest siRequest = (SIRequest) request;
+            startDate = siRequest.getProjectStartDate();
+            endDate = siRequest.getProjectEndDate();
+        } else if (request instanceof MaintenanceRequest) {
+            MaintenanceRequest maintenanceRequest = (MaintenanceRequest) request;
+            startDate = maintenanceRequest.getContractStartDate();
+            endDate = maintenanceRequest.getContractEndDate();
+        }
+
+        // 날짜 검증
+        if (startDate != null && endDate != null) {
+            // 시작일이 종료일보다 앞에 있어야 함
+            if (startDate.isAfter(endDate)) {
+                throw new IllegalArgumentException("시작일이 종료일보다 늦을 수 없습니다.");
+            }
+
+            // 시작일이 현재 또는 미래 날짜인지 검증 (선택 사항)
+            LocalDate today = LocalDate.now();
+            if (startDate.isBefore(today)) {
+                log.warn("구매요청 시작일이 과거 날짜입니다: {}", startDate);
+                // 경고만 하거나 예외 발생 가능
+                // throw new IllegalArgumentException("시작일은 오늘 이후 날짜여야 합니다.");
+            }
+        }
+    }
+
+    /**
+     * 예산 유효성 검증
+     */
+    private void validateBudget(PurchaseRequest request) {
+        BigDecimal budget = request.getBusinessBudget();
+
+        // 예산이 음수가 아닌지 확인
+        if (budget != null && budget.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("사업 예산은 0 이상이어야 합니다.");
+        }
+
+        // 물품 요청인 경우 품목 가격의 합과 비교
+        if (request instanceof GoodsRequest) {
+            GoodsRequest goodsRequest = (GoodsRequest) request;
+
+            if (goodsRequest.getItems() != null && !goodsRequest.getItems().isEmpty()) {
+                BigDecimal totalItemsPrice = goodsRequest.getItems().stream()
+                        .map(PurchaseRequestItem::getTotalPrice)
+                        .filter(price -> price != null)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                // 예산이 물품 가격 합계와 일치하는지 확인
+                if (budget != null && totalItemsPrice.compareTo(budget) != 0) {
+                    log.warn("구매요청 예산({})과 물품 가격 합계({})가 일치하지 않습니다",
+                            budget, totalItemsPrice);
+
+                    // 자동으로 예산 맞추기 (선택 사항)
+                    // request.setBusinessBudget(totalItemsPrice);
+
+                    // 또는 예외 발생
+                    // throw new IllegalArgumentException(
+                    //    "구매요청 예산과 물품 가격 합계가 일치해야 합니다.");
+                }
+            }
+        }
+    }
+
+    /**
+     * GoodsRequest 타입별 추가 검증
+     */
+    private void validateGoodsRequest(GoodsRequest request) {
+        // 품목 존재 여부 확인
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new IllegalArgumentException("물품 요청에는 최소 하나 이상의 품목이 필요합니다.");
+        }
+
+        // 각 품목 유효성 검증
+        for (PurchaseRequestItem item : request.getItems()) {
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+                throw new IllegalArgumentException("품목 수량은 0보다 커야 합니다.");
+            }
+
+            if (item.getUnitPrice() == null || item.getUnitPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("품목 단가는 0보다 커야 합니다.");
+            }
+
+            // 배송 요청 날짜가 과거인지 확인
+            if (item.getDeliveryRequestDate() != null &&
+                    item.getDeliveryRequestDate().isBefore(LocalDate.now())) {
+                log.warn("품목의 배송 요청일이 과거 날짜입니다: {}", item.getDeliveryRequestDate());
+                // 경고만 하거나 예외 발생 가능
+            }
+        }
+    }
+
+    /**
+     * SIRequest 타입별 추가 검증
+     */
+    private void validateSIRequest(SIRequest request) {
+        // SI 요청에 필요한 필수 필드 검증
+        if (request.getProjectStartDate() == null || request.getProjectEndDate() == null) {
+            throw new IllegalArgumentException("SI 프로젝트의 시작일과 종료일은 필수입니다.");
+        }
+
+        if (StringUtils.isEmpty(request.getProjectContent())) {
+            throw new IllegalArgumentException("SI 프로젝트 내용은 필수입니다.");
+        }
+    }
+
+    /**
+     * MaintenanceRequest 타입별 추가 검증
+     */
+    private void validateMaintenanceRequest(MaintenanceRequest request) {
+        // 유지보수 요청에 필요한 필수 필드 검증
+        if (request.getContractStartDate() == null || request.getContractEndDate() == null) {
+            throw new IllegalArgumentException("유지보수 계약의 시작일과 종료일은 필수입니다.");
+        }
+
+        if (request.getContractAmount() == null ||
+                request.getContractAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("유지보수 계약 금액은 0보다 커야 합니다.");
+        }
+
+        if (StringUtils.isEmpty(request.getContractDetails())) {
+            throw new IllegalArgumentException("유지보수 계약 세부내용은 필수입니다.");
+        }
+    }
+
+    /**
+     * 구매요청 수정 가능 여부 검증
+     */
+    private void validatePurchaseRequestModifiable(PurchaseRequest request, String username) {
+        // 1. 상태 기반 검증 - 구매 요청 상태에서만 수정 가능
+        if (request.getStatus() != null) {
+            String statusCode = request.getStatus().getChildCode();
+            if (!"REQUESTED".equals(statusCode)) {
+                throw new IllegalStateException("현재 구매요청 상태(" + statusCode + ")에서는 수정할 수 없습니다. 구매 요청 상태에서만 수정 가능합니다.");
+            }
+        }
+
+        // 2. 권한 기반 검증 - 요청자 또는 관리자만 수정 가능
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = request.getMember() != null && request.getMember().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("구매요청 수정 권한이 없습니다. 요청자 또는 관리자만 수정할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 구매요청 삭제 가능 여부 검증
+     */
+    private void validatePurchaseRequestDeletable(PurchaseRequest request, String username) {
+        // 1. 상태 기반 검증 - 구매 요청 상태에서만 삭제 가능
+        if (request.getStatus() != null) {
+            String statusCode = request.getStatus().getChildCode();
+            if (!"REQUESTED".equals(statusCode)) {
+                throw new IllegalStateException("현재 구매요청 상태(" + statusCode + ")에서는 삭제할 수 없습니다. 구매 요청 상태에서만 삭제 가능합니다.");
+            }
+        }
+
+        // 2. 권한 기반 검증 - 요청자 또는 관리자만 삭제 가능
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = request.getMember() != null && request.getMember().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("구매요청 삭제 권한이 없습니다. 요청자 또는 관리자만 삭제할 수 있습니다.");
+        }
+
+        // 3. 시간 기반 제한 (선택사항) - 요청일 기준 24시간 이내만 삭제 가능
+        LocalDate requestDate = request.getRequestDate();
+        if (requestDate != null && requestDate.plusDays(1).isBefore(LocalDate.now())) {
+            log.warn("요청일로부터 24시간이 지난 구매요청 삭제 시도: ID={}, 요청일={}", request.getId(), requestDate);
+            // 경고만 하고 삭제 가능하게 하거나, 아래 주석 해제하여 제한 설정
+            // throw new IllegalStateException("구매요청은 요청일로부터 24시간 이내에만 삭제할 수 있습니다.");
         }
     }
 

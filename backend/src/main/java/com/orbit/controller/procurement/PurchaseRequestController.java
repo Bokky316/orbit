@@ -175,44 +175,6 @@ public class PurchaseRequestController {
         return new ResponseEntity<>(categories, HttpStatus.OK);
     }
 
-    // ======== 새로 추가된 부서/담당자 관련 API 엔드포인트 ========
-
-    /**
-     * 모든 부서 목록을 조회하는 API
-     */
-    @GetMapping("/departments")
-    public ResponseEntity<List<DepartmentDTO>> getAllDepartments() {
-        List<DepartmentDTO> departments = purchaseRequestService.getAllDepartments();
-        return ResponseEntity.ok(departments);
-    }
-
-    /**
-     * 특정 부서 정보를 조회하는 API
-     */
-    @GetMapping("/departments/{id}")
-    public ResponseEntity<DepartmentDTO> getDepartmentById(@PathVariable Long id) {
-        DepartmentDTO department = purchaseRequestService.getDepartmentById(id);
-        return ResponseEntity.ok(department);
-    }
-
-    /**
-     * 모든 사용자 목록을 조회하는 API
-     */
-    @GetMapping("/members")
-    public ResponseEntity<List<MemberDTO>> getAllMembers() {
-        List<MemberDTO> members = purchaseRequestService.getAllMembers();
-        return ResponseEntity.ok(members);
-    }
-
-    /**
-     * 특정 부서에 속한 사용자 목록을 조회하는 API
-     */
-    @GetMapping("/members/department/{departmentId}")
-    public ResponseEntity<List<MemberDTO>> getMembersByDepartment(@PathVariable Long departmentId) {
-        List<MemberDTO> members = purchaseRequestService.getMembersByDepartment(departmentId);
-        return ResponseEntity.ok(members);
-    }
-
     @PatchMapping("/{id}/status")
     public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequestStatus(
             @PathVariable Long id,
