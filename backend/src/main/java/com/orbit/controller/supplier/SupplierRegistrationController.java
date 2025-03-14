@@ -120,11 +120,13 @@ public class SupplierRegistrationController {
     @PreAuthorize("hasRole('SUPPLIER')")
     public ResponseEntity<SupplierRegistrationResponseDto> registerSupplier(
             @Valid @RequestBody SupplierRegistrationRequestDto requestDto) {
-
         try {
             SupplierRegistration registration = supplierRegistrationService.registerSupplier(requestDto, null);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(SupplierRegistrationResponseDto.fromEntity(registration));
+            SupplierRegistrationResponseDto responseDto = SupplierRegistrationResponseDto.fromEntity(registration);
+            responseDto.setPostalCode(registration.getPostalCode());  // 추가
+            responseDto.setRoadAddress(registration.getRoadAddress());  // 추가
+            responseDto.setDetailAddress(registration.getDetailAddress());  // 추가
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }

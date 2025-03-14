@@ -42,7 +42,11 @@ public class SupplierRegistrationResponseDto {
 
     private String phoneNumber; // 전화번호
 
-    private String headOfficeAddress; // 본사 주소
+    private String postalCode; // 우편번호 (최대 길이 10)
+
+    private String roadAddress; // 도로명 주소
+
+    private String detailAddress; // 상세 주소
 
     private String comments; // 의견
 
@@ -92,7 +96,9 @@ public class SupplierRegistrationResponseDto {
                 supplierRegistration.getSourcingSubCategory(),
                 supplierRegistration.getSourcingDetailCategory(),
                 supplierRegistration.getPhoneNumber(),
-                supplierRegistration.getHeadOfficeAddress(),
+                supplierRegistration.getPostalCode(),  // 우편번호 (최대 길이 10)
+                supplierRegistration.getRoadAddress(),  // 도로명 주소
+                supplierRegistration.getDetailAddress(),  // 상세 주소
                 supplierRegistration.getComments(),
                 supplierRegistration.getRejectionReason(),
                 supplierRegistration.getContactPerson(),  // 담당자 이름 추가

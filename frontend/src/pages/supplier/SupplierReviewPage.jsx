@@ -494,7 +494,11 @@ const SupplierReviewPage = () => {
 
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" color="text.secondary">본사 주소</Typography>
-              <Typography variant="body1">{currentSupplier.headOfficeAddress || '-'}</Typography>
+              <Typography variant="body1">
+                {currentSupplier.postalCode ? `[${currentSupplier.postalCode}] ` : ''}
+                {currentSupplier.roadAddress || ''}
+                {currentSupplier.detailAddress ? ` ${currentSupplier.detailAddress}` : ''}
+              </Typography>
             </Box>
           </Grid>
 

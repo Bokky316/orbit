@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom'; // useParams 추가
-import { registerSupplier, resetSupplierState, fetchSupplierById, updateSupplier } from '../../redux/supplier/supplierSlice';
+import KakaoAddressSearch from "@pages/member/KakaoAddressSearch";
+import { registerSupplier, resetSupplierState, fetchSupplierById, updateSupplier } from '@/redux/supplier/supplierSlice';
 import {
   Box,
   Container,
@@ -65,8 +66,25 @@ const SupplierRegistrationPage = () => {
     contactPerson: '',
     contactPhone: '',
     contactEmail: '',
-    comments: ''
+    comments: '',
+    // 주소 관련 필드 초기값 추가
+    postalCode: '',
+    roadAddress: '',
+    detailAddress: ''
   });
+
+  // 📌 KakaoAddressSearch에서 선택된 주소 반영 (여기에 위치)
+  const handleAddressSelect = (data) => {
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      postalCode: data.zonecode || '',
+      roadAddress: data.roadAddress || '',
+      detailAddress: '', // 도로명 주소 선택 시 상세 주소 초기화
+      headOfficeAddress: data.zonecode && data.roadAddress
+      ? `[${data.zonecode}] ${data.roadAddress}`.trim()
+      : ''
+    }));
+  };
 
   // 첨부 파일 상태 관리
   const [attachments, setAttachments] = useState([]);
@@ -263,43 +281,50 @@ const SupplierRegistrationPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+      e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      // FormData 객체 생성
-      const formDataToSend = new FormData();
-
-      // 전화번호에서 하이픈 제거
-      const processedFormData = {
-          supplierId: Number(formData.supplierId),  // 숫자로 확실하게 변환
-          businessNo: formData.businessNo,
-          ceoName: formData.ceoName,
-          businessType: formData.businessType || '',
-          businessCategory: formData.businessCategory || '',
-          sourcingCategory: formData.sourcingCategory || '',
-          sourcingSubCategory: formData.sourcingSubCategory || '',
-          sourcingDetailCategory: formData.sourcingDetailCategory || '',
-          phoneNumber: formData.phoneNumber ? formData.phoneNumber.replace(/-/g, '') : '',  // 하이픈 제거 (안전하게)
-          headOfficeAddress: formData.headOfficeAddress || '',
-          contactPerson: formData.contactPerson || '',
-          contactPhone: formData.contactPhone ? formData.contactPhone.replace(/-/g, '') : '',  // 하이픈 제거 (안전하게)
-          contactEmail: formData.contactEmail || '',
-          comments: formData.comments || ''
-      };
-
-      // 수정 모드인 경우 ID 추가
-      if (isEditMode) {
-        processedFormData.id = Number(id);
-
-        // 남겨둘 첨부파일 ID 목록 추가
-        if (existingAttachments.length > 0) {
-          processedFormData.remainingAttachmentIds = existingAttachments.map(attachment => attachment.id);
-        }
+      if (!validateForm()) {
+          return;
       }
+
+      try {
+          // FormData 객체 생성
+          const formDataToSend = new FormData();
+
+          // 전화번호에서 하이픈 제거
+          const processedFormData = {
+              supplierId: Number(formData.supplierId),
+              businessNo: formData.businessNo,
+              ceoName: formData.ceoName,
+              businessType: formData.businessType || '',
+              businessCategory: formData.businessCategory || '',
+              sourcingCategory: formData.sourcingCategory || '',
+              sourcingSubCategory: formData.sourcingSubCategory || '',
+              sourcingDetailCategory: formData.sourcingDetailCategory || '',
+              phoneNumber: formData.phoneNumber ? formData.phoneNumber.replace(/-/g, '') : '',
+              postalCode: formData.postalCode || '',
+              roadAddress: formData.roadAddress || '',
+              detailAddress: formData.detailAddress || '',
+              contactPerson: formData.contactPerson || '',
+              contactPhone: formData.contactPhone ? formData.contactPhone.replace(/-/g, '') : '',
+              contactEmail: formData.contactEmail || '',
+              comments: formData.comments || ''
+          };
+
+          // 수정 모드인 경우 ID 추가
+          if (isEditMode) {
+              processedFormData.id = Number(id);
+
+              // 남겨둘 첨부파일 ID 목록 추가
+              if (existingAttachments.length > 0) {
+                  processedFormData.remainingAttachmentIds = existingAttachments.map(attachment => attachment.id);
+              }
+
+              // headOfficeAddress 재구성 (수정 모드에서도 동일하게 처리)
+              processedFormData.headOfficeAddress = processedFormData.roadAddress
+                  ? `[${processedFormData.postalCode || ''}] ${processedFormData.roadAddress} ${processedFormData.detailAddress || ''}`.trim()
+                  : '';
+          }
 
       // JSON 문자열로 변환하여 추가
       const supplierDTO = JSON.stringify(processedFormData);
@@ -538,15 +563,19 @@ const SupplierRegistrationPage = () => {
                   onChange={handleChange}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="본사 주소"
-                  name="headOfficeAddress"
-                  value={formData.headOfficeAddress}
-                  onChange={handleChange}
-                />
+              <Grid item xs={9}>
+                <TextField fullWidth label="우편번호 *" name="postalCode" value={formData.postalCode} disabled />
               </Grid>
+              <Grid item xs={3}>
+                <KakaoAddressSearch onAddressSelect={handleAddressSelect} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField fullWidth label="도로명 주소 *" name="roadAddress" value={formData.roadAddress} disabled />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField fullWidth label="상세 주소 *" name="detailAddress" value={formData.detailAddress} onChange={handleChange} />
+              </Grid>
+
             </Grid>
 
             {/* 담당자 정보 */}

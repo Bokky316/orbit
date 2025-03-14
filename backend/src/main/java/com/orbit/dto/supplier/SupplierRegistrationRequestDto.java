@@ -30,7 +30,9 @@ public class SupplierRegistrationRequestDto {
     private String sourcingSubCategory; // 소싱중분류
     private String sourcingDetailCategory; // 소싱소분류 (추가)
     private String phoneNumber; // 전화번호
-    private String headOfficeAddress; // 본사 주소
+    private String postalCode; // 우편번호 (최대 길이 10)
+    private String roadAddress; // 도로명 주소
+    private String detailAddress; // 상세 주소
     private String comments; // 의견
 
     // 추가 필드

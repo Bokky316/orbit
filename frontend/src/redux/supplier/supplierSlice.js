@@ -30,7 +30,7 @@ const formatPhoneNumber = (phoneNumber) => {
 const dummySuppliers = [
   {
     id: 1,
-    supplierId: 100, // 해당 업체를 등록한 사용자 ID
+    supplierId: 100,
     supplierName: "(주)가나다전자",
     businessNo: "123-45-67890",
     ceoName: "김대표",
@@ -40,9 +40,10 @@ const dummySuppliers = [
     sourcingSubCategory: "반도체",
     sourcingDetailCategory: "메모리",
     phoneNumber: "02-1234-5678",
-    headOfficeAddress: "서울특별시 강남구 테헤란로 123",
+    postalCode: "06234",
+    roadAddress: "서울특별시 강남구 테헤란로",
+    detailAddress: "123",
     comments: "반도체 부품 전문 제조업체입니다.",
-    // 첨부 파일 구조 변경
     attachments: [
       {
         id: 1,
@@ -63,7 +64,7 @@ const dummySuppliers = [
   },
   {
     id: 2,
-    supplierId: 101, // 해당 업체를 등록한 사용자 ID
+    supplierId: 101,
     supplierName: "라마바물산(주)",
     businessNo: "234-56-78901",
     ceoName: "이사장",
@@ -73,9 +74,10 @@ const dummySuppliers = [
     sourcingSubCategory: "금속",
     sourcingDetailCategory: "철강",
     phoneNumber: "02-2345-6789",
-    headOfficeAddress: "서울특별시 영등포구 여의도로 456",
+    postalCode: "07323",
+    roadAddress: "서울특별시 영등포구 여의도로",
+    detailAddress: "456",
     comments: "금속 원자재 전문 공급업체입니다.",
-    // 첨부 파일 구조 변경
     attachments: [
       {
         id: 2,
@@ -96,7 +98,7 @@ const dummySuppliers = [
   },
   {
     id: 3,
-    supplierId: 100, // 해당 업체를 등록한 사용자 ID (첫 번째 사용자의 또 다른 등록)
+    supplierId: 100,
     supplierName: "사아자테크",
     businessNo: "345-67-89012",
     ceoName: "박사장",
@@ -106,9 +108,10 @@ const dummySuppliers = [
     sourcingSubCategory: "개발",
     sourcingDetailCategory: "웹서비스",
     phoneNumber: "02-3456-7890",
-    headOfficeAddress: "서울특별시 서초구 강남대로 789",
+    postalCode: "06615",
+    roadAddress: "서울특별시 서초구 강남대로",
+    detailAddress: "789",
     comments: "소프트웨어 개발 전문 기업입니다.",
-    // 첨부 파일 구조 변경
     attachments: [
       {
         id: 3,
@@ -130,7 +133,7 @@ const dummySuppliers = [
   },
   {
     id: 4,
-    supplierId: 102, // 해당 업체를 등록한 사용자 ID
+    supplierId: 102,
     supplierName: "(주)차카타",
     businessNo: "456-78-90123",
     ceoName: "최회장",
@@ -140,9 +143,10 @@ const dummySuppliers = [
     sourcingSubCategory: "자동차부품",
     sourcingDetailCategory: "엔진부품",
     phoneNumber: "02-4567-8901",
-    headOfficeAddress: "경기도 화성시 산업로 101",
+    postalCode: "18448",
+    roadAddress: "경기도 화성시 산업로",
+    detailAddress: "101",
     comments: "자동차 부품 제조 전문 기업입니다.",
-    // 첨부 파일 구조 변경
     attachments: [
       {
         id: 4,
@@ -163,7 +167,7 @@ const dummySuppliers = [
   },
   {
     id: 5,
-    supplierId: 101, // 해당 업체를 등록한 사용자 ID
+    supplierId: 101,
     supplierName: "파하솔루션",
     businessNo: "567-89-01234",
     ceoName: "정이사",
@@ -173,9 +177,10 @@ const dummySuppliers = [
     sourcingSubCategory: "조직관리",
     sourcingDetailCategory: "인사관리",
     phoneNumber: "02-5678-9012",
-    headOfficeAddress: "서울특별시 강남구 삼성로 555",
+    postalCode: "06173",
+    roadAddress: "서울특별시 강남구 삼성로",
+    detailAddress: "555",
     comments: "경영 컨설팅 및 조직관리 전문 기업입니다.",
-    // 첨부 파일 구조 변경
     attachments: [
       {
         id: 5,
@@ -196,7 +201,7 @@ const dummySuppliers = [
   },
   {
     id: 6,
-    supplierId: 103, // 해당 업체를 등록한 사용자 ID
+    supplierId: 103,
     supplierName: "블랙리스트업체(주)",
     businessNo: "678-90-12345",
     ceoName: "한대표",
@@ -206,9 +211,10 @@ const dummySuppliers = [
     sourcingSubCategory: "금속",
     sourcingDetailCategory: "알루미늄",
     phoneNumber: "02-6789-0123",
-    headOfficeAddress: "경기도 안산시 산업로 202",
+    postalCode: "15588",
+    roadAddress: "경기도 안산시 산업로",
+    detailAddress: "202",
     comments: "알루미늄 제조 전문업체입니다.",
-    // 첨부 파일 구조 변경
     attachments: [
       {
         id: 6,
@@ -230,7 +236,7 @@ const dummySuppliers = [
   },
   {
     id: 7,
-    supplierId: 102, // 해당 업체를 등록한 사용자 ID
+    supplierId: 102,
     supplierName: "일시정지물산(주)",
     businessNo: "789-01-23456",
     ceoName: "노사장",
@@ -240,9 +246,10 @@ const dummySuppliers = [
     sourcingSubCategory: "화학",
     sourcingDetailCategory: "",
     phoneNumber: "02-7890-1234",
-    headOfficeAddress: "충청남도 천안시 공단로 303",
+    postalCode: "31253",
+    roadAddress: "충청남도 천안시 공단로",
+    detailAddress: "303",
     comments: "화학 원료 공급업체입니다.",
-    // 첨부 파일 구조 변경
     attachments: [
       {
         id: 7,

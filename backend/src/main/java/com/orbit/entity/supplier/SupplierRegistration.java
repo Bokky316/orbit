@@ -66,8 +66,15 @@ public class SupplierRegistration {
     @Column(name = "phone_number", length = 20)
     private String phoneNumber; // 전화번호
 
-    @Column(name = "head_office_address", columnDefinition = "TEXT")
-    private String headOfficeAddress; // 본사 주소
+    // 주소 관련
+    @Column(name = "postal_code", length = 10)
+    private String postalCode; // 우편번호 (최대 길이 10)
+
+    @Column(name = "road_address")
+    private String roadAddress; // 도로명 주소
+
+    @Column(name = "detail_address")
+    private String detailAddress; // 상세 주소
 
     @Column(name = "comments", columnDefinition = "TEXT")
     private String comments; // 의견

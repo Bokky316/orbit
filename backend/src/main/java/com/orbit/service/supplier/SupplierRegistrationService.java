@@ -122,7 +122,9 @@ public class SupplierRegistrationService {
         registration.setSourcingSubCategory(requestDto.getSourcingSubCategory());
         registration.setSourcingDetailCategory(requestDto.getSourcingDetailCategory());
         registration.setPhoneNumber(requestDto.getPhoneNumber());
-        registration.setHeadOfficeAddress(requestDto.getHeadOfficeAddress());
+        registration.setPostalCode(requestDto.getPostalCode());
+        registration.setRoadAddress(requestDto.getRoadAddress());
+        registration.setDetailAddress(requestDto.getDetailAddress());
         registration.setComments(requestDto.getComments());
         registration.setStatus(new SystemStatus("SUPPLIER", "PENDING"));
         registration.setRegistrationDate(LocalDate.now());
@@ -334,7 +336,9 @@ public class SupplierRegistrationService {
         supplier.setSourcingSubCategory(requestDto.getSourcingSubCategory());
         supplier.setSourcingDetailCategory(requestDto.getSourcingDetailCategory());
         supplier.setPhoneNumber(requestDto.getPhoneNumber());
-        supplier.setHeadOfficeAddress(requestDto.getHeadOfficeAddress());
+        supplier.setPostalCode(requestDto.getPostalCode());
+        supplier.setRoadAddress(requestDto.getRoadAddress());
+        supplier.setDetailAddress(requestDto.getDetailAddress());
         supplier.setComments(requestDto.getComments());
         supplier.setContactPerson(requestDto.getContactPerson());
         supplier.setContactPhone(requestDto.getContactPhone());
