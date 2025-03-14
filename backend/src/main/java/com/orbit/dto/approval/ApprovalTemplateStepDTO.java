@@ -1,6 +1,5 @@
 package com.orbit.dto.approval;
 
-import com.orbit.entity.approval.Department;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,7 +18,7 @@ public class ApprovalTemplateStepDTO {
     private int step;
 
     @NotNull(message = "부서는 필수입니다")
-    private Department department;
+    private DepartmentDTO department;
 
     @Min(value = 1, message = "최소 레벨은 1 이상이어야 합니다")
     private int minLevel;

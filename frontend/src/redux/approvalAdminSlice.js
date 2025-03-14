@@ -19,6 +19,7 @@ export const fetchApprovalTemplates = createAsyncThunk(
       }
 
       const data = await response.json();
+      // 백엔드에서 이미 올바르게 변환된 데이터가 전달되므로 그대로 반환
       return data;
     } catch (error) {
       console.error('결재선 템플릿 조회 중 오류 발생:', error);
@@ -34,12 +35,26 @@ export const createApprovalTemplate = createAsyncThunk(
   'approvalAdmin/createApprovalTemplate',
   async (templateData, { rejectWithValue }) => {
     try {
+      // 데이터 준비 - department가 DepartmentDTO 객체임을 보장
+      const preparedData = {
+        ...templateData,
+        steps: templateData.steps.map(step => ({
+          ...step,
+          department: step.department ? {
+            id: step.department.id,
+            name: step.department.name,
+            code: step.department.code,
+            description: step.department.description
+          } : null
+        }))
+      };
+
       const response = await fetchWithAuth(`${API_URL}approval-templates`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(templateData)
+        body: JSON.stringify(preparedData)
       });
 
       if (!response.ok) {
@@ -63,12 +78,26 @@ export const updateApprovalTemplate = createAsyncThunk(
   'approvalAdmin/updateApprovalTemplate',
   async ({ id, templateData }, { rejectWithValue }) => {
     try {
+      // 데이터 준비 - department가 DepartmentDTO 객체임을 보장
+      const preparedData = {
+        ...templateData,
+        steps: templateData.steps.map(step => ({
+          ...step,
+          department: step.department ? {
+            id: step.department.id,
+            name: step.department.name,
+            code: step.department.code,
+            description: step.department.description
+          } : null
+        }))
+      };
+
       const response = await fetchWithAuth(`${API_URL}approval-templates/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(templateData)
+        body: JSON.stringify(preparedData)
       });
 
       if (!response.ok) {
