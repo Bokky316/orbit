@@ -1,21 +1,17 @@
 import React from "react";
 import { useSelector } from "react-redux";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./redux/store";
 
 import Home from "@/pages/Home";
 import Login from "@/pages/member/Login";
+import RegisterMember from "@/pages/member/RegisterMember";
 import BiddingListPage from "@/pages/bidding/BiddingListPage";
 import BiddingDetailPage from "./pages/bidding/BiddingDetailPage";
 import BiddingFormPage from "@/pages/bidding/BiddingFormPage";
 import BiddingEvaluationListPage from "./pages/bidding/BiddingEvaluationListPage";
 import BiddingEvaluationDetailPage from "./pages/bidding/BiddingEvaluationDetailPage";
-//import BiddingOrderList from "./pages/bidding/BiddingOrderList";
-import BiddingOrderDetail from "./pages/bidding/BiddingOrderDetail";
-import ContractsListPage from "./pages/contract/ContractsListPage";
-import ContractCreatePage from "./pages/contract/ContractCreatePage";
-import BiddingOrderPage from "./pages/bidding/BiddingOrderPage";
 import BiddingOrderDetail from "./pages/bidding/BiddingOrderDetail";
 import ContractsListPage from "./pages/contract/ContractsListPage";
 import ContractCreatePage from "./pages/contract/ContractCreatePage";
@@ -24,9 +20,11 @@ import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
 import ProjectCreatePage from "@/pages/procurement/ProjectCreatePage";
+import ProjectEditPage from "@/pages/procurement/ProjectEditPage";
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
+import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
@@ -42,10 +40,7 @@ import PaymentProcessPage from "@/pages/payment/PaymentProcessPage";
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
  * @returns {JSX.Element} - 전체 앱 콘텐츠
  */
-/**
- * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
- * @returns {JSX.Element} - 전체 앱 콘텐츠
- */
+
 function AppContent() {
   const { isLoggedIn } = useSelector((state) => state.auth);
 
@@ -74,6 +69,7 @@ function AppContent() {
                 path="/biddings/:id/edit"
                 element={<BiddingFormPage mode="edit" />}
               />
+              <Route path="/biddings/:id" element={<BiddingDetailPage />} />
               {/* 평가 페이지 */}
               <Route
                 path="/biddings/evaluations"
@@ -85,11 +81,11 @@ function AppContent() {
                 element={<BiddingEvaluationDetailPage />}
               />
               {/* 계약 목록 페이지 */}
-              <Route path="" element={<ContractsListPage />} />
+              <Route path="contracts" element={<ContractsListPage />} />
               {/* 계약 생성 페이지 */}
               <Route path="" element={<ContractCreatePage />} />
               {/* 주문 목록 페이지 */}
-              <Route path="/biddings/orders" element={<BiddingOrderPage />} />
+              <Route path="/orders" element={<BiddingOrderPage />} />
               {/* 주문 상세 페이지 */}
               <Route
                 path="/biddings/orders/:id"

@@ -1,9 +1,9 @@
 package com.orbit.controller.procurement;
 
-import com.orbit.dto.procurement.ProjectRequestDTO;
-import com.orbit.service.procurement.ProjectService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -11,13 +11,25 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
 
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.util.List;
+import com.orbit.dto.procurement.ProjectDTO;
+import com.orbit.service.procurement.ProjectService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,15 +42,15 @@ public class ProjectController {
      * 프로젝트 생성 (JSON)
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ProjectResponseDTO> createProject(
-            @Valid @RequestBody ProjectRequestDTO projectRequestDTO) {
+    public ResponseEntity<ProjectDTO> createProject(
+            @Valid @RequestBody ProjectDTO ProjectDTO) {
 
         // Spring Security Context에서 인증 정보 가져오기
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUserName = authentication.getName();
 
         // ProjectService에 인증 정보 전달
-        ProjectResponseDTO createdProject = projectService.createProject(projectRequestDTO, currentUserName);
+        ProjectDTO createdProject = projectService.createProject(ProjectDTO, currentUserName);
         return new ResponseEntity<>(createdProject, HttpStatus.CREATED);
     }
 
@@ -46,7 +58,7 @@ public class ProjectController {
      * 프로젝트 생성 (Multipart) - 구매요청과 동일한 방식으로 수정
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProjectResponseDTO> createProjectWithFiles(
+    public ResponseEntity<ProjectDTO> createProjectWithFiles(
             @RequestParam("projectName") String projectName,
             @RequestParam("businessCategory") String businessCategory,
             @RequestParam(value = "clientCompany", required = false) String clientCompany,
@@ -60,37 +72,34 @@ public class ProjectController {
             @RequestParam(value = "projectPeriod.endDate", required = false) String endDate,
             @RequestParam(value = "files", required = false) MultipartFile[] files) {
 
-        // ProjectRequestDTO 객체 생성
-        ProjectRequestDTO projectRequestDTO = new ProjectRequestDTO();
-        projectRequestDTO.setProjectName(projectName);
-        projectRequestDTO.setBusinessCategory(businessCategory);
-        projectRequestDTO.setClientCompany(clientCompany);
-        projectRequestDTO.setContractType(contractType);
-        projectRequestDTO.setTotalBudget(totalBudget);
-        projectRequestDTO.setRemarks(remarks);
-        projectRequestDTO.setBasicStatus(basicStatus);
-        projectRequestDTO.setProcurementStatus(procurementStatus);
-        projectRequestDTO.setRequestDepartment(requestDepartment);
+        // ProjectDTO 객체 생성
+        ProjectDTO ProjectDTO = new ProjectDTO();
+        ProjectDTO.setProjectName(projectName);
+        ProjectDTO.setBusinessCategory(businessCategory);
+        ProjectDTO.setTotalBudget(totalBudget);
+        ProjectDTO.setRemarks(remarks);
+        ProjectDTO.setBasicStatus(basicStatus);
+        ProjectDTO.setRequestDepartment(requestDepartment);
 
         // 기간 정보 설정
-        ProjectRequestDTO.PeriodInfo periodInfo = new ProjectRequestDTO.PeriodInfo();
+        ProjectDTO.PeriodInfo periodInfo = new ProjectDTO.PeriodInfo();
         if (startDate != null) {
             periodInfo.setStartDate(LocalDate.parse(startDate));
         }
         if (endDate != null) {
             periodInfo.setEndDate(LocalDate.parse(endDate));
         }
-        projectRequestDTO.setProjectPeriod(periodInfo);
+        ProjectDTO.setProjectPeriod(periodInfo);
 
         // 파일 정보 설정
-        projectRequestDTO.setFiles(files);
+        ProjectDTO.setFiles(files);
 
         // Spring Security Context에서 인증 정보 가져오기
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentUserName = authentication.getName();
 
         // ProjectService에 인증 정보 전달
-        ProjectResponseDTO createdProject = projectService.createProject(projectRequestDTO, currentUserName);
+        ProjectDTO createdProject = projectService.createProject(ProjectDTO, currentUserName);
         return new ResponseEntity<>(createdProject, HttpStatus.CREATED);
     }
 
@@ -98,8 +107,8 @@ public class ProjectController {
      * 프로젝트 조회 (ID)
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectResponseDTO> getProjectById(@PathVariable Long id) {
-        ProjectResponseDTO project = projectService.getProjectById(id);
+    public ResponseEntity<ProjectDTO> getProjectById(@PathVariable Long id) {
+        ProjectDTO project = projectService.getProjectById(id);
         return new ResponseEntity<>(project, HttpStatus.OK);
     }
 
@@ -107,8 +116,8 @@ public class ProjectController {
      * 모든 프로젝트 조회
      */
     @GetMapping
-    public ResponseEntity<List<ProjectResponseDTO>> getAllProjects() {
-        List<ProjectResponseDTO> projects = projectService.getAllProjects();
+    public ResponseEntity<List<ProjectDTO>> getAllProjects() {
+        List<ProjectDTO> projects = projectService.getAllProjects();
         return new ResponseEntity<>(projects, HttpStatus.OK);
     }
 
@@ -116,15 +125,15 @@ public class ProjectController {
      * 프로젝트 업데이트 (JSON)
      */
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ProjectResponseDTO> updateProject(
+    public ResponseEntity<ProjectDTO> updateProject(
             @PathVariable Long id,
-            @Valid @RequestBody ProjectRequestDTO projectRequestDTO) {
+            @Valid @RequestBody ProjectDTO ProjectDTO) {
 
         // 업데이트 요청자 설정
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        projectRequestDTO.setUpdatedBy(authentication.getName());
+        ProjectDTO.setUpdatedBy(authentication.getName());
 
-        ProjectResponseDTO updatedProject = projectService.updateProject(id, projectRequestDTO);
+        ProjectDTO updatedProject = projectService.updateProject(id, ProjectDTO);
         return new ResponseEntity<>(updatedProject, HttpStatus.OK);
     }
 
@@ -132,19 +141,19 @@ public class ProjectController {
      * 프로젝트 업데이트 (Multipart) - 구매요청과 동일한 방식으로 수정
      */
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProjectResponseDTO> updateProjectWithFiles(
+    public ResponseEntity<ProjectDTO> updateProjectWithFiles(
             @PathVariable Long id,
-            @Valid @RequestPart("projectRequestDTO") ProjectRequestDTO projectRequestDTO,
+            @Valid @RequestPart("ProjectDTO") ProjectDTO ProjectDTO,
             @RequestPart(value = "files", required = false) MultipartFile[] files) {
 
         // 파일 정보 설정
-        projectRequestDTO.setFiles(files);
+        ProjectDTO.setFiles(files);
 
         // 업데이트 요청자 설정
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        projectRequestDTO.setUpdatedBy(authentication.getName());
+        ProjectDTO.setUpdatedBy(authentication.getName());
 
-        ProjectResponseDTO updatedProject = projectService.updateProject(id, projectRequestDTO);
+        ProjectDTO updatedProject = projectService.updateProject(id, ProjectDTO);
         return new ResponseEntity<>(updatedProject, HttpStatus.OK);
     }
 
@@ -153,7 +162,11 @@ public class ProjectController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
-        projectService.deleteProject(id);
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        projectService.deleteProject(id, currentUserName);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 

@@ -3,8 +3,11 @@ import {
   useNotifications,
   useWebSocketNotifications,
   useNotificationInteractions
-} from "./notificationHooks";
-import { NOTIFICATION_TYPES, getNotificationStyle } from "./notificationTypes";
+} from "@/hooks/useNotifications";
+import {
+  NOTIFICATION_TYPES,
+  getNotificationStyle
+} from "@/utils/notificationTypes";
 
 // 알림 패널 컴포넌트
 function NotificationPanel() {

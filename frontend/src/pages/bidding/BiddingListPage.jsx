@@ -23,7 +23,8 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { getStatusText } from "./helpers/biddingHelpers";
+// 헬퍼 함수 import
+import { getStatusText } from "./helpers/commonBiddingHelpers";
 
 function BiddingListPage() {
   // 상태 관리

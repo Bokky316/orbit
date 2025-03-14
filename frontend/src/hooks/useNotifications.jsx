@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { API_URL } from "@/utils/constants";
 import {
   NOTIFICATION_TYPES,
   getNotificationStyle,
   navigateToNotificationSource
-} from "./notificationTypes";
+} from "@/utils/notificationTypes";
 
 // 알림 관리 훅
 export function useNotifications() {

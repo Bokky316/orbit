@@ -61,8 +61,11 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
     /**
      * 삭제되지 않은 발주 목록 조회
      */
-    @Query("SELECT o FROM BiddingOrder o WHERE (o.deleted = false OR o.deleted IS NULL)")
-    List<BiddingOrder> findNonDeletedOrders();
+        //     @Query("SELECT o FROM BiddingOrder o WHERE (o.deleted = false OR o.deleted IS NULL)")
+        //     List<BiddingOrder> findNonDeletedOrders();
+        @Query("SELECT o FROM BiddingOrder o") // deleted 필드 조건 제거
+        List<BiddingOrder> findNonDeletedOrders();
+
     
     /**
      * 특정 기간 내에 납품 예정인 발주 중 승인된 것 조회

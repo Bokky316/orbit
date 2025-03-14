@@ -114,6 +114,10 @@ public class BiddingOrder extends BaseEntity {
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt; // 수정일시
+
+    @Column(name = "deleted")
+    @Builder.Default
+    private Boolean deleted = false; // 삭제 여부 필드
     
     
     /**

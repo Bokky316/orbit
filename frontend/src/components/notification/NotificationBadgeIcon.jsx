@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNotifications } from "./hooks/notificationHooks";
+import { useNotifications } from "@/hooks/useNotifications";
 
 function NotificationBadgeIcon() {
   const { notifications, unreadCount } = useNotifications();

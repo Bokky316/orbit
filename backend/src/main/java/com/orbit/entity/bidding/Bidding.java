@@ -156,6 +156,7 @@ public class Bidding extends BaseEntity {
     @ElementCollection
     @CollectionTable(name = "bidding_attachments", joinColumns = @JoinColumn(name = "bidding_id"))
     @Column(name = "file_path")
+    @Builder.Default
     private List<String> attachmentPaths = new ArrayList<>();
 
     // 첨부파일 추가 메서드

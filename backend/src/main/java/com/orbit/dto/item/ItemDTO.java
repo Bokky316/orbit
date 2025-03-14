@@ -1,13 +1,14 @@
 package com.orbit.dto.item;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import com.orbit.entity.item.Item;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -20,8 +21,11 @@ public class ItemDTO {
     private String name;
     private String code;
     private String specification;
-    private String unitCode;
-    private String unitName;
+
+    // ✅ 변경: 단위 코드 필드명 수정
+    private String unitParentCode;  // ParentCode.codeGroup
+    private String unitChildCode;   // ChildCode.codeValue
+
     private BigDecimal standardPrice;
     private String description;
     private String useYn;
@@ -38,8 +42,17 @@ public class ItemDTO {
                 .name(entity.getName())
                 .code(entity.getCode())
                 .specification(entity.getSpecification())
-                .unitCode(entity.getUnit() != null ? entity.getUnit().getId() : null)
-                .unitName(entity.getUnit() != null ? entity.getUnit().getName() : null)
+
+                // ✅ 추가: 단위 코드 매핑
+                .unitParentCode(
+                        entity.getUnitParentCode() != null ?
+                                entity.getUnitParentCode().getCodeGroup() : null
+                )
+                .unitChildCode(
+                        entity.getUnitChildCode() != null ?
+                                entity.getUnitChildCode().getCodeValue() : null
+                )
+
                 .standardPrice(entity.getStandardPrice())
                 .description(entity.getDescription())
                 .useYn(entity.getUseYn())

@@ -192,7 +192,6 @@ public class BiddingController {
         
         try {
             // 현재 사용자 정보 설정은 Service 레이어에서 처리하도록 수정
-            // BiddingFormDto에는 createdBy 필드가 없으므로 제거
             
             // 금액 필드 안전 처리 및 재계산
             formDto.recalculateAllPrices();
@@ -218,7 +217,6 @@ public class BiddingController {
         
         try {
             // 현재 사용자 정보 설정은 Service 레이어에서 처리하도록 수정
-            // BiddingFormDto에는 updatedBy 필드가 없으므로 제거
             
             // 금액 필드 안전 처리 및 재계산
             formDto.recalculateAllPrices();

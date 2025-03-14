@@ -20,7 +20,6 @@ import { Search as SearchIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "@/utils/constants";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { getStatusText } from "./helpers/biddingHelpers";
 
 function BiddingEvaluationListPage() {
   const navigate = useNavigate();

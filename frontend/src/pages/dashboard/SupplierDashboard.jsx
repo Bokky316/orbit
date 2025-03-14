@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { API_URL } from "@/utils/constants";
-import { getStatusText, getBidMethodText } from "./helpers/biddingHelpers";
+import {
+  getStatusText,
+  getBidMethodText
+} from "./helpers/commonBiddingHelpers";
 
 function SupplierDashboard() {
   // 대시보드 상태 관리

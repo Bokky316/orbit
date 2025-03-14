@@ -241,16 +241,30 @@ input[type="password"],
 input.text,
 input.password {
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #fff;
   height: 2em;
   line-height: 1.7em;
-  padding: 0.3em 5px 0.4em 5px;
+  padding: 0.5em 8px;
   box-sizing: content-box;
   margin: 0;
   vertical-align: middle;
   color: #333;
   font-weight: 500;
+}
+
+input.MuiInputBase-input {
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #fff;
+  height: auto;
+  padding: 10px 17px;
+  box-sizing: content-box;
+  margin: 0;
+  /* vertical-align: middle; */
+  color: #333;
+  font-size: 14px;
+  /* font-weight: 500;*/
 }
 
 input::placeholder {

@@ -23,10 +23,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
-/**
- * 구매 요청 관련 RESTful API 컨트롤러 (파일 업로드 기능 포함)
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/purchase-requests")
@@ -50,15 +48,10 @@ public class PurchaseRequestController {
         return new ResponseEntity<>(purchaseRequest, HttpStatus.OK);
     }
 
-    /**
-     * 구매 요청 생성 (JSON 요청)
-     * @param purchaseRequestDTO 요청 정보
-     * @return 생성된 구매 요청
-     */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<PurchaseRequestResponseDTO> createPurchaseRequest(
+    public ResponseEntity<PurchaseRequestDTO> createPurchaseRequest(
             @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestResponseDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, null); // 파일은 null로 전달
+        PurchaseRequestDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, null);
         return new ResponseEntity<>(createdPurchaseRequest, HttpStatus.CREATED);
     }
 
@@ -74,13 +67,22 @@ public class PurchaseRequestController {
     public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequest(
             @PathVariable Long id,
             @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO);
+
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        PurchaseRequestDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO, currentUserName);
         return new ResponseEntity<>(updatedPurchaseRequest, HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePurchaseRequest(@PathVariable Long id) {
-        boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id);
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id, currentUserName);
         return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
@@ -135,41 +137,20 @@ public class PurchaseRequestController {
         return new ResponseEntity<>(categories, HttpStatus.OK);
     }
 
-    // ======== 새로 추가된 부서/담당자 관련 API 엔드포인트 ========
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequestStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> statusData,
+            Authentication authentication
+    ) {
+        String currentUsername = authentication.getName();
 
-    /**
-     * 모든 부서 목록을 조회하는 API
-     */
-    @GetMapping("/departments")
-    public ResponseEntity<List<DepartmentDTO>> getAllDepartments() {
-        List<DepartmentDTO> departments = purchaseRequestService.getAllDepartments();
-        return ResponseEntity.ok(departments);
-    }
+        PurchaseRequestDTO updatedRequest = purchaseRequestService.updatePurchaseRequestStatus(
+                id,
+                statusData.get("toStatus"),
+                currentUsername
+        );
 
-    /**
-     * 특정 부서 정보를 조회하는 API
-     */
-    @GetMapping("/departments/{id}")
-    public ResponseEntity<DepartmentDTO> getDepartmentById(@PathVariable Long id) {
-        DepartmentDTO department = purchaseRequestService.getDepartmentById(id);
-        return ResponseEntity.ok(department);
-    }
-
-    /**
-     * 모든 사용자 목록을 조회하는 API
-     */
-    @GetMapping("/members")
-    public ResponseEntity<List<MemberDTO>> getAllMembers() {
-        List<MemberDTO> members = purchaseRequestService.getAllMembers();
-        return ResponseEntity.ok(members);
-    }
-
-    /**
-     * 특정 부서에 속한 사용자 목록을 조회하는 API
-     */
-    @GetMapping("/members/department/{departmentId}")
-    public ResponseEntity<List<MemberDTO>> getMembersByDepartment(@PathVariable Long departmentId) {
-        List<MemberDTO> members = purchaseRequestService.getMembersByDepartment(departmentId);
-        return ResponseEntity.ok(members);
+        return ResponseEntity.ok(updatedRequest);
     }
 }

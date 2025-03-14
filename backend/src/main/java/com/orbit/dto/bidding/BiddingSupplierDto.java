@@ -25,7 +25,7 @@ public class BiddingSupplierDto {
     
     // 공급자 정보
     private Long supplierId;
-    private String supplierName;
+    private String companyName;
     
     // 알림 정보
     private Boolean notificationSent;
@@ -54,7 +54,7 @@ public class BiddingSupplierDto {
                 .bidding(entity.getBidding())
                 .biddingId(entity.getBiddingId())
                 .supplierId(entity.getSupplierId())
-                .supplierName(entity.getSupplierName())
+                .companyName(entity.getCompanyName())
                 .notificationSent(entity.getNotificationSent())
                 .notificationDate(entity.getNotificationDate())
                 .isParticipating(entity.getIsParticipating())
@@ -72,7 +72,7 @@ public class BiddingSupplierDto {
                 .id(this.id)
                 .biddingId(this.biddingId)
                 .supplierId(this.supplierId)
-                .supplierName(this.supplierName)
+                .companyName(this.companyName)
                 .notificationSent(this.notificationSent)
                 .notificationDate(this.notificationDate)
                 .isParticipating(this.isParticipating)

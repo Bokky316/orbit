@@ -2,6 +2,7 @@ package com.orbit.config.datainitializer;
 
 import java.util.List;
 
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,14 +10,6 @@ import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +77,7 @@ public class CommonCodeDataInitializer {
         );
     }
 
-    //▶▶▶ 입찰 코드
+    //▶▶▶ 입찰관련 상태 코드
     private void initBiddingCodes() {
         // 입찰 상태 코드
        ParentCode biddingStatus = initParentCode("BIDDING", "STATUS", "입찰 상태");
@@ -136,35 +129,30 @@ public class CommonCodeDataInitializer {
 
     //━━━━ 공통 메서드 ━━━━━━
     private ParentCode initParentCode(String entityType, String codeGroup, String codeName) {
-        ParentCode parentCode = parentCodeRepo.findByEntityTypeAndCodeGroup(entityType, codeGroup);
-        if (parentCode == null) {
-            parentCode = parentCodeRepo.save(
-                    ParentCode.builder()
-                            .entityType(entityType)
-                            .codeGroup(codeGroup)
-                            .codeName(codeName)
-                            .isActive(true)
-                            .build()
-            );
-        }
-        return parentCode;
+        return parentCodeRepo.findByEntityTypeAndCodeGroup(entityType, codeGroup)
+                .orElseGet(() -> parentCodeRepo.save(
+                        ParentCode.builder()
+                                .entityType(entityType)
+                                .codeGroup(codeGroup)
+                                .codeName(codeName)
+                                .isActive(true)
+                                .build()
+                ));
     }
 
     private void initChildCodes(ParentCode parent, List<String> codeValues, List<String> codeNames) {
         for (int i = 0; i < codeValues.size(); i++) {
             String codeValue = codeValues.get(i);
             String codeName = codeNames.get(i);
-            ChildCode childCode = childCodeRepo.findByParentCodeAndCodeValue(parent, codeValue);
-            if (childCode == null) {
-                childCode = childCodeRepo.save(
-                        ChildCode.builder()
-                                .parentCode(parent)
-                                .codeValue(codeValue)
-                                .codeName(codeName)
-                                .isActive(true)
-                                .build()
-                );
-            }
+            childCodeRepo.findByParentCodeAndCodeValue(parent, codeValue)
+                    .orElseGet(() -> childCodeRepo.save(
+                            ChildCode.builder()
+                                    .parentCode(parent)
+                                    .codeValue(codeValue)
+                                    .codeName(codeName)
+                                    .isActive(true)
+                                    .build()
+                    ));
         }
     }
 }

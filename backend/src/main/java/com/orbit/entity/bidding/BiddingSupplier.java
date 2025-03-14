@@ -50,8 +50,8 @@ public class BiddingSupplier extends BaseEntity {
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId; // 공급자 ID
 
-    @Column(name = "supplier_name")
-    private String supplierName; // 공급자명 (캐싱용)
+    @Column(name = "company_name")
+    private String companyName; // 공급자명 (캐싱용)
 
     @Column(name = "notification_sent")
     private Boolean notificationSent; // 알림 발송 여부
@@ -126,7 +126,7 @@ public class BiddingSupplier extends BaseEntity {
                         Notification notification = Notification.builder()
                         .user(buyer)
                         .title("입찰 참여 확인")
-                        .content(this.supplierName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여 의사를 확인했습니다.")
+                        .content(this.companyName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여 의사를 확인했습니다.")
                         .type(Notification.NotificationType.입찰공고)
                         .relatedId(this.biddingId)
                         .isRead(false)
@@ -159,7 +159,7 @@ public class BiddingSupplier extends BaseEntity {
                         Notification notification = Notification.builder()
                             .user(buyer)
                             .title("입찰 참여 거부")
-                            .content(this.supplierName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여를 거부했습니다. 사유: " + reason)
+                            .content(this.companyName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여를 거부했습니다. 사유: " + reason)
                             .type(Notification.NotificationType.입찰공고)
                             .relatedId(this.biddingId)
                             .isRead(false)
@@ -182,7 +182,7 @@ public class BiddingSupplier extends BaseEntity {
             try {
                 Member supplier = memberRepo.findById(this.supplierId).orElse(null);
                 if (supplier != null) {
-                    this.supplierName = supplier.getCompanyName();
+                    this.companyName = supplier.getCompanyName();
                 }
             } catch (Exception e) {
                 // 공급사 정보 조회 실패 (로깅 필요)

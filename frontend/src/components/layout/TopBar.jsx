@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import NotificationBadgeIcon from "./NotificationBadgeIcon";
+import NotificationBadgeIcon from "../notification/NotificationBadgeIcon";
 import "/public/css/layout/Layout.css";
 
 function TopBar() {
@@ -31,15 +31,10 @@ function TopBar() {
     ],
     "/biddings": [
       { label: "입찰공고리스트", path: "/biddings" },
-      { label: "협력사평가리스트", path: "/biddings/evaluations" },
-      { label: "발주리스트", path: "/biddings/orders" }
-      { label: "협력사평가리스트", path: "/biddings/evaluations" },
-      { label: "발주리스트", path: "/biddings/orders" }
+      { label: "협력사평가리스트", path: "/biddings/evaluations" }
     ],
-    "/biddings/contracts": [
-      { label: "계약리스트", path: "/biddings/contracts" }
-    ],
-    "/orders": [{ label: "발주리스트", path: "/orders/list" }],
+    "/contracts": [{ label: "계약리스트", path: "/contracts" }],
+    "/orders": [{ label: "발주리스트", path: "/orders" }],
     "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
     "/funds": [{ label: "자금리스트", path: "/funds/list" }],
     "/reports": [{ label: "보고서리스트", path: "/reports/list" }],

@@ -3,20 +3,22 @@
 
 package com.orbit.dto.procurement;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
+
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Getter @Setter
 public class PurchaseRequestItemDTO {
 
     private Long id;
 
-    private Long itemId; // Item ID 추가
+    // itemId 타입을 String으로 변경 (UUID 대응)
+    private String itemId; // Item ID
 
     private String itemName;
 

@@ -7,11 +7,17 @@ import {
   InputAdornment,
   Box,
   Typography,
-  Link
+  Link,
+  FormHelperText
 } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setUser, setLoading } from "@/redux/authSlice";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import {
+  Visibility,
+  VisibilityOff,
+  CheckCircle,
+  Cancel
+} from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "@utils/constants";
 
@@ -23,10 +29,34 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [showLoginFields, setShowLoginFields] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState({
+    hasRequiredChars: false,
+    hasMinLength: false
+  });
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // 비밀번호 유효성 검사
+  // useEffect(() => {
+  //   const { password } = credentials;
+  //   // 영문/숫자/특수문자 중 1가지 이상 포함 검사
+  //   const hasRequiredChars =
+  //     /^(?=.*[a-zA-Z])|(?=.*\d)|(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])/.test(
+  //       password
+  //     );
+  //   // 6자 이상 검사
+  //   const hasMinLength = password.length >= 6;
+
+  //   setPasswordValidation({
+  //     hasRequiredChars,
+  //     hasMinLength
+  //   });
+  // }, [credentials.password]);
+
+  // 로그인 버튼 활성화 여부
+  const isLoginEnabled =
+    credentials.username.trim() !== "" && credentials.password.trim() !== "";
 
   const handleChange = (event) => {
     setCredentials((prev) => ({
@@ -109,7 +139,7 @@ export default function Login() {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "Enter" && showLoginFields) {
+      if (event.key === "Enter" && isLoginEnabled) {
         event.preventDefault();
         handleLogin();
       }
@@ -118,7 +148,7 @@ export default function Login() {
     document.addEventListener("keydown", handleKeyDown);
 
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [credentials, showLoginFields]);
+  }, [credentials, isLoginEnabled]);
 
   const handleSignupNavigation = () => {
     navigate("/signup");
@@ -135,40 +165,38 @@ export default function Login() {
         backgroundColor: "#f9f9f9",
         p: 2
       }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        로그인
-      </Typography>
+      <img src="/public/images/logo.png" alt="logo" />
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => setShowLoginFields(!showLoginFields)}
-        sx={{ mb: 2 }}>
-        {showLoginFields ? "취소" : "아이디로 로그인"}
-      </Button>
-
-      {showLoginFields && (
-        <Box
-          component="form"
+      <Box
+        component="form"
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          width: "100%",
+          maxWidth: "400px"
+        }}
+        noValidate
+        autoComplete="off">
+        <TextField
+          label="사용자 ID"
+          name="username"
+          type="text"
+          value={credentials.username}
+          onChange={handleChange}
+          fullWidth
+          required
           sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            width: "100%",
-            maxWidth: "400px"
+            "& .MuiOutlinedInput-root": {
+              "&:hover fieldset": {
+                borderColor: "#4FC787", // success 컬러
+                borderWidth: "1px"
+              }
+            }
           }}
-          noValidate
-          autoComplete="off">
-          <TextField
-            label="사용자 ID"
-            name="username"
-            type="text"
-            value={credentials.username}
-            onChange={handleChange}
-            fullWidth
-            required
-          />
+        />
 
+        <Box sx={{ width: "100%" }}>
           <TextField
             label="비밀번호"
             name="password"
@@ -177,6 +205,14 @@ export default function Login() {
             onChange={handleChange}
             fullWidth
             required
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "&:hover fieldset": {
+                  borderColor: "#4FC787", // success 컬러
+                  borderWidth: "1px"
+                }
+              }
+            }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -190,26 +226,78 @@ export default function Login() {
             }}
           />
 
-          <Button variant="contained" color="primary" onClick={handleLogin}>
-            로그인
-          </Button>
-        </Box>
-      )}
+          {credentials.password && (
+            <Box sx={{ mt: 1 }}>
+              <FormHelperText
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  color: passwordValidation.hasRequiredChars
+                    ? "#4FC787"
+                    : "#FA6B6B",
+                  ml: 0
+                }}>
+                {passwordValidation.hasRequiredChars ? (
+                  <CheckCircle
+                    fontSize="small"
+                    sx={{ mr: 0.5, color: "#4FC787" }}
+                  />
+                ) : (
+                  <Cancel fontSize="small" sx={{ mr: 0.5, color: "#FA6B6B" }} />
+                )}
+                영문/숫자/특수문자 중 1가지 이상 포함
+              </FormHelperText>
 
-      <Box sx={{ mt: 2, textAlign: 'center', width: '100%' }}>
+              <FormHelperText
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  color: passwordValidation.hasMinLength
+                    ? "#4FC787"
+                    : "#FA6B6B",
+                  ml: 0
+                }}>
+                {passwordValidation.hasMinLength ? (
+                  <CheckCircle
+                    fontSize="small"
+                    sx={{ mr: 0.5, color: "#4FC787" }}
+                  />
+                ) : (
+                  <Cancel fontSize="small" sx={{ mr: 0.5, color: "#FA6B6B" }} />
+                )}
+                6자 이상
+              </FormHelperText>
+            </Box>
+          )}
+        </Box>
+
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleLogin}
+          disabled={!isLoginEnabled}
+          sx={{
+            mt: 2,
+            backgroundColor: isLoginEnabled ? "#5d0000" : "#BDBDBD"
+          }}>
+          로그인
+        </Button>
+      </Box>
+
+      <Box sx={{ mt: 3, textAlign: "center", width: "100%" }}>
         <Typography variant="body2">
-          아직 회원이 아니신가요?{" "}
+          지금 바로 협력사 가입하고, <br />
+          새로운 성장의 길을 열어보세요!{" "}
           <Link
             component="button"
             onClick={handleSignupNavigation}
             sx={{
-              color: 'primary.main',
-              textDecoration: 'underline',
-              '&:hover': {
-                color: 'primary.dark'
+              color: "primary.main",
+              textDecoration: "underline",
+              "&:hover": {
+                color: "primary.dark"
               }
-            }}
-          >
+            }}>
             회원가입
           </Link>
         </Typography>

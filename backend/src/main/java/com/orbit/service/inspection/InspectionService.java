@@ -13,6 +13,8 @@ import com.orbit.entity.inspection.Inspection;
 import com.orbit.repository.bidding.BiddingContractRepository;
 import com.orbit.repository.inspection.InspectionRepository;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
 @RequiredArgsConstructor
 public class InspectionService {
@@ -20,11 +22,11 @@ public class InspectionService {
     private final InspectionRepository inspectionRepository;
     private final BiddingContractRepository biddingContractRepository;
 
-    public InspectionService(InspectionRepository inspectionRepository,
-    BiddingContractRepository biddingContractRepository) {
-        this.inspectionRepository = inspectionRepository;
-        this.biddingContractRepository = biddingContractRepository;
-    }
+    // public InspectionService(InspectionRepository inspectionRepository,
+    // BiddingContractRepository biddingContractRepository) {
+    //     this.inspectionRepository = inspectionRepository;
+    //     this.biddingContractRepository = biddingContractRepository;
+    // }
 
     // 계약이 완료된 검수 목록 조회 - 수정된 로직
     public List<InspectionResponseDto> getCompletedContractInspections() {

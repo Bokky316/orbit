@@ -126,7 +126,50 @@ public class BiddingContract extends BaseEntity {
      * 계약 상태가 자동으로 업데이트되어야 하는지 확인
      * 두 서명이 모두 있으면 완료 상태로 변경
      */
+    // 하나의 @PreUpdate 메서드로 통합
     @PreUpdate
+    public void beforeUpdate() {
+        // 서명 상태 확인
+        if (buyerSignature != null && supplierSignature != null) {
+            // 초안 또는 진행중 상태에서만 자동 변경
+            if (isDraft() || isInProgress()) {
+                // 상태를 직접 설정
+                setStatusEnum(ContractStatus.완료);
+            }
+        }
+        
+        // 가격 재계산
+        if (this.unitPrice != null && this.quantity != null) {
+            // PriceCalculator 유틸리티를 사용하여 계산
+            PriceCalculator.PriceResult result = 
+                PriceCalculator.calculateAll(this.unitPrice, this.quantity);
+            
+            this.supplyPrice = result.getSupplyPrice();
+            this.vat = result.getVat();
+            this.totalAmount = result.getTotalAmount();
+        }
+    }
+    /**
+     * 계약 금액 재계산
+     * 단가와 수량에 기반하여 공급가액, 부가세, 총액을 계산
+     */
+    public void recalculatePrices() {
+        if (this.unitPrice == null || this.quantity == null) {
+            return;
+        }
+        
+        // PriceCalculator 유틸리티를 사용하여 계산
+        PriceCalculator.PriceResult result = 
+            PriceCalculator.calculateAll(this.unitPrice, this.quantity);
+        
+        this.supplyPrice = result.getSupplyPrice();
+        this.vat = result.getVat();
+        this.totalAmount = result.getTotalAmount();
+    }
+
+    /**
+     * 서명 상태를 확인하고 필요시 계약 상태를 업데이트합니다.
+     */
     public void checkSignatureStatus() {
         if (buyerSignature != null && supplierSignature != null) {
             // 초안 또는 진행중 상태에서만 자동 변경
@@ -340,20 +383,20 @@ public class BiddingContract extends BaseEntity {
      * 계약 금액 재계산
      * 단가와 수량에 기반하여 공급가액, 부가세, 총액을 계산
      */
-    @PreUpdate
-    public void recalculatePrices() {
-        if (this.unitPrice == null || this.quantity == null) {
-            return;
-        }
+    // @PreUpdate
+    // public void recalculatePrices() {
+    //     if (this.unitPrice == null || this.quantity == null) {
+    //         return;
+    //     }
         
-        // PriceCalculator 유틸리티를 사용하여 계산
-        PriceCalculator.PriceResult result = 
-            PriceCalculator.calculateAll(this.unitPrice, this.quantity);
+    //     // PriceCalculator 유틸리티를 사용하여 계산
+    //     PriceCalculator.PriceResult result = 
+    //         PriceCalculator.calculateAll(this.unitPrice, this.quantity);
         
-        this.supplyPrice = result.getSupplyPrice();
-        this.vat = result.getVat();
-        this.totalAmount = result.getTotalAmount();
-    }
+    //     this.supplyPrice = result.getSupplyPrice();
+    //     this.vat = result.getVat();
+    //     this.totalAmount = result.getTotalAmount();
+    // }
 
     /**
      * 서명 상태 표시 (화면 표시용)

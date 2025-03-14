@@ -1,16 +1,25 @@
 package com.orbit.entity.item;
 
-import com.orbit.entity.commonCode.ParentCode;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 import com.orbit.entity.commonCode.ChildCode;
-import jakarta.persistence.*;
+import com.orbit.entity.commonCode.ParentCode;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "item")
@@ -53,6 +62,7 @@ public class Item {
     private String description;
 
     @Column(name = "use_yn", length = 1)
+    @Builder.Default
     private String useYn = "Y";
 
     @Column(name = "created_by", length = 50, nullable = false)
