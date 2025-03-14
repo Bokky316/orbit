@@ -37,7 +37,7 @@ function DeliveryCreatePage() {
         const fetchPurchaseOrders = async () => {
             setLoading(true);
             try {
-                const response = await fetchWithAuth(`${API_URL}purchase-orders/available`, {
+                const response = await fetchWithAuth(`${API_URL}deliveries/available-orders`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
@@ -49,6 +49,9 @@ function DeliveryCreatePage() {
                 }
 
                 const data = await response.json();
+                console.log("✅ [DEBUG] 백엔드에서 받은 발주 목록:", data);
+
+                // 상태 업데이트
                 setPurchaseOrders(data);
                 setLoading(false);
             } catch (err) {
@@ -60,9 +63,10 @@ function DeliveryCreatePage() {
         fetchPurchaseOrders();
     }, []);
 
+
     // 발주 선택 시 상세 정보 조회
-    const handlePOSelection = async (poId) => {
-        if (!poId) {
+    const handlePOSelection = async (orderNumber) => {
+        if (!orderNumber) {
             setSelectedPO(null);
             setPODetails(null);
             return;
@@ -70,7 +74,7 @@ function DeliveryCreatePage() {
 
         setLoading(true);
         try {
-            const response = await fetchWithAuth(`${API_URL}purchase-orders/${poId}`, {
+            const response = await fetchWithAuth(`${API_URL}purchase-orders/${orderNumber}`, { // ✅ 수정
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
@@ -82,7 +86,7 @@ function DeliveryCreatePage() {
             }
 
             const data = await response.json();
-            setSelectedPO(poId);
+            setSelectedPO(orderNumber);
             setPODetails(data);
         } catch (err) {
             setError(err.message);
@@ -90,6 +94,7 @@ function DeliveryCreatePage() {
             setLoading(false);
         }
     };
+
 
     // 폼 제출 핸들러
     const handleSubmit = async (e) => {
@@ -181,7 +186,7 @@ function DeliveryCreatePage() {
                                 >
                                     {purchaseOrders.map(po => (
                                         <MenuItem key={po.id} value={po.id}>
-                                            {po.poNumber} - {po.supplierName} - {po.itemName}
+                                            {po.orderNumber} - {po.supplierName} - {po.title}
                                         </MenuItem>
                                     ))}
                                 </Select>
