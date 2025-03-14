@@ -1,5 +1,6 @@
 package com.orbit.service.delivery;
 
+import com.orbit.dto.bidding.BiddingOrderDto;
 import com.orbit.dto.delivery.DeliveryResponseDto;
 import com.orbit.dto.delivery.DeliveryRequestDto;
 import com.orbit.dto.delivery.DeliveryUpdateRequest;
@@ -12,8 +13,10 @@ import com.orbit.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,7 +32,6 @@ public class DeliveryService {
     private final DeliveryRepository deliveryRepository;
     private final BiddingOrderRepository biddingOrderRepository;
     private final MemberRepository memberRepository;
-//    private final InspectionRepository inspectionRepository;
 
     public Page<DeliveryResponseDto> getDeliveryList(
             String deliveryNumber, String orderNumber, Long supplierId,
@@ -92,12 +94,6 @@ public class DeliveryService {
 
         delivery = deliveryRepository.save(delivery);
 
-    /*    Inspection inspection = new Inspection();
-        inspection.setTransactionNumber(delivery.getOrderNumber());
-        inspection.setCreatedAt(LocalDate.now());
-        inspectionRepository.save(inspection);
-        delivery.setInspection(inspection);*/
-
         return DeliveryResponseDto.of(delivery);
     }
 
@@ -129,11 +125,6 @@ public class DeliveryService {
 
         delivery.setUpdateTime(LocalDateTime.now());
 
-        /*if (delivery.getInspection() != null && requestDto.getDeliveryDate() != null) {
-            delivery.getInspection().setInspectionDate(requestDto.getDeliveryDate());
-            inspectionRepository.save(delivery.getInspection());
-        }*/
-
         return DeliveryResponseDto.of(delivery);
     }
 
@@ -141,15 +132,44 @@ public class DeliveryService {
     public void deleteDelivery(Long id) {
         Delivery delivery = findDeliveryById(id);
 
-     /*   if (delivery.getInspection() != null) {
-            inspectionRepository.delete(delivery.getInspection());
-        }*/
-
         deliveryRepository.delete(delivery);
     }
 
     private Delivery findDeliveryById(Long id) {
         return deliveryRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Delivery not found"));
+    }
+
+    /**
+     * 아직 입고등록이 되지 않은 발주 목록을 조회합니다.
+     * @return 미입고 발주 목록
+     */
+    public List<BiddingOrderDto> getAvailableOrders() {
+        // 이미 입고된 발주 ID 목록 조회
+        List<Long> deliveredOrderIds = deliveryRepository.findDeliveredOrderIds();
+        System.out.println("🚀 [DEBUG] 이미 입고된 발주 ID 목록: " + deliveredOrderIds);
+
+        List<BiddingOrder> availableOrders;
+        if (deliveredOrderIds.isEmpty()) {
+            // 입고된 발주가 없는 경우 모든 발주 목록 반환
+            availableOrders = biddingOrderRepository.findAllOrders();
+        } else {
+            // 입고되지 않은 발주 목록 조회
+            availableOrders = biddingOrderRepository.findByIdNotIn(deliveredOrderIds);
+        }
+
+        System.out.println("✅ [DEBUG] 입고되지 않은 발주 목록: " + availableOrders);
+
+        // BiddingOrderService의 convertToDto 메소드를 활용하거나
+        // BiddingOrderDto.fromEntity 메소드를 활용하여 변환
+        return availableOrders.stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public BiddingOrderDto getOrderDetails(String orderNumber) {
+        return biddingOrderRepository.findByOrderNumber(orderNumber)
+                .map(BiddingOrderDto::fromEntity)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 발주번호를 찾을 수 없습니다: " + orderNumber));
     }
 }

@@ -106,7 +106,7 @@ public class BiddingOrderService {
         dto.setOrderNumber(order.getOrderNumber());
         dto.setBiddingId(order.getBiddingId());
         dto.setBiddingParticipationId(order.getBiddingParticipationId());
-        dto.setBiddingItemId(order.getBiddingItemId());
+        dto.setPurchaseRequestItemId(order.getPurchaseRequestItemId());
         dto.setSupplierId(order.getSupplierId());
         dto.setSupplierName(order.getSupplierName());
         dto.setSelectedBidder(order.isSelectedBidder());

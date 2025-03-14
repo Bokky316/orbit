@@ -29,4 +29,14 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
     
     List<BiddingOrder> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 
+    /**
+     * 모든 발주 목록 조회
+     */
+    @Query("SELECT bo FROM BiddingOrder bo ORDER BY bo.createdAt DESC")
+    List<BiddingOrder> findAllOrders();
+
+    @Query("SELECT bo FROM BiddingOrder bo WHERE bo.id NOT IN (:ids)")
+    List<BiddingOrder> findByIdNotIn(@Param("ids") List<Long> ids);
+
+    Optional<BiddingOrder> findByOrderNumber(String orderNumber);
 }
