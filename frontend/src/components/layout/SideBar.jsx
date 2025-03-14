@@ -20,17 +20,7 @@ const buyerAdminMenuItems = [
   { label: "송장 관리", path: "/invoices" },
   { label: "자금 관리", path: "/funds" },
   { label: "보고서생성/관리", path: "/reports" },
-  { label: "시스템 설정", path: "/system", roles: ["ADMIN"] }
-];
-
-// 공급업체(SUPPLIER) 메뉴
-const supplierMenuItems = [
-  { label: "대시보드", path: "/suppliers/dashboard" },
-  { label: "입찰 정보", path: "/suppliers/bidding" },
-  { label: "계약 정보", path: "/suppliers/contracts" },
-  { label: "주문 정보", path: "/suppliers/orders" },
-  { label: "송장 관리", path: "/suppliers/invoices" },
-  { label: "내 정보 관리", path: "/supplier/registrations" }
+  { label: "시스템 설정", path: "/system" } // 시스템 설정 메뉴 추가
 ];
 
 function SideBar() {
