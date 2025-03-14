@@ -37,9 +37,8 @@ function ProjectCreatePage() {
     // 상태 관리
     const [projectName, setProjectName] = useState('');
     const [businessCategory, setBusinessCategory] = useState('');
-    const [clientCompany, setClientCompany] = useState('');
-    const [contractType, setContractType] = useState('');
     const [totalBudget, setTotalBudget] = useState('');
+    const [budgetCode, setBudgetCode] = useState('');
     const [remarks, setRemarks] = useState('');
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
@@ -60,9 +59,8 @@ function ProjectCreatePage() {
         const requestData = {
             projectName,
             businessCategory,
-            clientCompany,
-            contractType,
             totalBudget: parseFloat(totalBudget) || 0,
+            budgetCode,
             remarks,
             projectPeriod: {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
@@ -135,9 +133,8 @@ function ProjectCreatePage() {
         const requestData = {
             projectName,
             businessCategory,
-            clientCompany,
-            contractType,
             totalBudget: parseFloat(totalBudget) || 0,
+            budgetCode,
             remarks,
             projectPeriod: {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
@@ -181,9 +178,8 @@ function ProjectCreatePage() {
             // 각 필드를 개별적으로 추가 (JSON 문자열 대신)
             formData.append('projectName', projectName);
             formData.append('businessCategory', businessCategory);
-            formData.append('clientCompany', clientCompany);
-            formData.append('contractType', contractType);
             formData.append('totalBudget', parseFloat(totalBudget) || 0);
+            formData.append('budgetCode', budgetCode);
             formData.append('remarks', remarks);
 
             // 날짜 필드
@@ -240,20 +236,12 @@ function ProjectCreatePage() {
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
-                                label="고객사"
-                                value={clientCompany}
-                                onChange={(e) => setClientCompany(e.target.value)}
+                                label="사업 유형"
+                                value={businessCategory}
+                                onChange={(e) => setBusinessCategory(e.target.value)}
                             />
                         </Grid>
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="계약 유형"
-                                value={contractType}
-                                onChange={(e) => setContractType(e.target.value)}
-                            />
-                        </Grid>
-                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
                                 label="요청 부서"
@@ -269,6 +257,14 @@ function ProjectCreatePage() {
                                 onChange={(e) => setTotalBudget(e.target.value)}
                             />
                         </Grid>
+                        <Grid item xs={6}>
+                            <TextField
+                                fullWidth
+                                label="예산 코드"
+                                value={budgetCode}
+                                onChange={(e) => setBudgetCode(e.target.value)}
+                            />
+                        </Grid>
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
@@ -279,7 +275,7 @@ function ProjectCreatePage() {
                                 onChange={(e) => setRemarks(e.target.value)}
                             />
                         </Grid>
-                         <Grid item xs={6}>
+                        <Grid item xs={6}>
                             <FormControl fullWidth>
                                 <InputLabel id="basic-status-label">기본 상태</InputLabel>
                                 <Select

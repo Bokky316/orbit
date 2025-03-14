@@ -66,8 +66,8 @@ function ProjectListPage() {
             const searchMatch = [
                 project.projectName?.toLowerCase(),
                 String(project.id),
-                project.businessManager?.toLowerCase(),
-                project.clientCompany?.toLowerCase()
+                project.requesterName?.toLowerCase(),
+                project.businessCategory?.toLowerCase()
             ].some(field => field?.includes(searchTermLower));
 
             const startDateMatch = !localFilters.startDate ||
@@ -104,27 +104,12 @@ function ProjectListPage() {
         navigate(`/projects/${id}`);
     };
 
-    const handleDeleteProject = async (id) => {
-        try {
-            const response = await fetchWithAuth(`${API_URL}projects/${id}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                throw new Error(`프로젝트 삭제 실패: ${response.status}`);
-            }
-            dispatch(deleteProject(id));
-        } catch (error) {
-            console.error('프로젝트 삭제 중 오류 발생:', error);
-            alert('프로젝트 삭제 중 오류가 발생했습니다.');
-        }
-    };
-
     if (loading) {
-        return <Typography>Loading...</Typography>;
+        return <Typography>로딩 중...</Typography>;
     }
 
     if (error) {
-        return <Typography color="error">Error: {error}</Typography>;
+        return <Typography color="error">오류: {error}</Typography>;
     }
 
     return (
@@ -172,10 +157,11 @@ function ProjectListPage() {
                                 label="진행상태"
                             >
                                 <MenuItem value="">전체</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-REQUESTED">요청</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-RECEIVED">접수</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-REJECTED">반려</MenuItem>
-                                <MenuItem value="PROJECT-STATUS-TERMINATED">중도 종결</MenuItem>
+                                <MenuItem value="PROJECT-BASIC_STATUS-REGISTERED">등록</MenuItem>
+                                <MenuItem value="PROJECT-BASIC_STATUS-REREGISTERED">정정등록</MenuItem>
+                                <MenuItem value="PROJECT-BASIC_STATUS-IN_PROGRESS">진행중</MenuItem>
+                                <MenuItem value="PROJECT-BASIC_STATUS-TERMINATED">중도종결</MenuItem>
+                                <MenuItem value="PROJECT-BASIC_STATUS-COMPLETED">완료</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
@@ -195,11 +181,9 @@ function ProjectListPage() {
                             <TableCell>프로젝트 ID</TableCell>
                             <TableCell>프로젝트명</TableCell>
                             <TableCell>담당자</TableCell>
-                             <TableCell>고객사</TableCell>
-                            <TableCell>계약 유형</TableCell>
-                            <TableCell>기본 상태</TableCell>
-                            <TableCell>조달 상태</TableCell>
-                            <TableCell>액션</TableCell>
+                            <TableCell>사업 유형</TableCell>
+                            <TableCell>요청 부서</TableCell>
+                            <TableCell>진행 상태</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -207,20 +191,24 @@ function ProjectListPage() {
                             <TableRow
                                 key={project.id}
                                 hover
-                                onClick={() => handleViewDetail(project.id)}
                                 sx={{ cursor: 'pointer' }}
                             >
-                                <TableCell>{project.id}</TableCell>
-                                <TableCell>{project.projectName}</TableCell>
-                                <TableCell>{project.businessManager}</TableCell>
-                                 <TableCell>{project.clientCompany}</TableCell>
-                                <TableCell>{project.contractType}</TableCell>
-                                <TableCell>{project.basicStatus}</TableCell>
-                                <TableCell>{project.procurementStatus}</TableCell>
-                                <TableCell>
-                                    <Button size="small" variant="outlined" onClick={() => handleViewDetail(project.id)}>
-                                        상세보기
-                                    </Button>
+                                <TableCell onClick={() => handleViewDetail(project.id)}>{project.id}</TableCell>
+                                <TableCell
+                                    onClick={() => handleViewDetail(project.id)}
+                                    sx={{
+                                        fontWeight: 'bold',
+                                        color: 'primary.main',
+                                        '&:hover': { textDecoration: 'underline' }
+                                    }}
+                                >
+                                    {project.projectName}
+                                </TableCell>
+                                <TableCell onClick={() => handleViewDetail(project.id)}>{project.requesterName}</TableCell>
+                                <TableCell onClick={() => handleViewDetail(project.id)}>{project.businessCategory}</TableCell>
+                                <TableCell onClick={() => handleViewDetail(project.id)}>{project.requestDepartment}</TableCell>
+                                <TableCell onClick={() => handleViewDetail(project.id)}>
+                                    {project.basicStatus ? project.basicStatus.split('-')[2] : '미설정'}
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -238,7 +226,8 @@ function ProjectListPage() {
                     신규 생성
                 </Button>
             </Box>
-        );
-    }
+        </Box>
+    );
+}
 
-    export default ProjectListPage;
+export default ProjectListPage;
