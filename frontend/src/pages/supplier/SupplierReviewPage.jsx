@@ -108,8 +108,14 @@ const SupplierReviewPage = () => {
   // SUPPLIER 권한 체크 추가
   const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
 
+  console.log('현재 협력업체 전체 데이터:', currentSupplier);
   // 현재 사용자가 해당 업체의 소유자인지 확인
-  const isOwner = user && currentSupplier && user.id === currentSupplier.supplierId;
+  const isOwner = isSupplier && currentSupplier && currentSupplier.status?.childCode === 'PENDING';
+
+  console.log('사용자 ID:', user?.id);
+  console.log('isSupplier:', isSupplier);
+  console.log('협력업체 상태:', currentSupplier?.status?.childCode);
+  console.log('isOwner 수정된 결과:', isOwner);
 
   useEffect(() => {
     try {
@@ -315,7 +321,7 @@ const SupplierReviewPage = () => {
       case 'PENDING':
         return <Chip label="심사대기" color="warning" variant="outlined" />;
       case 'REJECTED':
-        return <Chip label="거절됨" color="error" variant="outlined" />;
+        return <Chip label="반려" color="error" variant="outlined" />;
       case 'SUSPENDED':
         return <Chip label="일시정지" color="default" variant="outlined" />;
       case 'BLACKLIST':
@@ -378,7 +384,7 @@ const SupplierReviewPage = () => {
             {getStatusChip(currentSupplier.status)}
 
             {/* SUPPLIER 본인이고 상태가 PENDING일 때 수정 버튼 표시 */}
-            {isSupplier && isOwner && currentSupplier.status?.childCode === 'PENDING' && (
+            {isSupplier && currentSupplier && currentSupplier.status?.childCode === 'PENDING' && (
               <Button
                 size="small"
                 color="primary"
@@ -638,6 +644,20 @@ const SupplierReviewPage = () => {
             onClick={handleEdit}
           >
             정보 수정하기
+          </Button>
+        </Paper>
+      )}
+
+      {/* SUPPLIER 본인이고 REJECTED 상태일 때 재승인 요청 버튼 */}
+      {isSupplier && currentSupplier && currentSupplier.status?.childCode === 'REJECTED' && (
+        <Paper sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={handleEdit}
+          >
+            정보 수정 및 재승인 요청하기
           </Button>
         </Paper>
       )}

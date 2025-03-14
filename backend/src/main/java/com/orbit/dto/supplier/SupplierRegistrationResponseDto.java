@@ -46,6 +46,8 @@ public class SupplierRegistrationResponseDto {
 
     private String comments; // 의견
 
+    private String rejectionReason; // 반려 사유 필드 추가
+
     // 담당자 관련 필드 추가
     private String contactPerson; // 담당자 이름
 
@@ -92,6 +94,7 @@ public class SupplierRegistrationResponseDto {
                 supplierRegistration.getPhoneNumber(),
                 supplierRegistration.getHeadOfficeAddress(),
                 supplierRegistration.getComments(),
+                supplierRegistration.getRejectionReason(),
                 supplierRegistration.getContactPerson(),  // 담당자 이름 추가
                 supplierRegistration.getContactPhone(),   // 담당자 연락처 추가
                 supplierRegistration.getContactEmail(),   // 담당자 이메일 추가

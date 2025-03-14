@@ -497,17 +497,29 @@ const SupplierListPage = () => {
                           </Box>
                         )}
 
-                        {/* 반려 상태일 때만 반려사유 버튼 표시 */}
+                        {/* 반려 상태일 때는 반려사유 버튼과 재승인 요청 버튼 표시 */}
                         {(supplier.status === 'REJECTED' || supplier.status?.childCode === 'REJECTED') &&
                           supplier.rejectionReason && (
-                          <Button
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                            onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
-                          >
-                            반려사유
-                          </Button>
+                          <>
+                            <Button
+                              size="small"
+                              color="error"
+                              variant="outlined"
+                              onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                            >
+                              반려사유
+                            </Button>
+                            {isSupplier && (
+                              <Button
+                                size="small"
+                                color="warning"
+                                variant="contained"
+                                onClick={() => navigate(`/supplier/edit/${supplier.id}`)}
+                              >
+                                재승인 요청
+                              </Button>
+                            )}
+                          </>
                         )}
 
                         {/* 일시정지 상태일 때 정지사유 버튼 표시 */}

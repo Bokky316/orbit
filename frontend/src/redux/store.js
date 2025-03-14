@@ -9,6 +9,7 @@ import purchaseRequestReducer from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
 import approvalAdminReducer from "./approvalAdminSlice"; // 결재선 관리 리듀서 추가
 import authReducer from "./authSlice";
+import supplierReducer from "./supplier/supplierSlice";
 import commonCodeReducer from "./commonCodeSlice";
 
 /**
@@ -20,7 +21,7 @@ import commonCodeReducer from "./commonCodeSlice";
 const persistConfig = {
     key: "root",
     storage,
-    whitelist: ["project", "purchaseRequest", "approval", "approvalAdmin", "auth", "commonCode"], // approvalAdmin 추가
+    whitelist: ["project", "purchaseRequest", "approval", "approvalAdmin", "auth", "supplier", "commonCode"], // approvalAdmin 추가
 };
 
 /**
@@ -34,6 +35,7 @@ const rootReducer = combineReducers({
     approval: approvalReducer,
     approvalAdmin: approvalAdminReducer, // 결재선 관리 리듀서 추가
     auth: authReducer,
+    supplier: supplierReducer,
     commonCode: commonCodeReducer,
 });
 

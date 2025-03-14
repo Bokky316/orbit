@@ -34,6 +34,9 @@ const SupplierRegistrationPage = () => {
   // 수정 모드 여부 확인
   const isEditMode = !!id;
 
+  // 재승인 요청 모드인지 확인 (수정 모드이면서 REJECTED 상태일 때)
+  const [isReapplyMode, setIsReapplyMode] = useState(false);
+
   const supplierState = useSelector((state) => state.supplier) || {
     loading: false,
     error: null,
@@ -115,6 +118,16 @@ const SupplierRegistrationPage = () => {
   // 수정 모드에서 데이터 로드 시 폼 채우기
   useEffect(() => {
     if (isEditMode && currentSupplier) {
+      console.log("현재 상태:", currentSupplier.status?.childCode);
+      console.log("반려 사유:", currentSupplier.rejectionReason);
+
+      // 반려 상태인 경우 재승인 모드로 설정
+      if (currentSupplier.status?.childCode === 'REJECTED') {
+        console.log("반려 상태 감지, 재승인 모드 활성화");
+        setIsReapplyMode(true);
+        setPageTitle('협력업체 정보 수정 및 재승인 요청');
+      }
+
       // 전화번호 포맷팅 함수
       const formatPhoneNumber = (phoneNumber) => {
         if (!phoneNumber || phoneNumber.includes("-")) {
@@ -416,6 +429,26 @@ const SupplierRegistrationPage = () => {
             <Alert severity="error">{errors.general}</Alert>
           )}
           <form onSubmit={handleSubmit}>
+            {error && (
+              <Alert severity="error">{error}</Alert>
+            )}
+            {errors.general && (
+              <Alert severity="error">{errors.general}</Alert>
+            )}
+
+            {/* 반려 상태일 때 반려 사유 표시 */}
+            {console.log("isReapplyMode:", isReapplyMode)}
+            {console.log("rejectionReason:", currentSupplier?.rejectionReason)}
+            {isReapplyMode && currentSupplier?.rejectionReason && (
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" fontWeight="bold">반려 사유</Typography>
+                  <Typography variant="body2">{currentSupplier.rejectionReason}</Typography>
+                  <Typography variant="body1" sx={{ mt: 1 }}>
+                    위 사유로 반려된 신청입니다. 내용을 수정하여 재승인을 요청해주세요.
+                  </Typography>
+                </Alert>
+            )}
+
             {/* 기본 정보 */}
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
@@ -666,9 +699,9 @@ const SupplierRegistrationPage = () => {
                 {loading ? (
                   <>
                     <CircularProgress size={20} sx={{ mr: 1 }} />
-                    {isEditMode ? '수정 중...' : '등록 중...'}
+                    {isReapplyMode ? '재승인 요청 중...' : isEditMode ? '수정 중...' : '등록 중...'}
                   </>
-                ) : isEditMode ? '수정하기' : '등록하기'}
+                ) : isReapplyMode ? '재승인 요청하기' : isEditMode ? '수정하기' : '등록하기'}
               </Button>
             </Box>
           </form>

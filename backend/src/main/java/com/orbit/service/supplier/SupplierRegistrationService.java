@@ -289,4 +289,84 @@ public class SupplierRegistrationService {
         registration.setStatus(new SystemStatus("SUPPLIER", "APPROVED"));
         registration.setRejectionReason(null); // 비활성화 사유 제거
     }
+
+    /**
+     * 🔹 협력업체 정보 수정 (기존 + 파일 처리)
+     */
+    @Transactional
+    public SupplierRegistration updateSupplier(Long id, SupplierRegistrationRequestDto requestDto, MultipartFile[] files) {
+        // 협력업체 존재 여부 확인
+        SupplierRegistration supplier = supplierRegistrationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 협력업체를 찾을 수 없습니다: " + id));
+
+        // 대기 상태 또는 반려 상태인 경우만 수정 가능
+        if (!"PENDING".equals(supplier.getStatus().getChildCode()) &&
+                !"REJECTED".equals(supplier.getStatus().getChildCode())) {
+            throw new IllegalArgumentException("대기 상태 또는 반려 상태인 협력업체만 수정할 수 있습니다.");
+        }
+
+        // 반려 상태일 경우 상태를 PENDING으로 변경하여 재심사 요청
+        if ("REJECTED".equals(supplier.getStatus().getChildCode())) {
+            supplier.setStatus(new SystemStatus("SUPPLIER", "PENDING"));
+            // 반려 사유 초기화
+            supplier.setRejectionReason(null);
+        }
+
+        // 회원 존재 여부 확인
+        Member member = memberRepository.findById(requestDto.getSupplierId())
+                .orElseThrow(() -> new IllegalArgumentException("회원이 존재하지 않습니다."));
+
+        // 사업자등록번호 중복 체크 - 다른 업체와 중복될 경우
+        supplierRegistrationRepository.findByBusinessNo(requestDto.getBusinessNo())
+                .ifPresent(existingReg -> {
+                    // 현재 업체와 ID가 다른 경우에만 중복으로 처리
+                    if (!existingReg.getId().equals(id)) {
+                        throw new IllegalArgumentException("이미 등록된 사업자등록번호입니다.");
+                    }
+                });
+
+        // 기존 업체 정보 업데이트
+        supplier.setBusinessNo(requestDto.getBusinessNo());
+        supplier.setCeoName(requestDto.getCeoName());
+        supplier.setBusinessType(requestDto.getBusinessType());
+        supplier.setBusinessCategory(requestDto.getBusinessCategory());
+        supplier.setSourcingCategory(requestDto.getSourcingCategory());
+        supplier.setSourcingSubCategory(requestDto.getSourcingSubCategory());
+        supplier.setSourcingDetailCategory(requestDto.getSourcingDetailCategory());
+        supplier.setPhoneNumber(requestDto.getPhoneNumber());
+        supplier.setHeadOfficeAddress(requestDto.getHeadOfficeAddress());
+        supplier.setComments(requestDto.getComments());
+        supplier.setContactPerson(requestDto.getContactPerson());
+        supplier.setContactPhone(requestDto.getContactPhone());
+        supplier.setContactEmail(requestDto.getContactEmail());
+
+        // 기존 첨부 파일 삭제 (물리적 파일 삭제 추가)
+        if (!supplier.getAttachments().isEmpty()) {
+            // 1. 기존 파일의 물리적 파일 삭제
+            for (SupplierAttachment attachment : supplier.getAttachments()) {
+                try {
+                    // 파일 경로 구성
+                    Path filePath = Paths.get(uploadPath).resolve(attachment.getFilePath());
+                    // 파일 존재 확인 후 삭제
+                    if (Files.exists(filePath)) {
+                        Files.delete(filePath);
+                        log.info("파일 삭제 완료: {}", filePath);
+                    }
+                } catch (IOException e) {
+                    log.error("파일 삭제 중 오류 발생: {}", e.getMessage());
+                    // 파일 삭제 실패해도 진행 (DB에서는 삭제)
+                }
+            }
+
+            // 2. DB에서 첨부파일 연결 제거 (orphanRemoval=true 설정으로 자동 삭제됨)
+            supplier.getAttachments().clear();
+        }
+
+        // 새 파일이 있는 경우 처리
+        if (files != null && files.length > 0) {
+            processAttachments(supplier, files);
+        }
+
+        return supplierRegistrationRepository.save(supplier);
+    }
 }

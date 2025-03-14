@@ -73,7 +73,7 @@ public class SupplierRegistration {
     private String comments; // 의견
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
-    private String rejectionReason; // 거절 사유
+    private String rejectionReason; // 반려 사유
 
     // 담당자 관련 필드 추가
     @Column(name = "contact_person", length = 100)

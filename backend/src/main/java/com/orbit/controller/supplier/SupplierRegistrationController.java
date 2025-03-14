@@ -277,4 +277,78 @@ public class SupplierRegistrationController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * 🟢 협력업체 정보 수정 - Multipart 요청 (파일 포함)
+     */
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('SUPPLIER')")
+    public ResponseEntity<SupplierRegistrationResponseDto> updateSupplierWithFiles(
+            @PathVariable Long id,
+            @RequestPart(value = "supplierRegistrationDTO") String supplierRegistrationDTOString,
+            @RequestPart(value = "files", required = false) MultipartFile[] files) {
+
+        try {
+            log.info("협력업체 수정 요청: ID={}, 파일 수={}", id, files != null ? files.length : 0);
+
+            // 현재 로그인한 사용자 정보 확인
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+
+            // 기존 협력업체 정보 조회
+            SupplierRegistration existingSupplier = supplierRegistrationService.getSupplierById(id);
+
+            // 수정 권한 체크 - 관리자가 아니면서 본인의 등록이 아닌 경우 거부
+            boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            if (!isAdmin && !existingSupplier.getSupplier().getUsername().equals(username)) {
+                log.warn("권한 없음: 사용자={}, 공급업체 소유자={}", username, existingSupplier.getSupplier().getUsername());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            }
+
+            // 대기 상태 또는 반려 상태인 경우만 수정 가능
+            if (!"PENDING".equals(existingSupplier.getStatus().getChildCode()) &&
+                    !"REJECTED".equals(existingSupplier.getStatus().getChildCode())) {
+                log.warn("대기 상태 또는 반려 상태가 아닌 협력업체 수정 시도: ID={}, 상태={}", id, existingSupplier.getStatus().getChildCode());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(null);
+            }
+
+            // JSON 문자열 로깅
+            log.info("수신된 DTO 문자열: {}", supplierRegistrationDTOString);
+
+            // JSON 문자열을 DTO 객체로 변환
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+            SupplierRegistrationRequestDto requestDto = objectMapper.readValue(
+                    supplierRegistrationDTOString,
+                    SupplierRegistrationRequestDto.class
+            );
+
+            // 변환된 DTO 로깅
+            log.info("변환된 DTO: {}", requestDto);
+
+            // 파일 로깅
+            if (files != null) {
+                log.info("파일 수신: {} 개", files.length);
+                for (MultipartFile file : files) {
+                    log.info("파일 정보: {}, 크기: {}", file.getOriginalFilename(), file.getSize());
+                }
+            }
+
+            // 여기서 updateSupplier 서비스 메서드 호출
+            SupplierRegistration updatedSupplier = supplierRegistrationService.updateSupplier(id, requestDto, files);
+
+            log.info("협력업체 수정 완료: ID={}", id);
+            return ResponseEntity.ok(SupplierRegistrationResponseDto.fromEntity(updatedSupplier));
+        } catch (IllegalArgumentException e) {
+            log.error("협력업체 수정 에러: ", e);
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            log.error("협력업체 수정 중 오류 발생: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
 }
