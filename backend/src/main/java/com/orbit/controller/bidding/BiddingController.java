@@ -348,7 +348,7 @@ public class BiddingController {
     /**
      * 상태 변경 이력 조회
      */
-    @GetMapping("/{id}/status-histories")
+/*    @GetMapping("/{id}/status-histories")
     public ResponseEntity<List<StatusHistory>> getBiddingStatusHistories(@PathVariable Long id) {
         log.info("입찰 공고 상태 변경 이력 조회 요청 - ID: {}", id);
         
@@ -360,7 +360,7 @@ public class BiddingController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.emptyList()); // 오류 발생 시 빈 배열 반환
         }
-    }
+    }*/
 
     /**
      * 입찰 참여
