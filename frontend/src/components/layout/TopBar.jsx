@@ -27,7 +27,6 @@ function TopBar() {
     ],
     "/approvals": [
       { label: "결재 목록", path: "/approvals" },
-      { label: "결재 관리", path: "/approval-management" },
       { label: "결재선 관리", path: "/approval-lines" }
     ],
     "/biddings": [
