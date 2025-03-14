@@ -3,6 +3,7 @@ package com.orbit.service.procurement;
 import com.orbit.dto.procurement.ProjectAttachmentDTO;
 import com.orbit.dto.procurement.ProjectDTO;
 import com.orbit.dto.procurement.ProjectDTO;
+import com.orbit.entity.approval.Department;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
@@ -10,6 +11,8 @@ import com.orbit.entity.project.Project;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.exception.ProjectNotFoundException;
+import com.orbit.exception.ResourceNotFoundException;
+import com.orbit.repository.approval.DepartmentRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.procurement.ProjectRepository;
@@ -41,6 +44,13 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ParentCodeRepository parentCodeRepository;
     private final ChildCodeRepository childCodeRepository;
+    private final ProjectAttachmentRepository projectAttachmentRepository;
+    private final MemberRepository memberRepository;
+    private final DepartmentRepository departmentRepository;
+
+    @Value("${uploadPath}")
+    private String uploadPath;
+
     /**
      * 모든 프로젝트 조회
      */
@@ -65,13 +75,13 @@ public class ProjectService {
      * 프로젝트 생성
      */
     @Transactional
-    public ProjectDTO createProject(ProjectDTO ProjectDTO, String requesterUsername) {
+    public ProjectDTO createProject(ProjectDTO projectDTO, String requesterUsername) {
         // 1. 요청자 정보 조회
         Member requester = memberRepository.findByUsername(requesterUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + requesterUsername));
 
         // 2. DTO를 엔티티로 변환
-        Project project = convertToEntity(ProjectDTO);
+        Project project = convertToEntity(projectDTO);
 
         // 조달 상태 설정
         if (dto.getProcurementStatus() != null) {
@@ -86,12 +96,18 @@ public class ProjectService {
             project.setProcurementStatusChild(procurementStatusChild);
         }
 
-        // 프로젝트 저장
+        // 4. 프로젝트 기간 유효성 검사
+        validateProjectPeriod(project.getProjectPeriod());
+
+        // 5. 초기 상태 설정 - 항상 '등록' 상태로 시작
+        setInitialProjectStatus(project);
+
+        // 6. 프로젝트 저장
         Project savedProject = projectRepository.save(project);
 
         // 7. 첨부 파일 처리
-        if (ProjectDTO.getFiles() != null && ProjectDTO.getFiles().length > 0) {
-            processProjectAttachments(savedProject, ProjectDTO.getFiles(), requester);
+        if (projectDTO.getFiles() != null && projectDTO.getFiles().length > 0) {
+            processProjectAttachments(savedProject, projectDTO.getFiles(), requester);
         }
 
         // 8. 저장된 엔티티를 DTO로 변환하여 반환
@@ -310,6 +326,15 @@ public class ProjectService {
                 .remarks(dto.getRemarks())
                 .attachments(new ArrayList<>()) // 빈 리스트로 초기화 추가
                 .build();
+
+        // 부서 설정 (ID가 있는 경우)
+        if (dto.getRequestDepartmentId() != null) {
+            Department department = departmentRepository.findById(dto.getRequestDepartmentId())
+                    .orElse(null);
+            if (department != null) {
+                project.setDepartment(department);
+            }
+        }
 
         // ProjectPeriod 설정
         Project.ProjectPeriod period = new Project.ProjectPeriod();
