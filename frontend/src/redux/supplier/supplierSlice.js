@@ -333,9 +333,11 @@ export const fetchSuppliers = createAsyncThunk(
 
       // 추가 필터 적용
       if (filters.status) {
-        filteredSuppliers = filteredSuppliers.filter(supplier =>
-          supplier.status.childCode === filters.status
-        );
+        filteredSuppliers = filteredSuppliers.filter(supplier => {
+          // status가 문자열인 경우와 객체인 경우 모두 처리
+          const statusCode = supplier.status?.childCode || supplier.status;
+          return statusCode === filters.status;
+        });
       }
       if (filters.sourcingCategory) {
         filteredSuppliers = filteredSuppliers.filter(supplier =>
@@ -792,5 +794,5 @@ const supplierSlice = createSlice({
   }
 });
 
-export const { resetSupplierState, clearCurrentSupplier } = supplierSlice.actions;
+export const { resetSupplierState, clearCurrentSupplier, initializeCategoriesFromSuppliers } = supplierSlice.actions;
 export default supplierSlice.reducer;

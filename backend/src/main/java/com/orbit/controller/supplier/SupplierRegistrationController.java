@@ -58,7 +58,7 @@ public class SupplierRegistrationController {
                 if (status == null || status.isEmpty()) {
                     suppliers = supplierRegistrationService.getSuppliers(null);
                 } else {
-                    if (!Arrays.asList("PENDING", "APPROVED", "REJECTED", "SUSPENDED", "BLACKLIST")
+                    if (!Arrays.asList("PENDING", "APPROVED", "REJECTED", "SUSPENDED", "BLACKLIST", "INACTIVE", "ACTIVE")
                             .contains(status.toUpperCase())) {
                         return ResponseEntity.badRequest().body(List.of());
                     }
