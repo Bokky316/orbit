@@ -1,8 +1,9 @@
 package com.orbit.entity.procurement;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.approval.Department;
 import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.AssertTrue;
@@ -42,6 +43,10 @@ public class Project extends BaseEntity {
 
     @Column(name = "request_department", length = 100)
     private String requestDepartment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requester_id")
