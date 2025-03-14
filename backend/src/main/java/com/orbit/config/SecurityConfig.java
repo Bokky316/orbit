@@ -133,7 +133,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/members/deactivate/{id}").hasRole("ADMIN")
 
                 // 품목 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN")
+                .requestMatchers("/api/items/**").hasAnyRole("SUPPLIER", "ADMIN")
+                .requestMatchers("/api/categories/**").hasAnyRole("SUPPLIER", "ADMIN")
 
                 // 구매 요청 관리 (BUYER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/purchase-requests/**", "/api/organization/**").hasAnyRole("BUYER", "ADMIN")
