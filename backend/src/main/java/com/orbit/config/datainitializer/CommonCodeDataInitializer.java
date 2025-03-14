@@ -7,6 +7,7 @@ import com.orbit.repository.commonCode.ParentCodeRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Order(1)
 public class CommonCodeDataInitializer {
 
     private final ParentCodeRepository parentCodeRepo;
