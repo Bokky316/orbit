@@ -124,9 +124,6 @@ public class SecurityConfig {
                 ).permitAll()
 
 
-                .requestMatchers("/api/common-codes/**").permitAll()
-
-
                 // WebSocket 관련 요청은 인증 검사 제외
                 .requestMatchers("/ws/**", "/topic/**").permitAll()
 
