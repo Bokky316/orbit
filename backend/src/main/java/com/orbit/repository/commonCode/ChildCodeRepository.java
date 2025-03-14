@@ -6,8 +6,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.orbit.entity.commonCode.ChildCode;
-import com.orbit.entity.commonCode.ParentCode;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ChildCodeRepository extends JpaRepository<ChildCode, Long> {
