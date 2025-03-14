@@ -24,6 +24,11 @@ function TopBar() {
     "/purchase-requests": [
       { label: "구매요청리스트", path: "/purchase-requests/list" }
     ],
+    "/approvals": [
+      { label: "결재 목록", path: "/approvals" },
+      { label: "결재 관리", path: "/approval-management" },
+      { label: "결재선 관리", path: "/approval-lines" }
+    ],
     "/biddings": [
       { label: "입찰공고리스트", path: "/biddings" },
       { label: "협력사평가리스트", path: "/biddings/evaluations" },
