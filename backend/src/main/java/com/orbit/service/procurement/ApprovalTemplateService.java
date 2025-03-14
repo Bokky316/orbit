@@ -1,8 +1,8 @@
 package com.orbit.service.procurement;
 
-
 import com.orbit.dto.approval.ApprovalTemplateDTO;
 import com.orbit.dto.approval.ApprovalTemplateStepDTO;
+import com.orbit.dto.approval.DepartmentDTO;
 import com.orbit.entity.approval.ApprovalTemplate;
 import com.orbit.entity.approval.ApprovalTemplateStep;
 import com.orbit.entity.approval.Department;
@@ -76,8 +76,10 @@ public class ApprovalTemplateService {
         List<ApprovalTemplateStep> steps = new ArrayList<>();
         if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
             for (ApprovalTemplateStepDTO stepDTO : dto.getSteps()) {
-                Department department = departmentRepository.findById(stepDTO.getDepartment().getId())
-                        .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + stepDTO.getDepartment().getId()));
+                // DepartmentDTO에서 ID만 추출하여 실제 부서 엔티티 조회
+                Long departmentId = stepDTO.getDepartment().getId();
+                Department department = departmentRepository.findById(departmentId)
+                        .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + departmentId));
 
                 ApprovalTemplateStep step = ApprovalTemplateStep.builder()
                         .template(savedTemplate)
@@ -119,8 +121,10 @@ public class ApprovalTemplateService {
         List<ApprovalTemplateStep> steps = new ArrayList<>();
         if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
             for (ApprovalTemplateStepDTO stepDTO : dto.getSteps()) {
-                Department department = departmentRepository.findById(stepDTO.getDepartment().getId())
-                        .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + stepDTO.getDepartment().getId()));
+                // DepartmentDTO에서 ID만 추출하여 실제 부서 엔티티 조회
+                Long departmentId = stepDTO.getDepartment().getId();
+                Department department = departmentRepository.findById(departmentId)
+                        .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + departmentId));
 
                 ApprovalTemplateStep step = ApprovalTemplateStep.builder()
                         .template(template)
@@ -171,18 +175,34 @@ public class ApprovalTemplateService {
     }
 
     /**
-     * 엔티티를 DTO로 변환
+     * 엔티티를 DTO로 변환 - 수정된 부분
      */
     private ApprovalTemplateDTO convertToDTO(ApprovalTemplate template) {
         // 단계 정보 변환
         List<ApprovalTemplateStepDTO> steps = template.getSteps().stream()
-                .map(step -> ApprovalTemplateStepDTO.builder()
-                        .step(step.getStep())
-                        .department(step.getDepartment())
-                        .minLevel(step.getMinLevel())
-                        .maxLevel(step.getMaxLevel())
-                        .description(step.getDescription())
-                        .build())
+                .map(step -> {
+                    // Department 엔티티를 DepartmentDTO로 변환
+                    Department dept = step.getDepartment();
+                    DepartmentDTO deptDTO = DepartmentDTO.builder()
+                            .id(dept.getId())
+                            .name(dept.getName())
+                            .code(dept.getCode())
+                            .description(dept.getDescription())
+                            .teamLeaderLevel(dept.getTeamLeaderLevel())
+                            .middleManagerLevel(dept.getMiddleManagerLevel())
+                            .upperManagerLevel(dept.getUpperManagerLevel())
+                            .executiveLevel(dept.getExecutiveLevel())
+                            .build();
+
+                    // ApprovalTemplateStepDTO 생성 시 DepartmentDTO 사용
+                    return ApprovalTemplateStepDTO.builder()
+                            .step(step.getStep())
+                            .department(deptDTO)  // Department 엔티티 대신 DepartmentDTO 사용
+                            .minLevel(step.getMinLevel())
+                            .maxLevel(step.getMaxLevel())
+                            .description(step.getDescription())
+                            .build();
+                })
                 .sorted((s1, s2) -> s1.getStep() - s2.getStep())
                 .collect(Collectors.toList());
 

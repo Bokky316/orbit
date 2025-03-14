@@ -549,10 +549,29 @@ function ApprovalTemplateManagement() {
     const updatedSteps = [...currentTemplate.steps];
 
     if (field === 'department') {
-      const department = departments.find(d => d.id === parseInt(value));
-      updatedSteps[index][field] = department;
+      if (value) {
+        // 부서 ID로 부서 객체 찾기
+        const departmentObj = departments.find(d => d.id === parseInt(value));
+        if (departmentObj) {
+          // 필요한 부서 정보만 포함한 DepartmentDTO로 변환
+          updatedSteps[index][field] = {
+            id: departmentObj.id,
+            name: departmentObj.name,
+            code: departmentObj.code || '',
+            description: departmentObj.description || '',
+            teamLeaderLevel: departmentObj.teamLeaderLevel || 5,
+            middleManagerLevel: departmentObj.middleManagerLevel || 7,
+            upperManagerLevel: departmentObj.upperManagerLevel || 8,
+            executiveLevel: departmentObj.executiveLevel || 10
+          };
+        } else {
+          updatedSteps[index][field] = null;
+        }
+      } else {
+        updatedSteps[index][field] = null;
+      }
     } else if (field === 'minLevel' || field === 'maxLevel') {
-      updatedSteps[index][field] = parseInt(value);
+      updatedSteps[index][field] = parseInt(value) || 1;
     } else {
       updatedSteps[index][field] = value;
     }
@@ -687,10 +706,10 @@ function ApprovalTemplateManagement() {
                     </Typography>
                     <Box>
                       <Typography variant="body2">
-                        {step.department?.name} ({step.minLevel}-{step.maxLevel} 레벨)
+                        {step.department?.name || '부서 없음'} ({step.minLevel}-{step.maxLevel} 레벨)
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {step.description}
+                        {step.description || ''}
                       </Typography>
                     </Box>
                   </Box>
