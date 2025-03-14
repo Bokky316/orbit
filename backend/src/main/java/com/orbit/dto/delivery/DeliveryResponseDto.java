@@ -22,7 +22,7 @@ public class DeliveryResponseDto {
     private LocalDate deliveryDate;
     private Long receiverId;
     private String receiverName;
-    private Long deliveryItemId;
+    private String deliveryItemId;
     private String itemName;
     private BigDecimal totalAmount;
     private String notes;
@@ -48,4 +48,4 @@ public class DeliveryResponseDto {
                 .updateTime(delivery.getUpdateTime())
                 .build();
     }
-}
+} 
