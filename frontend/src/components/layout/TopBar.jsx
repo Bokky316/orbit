@@ -34,6 +34,10 @@ function TopBar() {
     "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
     "/funds": [{ label: "자금리스트", path: "/funds/list" }],
     "/reports": [{ label: "보고서리스트", path: "/reports/list" }],
+    "/system": [
+      { label: "공통 코드 관리", path: "/common-codes" },
+      { label: "기타 설정", path: "/system/settings" }
+    ],
     // 기본 탭
     default: []
   };
@@ -82,7 +86,7 @@ function TopBar() {
             <Link
               key={index}
               to={category.path}
-              className={`sub_ategory_tab ${
+              className={`sub_category_tab ${
                 activeTab === index ? "active" : ""
               }`}>
               {category.label}
