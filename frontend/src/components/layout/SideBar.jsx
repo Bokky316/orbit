@@ -12,6 +12,7 @@ const mainMenuItems = [
   { label: "품목관리", path: "/items" },
   { label: "프로젝트관리", path: "/projects" },
   { label: "구매요청관리", path: "/purchase-requests" },
+  { label: "결재관리", path: "/approvals" },  // 결재관리 메뉴 추가
   { label: "입찰공고관리", path: "/biddings" },
   { label: "계약관리", path: "/contracts" },
   { label: "발주관리", path: "/orders" },

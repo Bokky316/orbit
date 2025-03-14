@@ -1,11 +1,12 @@
 package com.orbit.repository.procurement;
 
-import com.orbit.entity.project.Project;
+import com.orbit.entity.procurement.Project;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,4 +38,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
      * @return 페이징된 프로젝트 목록
      */
     Page<Project> findAll(Pageable pageable);
+
+    // ProjectRepository.java에 추가할 메소드
+    List<Project> findByProjectPeriodStartDateAndBasicStatusChildCodeValueNot(LocalDate startDate, String statusValue);
+    List<Project> findByProjectPeriodEndDateAndBasicStatusChildCodeValueNot(LocalDate endDate, String statusValue);
 }

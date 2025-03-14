@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -17,7 +17,8 @@ import {
     ListItemAvatar,
     ListItemText,
     Avatar,
-    IconButton
+    IconButton,
+    Autocomplete
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -37,18 +38,99 @@ function ProjectCreatePage() {
     // 상태 관리
     const [projectName, setProjectName] = useState('');
     const [businessCategory, setBusinessCategory] = useState('');
-    const [clientCompany, setClientCompany] = useState('');
-    const [contractType, setContractType] = useState('');
     const [totalBudget, setTotalBudget] = useState('');
+    const [budgetCode, setBudgetCode] = useState('');
     const [remarks, setRemarks] = useState('');
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
-    const [basicStatus, setBasicStatus] = useState('PROJECT-STATUS-REQUESTED'); // 유효한 기본값 설정
-    const [procurementStatus, setProcurementStatus] = useState('PROJECT-PROCUREMENT-REQUEST_RECEIVED'); // 유효한 기본값 설정
-    const [requestDepartment, setRequestDepartment] = useState('');
+
+    // 부서 및 멤버 관련 상태
+    const [departments, setDepartments] = useState([]);
+    const [selectedDepartment, setSelectedDepartment] = useState(null);
+    const [departmentMembers, setDepartmentMembers] = useState([]);
+    const [selectedManager, setSelectedManager] = useState(null);
+
+    // 예산 코드와 사업 유형을 위한 공통 코드 상태
+    const [budgetCodes, setBudgetCodes] = useState([]);
+    const [businessCategories, setBusinessCategories] = useState([]);
 
     // 첨부 파일 상태
     const [attachments, setAttachments] = useState([]);
+
+    // 컴포넌트 마운트 시 필요한 데이터 로드
+    useEffect(() => {
+        // 부서 목록 가져오기
+        const fetchDepartments = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}organization/departments`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setDepartments(data);
+                } else {
+                    console.error('부서 목록을 가져오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('부서 목록 조회 중 오류 발생:', error);
+            }
+        };
+
+        // 예산 코드 가져오기
+        const fetchBudgetCodes = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}common-codes/PROJECT/BUDGET_CODE`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setBudgetCodes(data);
+                } else {
+                    console.error('예산 코드를 가져오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('예산 코드 조회 중 오류 발생:', error);
+            }
+        };
+
+        // 사업 유형 가져오기
+        const fetchBusinessCategories = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}common-codes/PROJECT/BUSINESS_CATEGORY`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setBusinessCategories(data);
+                } else {
+                    console.error('사업 유형을 가져오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('사업 유형 조회 중 오류 발생:', error);
+            }
+        };
+
+        fetchDepartments();
+        fetchBudgetCodes();
+        fetchBusinessCategories();
+    }, []);
+
+    // 부서 선택 시 해당 부서의 멤버 조회
+    useEffect(() => {
+        if (selectedDepartment) {
+            const fetchDepartmentMembers = async () => {
+                try {
+                    const response = await fetchWithAuth(`${API_URL}organization/members/department/${selectedDepartment.id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setDepartmentMembers(data);
+                    } else {
+                        console.error('부서 멤버를 가져오는데 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('부서 멤버 조회 중 오류 발생:', error);
+                }
+            };
+
+            fetchDepartmentMembers();
+        } else {
+            setDepartmentMembers([]);
+        }
+    }, [selectedDepartment]);
 
     /**
      * 폼 제출 핸들러
@@ -60,17 +142,18 @@ function ProjectCreatePage() {
         const requestData = {
             projectName,
             businessCategory,
-            clientCompany,
-            contractType,
             totalBudget: parseFloat(totalBudget) || 0,
+            budgetCode,
             remarks,
             projectPeriod: {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
-            basicStatus,
-            procurementStatus,
-            requestDepartment,
+            // 기본 상태는 서버에서 설정하도록 생략
+            requestDepartment: selectedDepartment ? selectedDepartment.name : '',
+            requestDepartmentId: selectedDepartment ? selectedDepartment.id : null,
+            requesterName: selectedManager ? selectedManager.name : null,
+            requesterId: selectedManager ? selectedManager.id : null,
         };
 
         try {
@@ -95,7 +178,6 @@ function ProjectCreatePage() {
                     });
 
                     try {
-                        // 구매요청과 동일하게 fetch 직접 호출 방식으로 변경
                         const fileResponse = await fetch(`${API_URL}projects/${createdProject.id}/attachments`, {
                             method: 'POST',
                             credentials: 'include', // 쿠키 포함
@@ -127,99 +209,6 @@ function ProjectCreatePage() {
         }
     };
 
-    /**
-     * JSON 형식으로 제출 (파일 없을 때)
-     */
-    const handleSubmitJson = async () => {
-        // 요청 데이터 구성
-        const requestData = {
-            projectName,
-            businessCategory,
-            clientCompany,
-            contractType,
-            totalBudget: parseFloat(totalBudget) || 0,
-            remarks,
-            projectPeriod: {
-                startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
-                endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
-            },
-            basicStatus,
-            procurementStatus,
-            requestDepartment,
-        };
-
-        try {
-            // API 요청
-            const response = await fetchWithAuth(`${API_URL}projects`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestData),
-            });
-
-            if (response.ok) {
-                alert('프로젝트가 성공적으로 생성되었습니다.');
-                navigate('/projects'); // 프로젝트 목록 페이지로 이동
-            } else {
-                const errorData = await response.text();
-                alert(`오류 발생: ${errorData}`);
-            }
-        } catch (error) {
-            alert(`오류 발생: ${error.message}`);
-        }
-    };
-
-    /**
-     * Multipart/form-data로 제출 (파일 있을 때) - 구매요청과 동일한 방식으로 수정
-     */
-    const handleSubmitWithFiles = async () => {
-        try {
-            // FormData 생성
-            const formData = new FormData();
-
-            // 각 필드를 개별적으로 추가 (JSON 문자열 대신)
-            formData.append('projectName', projectName);
-            formData.append('businessCategory', businessCategory);
-            formData.append('clientCompany', clientCompany);
-            formData.append('contractType', contractType);
-            formData.append('totalBudget', parseFloat(totalBudget) || 0);
-            formData.append('remarks', remarks);
-
-            // 날짜 필드
-            if (startDate)
-                formData.append('projectPeriod.startDate', startDate.format('YYYY-MM-DD'));
-            if (endDate)
-                formData.append('projectPeriod.endDate', endDate.format('YYYY-MM-DD'));
-
-            // 상태 필드
-            formData.append('basicStatus', basicStatus);
-            formData.append('procurementStatus', procurementStatus);
-            formData.append('requestDepartment', requestDepartment);
-
-            // 첨부 파일 추가
-            for (let i = 0; i < attachments.length; i++) {
-                formData.append('files', attachments[i]);
-            }
-
-            // API 요청
-            const response = await fetchWithAuth(`${API_URL}projects`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (response.ok) {
-                alert('프로젝트가 성공적으로 생성되었습니다.');
-                navigate('/projects');
-            } else {
-                const errorData = await response.text();
-                alert(`오류 발생: ${errorData}`);
-            }
-        } catch (error) {
-            alert(`오류 발생: ${error.message}`);
-        }
-    };
-
     return (
         <Box sx={{ p: 2 }}>
             <Typography variant="h6" component="h2">
@@ -237,38 +226,98 @@ function ProjectCreatePage() {
                                 required
                             />
                         </Grid>
+
+                        {/* 사업 유형 드롭다운 */}
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="고객사"
-                                value={clientCompany}
-                                onChange={(e) => setClientCompany(e.target.value)}
-                            />
+                            <FormControl fullWidth>
+                                <InputLabel id="business-category-label">사업 유형</InputLabel>
+                                <Select
+                                    labelId="business-category-label"
+                                    value={businessCategory}
+                                    label="사업 유형"
+                                    onChange={(e) => setBusinessCategory(e.target.value)}
+                                >
+                                    {businessCategories.map(category => (
+                                        <MenuItem key={category.id} value={category.codeValue}>
+                                            {category.codeName}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Grid>
+
+                        {/* 부서 Autocomplete */}
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="계약 유형"
-                                value={contractType}
-                                onChange={(e) => setContractType(e.target.value)}
+                            <Autocomplete
+                                id="request-department-select"
+                                options={departments}
+                                getOptionLabel={(option) => option.name}
+                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                                value={selectedDepartment}
+                                onChange={(event, newValue) => {
+                                    setSelectedDepartment(newValue);
+                                    setSelectedManager(null);
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="요청 부서"
+                                    />
+                                )}
                             />
                         </Grid>
-                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="요청 부서"
-                                value={requestDepartment}
-                                onChange={(e) => setRequestDepartment(e.target.value)}
+
+                        {/* 담당자 Autocomplete */}
+                        <Grid item xs={6}>
+                            <Autocomplete
+                                id="requester-select"
+                                options={departmentMembers}
+                                getOptionLabel={(option) => `${option.name} (${option.position ? option.position.name : '직급없음'})`}
+                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                                value={selectedManager}
+                                onChange={(event, newValue) => {
+                                    setSelectedManager(newValue);
+                                }}
+                                disabled={!selectedDepartment}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="담당자"
+                                        helperText={!selectedDepartment ? "먼저 요청 부서를 선택해주세요" : ""}
+                                    />
+                                )}
                             />
                         </Grid>
+
+                        {/* 총 예산 */}
                         <Grid item xs={6}>
                             <TextField
                                 fullWidth
                                 label="총 예산"
                                 value={totalBudget}
-                                onChange={(e) => setTotalBudget(e.target.value)}
+                                onChange={(e) => setTotalBudget(e.target.value.replace(/[^0-9]/g, ''))}
                             />
                         </Grid>
+
+                        {/* 예산 코드 드롭다운 */}
+                        <Grid item xs={6}>
+                            <FormControl fullWidth>
+                                <InputLabel id="budget-code-label">예산 코드</InputLabel>
+                                <Select
+                                    labelId="budget-code-label"
+                                    value={budgetCode}
+                                    label="예산 코드"
+                                    onChange={(e) => setBudgetCode(e.target.value)}
+                                >
+                                    {budgetCodes.map(code => (
+                                        <MenuItem key={code.id} value={code.codeValue}>
+                                            {code.codeName}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
@@ -279,40 +328,8 @@ function ProjectCreatePage() {
                                 onChange={(e) => setRemarks(e.target.value)}
                             />
                         </Grid>
-                         <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel id="basic-status-label">기본 상태</InputLabel>
-                                <Select
-                                    labelId="basic-status-label"
-                                    value={basicStatus}
-                                    label="기본 상태"
-                                    onChange={(e) => setBasicStatus(e.target.value)}
-                                >
-                                    <MenuItem value="PROJECT-STATUS-REQUESTED">프로젝트 요청</MenuItem>
-                                    <MenuItem value="PROJECT-STATUS-RECEIVED">프로젝트 접수</MenuItem>
-                                    <MenuItem value="PROJECT-STATUS-REJECTED">프로젝트 반려</MenuItem>
-                                    <MenuItem value="PROJECT-STATUS-TERMINATED">프로젝트 중도 종결</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel id="procurement-status-label">조달 상태</InputLabel>
-                                <Select
-                                    labelId="procurement-status-label"
-                                    value={procurementStatus}
-                                    label="조달 상태"
-                                    onChange={(e) => setProcurementStatus(e.target.value)}
-                                >
-                                    <MenuItem value="PROJECT-PROCUREMENT-REQUEST_RECEIVED">구매요청 접수</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT-VENDOR_SELECTION">업체 선정</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT-CONTRACT_PENDING">구매계약 대기</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT-INSPECTION">검수 진행</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT-INVOICE_ISSUED">인보이스 발행</MenuItem>
-                                    <MenuItem value="PROJECT-PROCUREMENT-PAYMENT_COMPLETED">대급지급 완료</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
+
+                        {/* 날짜 선택 */}
                         <Grid item xs={6}>
                             <LocalizationProvider dateAdapter={AdapterMoment}>
                                 <DatePicker

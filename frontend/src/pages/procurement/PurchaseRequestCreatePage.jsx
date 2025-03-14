@@ -5,7 +5,7 @@ import {
     Box, Typography, Paper, TextField, Button, Grid, Alert,
     IconButton, List, ListItem, ListItemAvatar, ListItemText,
     Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem,
-    Chip, Divider
+    Chip, Divider, Autocomplete
 } from '@mui/material';
 import { Delete as DeleteIcon, AttachFile as AttachFileIcon, Add as AddIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -45,6 +45,13 @@ function PurchaseRequestCreatePage() {
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
 
+    // 부서 및 담당자 데이터 상태
+    const [departments, setDepartments] = useState([]);
+    const [members, setMembers] = useState([]);
+    const [departmentMembers, setDepartmentMembers] = useState([]);
+    const [selectedDepartment, setSelectedDepartment] = useState(null);
+    const [selectedManager, setSelectedManager] = useState(null);
+
     // 결재선 상태
     const [showApprovalSetup, setShowApprovalSetup] = useState(false);
     const [approvalLines, setApprovalLines] = useState([]);
@@ -53,9 +60,8 @@ function PurchaseRequestCreatePage() {
     const [businessType, setBusinessType] = useState('');
     const [requestName, setRequestName] = useState('');
     const [requestDate, setRequestDate] = useState(moment());
+    // 고객사는 빈 값으로 설정하고 UI에서 숨김
     const [customer, setCustomer] = useState('');
-    const [businessDepartment, setBusinessDepartment] = useState('');
-    const [businessManager, setBusinessManager] = useState('');
     const [businessBudget, setBusinessBudget] = useState('');
     const [specialNotes, setSpecialNotes] = useState('');
     const [managerPhoneNumber, setManagerPhoneNumber] = useState('');
@@ -99,7 +105,47 @@ function PurchaseRequestCreatePage() {
             }
         };
 
+        // 부서 목록 가져오기
+        const fetchDepartments = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}organization/departments`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`부서 목록을 가져오는데 실패했습니다: ${response.status}`);
+                }
+                const departmentsData = await response.json();
+                setDepartments(departmentsData);
+            } catch (error) {
+                console.error(`부서 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
+            }
+        };
+
+        // 모든 멤버 목록 가져오기
+        const fetchAllMembers = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}organization/members`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`사용자 목록을 가져오는데 실패했습니다: ${response.status}`);
+                }
+                const membersData = await response.json();
+                setMembers(membersData);
+            } catch (error) {
+                console.error(`사용자 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
+            }
+        };
+
         fetchAllProjects();
+        fetchDepartments();
+        fetchAllMembers();
 
         // Redux를 통해 아이템과 카테고리 목록 가져오기
         dispatch(fetchItems());
@@ -120,6 +166,39 @@ function PurchaseRequestCreatePage() {
             setFilteredItems(availableItems);
         }
     }, [selectedCategory, availableItems]);
+
+    // 부서 선택 시 해당 부서의 멤버 필터링
+    // 부서 선택 시 해당 부서의 멤버 조회
+    useEffect(() => {
+        if (selectedDepartment) {
+            const fetchDepartmentMembers = async () => {
+                try {
+                    const response = await fetchWithAuth(`${API_URL}organization/members/department/${selectedDepartment.id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setDepartmentMembers(data);
+                    } else {
+                        console.error('부서 멤버를 가져오는데 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('부서 멤버 조회 중 오류 발생:', error);
+                }
+            };
+
+            fetchDepartmentMembers();
+        } else {
+            setDepartmentMembers([]);
+        }
+    }, [selectedDepartment]);
+
+    // 담당자 변경 시 전화번호 자동 설정
+    useEffect(() => {
+        if (selectedManager && selectedManager.contactNumber) {
+            setManagerPhoneNumber(selectedManager.contactNumber.replace(/[^0-9]/g, ''));
+        } else {
+            setManagerPhoneNumber('');
+        }
+    }, [selectedManager]);
 
     // 결재선 설정 완료 핸들러
     const handleApprovalSetupComplete = (setupData) => {
@@ -211,9 +290,11 @@ function PurchaseRequestCreatePage() {
             businessType,
             requestName,
             requestDate: requestDate.format('YYYY-MM-DD'),
-            customer,
-            businessDepartment,
-            businessManager,
+            customer: '', // 고객사는 빈 값으로 전송
+            businessDepartment: selectedDepartment ? selectedDepartment.name : '',
+            businessDepartmentId: selectedDepartment ? selectedDepartment.id : null,
+            businessManager: selectedManager ? selectedManager.name : '',
+            businessManagerId: selectedManager ? selectedManager.id : null,
             businessBudget: parseFloat(businessBudget.replace(/,/g, '')) || 0,
             specialNotes,
             managerPhoneNumber: managerPhoneNumber || '01044737122',
@@ -605,33 +686,48 @@ function PurchaseRequestCreatePage() {
                                 renderInput={(params) => <TextField {...params} fullWidth />}
                             />
                         </Grid>
+                        {/* 부서 선택 Autocomplete 추가 */}
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="고객사"
-                                name="customer"
-                                value={customer}
-                                onChange={(e) => setCustomer(e.target.value)}
+                            <Autocomplete
+                                id="business-department-select"
+                                options={departments}
+                                getOptionLabel={(option) => option.name}
+                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                                value={selectedDepartment}
+                                onChange={(event, newValue) => {
+                                    setSelectedDepartment(newValue);
+                                    // 부서가 변경되면 담당자 초기화
+                                    setSelectedManager(null);
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="사업 부서 *"
+                                        required
+                                    />
+                                )}
                             />
                         </Grid>
+                        {/* 사업 담당자 Autocomplete 추가 */}
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="사업 부서 *"
-                                name="businessDepartment"
-                                value={businessDepartment}
-                                onChange={(e) => setBusinessDepartment(e.target.value)}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="사업 담당자 *"
-                                name="businessManager"
-                                value={businessManager}
-                                onChange={(e) => setBusinessManager(e.target.value)}
-                                required
+                            <Autocomplete
+                                id="business-manager-select"
+                                options={departmentMembers}
+                                getOptionLabel={(option) => `${option.name} (${option.position ? option.position.name : '직급없음'})`}
+                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                                value={selectedManager}
+                                onChange={(event, newValue) => {
+                                    setSelectedManager(newValue);
+                                }}
+                                disabled={!selectedDepartment}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="사업 담당자 *"
+                                        required
+                                        helperText={!selectedDepartment ? "먼저 사업 부서를 선택해주세요" : ""}
+                                    />
+                                )}
                             />
                         </Grid>
                         <Grid item xs={6}>
@@ -669,6 +765,9 @@ function PurchaseRequestCreatePage() {
                                 name="managerPhoneNumber"
                                 value={managerPhoneNumber}
                                 onChange={(e) => setManagerPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                                InputProps={{
+                                    startAdornment: <InputAdornment position="start">+82</InputAdornment>
+                                }}
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -726,8 +825,6 @@ function PurchaseRequestCreatePage() {
                                 </>
                             )}
                         </Grid>
-
-
 
                         {/* 제출 버튼 */}
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>

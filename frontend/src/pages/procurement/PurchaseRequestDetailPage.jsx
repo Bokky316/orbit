@@ -5,7 +5,7 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
 import moment from 'moment';
@@ -16,8 +16,10 @@ import {
     Delete as DeleteIcon
 } from '@mui/icons-material';
 import ApprovalLineComponent from '@/pages/approval/ApprovalLineComponent';
-import ApprovalLineSetupComponent from '@/pages/approval/ApprovalLineSetupComponent';
 import { styled } from '@mui/material/styles';
+import { deletePurchaseRequest } from '@/redux/purchaseRequestSlice';
+import useWebSocket from '@hooks/useWebSocket';
+
 
 // 상태 칩 스타일 커스터마이징
 const StatusChip = styled(Chip)(({ theme, statuscode }) => {
@@ -33,10 +35,18 @@ const StatusChip = styled(Chip)(({ theme, statuscode }) => {
         color = theme.palette.error.main;
     } else if (status.includes('requested') || status.includes('요청')) {
         color = theme.palette.info.main;
-    } else if (status.includes('in_review') || status.includes('검토')) {
+    } else if (status.includes('received') || status.includes('접수')) {
+        color = theme.palette.primary.main;
+    } else if (status.includes('vendor_selection') || status.includes('업체')) {
+        color = theme.palette.secondary.main;
+    } else if (status.includes('contract_pending') || status.includes('계약')) {
+        color = theme.palette.warning.light;
+    } else if (status.includes('inspection') || status.includes('검수')) {
         color = theme.palette.warning.main;
-    } else if (status.includes('pending') || status.includes('대기')) {
-        color = theme.palette.primary.light;
+    } else if (status.includes('invoice') || status.includes('인보이스')) {
+        color = theme.palette.info.dark;
+    } else if (status.includes('payment') || status.includes('지급')) {
+        color = theme.palette.success.dark;
     }
 
     return {
@@ -49,16 +59,15 @@ const StatusChip = styled(Chip)(({ theme, statuscode }) => {
 const PurchaseRequestDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-
-    // 리덕스에서 현재 사용자 정보 가져오기
+    const dispatch = useDispatch();
     const currentUser = useSelector(state => state.auth.user);
+    const { sendStatusChange } = useWebSocket(currentUser);
 
     // 로컬 상태
     const [request, setRequest] = useState(null);
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [showApprovalSetup, setShowApprovalSetup] = useState(false);
     const [approvalLines, setApprovalLines] = useState([]);
     const [hasApprovalAuthority, setHasApprovalAuthority] = useState(false);
 
@@ -105,8 +114,8 @@ const PurchaseRequestDetailPage = () => {
                         // 현재 사용자가 결재 권한이 있는지 확인
                         if (currentUser) {
                             const hasAuthority = approvalData.some(line =>
-                                line.statusCode === 'IN_REVIEW' &&
-                                line.approverId === currentUser.id
+                                (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
+                                (line.approverId === currentUser.id || line.approver_id === currentUser.id)
                             );
                             setHasApprovalAuthority(hasAuthority);
                         }
@@ -126,26 +135,6 @@ const PurchaseRequestDetailPage = () => {
         };
         fetchData();
     }, [id, currentUser]);
-
-    // 결재선 설정 완료 핸들러
-    const handleApprovalSetupComplete = () => {
-        setShowApprovalSetup(false);
-
-        // 결재선 정보 다시 조회
-        const fetchApprovalLines = async () => {
-            try {
-                const response = await fetchWithAuth(`${API_URL}approvals/${id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setApprovalLines(data);
-                }
-            } catch (error) {
-                console.warn('결재선 정보를 가져오는데 실패했습니다:', error);
-            }
-        };
-
-        fetchApprovalLines();
-    };
 
     // 결재 처리 완료 핸들러
     const handleApprovalComplete = () => {
@@ -265,16 +254,87 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
-    // 결재선 설정 가능 여부 확인
-    const canSetupApprovalLine = () => {
-        if (approvalLines.length === 0) {
-            return true;
+    // 구매요청이 수정/삭제 가능한지 확인하는 함수 (개선된 버전)
+    const canModifyRequest = () => {
+        // 상태 코드 추출
+        const statusCode = request.prStatusChild ||
+                          (request.status ? request.status.split('-')[2] : '');
+
+        // 현재 사용자가 요청자인지 확인
+        const isRequester = currentUser && request.memberId === currentUser.id;
+        const isAdmin = currentUser && currentUser.role === 'ADMIN';
+
+        // 결재 상태 확인
+        const approvalStatus = getApprovalStatus();
+
+        // 1. '구매 요청' 상태이거나
+        // 2. 결재가 1단계(자동 승인) 또는 2단계 검토중 상태이고
+        // 3. 사용자가 요청자이거나 관리자인 경우
+        return (statusCode === 'REQUESTED' ||
+                ['FIRST_LEVEL', 'SECOND_LEVEL_REVIEW'].includes(approvalStatus)) &&
+               (isRequester || isAdmin);
+    };
+
+    // 결재 상태 확인 함수
+    const getApprovalStatus = () => {
+        if (!approvalLines || approvalLines.length === 0) {
+            return 'NO_APPROVAL';
         }
 
-        // 이미 승인 또는 반려된 결재선이 있으면 설정 불가
-        return !approvalLines.some(line =>
-            line.statusCode === 'APPROVED' || line.statusCode === 'REJECTED'
-        );
+        // 1단계 결재 상태 확인
+        const firstLevel = approvalLines.find(line => line.step === 1);
+        if (!firstLevel || firstLevel.statusCode !== 'APPROVED') {
+            return 'FIRST_LEVEL';
+        }
+
+        // 2단계 결재 상태 확인
+        const secondLevel = approvalLines.find(line => line.step === 2);
+        if (!secondLevel) {
+            return 'NO_SECOND_LEVEL';
+        }
+
+        if (secondLevel.statusCode === 'IN_REVIEW' || secondLevel.statusCode === 'PENDING' || secondLevel.statusCode === 'REQUESTED') {
+            return 'SECOND_LEVEL_REVIEW';
+        }
+
+        if (secondLevel.statusCode === 'APPROVED') {
+            return 'SECOND_LEVEL_APPROVED';
+        }
+
+        if (secondLevel.statusCode === 'REJECTED') {
+            return 'SECOND_LEVEL_REJECTED';
+        }
+
+        return 'UNKNOWN';
+    };
+
+    // 상태 라벨 가져오기
+    const getStatusLabel = (statusCode) => {
+        switch(statusCode) {
+            case 'REQUESTED': return '구매 요청';
+            case 'RECEIVED': return '구매요청 접수';
+            case 'VENDOR_SELECTION': return '업체 선정';
+            case 'CONTRACT_PENDING': return '계약 대기';
+            case 'INSPECTION': return '검수 진행';
+            case 'INVOICE_ISSUED': return '인보이스 발행';
+            case 'PAYMENT_COMPLETED': return '대금지급 완료';
+            default: return statusCode;
+        }
+    };
+
+    // 구매요청 삭제 처리 함수
+    const handleDeleteRequest = () => {
+        if (window.confirm('정말 삭제하시겠습니까?')) {
+            dispatch(deletePurchaseRequest(id))
+                .unwrap()
+                .then(() => {
+                    alert('구매요청이 삭제되었습니다.');
+                    navigate('/purchase-requests');
+                })
+                .catch((err) => {
+                    alert(`삭제 실패: ${err}`);
+                });
+        }
     };
 
     return (
@@ -284,62 +344,45 @@ const PurchaseRequestDetailPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="h4">{request.requestName}</Typography>
                     <StatusChip
-                        label={request.prStatusChild || '요청됨'}
-                        statuscode={request.prStatusChild}
+                        label={getStatusLabel(request.prStatusChild || request.status?.split('-')[2] || 'REQUESTED')}
+                        statuscode={request.prStatusChild || request.status?.split('-')[2] || 'REQUESTED'}
                         variant="outlined"
                     />
                 </Box>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                        variant="outlined"
-                        color="primary"
-                        startIcon={<EditIcon />}
-                        onClick={() => navigate(`/purchase-requests/edit/${id}`)}
-                    >
-                        수정
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => {
-                            if (window.confirm('정말 삭제하시겠습니까?')) {
-                                // 삭제 로직
-                            }
-                        }}
-                    >
-                        삭제
-                    </Button>
-                    {canSetupApprovalLine() && !showApprovalSetup && (
-                        <Button
-                            variant="contained"
-                            color="success"
-                            startIcon={<AddIcon />}
-                            onClick={() => setShowApprovalSetup(true)}
-                        >
-                            결재선 설정
-                        </Button>
+                    {canModifyRequest() && (
+                        <>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<EditIcon />}
+                                onClick={() => navigate(`/purchase-requests/edit/${id}`)}
+                            >
+                                수정
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={handleDeleteRequest}
+                            >
+                                삭제
+                            </Button>
+                        </>
                     )}
                 </Box>
             </Box>
 
-            {/* 결재선 설정 또는 결재선 표시 */}
-            {showApprovalSetup ? (
-                <ApprovalLineSetupComponent
-                    purchaseRequestId={Number(id)}
-                    onSetupComplete={handleApprovalSetupComplete}
-                />
-            ) : (
-                approvalLines.length > 0 && (
-                    <Paper sx={{ p: 3, mb: 3 }}>
-                        <ApprovalLineComponent
-                            purchaseRequestId={Number(id)}
-                            currentUserId={currentUser?.id}
-                            onApprovalComplete={handleApprovalComplete}
-                        />
-                    </Paper>
-                )
+            {/* 결재선 표시 */}
+            {approvalLines.length > 0 && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <ApprovalLineComponent
+                        purchaseRequestId={Number(id)}
+                        currentUserId={currentUser?.id}
+                        onApprovalComplete={handleApprovalComplete}
+                    />
+                </Paper>
             )}
 
             {/* 관련 프로젝트 정보 */}
@@ -550,9 +593,6 @@ const PurchaseRequestDetailPage = () => {
                 >
                     목록으로
                 </Button>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    {/* 필요한 액션 버튼들 */}
-                </Box>
             </Box>
         </Box>
     );

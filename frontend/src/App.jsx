@@ -4,7 +4,6 @@ import { Provider } from "react-redux";
 import { store } from "@/redux/store";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-// 페이지 컴포넌트 임포트
 import Home from "@/pages/Home";
 import Login from "@/pages/member/Login";
 import BiddingListPage from "@/pages/bidding/BiddingListPage";
@@ -20,14 +19,19 @@ import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
 import ProjectCreatePage from '@/pages/procurement/ProjectCreatePage';
+import ProjectEditPage from '@/pages/procurement/ProjectEditPage';
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
-import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
-import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
-import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
 import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
 import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
+import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
+import ApprovalListPage from "@/pages/approval/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
+import InspectionsListPage from "@/pages/inspection/InspectionsListPage"
+import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage"
+import InspectionFormPage from "@/pages/inspection/InspectionFormPage"
 import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
@@ -90,6 +94,7 @@ function AppContent() {
                 <Route path="/projects" element={<ProjectListPage />} />
                 <Route path="/projects/:id" element={<ProjectDetailPage />} />
                 <Route path="/projects/new" element={<ProjectCreatePage />} />
+                <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
 
                 {/* 구매 요청 관리 */}
                 <Route
@@ -97,8 +102,8 @@ function AppContent() {
                   element={<PurchaseRequestListPage />}
                 />
                 <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-                <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />}/>
                 <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
+                <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />}/>
 
 
               {/* 승인 관리 */}
