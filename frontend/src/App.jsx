@@ -30,6 +30,15 @@ import ProjectEditPage from "@/pages/procurement/ProjectEditPage";
 import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage";
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
+import ApprovalListPage from "@/pages/procurement/ApprovalListPage";
+import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
+import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
+import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
+import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
+import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import PaymentListPage from '@/pages/payment/PaymentListPage';
+import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
 import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
@@ -209,46 +218,15 @@ function AppContent() {
                     element={<ApprovalLineAdministration />}
                   />
 
-                  {/* 검수 관리 */}
-                  <Route
-                    path="/inspections"
-                    element={<InspectionsListPage />}
-                  />
-                  <Route
-                    path="/inspections/:id"
-                    element={<InspectionDetailPage />}
-                  />
-                  <Route
-                    path="/inspections/:id/edit"
-                    element={<InspectionFormPage />}
-                  />
+                {/* 입고 관리 */}
+                <Route path="/deliveries" element={<DeliveryListPage />} />
+                <Route path="/deliveries/new" element={<DeliveryCreatePage />} />
 
-                  {/* 입고 관리 */}
-                  <Route path="/deliveries" element={<DeliveryListPage />} />
-                  <Route
-                    path="/deliveries/:id"
-                    element={<DeliveryDetailPage />}
-                  />
-                  <Route
-                    path="/deliveries/edit/:id"
-                    element={<DeliveryEditPage />}
-                  />
-                  <Route
-                    path="/deliveries/new"
-                    element={<DeliveryCreatePage />}
-                  />
-
-                  {/* 송장 관리 */}
-                  <Route path="/invoices" element={<InvoicesListPage />} />
-                  <Route
-                    path="/invoices/create"
-                    element={<InvoiceCreatePage />}
-                  />
-                  <Route path="/payments" element={<PaymentListPage />} />
-                  <Route
-                    path="/payments/:invoiceId"
-                    element={<PaymentProcessPage />}
-                  />
+                {/* 송장 관리 */}
+                <Route path="/invoices" element={<InvoicesListPage />} />
+                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+                <Route path="/payments" element={<PaymentListPage />} />
+                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
 
                   {/* 협력사 관리 */}
                   <Route path="/supplier" element={<SupplierListPage />} />

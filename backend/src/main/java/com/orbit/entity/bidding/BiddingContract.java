@@ -117,7 +117,7 @@ public class BiddingContract extends BaseEntity {
     
     @OneToMany(mappedBy = "biddingContract", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<StatusHistory> statusHistories = new ArrayList<>();
+    private List<StatusHistory> statusHistories = new ArrayList<>();*/
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
