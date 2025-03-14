@@ -1,22 +1,21 @@
 package com.orbit.exception;
 
-import com.orbit.exception.ProjectNotFoundException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@ControllerAdvice
+@Slf4j
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ProjectNotFoundException.class)
-    public ResponseEntity<String> handleProjectNotFoundException(ProjectNotFoundException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+    /**
+     * 비즈니스 예외 처리
+     */
+    /*@ExceptionHandler(BusinessException.class)
+    protected ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
+        log.error("BusinessException", e);
+        ErrorCode errorCode = e.getErrorCode();
+        return new ResponseEntity<>(
+                ApiResponse.error(e.getMessage(), errorCode.getCode()),
+                errorCode.getStatus()
+        );*/
     }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleGenericException(Exception ex) {
-        // 실제 예외 메시지 반환
-        return new ResponseEntity<>("An error occurred: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-}

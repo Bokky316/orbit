@@ -6,8 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.util.PriceCalculator;
 
 import jakarta.persistence.AttributeOverride;
@@ -93,9 +92,9 @@ public class Bidding extends BaseEntity {
 
 
    // 상태 변경 이력 (양방향 1:N)
-   @OneToMany(mappedBy = "bidding", cascade = CascadeType.ALL, orphanRemoval = true)
-   @Builder.Default 
-   private List<StatusHistory> statusHistories = new ArrayList<>();
+//   @OneToMany(mappedBy = "bidding", cascade = CascadeType.ALL, orphanRemoval = true)
+//   @Builder.Default
+//   private List<StatusHistory> statusHistories = new ArrayList<>();
    
 
      /**
@@ -111,10 +110,10 @@ public class Bidding extends BaseEntity {
     /**
      * 상태 이력 추가 (양방향 관계 설정)
      */
-    public void addStatusHistory(StatusHistory history) {
+/*    public void addStatusHistory(StatusHistory history) {
         history.setBidding(this); // ✅ 반드시 호출해야 함
         this.statusHistories.add(history);
-    }
+    }*/
 
 
 

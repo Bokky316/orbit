@@ -3,13 +3,12 @@ package com.orbit.repository.bidding;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.orbit.entity.commonCode.SystemStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.orbit.entity.bidding.Bidding;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
 
 public interface BiddingRepository extends JpaRepository<Bidding, Long> {
 
@@ -40,6 +39,6 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
     /**
      * 특정 입찰 공고의 상태 변경 이력 조회
      */
-    @Query("SELECT h FROM StatusHistory h WHERE h.bidding.id = :biddingId ORDER BY h.changedAt DESC")
-    List<StatusHistory> findStatusHistoriesByBiddingId(@Param("biddingId") Long biddingId);
+/*    @Query("SELECT h FROM StatusHistory h WHERE h.bidding.id = :biddingId ORDER BY h.changedAt DESC")
+    List<StatusHistory> findStatusHistoriesByBiddingId(@Param("biddingId") Long biddingId);*/
 }

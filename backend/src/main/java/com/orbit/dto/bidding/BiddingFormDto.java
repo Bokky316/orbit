@@ -7,7 +7,7 @@ import java.util.List;
 
 import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.Bidding.BiddingPrice;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.util.PriceCalculator;
 
 import jakarta.validation.constraints.Min;

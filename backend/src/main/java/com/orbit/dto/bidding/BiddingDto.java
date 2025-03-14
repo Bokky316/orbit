@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.orbit.entity.bidding.Bidding;
-import com.orbit.entity.state.SystemStatus;
 
+import com.orbit.entity.commonCode.SystemStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

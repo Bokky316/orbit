@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.orbit.entity.commonCode.SystemStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +19,6 @@ import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.Bidding.BiddingStatus;
 import com.orbit.entity.bidding.BiddingEvaluation;
 import com.orbit.entity.bidding.BiddingParticipation;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
 import com.orbit.repository.bidding.BiddingContractRepository;
 import com.orbit.repository.bidding.BiddingEvaluationRepository;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
@@ -45,14 +44,14 @@ public class BiddingService {
 // @Value("${fuploadPath}")
 //     private String uploadPath;
 
-    @Transactional(readOnly = true)
+/*    @Transactional(readOnly = true)
     public List<String> getBiddingStatusHistoryReasons(Long biddingId) {
         List<StatusHistory> histories = biddingRepository.findStatusHistoriesByBiddingId(biddingId);
         return histories.stream()
                 .map(StatusHistory::getReason)
                 .filter(reason -> reason != null)
                 .collect(Collectors.toList());
-    }
+    }*/
 
 
 
@@ -167,14 +166,14 @@ private String generateBidNumber() {
         bidding = biddingRepository.save(bidding);
         
         // 상태 이력 추가
-        StatusHistory history = StatusHistory.builder()
+        /*StatusHistory history = StatusHistory.builder()
                 .fromStatus(null)
                 .toStatus(bidding.getStatus())
                 .entityType(StatusHistory.EntityType.BIDDING)
                 .changedAt(LocalDateTime.now())
                 .bidding(bidding)
                 .build();
-        bidding.addStatusHistory(history);
+        bidding.addStatusHistory(history);*/
         
         return BiddingDto.fromEntity(bidding);
     }
@@ -205,7 +204,7 @@ private String generateBidNumber() {
         updatedBidding = biddingRepository.save(updatedBidding);
         
         // 상태 변경 이력 추가
-        if (statusChanged) {
+       /* if (statusChanged) {
             StatusHistory history = StatusHistory.builder()
                     .fromStatus(oldStatus)
                     .toStatus(updatedBidding.getStatus())
@@ -214,7 +213,7 @@ private String generateBidNumber() {
                     .bidding(updatedBidding)
                     .build();
             updatedBidding.addStatusHistory(history);
-        }
+        }*/
         
         return BiddingDto.fromEntity(updatedBidding);
     }
@@ -296,7 +295,7 @@ private String generateBidNumber() {
         bidding.setStatus(newStatus);
         
         // 상태 이력 추가
-        StatusHistory history = StatusHistory.builder()
+        /*StatusHistory history = StatusHistory.builder()
                 .fromStatus(oldStatus)
                 .toStatus(newStatus)
                 .entityType(StatusHistory.EntityType.BIDDING)
@@ -305,7 +304,7 @@ private String generateBidNumber() {
                 .reason(reason)  // reason 추가
                 .build();
         
-        bidding.addStatusHistory(history);
+        bidding.addStatusHistory(history);*/
         
         return BiddingDto.fromEntity(bidding);
     }
@@ -313,10 +312,10 @@ private String generateBidNumber() {
     /**
      * 상태 변경 이력 조회
      */
-    @Transactional(readOnly = true)
+/*    @Transactional(readOnly = true)
     public List<StatusHistory> getBiddingStatusHistories(Long biddingId) {
         return biddingRepository.findStatusHistoriesByBiddingId(biddingId);
-    }
+    }*/
 
     /**
      * 입찰 참여 검증

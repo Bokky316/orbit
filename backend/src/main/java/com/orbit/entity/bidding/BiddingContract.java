@@ -6,9 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.orbit.entity.BaseEntity;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
 
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
@@ -95,9 +94,9 @@ public class BiddingContract extends BaseEntity {
     @Column(name = "supplier_signature", columnDefinition = "TEXT")
     private String supplierSignature;
 
-    @OneToMany(mappedBy = "biddingContract", cascade = CascadeType.ALL, orphanRemoval = true)
+/*    @OneToMany(mappedBy = "biddingContract", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<StatusHistory> statusHistories = new ArrayList<>();
+    private List<StatusHistory> statusHistories = new ArrayList<>();*/
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
