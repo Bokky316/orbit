@@ -17,8 +17,7 @@ import java.util.Random;
 
 /**
  * 프로젝트 마스터 엔티티
- * - 상태 관리 시스템 통합
- * - JPA 양방향 매핑 적용
+ * 프로젝트의 기본 정보와 상태를 관리하는 엔티티 클래스입니다.
  */
 @Entity
 @Table(name = "projects", uniqueConstraints = {
@@ -30,49 +29,38 @@ import java.util.Random;
 @Builder
 public class Project extends BaseEntity {
 
-    //시스템 식별자 (PK)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 비즈니스 식별자
     @Column(name = "project_identifier", nullable = false, length = 20, updatable = false)
     private String projectIdentifier;
 
-    // 프로젝트 기본 정보
     @Column(name = "project_name", nullable = false, length = 200)
     private String projectName;
 
-    // 프로젝트 유형 (기존 사업 구분)
     @Column(name = "business_category", length = 50)
     private String businessCategory;
 
-    // 요청 부서
     @Column(name = "request_department", length = 100)
     private String requestDepartment;
 
-    // 요청자
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requester_id")
     private Member requester;
 
-    // 예산 코드
     @Column(name = "budget_code", length = 50)
     private String budgetCode;
 
-    // 프로젝트 예산
     @Column(name = "total_budget")
     private Long totalBudget;
 
-    // 비고
     @Column(name = "remarks", length = 1000)
     private String remarks;
 
-    // 프로젝트 기간
     @Embedded
     private ProjectPeriod projectPeriod;
 
-    // 상태 관리 시스템
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "basic_status_parent_id")
     private ParentCode basicStatusParent;
@@ -89,16 +77,15 @@ public class Project extends BaseEntity {
     @JoinColumn(name = "procurement_status_child_id")
     private ChildCode procurementStatusChild;
 
-    // 구매 요청 연관 관계
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseRequest> purchaseRequests = new ArrayList<>();
 
-    // 프로젝트 첨부파일 연관 관계
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProjectAttachment> attachments = new ArrayList<>();
 
     /**
-     * 프로젝트 식별자 자동 생성 (PRJ-YYMM-XXX 형식)
+     * 프로젝트 식별자를 자동으로 생성합니다.
+     * 형식: PRJ-YYMM-XXX (YY: 년도, MM: 월, XXX: 랜덤 3자리 숫자)
      */
     @PrePersist
     public void generateProjectIdentifier() {
@@ -110,7 +97,8 @@ public class Project extends BaseEntity {
     }
 
     /**
-     * 구매 요청 추가 (양방향 관계 설정)
+     * 구매 요청을 프로젝트에 추가합니다.
+     * @param purchaseRequest 추가할 구매 요청
      */
     public void addPurchaseRequest(PurchaseRequest purchaseRequest) {
         purchaseRequest.setProject(this);
@@ -118,16 +106,17 @@ public class Project extends BaseEntity {
     }
 
     /**
-     * 첨부파일 추가 (양방향 관계 설정)
+     * 첨부파일을 프로젝트에 추가합니다.
+     * @param attachment 추가할 첨부파일
      */
     public void addAttachment(ProjectAttachment attachment) {
         attachment.setProject(this);
         this.attachments.add(attachment);
     }
 
-    // 임베디드 타입
-
-    /** 프로젝트 기간 */
+    /**
+     * 프로젝트 기간을 나타내는 임베디드 타입 클래스
+     */
     @Embeddable
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class ProjectPeriod {
@@ -137,6 +126,10 @@ public class Project extends BaseEntity {
         @Column(name = "end_date", nullable = false)
         private LocalDate endDate;
 
+        /**
+         * 프로젝트 기간의 유효성을 검사합니다.
+         * @return 종료일이 시작일 이후인 경우 true, 그렇지 않으면 false
+         */
         @AssertTrue(message = "종료일은 시작일 이후여야 합니다")
         public boolean isPeriodValid() {
             return endDate.isAfter(startDate);
