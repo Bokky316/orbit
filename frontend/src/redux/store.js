@@ -6,6 +6,8 @@ import { combineReducers } from 'redux';
 import projectReducer from "./projectSlice";
 import purchaseRequestReducer from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
+import approvalAdminReducer from "./approvalAdminSlice";
+import supplierReducer from "./supplier/supplierSlice";
 import authReducer from "./authSlice";
 import commonCodeReducer from "./commonCodeSlice"; // 공통 코드 리듀서 추가
 
@@ -18,7 +20,16 @@ import commonCodeReducer from "./commonCodeSlice"; // 공통 코드 리듀서 �
 const persistConfig = {
     key: "root",
     storage,
-    whitelist: ["project", "purchaseRequest", "approval", "auth", "commonCode"], // commonCode 리듀서 추가
+    whitelist: [
+        "project",
+        "purchaseRequest",
+        "approval",
+        "approvalAdmin",
+        "supplier",
+        "auth",
+        "commonCode",
+        "itemCategory"
+    ],
 };
 
 /**
@@ -30,6 +41,8 @@ const rootReducer = combineReducers({
     project: projectReducer,
     purchaseRequest: purchaseRequestReducer,
     approval: approvalReducer,
+    approvalAdmin: approvalAdminReducer,
+    supplier: supplierReducer,
     auth: authReducer,
     commonCode: commonCodeReducer, // 공통 코드 리듀서 추가
 });

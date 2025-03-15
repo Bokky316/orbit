@@ -19,7 +19,10 @@ function TopBar() {
       { label: "합의사관리", path: "/approver" },
       { label: "시스템설정", path: "/settings" }
     ],
-    "/approvers": [{ label: "협력사관리", path: "/approvers/list" }],
+    "/supplier": [
+        { label: "협력업체리스트", path: "/supplier" },
+        { label: "가입승인대기리스트", path: "/supplier/approval" },
+    ],
     "/items": [{ label: "품목리스트", path: "/items/list" }],
     "/projects": [{ label: "프로젝트리스트", path: "/projects/list" }],
     "/purchase-requests": [
