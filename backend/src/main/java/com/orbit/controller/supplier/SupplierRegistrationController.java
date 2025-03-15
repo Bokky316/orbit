@@ -42,15 +42,23 @@ public class SupplierRegistrationController {
 
     private final SupplierRegistrationService supplierRegistrationService;
 
-    // 🟢 협력업체 목록 조회 - 권한별 처리 추가
+    // 🟢 협력업체 목록 조회 - 권한별 처리 추가 및 필터링 기능 추가
     @GetMapping
     public ResponseEntity<List<SupplierRegistrationResponseDto>> getSuppliers(
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sourcingCategory,
+            @RequestParam(required = false) String sourcingSubCategory,
+            @RequestParam(required = false) String sourcingDetailCategory,
+            @RequestParam(required = false) String supplierName) {
 
         try {
+            log.info("필터 파라미터 - status: {}, sourcingCategory: {}, sourcingSubCategory: {}, sourcingDetailCategory: {}, supplierName: {}",
+                    status, sourcingCategory, sourcingSubCategory, sourcingDetailCategory, supplierName);
+
             // 현재 로그인한 사용자의 권한과 정보 확인
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            String username = authentication.getName(); // 현재 로그인한 사용자 아이디
 
             List<SupplierRegistration> suppliers;
             if (isAdmin) {
@@ -66,8 +74,6 @@ public class SupplierRegistrationController {
                 }
             } else {
                 // 일반 업체는 자신의 정보만 조회 가능
-                String username = authentication.getName(); // 현재 로그인한 사용자 아이디
-
                 if (status == null || status.isEmpty()) {
                     suppliers = supplierRegistrationService.getSuppliersByUsername(username, null);
                 } else {
@@ -79,9 +85,43 @@ public class SupplierRegistrationController {
                 }
             }
 
+            // 소싱분류 필터링 적용
+            if (sourcingCategory != null && !sourcingCategory.isEmpty()) {
+                suppliers = suppliers.stream()
+                        .filter(supplier -> sourcingCategory.equals(supplier.getSourcingCategory()))
+                        .collect(Collectors.toList());
+                log.info("소싱대분류 필터 적용 후 건수: {}", suppliers.size());
+            }
+
+            // 소싱중분류 필터링 적용
+            if (sourcingSubCategory != null && !sourcingSubCategory.isEmpty()) {
+                suppliers = suppliers.stream()
+                        .filter(supplier -> sourcingSubCategory.equals(supplier.getSourcingSubCategory()))
+                        .collect(Collectors.toList());
+                log.info("소싱중분류 필터 적용 후 건수: {}", suppliers.size());
+            }
+
+            // 소싱소분류 필터링 적용
+            if (sourcingDetailCategory != null && !sourcingDetailCategory.isEmpty()) {
+                suppliers = suppliers.stream()
+                        .filter(supplier -> sourcingDetailCategory.equals(supplier.getSourcingDetailCategory()))
+                        .collect(Collectors.toList());
+                log.info("소싱소분류 필터 적용 후 건수: {}", suppliers.size());
+            }
+
+            // 업체명 필터링 적용
+            if (supplierName != null && !supplierName.isEmpty()) {
+                suppliers = suppliers.stream()
+                        .filter(supplier -> supplier.getSupplier().getCompanyName().contains(supplierName))
+                        .collect(Collectors.toList());
+                log.info("업체명 필터 적용 후 건수: {}", suppliers.size());
+            }
+
             List<SupplierRegistrationResponseDto> response = suppliers.stream()
                     .map(SupplierRegistrationResponseDto::fromEntity)
                     .collect(Collectors.toList());
+
+            log.info("최종 응답 건수: {}", response.size());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("협력업체 목록 조회 오류", e);

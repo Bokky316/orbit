@@ -476,6 +476,27 @@ const SupplierReviewPage = () => {
 
         <Divider sx={{ mb: 3 }} />
 
+        {/* 반려 상태일 때 최상단에 반려 사유 표시 */}
+        {currentSupplier.status?.childCode === 'REJECTED' && currentSupplier.rejectionReason && (
+          <Alert
+            severity="error"
+            sx={{
+              mb: 3,
+              p: 2,
+              backgroundColor: '#fff',
+              border: '1px solid rgba(211, 47, 47, 0.6)',
+              borderRadius: 2
+            }}
+          >
+            <Typography variant="subtitle2" fontWeight="bold" color="error">
+              반려 사유
+            </Typography>
+            <Typography variant="body2">
+              {currentSupplier.rejectionReason || '반려 사유가 입력되지 않았습니다.'}
+            </Typography>
+          </Alert>
+        )}
+
         <Grid container spacing={3}>
           {/* 기본 정보 */}
           <Grid item xs={12}>
@@ -641,20 +662,7 @@ const SupplierReviewPage = () => {
             </Box>
           </Grid>
 
-          {currentSupplier.status?.childCode === "REJECTED" &&
-            currentSupplier.rejectionReason && (
-              <Grid item xs={12}>
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2">반려 사유</Typography>
-                  <Typography variant="body2">
-                    {currentSupplier.rejectionReason ||
-                      "반려 사유가 입력되지 않았습니다."}
-                  </Typography>
-                </Alert>
-              </Grid>
-            )}
-
-          {/* 첨부 파일 섹션 */}
+          {/* 첨부 파일 섹션 - 동일한 Paper 내에 표시 */}
           <Grid item xs={12}>
             <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold" }}>
               첨부 파일
@@ -738,73 +746,57 @@ const SupplierReviewPage = () => {
             )}
           </Grid>
         </Grid>
-      </Paper>
 
-      {/* ADMIN만 보이는 승인/반려 버튼 */}
-      {isAdmin && currentSupplier.status?.childCode === "PENDING" && (
-        <Paper
-          sx={{ p: 3, display: "flex", justifyContent: "flex-end", gap: 2 }}>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<CancelIcon />}
-            onClick={handleOpenRejectModal}>
-            반려
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<CheckCircleIcon />}
-            onClick={handleOpenApproveModal} // 모달 열기로 변경
-          >
-            승인
-          </Button>
-        </Paper>
-      )}
-
-      {/* SUPPLIER 본인이고 PENDING 상태일 때 수정 버튼 (하단) */}
-      {isSupplier &&
-        isOwner &&
-        currentSupplier.status?.childCode === "PENDING" && (
-          <Paper
-            sx={{
-              p: 3,
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 2,
-              mt: 2
-            }}>
+        {/* 정보 수정 및 재승인 요청 버튼 - Paper 안으로 이동 */}
+        {isSupplier && isOwner && currentSupplier.status?.childCode === 'PENDING' && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
             <Button
               variant="contained"
               color="primary"
               startIcon={<EditIcon />}
-              onClick={handleEdit}>
+              onClick={handleEdit}
+            >
               정보 수정하기
             </Button>
-          </Paper>
+          </Box>
         )}
 
-      {/* SUPPLIER 본인이고 REJECTED 상태일 때 재승인 요청 버튼 */}
-      {isSupplier &&
-        currentSupplier &&
-        currentSupplier.status?.childCode === "REJECTED" && (
-          <Paper
-            sx={{
-              p: 3,
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 2,
-              mt: 2
-            }}>
+        {/* SUPPLIER 본인이고 REJECTED 상태일 때 재승인 요청 버튼 - Paper 안으로 이동 */}
+        {isSupplier && currentSupplier && currentSupplier.status?.childCode === 'REJECTED' && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
             <Button
               variant="contained"
               color="primary"
               startIcon={<EditIcon />}
-              onClick={handleEdit}>
+              onClick={handleEdit}
+            >
               정보 수정 및 재승인 요청하기
             </Button>
-          </Paper>
+          </Box>
         )}
+
+        {/* ADMIN만 보이는 승인/반려 버튼 - Paper 안으로 이동 */}
+        {isAdmin && currentSupplier.status?.childCode === 'PENDING' && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<CancelIcon />}
+              onClick={handleOpenRejectModal}
+            >
+              반려
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              onClick={handleOpenApproveModal}
+            >
+              승인
+            </Button>
+          </Box>
+        )}
+      </Paper>
 
       {/* 하단 네비게이션 버튼 */}
       <Box sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
@@ -816,6 +808,7 @@ const SupplierReviewPage = () => {
         </Button>
       </Box>
 
+      {/* 이하 모달 코드는 변경 없음 */}
       {/* 반려 사유 입력 모달 */}
       <Dialog open={openRejectModal} onClose={handleCloseRejectModal}>
         <DialogTitle>반려 사유 입력</DialogTitle>

@@ -223,12 +223,9 @@ const SupplierApprovalListPage = () => {
               onPageChange={handlePageChange}
               onRowsPerPageChange={handleChangeRowsPerPage}
               labelRowsPerPage="페이지당 행 수"
-              labelDisplayedRows={({ page, count, rowsPerPage }) => {
-                const totalPages =
-                  rowsPerPage > 0
-                    ? Math.max(1, Math.ceil(count / rowsPerPage))
-                    : 1;
-                return `${Math.max(1, page + 1)} / ${totalPages}`;
+              labelDisplayedRows={({ from, to, count, page }) => {
+                const totalPages = Math.ceil(count / rowsPerPage);
+                return `${page + 1} / ${totalPages}`;
               }}
             />
           </>

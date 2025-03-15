@@ -68,20 +68,19 @@ const SupplierRegistrationPage = () => {
   const isSupplier = user && user.roles && user.roles.includes("ROLE_SUPPLIER");
 
   const [formData, setFormData] = useState({
-    supplierId: "",
-    businessNo: "",
-    ceoName: "",
-    businessType: "",
-    businessCategory: "",
-    sourcingCategory: "",
-    sourcingSubCategory: "",
-    sourcingDetailCategory: "",
-    phoneNumber: "", // 회사 연락처 (필드명 변경: companyPhoneNumber → phoneNumber)
-    headOfficeAddress: "",
-    contactPerson: "",
-    contactPhone: "",
-    contactEmail: "",
-    comments: "",
+    supplierId: '',
+    businessNo: '',
+    ceoName: '',
+    businessType: '',
+    businessCategory: '',
+    sourcingCategory: '',
+    sourcingSubCategory: '',
+    sourcingDetailCategory: '',
+    phoneNumber: '', // 회사 연락처 (필드명 변경: companyPhoneNumber → phoneNumber)
+    contactPerson: '',
+    contactPhone: '',
+    contactEmail: '',
+    comments: '',
     // 주소 관련 필드 초기값 추가
     postalCode: "",
     roadAddress: "",
@@ -92,13 +91,9 @@ const SupplierRegistrationPage = () => {
   const handleAddressSelect = (data) => {
     setFormData((prevFormData) => ({
       ...prevFormData,
-      postalCode: data.zonecode || "",
-      roadAddress: data.roadAddress || "",
-      detailAddress: "", // 도로명 주소 선택 시 상세 주소 초기화
-      headOfficeAddress:
-        data.zonecode && data.roadAddress
-          ? `[${data.zonecode}] ${data.roadAddress}`.trim()
-          : ""
+      postalCode: data.zonecode || '',
+      roadAddress: data.roadAddress || '',
+      detailAddress: '' // 도로명 주소 선택 시 상세 주소 초기화
     }));
   };
 
@@ -158,7 +153,6 @@ const SupplierRegistrationPage = () => {
   useEffect(() => {
     if (isEditMode && currentSupplier) {
       console.log("현재 상태:", currentSupplier.status?.childCode);
-      console.log("반려 사유:", currentSupplier.rejectionReason);
 
       // 반려 상태인 경우 재승인 모드로 설정
       if (currentSupplier.status?.childCode === "REJECTED") {
@@ -191,20 +185,22 @@ const SupplierRegistrationPage = () => {
       };
 
       setFormData({
-        supplierId: currentSupplier.supplierId || user?.id || "",
-        businessNo: currentSupplier.businessNo || "",
-        ceoName: currentSupplier.ceoName || "",
-        businessType: currentSupplier.businessType || "",
-        businessCategory: currentSupplier.businessCategory || "",
-        sourcingCategory: currentSupplier.sourcingCategory || "",
-        sourcingSubCategory: currentSupplier.sourcingSubCategory || "",
-        sourcingDetailCategory: currentSupplier.sourcingDetailCategory || "",
-        phoneNumber: formatPhoneNumber(currentSupplier.phoneNumber) || "",
-        headOfficeAddress: currentSupplier.headOfficeAddress || "",
-        contactPerson: currentSupplier.contactPerson || "",
-        contactPhone: formatPhoneNumber(currentSupplier.contactPhone) || "",
-        contactEmail: currentSupplier.contactEmail || "",
-        comments: currentSupplier.comments || ""
+        supplierId: currentSupplier.supplierId || user?.id || '',
+        businessNo: currentSupplier.businessNo || '',
+        ceoName: currentSupplier.ceoName || '',
+        businessType: currentSupplier.businessType || '',
+        businessCategory: currentSupplier.businessCategory || '',
+        sourcingCategory: currentSupplier.sourcingCategory || '',
+        sourcingSubCategory: currentSupplier.sourcingSubCategory || '',
+        sourcingDetailCategory: currentSupplier.sourcingDetailCategory || '',
+        phoneNumber: formatPhoneNumber(currentSupplier.phoneNumber) || '',
+        postalCode: currentSupplier.postalCode || '',
+        roadAddress: currentSupplier.roadAddress || '',
+        detailAddress: currentSupplier.detailAddress || '',
+        contactPerson: currentSupplier.contactPerson || '',
+        contactPhone: formatPhoneNumber(currentSupplier.contactPhone) || '',
+        contactEmail: currentSupplier.contactEmail || '',
+        comments: currentSupplier.comments || ''
       });
 
       // 기존 첨부파일 설정
@@ -328,23 +324,19 @@ const SupplierRegistrationPage = () => {
         supplierId: Number(formData.supplierId),
         businessNo: formData.businessNo,
         ceoName: formData.ceoName,
-        businessType: formData.businessType || "",
-        businessCategory: formData.businessCategory || "",
-        sourcingCategory: formData.sourcingCategory || "",
-        sourcingSubCategory: formData.sourcingSubCategory || "",
-        sourcingDetailCategory: formData.sourcingDetailCategory || "",
-        phoneNumber: formData.phoneNumber
-          ? formData.phoneNumber.replace(/-/g, "")
-          : "",
-        postalCode: formData.postalCode || "",
-        roadAddress: formData.roadAddress || "",
-        detailAddress: formData.detailAddress || "",
-        contactPerson: formData.contactPerson || "",
-        contactPhone: formData.contactPhone
-          ? formData.contactPhone.replace(/-/g, "")
-          : "",
-        contactEmail: formData.contactEmail || "",
-        comments: formData.comments || ""
+        businessType: formData.businessType || '',
+        businessCategory: formData.businessCategory || '',
+        sourcingCategory: formData.sourcingCategory || '',
+        sourcingSubCategory: formData.sourcingSubCategory || '',
+        sourcingDetailCategory: formData.sourcingDetailCategory || '',
+        phoneNumber: formData.phoneNumber ? formData.phoneNumber.replace(/-/g, '') : '',
+        postalCode: formData.postalCode || '',
+        roadAddress: formData.roadAddress || '',
+        detailAddress: formData.detailAddress || '',
+        contactPerson: formData.contactPerson || '',
+        contactPhone: formData.contactPhone ? formData.contactPhone.replace(/-/g, '') : '',
+        contactEmail: formData.contactEmail || '',
+        comments: formData.comments || ''
       };
 
       // 수정 모드인 경우 ID 추가
@@ -353,17 +345,8 @@ const SupplierRegistrationPage = () => {
 
         // 남겨둘 첨부파일 ID 목록 추가
         if (existingAttachments.length > 0) {
-          processedFormData.remainingAttachmentIds = existingAttachments.map(
-            (attachment) => attachment.id
-          );
+            processedFormData.remainingAttachmentIds = existingAttachments.map(attachment => attachment.id);
         }
-
-        // headOfficeAddress 재구성 (수정 모드에서도 동일하게 처리)
-        processedFormData.headOfficeAddress = processedFormData.roadAddress
-          ? `[${processedFormData.postalCode || ""}] ${
-              processedFormData.roadAddress
-            } ${processedFormData.detailAddress || ""}`.trim()
-          : "";
       }
 
       // JSON 문자열로 변환하여 추가
@@ -470,7 +453,7 @@ const SupplierRegistrationPage = () => {
       setSnackbarMessage(`오류가 발생했습니다: ${error.message}`);
       setOpenSnackbar(true);
     }
-  };
+ };
 
   // 스낵바 닫기 핸들러
   const handleCloseSnackbar = () => {
@@ -511,8 +494,6 @@ const SupplierRegistrationPage = () => {
             {errors.general && <Alert severity="error">{errors.general}</Alert>}
 
             {/* 반려 상태일 때 반려 사유 표시 */}
-            {console.log("isReapplyMode:", isReapplyMode)}
-            {console.log("rejectionReason:", currentSupplier?.rejectionReason)}
             {isReapplyMode && currentSupplier?.rejectionReason && (
               <Alert severity="warning" sx={{ mb: 3 }}>
                 <Typography variant="subtitle1" fontWeight="bold">
