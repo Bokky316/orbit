@@ -41,6 +41,22 @@ import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
+import SupplierListPage from "@/pages/supplier/SupplierListPage";
+import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
+import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
+import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
+import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
+import CategoryListPage from "@pages/item/CategoryListPage";
+import CategoryFormPage from "@pages/item/CategoryFormPage";
+import ItemListPage from "@pages/item/ItemListPage";
+import ItemFormPage from "@pages/item/ItemFormPage";
+import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
+import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
+
+/**
+ * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
+ * @returns {JSX.Element} - 전체 앱 콘텐츠
+ */
 
 function AppContent() {
   const { isLoggedIn, roles, user } = useSelector((state) => state.auth);
@@ -115,9 +131,12 @@ function AppContent() {
               <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
               <Route path="/approval-management" element={<ApprovalManagementPage />} /> {/* 추가 */}
 
-                {/* 입고 관리 */}
-                <Route path="/deliveries" element={<DeliveryListPage />} />
-                <Route path="/deliveries/new" element={<DeliveryCreatePage />} />
+              {/* 입고 관리 */}
+              <Route path="/deliveries" element={<DeliveryListPage />} />
+              <Route
+                path="/deliveries/new"
+                element={<DeliveryCreatePage />}
+              />
 
                 {/* 송장 관리 */}
                 <Route path="/invoices" element={<InvoicesListPage />} />
