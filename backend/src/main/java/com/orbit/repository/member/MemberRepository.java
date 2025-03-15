@@ -1,14 +1,15 @@
 package com.orbit.repository.member;
 
-import com.orbit.entity.approval.Department;
-import com.orbit.entity.member.Member;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
+import com.orbit.entity.approval.Department;
+import com.orbit.entity.member.Member;
 
 /**
  * Member 엔티티를 위한 JpaRepository

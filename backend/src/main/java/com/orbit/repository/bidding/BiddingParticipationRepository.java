@@ -4,45 +4,54 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.repository.query.Param;
 
 import com.orbit.entity.bidding.BiddingParticipation;
 
-@Repository
 public interface BiddingParticipationRepository extends JpaRepository<BiddingParticipation, Long> {
+
     /**
-     * 특정 입찰 공고의 모든 참여 목록 조회
+     * 특정 입찰 공고에 대한 참여 목록 조회
      */
     List<BiddingParticipation> findByBiddingId(Long biddingId);
-
+    
     /**
-     * 특정 공급자의 입찰 참여 목록 조회
+     * 특정 공급사의 참여 목록 조회
      */
     List<BiddingParticipation> findBySupplierId(Long supplierId);
-
+    
     /**
-     * 특정 입찰 공고와 공급자에 대한 참여 여부 확인
+     * 특정 입찰과 공급사의 중복 참여 확인
      */
     boolean existsByBiddingIdAndSupplierId(Long biddingId, Long supplierId);
-
+    
     /**
-     * 미확정된 입찰 참여 목록 조회
+     * 특정 입찰에서 가장 낮은 가격을 제시한 참여 조회
      */
-    List<BiddingParticipation> findByIsConfirmedFalse();
-
+    @Query("SELECT p FROM BiddingParticipation p WHERE p.bidding.id = :biddingId ORDER BY p.totalAmount ASC")
+    List<BiddingParticipation> findLowestPriceParticipations(@Param("biddingId") Long biddingId);
+    
     /**
-     * 확정된 입찰 참여 목록 조회
+     * 평가 대상 참여 목록 조회 (평가되지 않은 참여)
      */
-    List<BiddingParticipation> findByIsConfirmedTrue();
-
+    @Query("SELECT p FROM BiddingParticipation p WHERE p.bidding.id = :biddingId AND p.isEvaluated = false")
+    List<BiddingParticipation> findNonEvaluatedParticipations(@Param("biddingId") Long biddingId);
+    
     /**
-     * 특정 입찰 공고의 확정된 참여 목록 조회
+     * 확정된 참여 목록 조회 (공급사가 참여 의사를 확정한 것)
      */
-    List<BiddingParticipation> findByBiddingIdAndIsConfirmedTrue(Long biddingId);
-
+    @Query("SELECT p FROM BiddingParticipation p WHERE p.bidding.id = :biddingId AND p.isConfirmed = true")
+    List<BiddingParticipation> findConfirmedParticipations(@Param("biddingId") Long biddingId);
+    
     /**
-     * 평가되지 않은 입찰 참여 목록 조회
+     * 발주가 생성되지 않은 참여 목록 조회
      */
-    @Query("SELECT bp FROM BiddingParticipation bp WHERE bp.isEvaluated = false")
-    List<BiddingParticipation> findUnevaluatedParticipations();
+    @Query("SELECT p FROM BiddingParticipation p WHERE p.bidding.id = :biddingId AND p.isOrderCreated = false")
+    List<BiddingParticipation> findParticipationsWithoutOrders(@Param("biddingId") Long biddingId);
+    
+    /**
+     * 낙찰된 참여 목록 조회
+     */
+    @Query("SELECT p FROM BiddingParticipation p WHERE p.bidding.id = :biddingId AND p.isSelectedBidder = true")
+    List<BiddingParticipation> findSelectedBidderParticipations(@Param("biddingId") Long biddingId);
 }

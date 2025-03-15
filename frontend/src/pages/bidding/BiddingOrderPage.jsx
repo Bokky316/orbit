@@ -28,7 +28,8 @@ import {
 } from "@mui/material";
 import { API_URL } from "@/utils/constants";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { getStatusText } from "./helpers/biddingHelpers";
+// 헬퍼 함수 import
+import { getStatusText } from "./helpers/commonBiddingHelpers";
 
 // 발주 진행 상태 단계
 const orderSteps = [

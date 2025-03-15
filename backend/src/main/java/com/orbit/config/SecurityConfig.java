@@ -119,11 +119,9 @@ public class SecurityConfig {
                         "/members/login",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
-                        "/swagger-ui.html"
+                        "/swagger-ui.html",
+                        "/api/contracts/**"
                 ).permitAll()
-
-
-                .requestMatchers("/api/common-codes/**").permitAll()
 
 
                 // WebSocket 관련 요청은 인증 검사 제외
@@ -136,7 +134,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/members/deactivate/{id}").hasRole("ADMIN")
 
                 // 품목 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/products/**").hasAnyRole("SUPPLIER", "ADMIN")
+                .requestMatchers("/api/items/**").hasAnyRole("SUPPLIER", "ADMIN")
+                .requestMatchers("/api/categories/**").hasAnyRole("SUPPLIER", "ADMIN")
 
                 // 구매 요청 관리 (BUYER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/purchase-requests/**", "/api/organization/**").hasAnyRole("BUYER", "ADMIN")
@@ -164,6 +163,7 @@ public class SecurityConfig {
 
                 // 시스템 설정 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/settings/**").hasRole("ADMIN")
+                .requestMatchers("/api/common-codes/**").hasRole("ADMIN")
 
                 // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
@@ -171,21 +171,17 @@ public class SecurityConfig {
                 // 입찰 공고 관리 (BUYER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/biddings/**").hasAnyRole("BUYER", "ADMIN")
 
+                
+
                 // 정적 리소스는 모두 허용
                 .requestMatchers(
                         "/images/**",
                         "/static-images/**",
                         "/css/**",
-                        "/img/**",
+                        "/js/**",
+                        "/assets/**",
                         "/favicon.ico",
                         "/error",
-                        "/**/*.css",
-                        "/**/*.js",
-                        "/**/*.png",
-                        "/**/*.jpg",
-                        "/**/*.jpeg",
-                        "/**/*.svg",
-                        "/**/*.html",
                         "/ping.js"
                 ).permitAll()
 

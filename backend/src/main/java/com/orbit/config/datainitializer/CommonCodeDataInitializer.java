@@ -1,20 +1,24 @@
 package com.orbit.config.datainitializer;
 
+import java.util.List;
+
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
+
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Order(1)
 public class CommonCodeDataInitializer {
 
     private final ParentCodeRepository parentCodeRepo;
@@ -26,6 +30,7 @@ public class CommonCodeDataInitializer {
         initProjectCodes();
         initPurchaseCodes();
         initApprovalCodes();
+        initBiddingCodes(); // 입찰 관련
         initUnitCodes();
     }
 
@@ -71,6 +76,30 @@ public class CommonCodeDataInitializer {
                 List.of("SI", "유지보수", "물품")
         );
     }
+
+    //▶▶▶ 입찰관련 상태 코드
+    private void initBiddingCodes() {
+        // 입찰 상태 코드
+       ParentCode biddingStatus = initParentCode("BIDDING", "STATUS", "입찰 상태");
+       initChildCodes(biddingStatus,
+               List.of("PENDING", "ONGOING", "CLOSED", "CANCELED"),
+               List.of("대기중", "진행중", "마감", "취소")
+       );
+
+       // 입찰 방식 코드
+       ParentCode bidMethod = initParentCode("BIDDING", "METHOD", "입찰 방식");
+       initChildCodes(bidMethod,
+               List.of("FIXED_PRICE", "PRICE_SUGGESTION"),
+               List.of("정가제안", "가격제안")
+       );
+
+       // 입찰 계약 상태 코드
+       ParentCode biddingContractStatus = initParentCode("BIDDING_CONTRACT", "STATUS", "입찰 계약 상태");
+       initChildCodes(biddingContractStatus,
+               List.of("DRAFT", "IN_PROGRESS", "CLOSED", "CANCELED"),
+               List.of("초안", "진행중", "완료", "취소")
+       );
+   }
 
     //▶▶▶ 결재 코드
     private void initApprovalCodes() {

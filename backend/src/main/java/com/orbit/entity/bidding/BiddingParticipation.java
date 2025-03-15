@@ -3,6 +3,9 @@ package com.orbit.entity.bidding;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import com.orbit.entity.BaseEntity;
+import com.orbit.repository.NotificationRepository;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -26,7 +29,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BiddingParticipation {
+public class BiddingParticipation extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -41,8 +44,8 @@ public class BiddingParticipation {
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId;
 
-    @Column(name = "supplier_name")
-    private String supplierName;
+    @Column(name = "company_name")
+    private String companyName;
 
     @Column(name = "unit_price", precision = 19, scale = 2)
     private BigDecimal unitPrice;
@@ -72,22 +75,62 @@ public class BiddingParticipation {
     private Integer evaluationScore;
 
     @Column(name = "is_order_created", columnDefinition = "boolean default false")
-    private boolean isOrderCreated = false;
+    private boolean isOrderCreated;
+    
+    @Column(name = "is_selected_bidder", columnDefinition = "boolean default false")
+    private boolean isSelectedBidder;
+    
+    @Column(name = "selected_at")
+    private LocalDateTime selectedAt;
 
     /**
-     * 평가 완료 상태 설정
-     * @param evaluated 평가 완료 여부
+     * 평가 완료 상태 설정 (오버로딩)
      */
     public void updateEvaluationStatus(boolean evaluated) {
         this.isEvaluated = evaluated;
     }
-
+    
     /**
-     * 평가 점수 업데이트
-     * @param score 평가 점수
+     * 평가 완료 상태 설정 + 알림 발송
      */
-    public void updateEvaluationScore(Integer score) {
-        this.evaluationScore = score;
+    public void updateEvaluationStatus(boolean evaluated, Integer score, NotificationRepository notificationRepo) {
+        this.isEvaluated = evaluated;
+        
+        if (score != null) {
+            this.evaluationScore = score;
+        }
+        
+        // 알림 발송
+        if (notificationRepo != null) {
+            try {
+                // Member 객체를 직접 조회하는 방식
+                // 이 메서드는 서비스 레이어에서 MemberRepository를 주입받아 사용해야 함
+                // Member 객체를 직접 생성하는 방식은 오류를 유발할 수 있음
+                if (getSupplierId() != null && bidding != null) {
+                    // 실제로는 MemberRepository를 통해 Member 객체를 조회해야 함
+                    // 여기서는 임시로 MemberRepository가 없어 비즈니스 로직 주석 처리
+                    /*
+                    Member supplier = memberRepository.findById(getSupplierId()).orElse(null);
+                    if (supplier != null) {
+                        Notification notification = Notification.createBiddingNotification(
+                            supplier,
+                            "입찰 평가 완료",
+                            "입찰 공고 '" + bidding.getTitle() + "'에 대한 평가가 완료되었습니다.",
+                            this.id
+                        );
+                        notificationRepo.save(notification);
+                    }
+                    */
+                    
+                    // 로그만 출력
+                    System.out.println("평가 완료 알림 발송 필요: supplierId=" + getSupplierId() + 
+                                    ", biddingTitle=" + bidding.getTitle());
+                }
+            } catch (Exception e) {
+                // 알림 발송 실패 (로깅 필요)
+                System.err.println("평가 상태 알림 발송 실패: " + e.getMessage());
+            }
+        }
     }
 
     /**

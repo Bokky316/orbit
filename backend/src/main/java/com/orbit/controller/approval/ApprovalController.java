@@ -1,4 +1,4 @@
-package com.orbit.controller.procurement;
+package com.orbit.controller.approval;
 
 import com.orbit.dto.approval.ApprovalLineCreateDTO;
 import com.orbit.dto.approval.ApprovalLineResponseDTO;

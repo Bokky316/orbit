@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
+import NotificationBadgeIcon from "../notification/NotificationBadgeIcon";
 import "/public/css/layout/Layout.css";
 
 function TopBar() {
@@ -18,24 +19,32 @@ function TopBar() {
       { label: "합의사관리", path: "/approver" },
       { label: "시스템설정", path: "/settings" }
     ],
-    "/approvers": [{ label: "협력사관리", path: "/approvers/list" }],
+    "/supplier": [
+        { label: "협력업체리스트", path: "/supplier" },
+        { label: "가입승인대기리스트", path: "/supplier/approval" },
+    ],
     "/items": [{ label: "품목리스트", path: "/items/list" }],
     "/projects": [{ label: "프로젝트리스트", path: "/projects/list" }],
     "/purchase-requests": [
       { label: "구매요청리스트", path: "/purchase-requests/list" }
     ],
+    "/approvals": [
+      { label: "결재 목록", path: "/approvals" },
+      { label: "결재선 관리", path: "/approval-lines" }
+    ],
     "/biddings": [
       { label: "입찰공고리스트", path: "/biddings" },
-      { label: "협력사평가리스트", path: "/biddings/evaluations" },
-      { label: "발주리스트", path: "/biddings/orders" }
+      { label: "협력사평가리스트", path: "/biddings/evaluations" }
     ],
-    "/biddings/contracts": [
-      { label: "계약리스트", path: "/biddings/contracts" }
-    ],
-    "/orders": [{ label: "발주리스트", path: "/orders/list" }],
+    "/contracts": [{ label: "계약리스트", path: "/contracts" }],
+    "/orders": [{ label: "발주리스트", path: "/orders" }],
     "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
     "/funds": [{ label: "자금리스트", path: "/funds/list" }],
     "/reports": [{ label: "보고서리스트", path: "/reports/list" }],
+    "/system": [
+      { label: "공통 코드 관리", path: "/common-codes" },
+      { label: "기타 설정", path: "/system/settings" }
+    ],
     // 기본 탭
     default: []
   };
@@ -84,7 +93,7 @@ function TopBar() {
             <Link
               key={index}
               to={category.path}
-              className={`sub_ategory_tab ${
+              className={`sub_category_tab ${
                 activeTab === index ? "active" : ""
               }`}>
               {category.label}
@@ -115,6 +124,9 @@ function TopBar() {
             </svg>
           </div>
         </div>
+
+        {/* 알림 아이콘 */}
+        <NotificationBadgeIcon />
 
         {/* 로그인 정보 */}
         <div className="login_info">

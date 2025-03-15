@@ -7,16 +7,15 @@ import { styled, useTheme } from '@mui/material/styles';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
 
-// 상태에 따른 스타일 지정 - 대기중 상태 회색으로 수정
+// 상태에 따른 스타일 지정
 const StatusChip = styled(Chip)(({ theme, status }) => {
   const getStatusColor = () => {
     switch(status) {
       case 'APPROVED': return theme.palette.success.main;
       case 'REJECTED': return theme.palette.error.main;
       case 'IN_REVIEW': return theme.palette.warning.main;
-      case 'PENDING': return theme.palette.grey[500]; // 대기중 상태 회색으로 변경
+      case 'PENDING': return theme.palette.info.main;
       case 'REQUESTED': return theme.palette.primary.main;
-      case 'WAITING': return theme.palette.grey[500]; // 대기중 상태 회색으로 변경
       default: return theme.palette.grey[500];
     }
   };
@@ -40,40 +39,37 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
   const [error, setError] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
 
-  // 상태별 색상 및 라벨 결정 함수 - 대기중 상태 회색으로 수정
-  const getStepInfo = (statusCode) => {
-    switch(statusCode) {
-      case 'APPROVED': return {
-        color: theme.palette.success.main,
-        label: '승인완료'
-      };
-      case 'REJECTED': return {
-        color: theme.palette.error.main,
-        label: '반려'
-      };
-      case 'IN_REVIEW': return {
-        color: theme.palette.warning.main,
-        label: '검토중'
-      };
-      case 'PENDING': return {
-        color: theme.palette.grey[500], // 대기중 상태 회색으로 변경
-        label: '대기중'
-      };
-      case 'REQUESTED': return {
-        color: theme.palette.primary.main,
-        label: '요청됨'
-      };
-      case 'WAITING': return {
-        color: theme.palette.grey[500], // 대기중 상태 회색으로 변경
-        label: '대기중'
-      };
-      default: return {
-        color: theme.palette.grey[500],
-        label: '대기중'
-      };
-    }
-  };
+  // 상태별 색상 및 라벨 결정 함수
+ const getStepInfo = (statusCode) => {
+   switch(statusCode) {
+     case 'APPROVED': return {
+       color: theme.palette.success.main,
+       label: '승인완료'
+     };
+     case 'REJECTED': return {
+       color: theme.palette.error.main,
+       label: '반려'
+     };
+     case 'IN_REVIEW': return {
+       color: theme.palette.warning.main,
+       label: '검토중'
+     };
+     case 'PENDING': return {
+       color: theme.palette.info.main,
+       label: '대기중'
+     };
+     case 'REQUESTED': return { // 추가
+       color: theme.palette.primary.main,
+       label: '요청됨'
+     };
+     default: return {
+       color: theme.palette.grey[500],
+       label: '대기중'
+     };
+   }
+ };
 
+  // 결재선 정보 조회
   // 결재선 정보 조회
   useEffect(() => {
     if (!purchaseRequestId) return;
@@ -90,19 +86,18 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
         const data = await response.json();
         setApprovalLines(data);
 
-        // 현재 진행 중인 결재 단계 찾기
-        const currentStepIndex = data.findIndex(line =>
-          line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING'
-        );
-
-        // 현재 사용자의 결재 항목 찾기 (모든 상태 포함)
+        // 현재 사용자의 결재 항목 찾기
         if (currentUserId) {
-          // 기존 로직 대신 새로운 로직 추가
-          const userApprovalLine = data.find(line =>
-            String(line.approverId) === String(currentUserId)
+          // 현재 진행 중인 결재 단계 찾기
+          const currentStepIndex = data.findIndex(line =>
+            line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING'
           );
 
-          console.log('찾은 사용자 결재 라인:', userApprovalLine);
+          // 현재 사용자의 결재 항목 찾기
+          const userApprovalLine = data.find(line =>
+            line.approverId === currentUserId &&
+            (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING')
+          );
 
           setCurrentUserApprovalLine(userApprovalLine);
 
@@ -121,7 +116,7 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
     };
 
     fetchApprovalLines();
-  }, [purchaseRequestId, currentUserId, user]);
+  }, [purchaseRequestId, currentUserId]);
 
   // 결재 처리 함수
   const handleProcessApproval = async (action) => {
@@ -294,8 +289,7 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
       </TableContainer>
 
       {/* 현재 사용자의 결재 처리 폼 */}
-      {currentUserApprovalLine && currentUserApprovalLine.statusCode !== 'APPROVED' && (
-        // 현재 사용자의 결재 처리 폼
+      {currentUserApprovalLine && (
         <Box sx={{ mt: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
           <Typography variant="subtitle1" gutterBottom>결재 처리</Typography>
           <TextField

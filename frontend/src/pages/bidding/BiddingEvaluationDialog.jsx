@@ -28,10 +28,10 @@ const EVALUATION_CRITERIA = [
 
 // 점수 등급 판정 함수
 const getScoreGrade = (score) => {
-  if (score >= 90) return { grade: "A", color: "success" };
-  if (score >= 80) return { grade: "B", color: "primary" };
-  if (score >= 70) return { grade: "C", color: "warning" };
-  return { grade: "D", color: "error" };
+  if (score >= 90) return { grade: 'A', color: 'success' };
+  if (score >= 80) return { grade: 'B', color: 'primary' };
+  if (score >= 70) return { grade: 'C', color: 'warning' };
+  return { grade: 'D', color: 'error' };
 };
 
 function BiddingEvaluationDialog({
@@ -57,7 +57,7 @@ function BiddingEvaluationDialog({
   const calculateWeightedScore = () => {
     return EVALUATION_CRITERIA.reduce((total, criterion) => {
       const score = scores[criterion.id] || 0;
-      return total + score * criterion.weight;
+      return total + (score * criterion.weight);
     }, 0);
   };
 
@@ -87,7 +87,7 @@ function BiddingEvaluationDialog({
       };
 
       const savedEvaluation = await onEvaluationComplete(evaluationData);
-
+      
       // 점수 등급 계산
       const { grade, color } = getScoreGrade(weightedScore * 100);
 
@@ -100,10 +100,10 @@ function BiddingEvaluationDialog({
               </Typography>
             </Grid>
             <Grid item>
-              <Chip
-                label={`${weightedScore.toFixed(2)} (${grade}등급)`}
-                color={color}
-                size="small"
+              <Chip 
+                label={`${weightedScore.toFixed(2)} (${grade}등급)`} 
+                color={color} 
+                size="small" 
               />
             </Grid>
           </Grid>
@@ -121,7 +121,7 @@ function BiddingEvaluationDialog({
 
   // 점수 변경 핸들러
   const handleScoreChange = (criterionId, newValue) => {
-    setScores((prev) => ({
+    setScores(prev => ({
       ...prev,
       [criterionId]: newValue
     }));
@@ -138,11 +138,12 @@ function BiddingEvaluationDialog({
   };
 
   return (
-    <Dialog
-      open={open}
+    <Dialog 
+      open={open} 
       onClose={loading ? undefined : handleClose}
       maxWidth="md"
-      fullWidth>
+      fullWidth
+    >
       <DialogTitle>
         공급자 평가: {supplierName} (입찰 번호: {bidNumber})
       </DialogTitle>
@@ -165,7 +166,7 @@ function BiddingEvaluationDialog({
                   <Grid item xs={8}>
                     <Slider
                       value={scores[criterion.id] || 0}
-                      onChange={(_, newValue) =>
+                      onChange={(_, newValue) => 
                         handleScoreChange(criterion.id, newValue)
                       }
                       min={0}
@@ -193,15 +194,14 @@ function BiddingEvaluationDialog({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>
-          취소
-        </Button>
+        <Button onClick={handleClose} disabled={loading}>취소</Button>
         {!success && (
           <Button
             onClick={handleSubmit}
             variant="contained"
             color="primary"
-            disabled={loading}>
+            disabled={loading}
+          >
             평가 저장
           </Button>
         )}

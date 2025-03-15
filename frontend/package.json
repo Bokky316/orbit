@@ -17,12 +17,12 @@
     "@mui/lab": "^6.0.0-beta.30",
     "@mui/x-date-pickers": "^7.27.3",
     "@reduxjs/toolkit": "^2.6.0",
-    "@stomp/stompjs": "^7.0.1",
     "@tiptap/extension-image": "^2.11.5",
     "@tiptap/extension-link": "^2.11.5",
     "@tiptap/extension-underline": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
+    "@types/react-signature-canvas": "^1.0.7",
     "axios": "^1.8.1",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
@@ -32,9 +32,8 @@
     "react-dom": "^19.0.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.2.0",
-    "redux-persist": "^6.0.0",
-    "sockjs-client": "^1.6.1",
-    "vite-plugin-node-polyfills": "^0.23.0"
+    "react-signature-canvas": "^1.1.0-alpha.1",
+    "redux-persist": "^6.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

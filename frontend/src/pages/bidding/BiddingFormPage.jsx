@@ -25,7 +25,8 @@ import {
   ListItemButton,
   ListItemText,
   CircularProgress,
-  Alert
+  Alert,
+  IconButton
 } from "@mui/material";
 import {
   AttachFile as AttachFileIcon,
@@ -34,11 +35,41 @@ import {
 } from "@mui/icons-material";
 
 // 헬퍼 함수 import
+import { BiddingStatus, BiddingMethod, UserRole } from "./helpers/biddingTypes";
 import {
-  INITIAL_FORM_DATA,
-  mapBiddingDataToFormData,
-  transformFormDataToApiFormat
-} from "./helpers/biddingHelpers";
+  getStatusText,
+  getBidMethodText,
+  transformFormDataToApiFormat,
+  mapBiddingDataToFormData
+} from "./helpers/commonBiddingHelpers";
+import { validateBiddingForm } from "./helpers/BuyerBiddingHelpers";
+
+// 초기 폼 데이터
+const INITIAL_FORM_DATA = {
+  purchaseRequestCode: "",
+  purchaseRequestName: "",
+  purchaseRequestItemId: null,
+  title: "",
+  description: "",
+  suppliers: [],
+  bidMethod: BiddingMethod.FIXED_PRICE,
+  status: {
+    parentCode: "BIDDING",
+    childCode: BiddingStatus.PENDING
+  },
+  startDate: new Date().toISOString().split("T")[0],
+  deadline: "",
+  itemQuantity: 1,
+  unitPrice: 0,
+  supplyPrice: 0,
+  vat: 0,
+  totalAmount: 0,
+  biddingConditions: "",
+  conditions: "",
+  internalNote: "",
+  billingUnit: "개",
+  files: []
+};
 
 function BiddingFormPage() {
   const navigate = useNavigate();
@@ -49,200 +80,14 @@ function BiddingFormPage() {
   // Redux에서 인증 상태 가져오기
   const { user } = useSelector((state) => state.auth);
 
-  // 임의의 구매요청 리스트 샘플 데이터
-  const samplePurchaseRequests = [
-    {
-      id: 1001,
-      projectId: 5001,
-      title: "서버 장비 구매",
-      description: "데이터 센터 확장을 위한 서버 장비 구매",
-      totalAmount: 50000000,
-      status: "승인완료",
-      requestDate: "2025-02-10",
-      deliveryDate: "2025-04-15",
-      items: [
-        {
-          itemId: 101,
-          name: "고성능 서버",
-          quantity: 5,
-          unitPrice: 8000000,
-          supplyPrice: 40000000,
-          vat: 4000000,
-          totalPrice: 44000000
-        },
-        {
-          itemId: 102,
-          name: "네트워크 스위치",
-          quantity: 2,
-          unitPrice: 3000000,
-          supplyPrice: 6000000,
-          vat: 600000,
-          totalPrice: 6600000
-        }
-      ]
-    },
-    {
-      id: 1002,
-      projectId: 5002,
-      title: "개발자 PC 구매",
-      description: "신규 개발팀을 위한 고성능 PC 10대",
-      totalAmount: 25000000,
-      status: "승인완료",
-      requestDate: "2025-02-15",
-      deliveryDate: "2025-03-20",
-      items: [
-        {
-          itemId: 201,
-          name: "개발자용 워크스테이션",
-          quantity: 10,
-          unitPrice: 2500000,
-          supplyPrice: 25000000,
-          vat: 2500000,
-          totalPrice: 27500000
-        }
-      ]
-    },
-    {
-      id: 1003,
-      projectId: 5003,
-      title: "클라우드 서비스 구독",
-      description: "연간 클라우드 스토리지 및 서비스 구독",
-      totalAmount: 36000000,
-      status: "승인완료",
-      requestDate: "2025-01-20",
-      deliveryDate: "2025-02-01",
-      items: [
-        {
-          itemId: 301,
-          name: "클라우드 스토리지 서비스 (연간)",
-          quantity: 1,
-          unitPrice: 24000000,
-          supplyPrice: 24000000,
-          vat: 2400000,
-          totalPrice: 26400000
-        },
-        {
-          itemId: 302,
-          name: "클라우드 컴퓨팅 리소스 (연간)",
-          quantity: 1,
-          unitPrice: 12000000,
-          supplyPrice: 12000000,
-          vat: 1200000,
-          totalPrice: 13200000
-        }
-      ]
-    },
-    {
-      id: 1004,
-      projectId: 5004,
-      title: "네트워크 장비 업그레이드",
-      description: "본사 네트워크 인프라 업그레이드",
-      totalAmount: 45000000,
-      status: "승인완료",
-      requestDate: "2025-02-25",
-      deliveryDate: "2025-04-10",
-      items: [
-        {
-          itemId: 401,
-          name: "코어 라우터",
-          quantity: 2,
-          unitPrice: 15000000,
-          supplyPrice: 30000000,
-          vat: 3000000,
-          totalPrice: 33000000
-        },
-        {
-          itemId: 402,
-          name: "방화벽 장비",
-          quantity: 3,
-          unitPrice: 5000000,
-          supplyPrice: 15000000,
-          vat: 1500000,
-          totalPrice: 16500000
-        }
-      ]
-    },
-    {
-      id: 1005,
-      projectId: 5005,
-      title: "소프트웨어 라이센스 구매",
-      description: "개발 및 디자인 팀을 위한 소프트웨어 라이센스",
-      totalAmount: 18000000,
-      status: "승인완료",
-      requestDate: "2025-03-01",
-      deliveryDate: "2025-03-15",
-      items: [
-        {
-          itemId: 501,
-          name: "개발 IDE 라이센스",
-          quantity: 20,
-          unitPrice: 500000,
-          supplyPrice: 10000000,
-          vat: 1000000,
-          totalPrice: 11000000
-        },
-        {
-          itemId: 502,
-          name: "디자인 소프트웨어 라이센스",
-          quantity: 10,
-          unitPrice: 800000,
-          supplyPrice: 8000000,
-          vat: 800000,
-          totalPrice: 8800000
-        }
-      ]
-    }
-  ];
-
-  // 임의의 공급자 리스트 샘플 데이터
-  const sampleSuppliers = [
-    {
-      id: 2001,
-      name: "테크놀로지 주식회사",
-      businessNumber: "123-45-67890",
-      contact: "02-1234-5678",
-      email: "sales@techcorp.com",
-      address: "서울시 강남구 테헤란로 123"
-    },
-    {
-      id: 2002,
-      name: "글로벌 IT 솔루션",
-      businessNumber: "234-56-78901",
-      contact: "02-2345-6789",
-      email: "contact@globalit.com",
-      address: "서울시 서초구 서초대로 456"
-    },
-    {
-      id: 2003,
-      name: "네트워크 시스템즈",
-      businessNumber: "345-67-89012",
-      contact: "02-3456-7890",
-      email: "info@networksystems.com",
-      address: "서울시 마포구 마포대로 789"
-    },
-    {
-      id: 2004,
-      name: "클라우드 서비스 프로바이더",
-      businessNumber: "456-78-90123",
-      contact: "02-4567-8901",
-      email: "support@cloudsp.com",
-      address: "서울시 영등포구 여의대로 321"
-    },
-    {
-      id: 2005,
-      name: "디지털 인프라 솔루션",
-      businessNumber: "567-89-01234",
-      contact: "02-5678-9012",
-      email: "sales@digitalinfra.com",
-      address: "서울시 송파구 올림픽로 654"
-    }
-  ];
-
   // 상태 관리
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [suppliers, setSuppliers] = useState([]);
+  const [purchaseRequests, setPurchaseRequests] = useState([]);
   const [errors, setErrors] = useState({});
   const [requestError, setRequestError] = useState("");
   const [isLoading, setIsLoading] = useState(mode === "edit");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileList, setFileList] = useState([]);
   const [originalBidMethod, setOriginalBidMethod] = useState(null);
 
@@ -253,11 +98,42 @@ function BiddingFormPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
 
-  // 데이터 상태 (초기값을 샘플 데이터로 설정)
-  const [purchaseRequests, setPurchaseRequests] = useState(
-    samplePurchaseRequests
-  );
-  const [suppliers, setSuppliers] = useState(sampleSuppliers);
+  // 페이지 로드 시 suppliers 데이터 가져오기 함수 추가
+  const fetchSuppliers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetchWithAuth(`${API_URL}suppliers/active`);
+
+      if (!response.ok) {
+        throw new Error("공급사 목록을 가져오는데 실패했습니다.");
+      }
+
+      const data = await response.json();
+      setSuppliers(data);
+    } catch (error) {
+      console.error("공급사 목록 가져오기 실패:", error);
+      setRequestError("공급사 정보를 불러오는데 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 구매 요청 목록 가져오기
+  const fetchPurchaseRequests = async () => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}purchase-requests/active`
+      );
+      if (!response.ok) {
+        throw new Error("구매 요청 목록을 가져오는데 실패했습니다.");
+      }
+
+      const data = await response.json();
+      setPurchaseRequests(data || []);
+    } catch (error) {
+      console.error("구매 요청 목록 가져오기 실패:", error);
+    }
+  };
 
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
@@ -304,6 +180,14 @@ function BiddingFormPage() {
           };
       }
     });
+
+    // 오류 메시지 초기화
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: null
+      }));
+    }
   };
 
   // 수량 및 단가 변경 핸들러
@@ -327,12 +211,14 @@ function BiddingFormPage() {
           ? safeValue
           : Math.max(0, Number(formData.unitPrice) || 0);
       const supplyPrice = quantity * unitPrice;
-      const vat = supplyPrice * 0.1;
+      const vat = Math.round(supplyPrice * 0.1);
+      const totalAmount = supplyPrice + vat;
 
       setFormData((prev) => ({
         ...prev,
         supplyPrice,
-        vat
+        vat,
+        totalAmount
       }));
     }
   };
@@ -356,8 +242,9 @@ function BiddingFormPage() {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   ];
   const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-  // 파일 변경 핸들러 개선
-  function handleFileChange(event) {
+
+  // 파일 변경 핸들러
+  const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
     const validFiles = files.filter((file) => {
       // 파일 타입 및 크기 검증
@@ -387,11 +274,11 @@ function BiddingFormPage() {
 
       return updatedFiles;
     });
-  }
-  // 파일 다운로드 핸들러 추가
+  };
+
+  // 파일 다운로드 핸들러
   const handleFileDownload = async (filename) => {
     try {
-      // GET 요청으로 변경
       const response = await fetchWithAuth(
         `${API_URL}biddings/download-file?filename=${encodeURIComponent(
           filename
@@ -419,7 +306,7 @@ function BiddingFormPage() {
     }
   };
 
-  // 파일 삭제 핸들러 추가
+  // 파일 삭제 핸들러
   const handleFileDelete = (fileToDelete) => {
     setFileList((prev) => {
       const updatedFiles = prev.filter(
@@ -440,126 +327,101 @@ function BiddingFormPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 유효성 검사 로직 (기존 코드 유지)
-    const validationErrors = {};
+    // 유효성 검사에 validateBiddingForm 헬퍼 함수 사용
+    const { isValid, errors: validationErrors } = validateBiddingForm(
+      formData,
+      mode
+    );
 
-    if (!formData.purchaseRequestCode) {
-      validationErrors.purchaseRequestCode = "구매 요청을 선택해주세요.";
-    }
-
-    if (!formData.suppliers || formData.suppliers.length === 0) {
-      validationErrors.suppliers = "공급자를 한 명 이상 선택해주세요.";
-    }
-
-    if (!formData.deadline) {
-      validationErrors.deadline = "마감 일자는 필수 입력 값입니다.";
-    }
-
-    if (!formData.biddingConditions) {
-      validationErrors.biddingConditions = "입찰 조건은 필수 입력 값입니다.";
-    }
-
-    // 추가 유효성 검사 (기존 코드 유지)
-    if (formData.bidMethod !== "가격제안") {
-      const quantity = Number(formData.itemQuantity);
-      const unitPrice = Number(formData.unitPrice);
-
-      if (isNaN(quantity) || quantity < 0) {
-        validationErrors.itemQuantity = "수량은 0 이상의 숫자여야 합니다.";
-      }
-
-      if (isNaN(unitPrice) || unitPrice < 0) {
-        validationErrors.unitPrice = "단가는 0 이상의 숫자여야 합니다.";
-      }
-    }
-
-    if (Object.keys(validationErrors).length > 0) {
+    if (!isValid) {
       setErrors(validationErrors);
       return;
     }
 
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       setRequestError("");
 
-      // API 데이터 준비 (백엔드 DTO에 맞게 수정)
+      // API 데이터 준비
       const apiData = transformFormDataToApiFormat(formData, user);
 
-      // 파일 업로드 로직
-      const formDataObj = new FormData();
-      formDataObj.append("data", JSON.stringify(apiData));
-
-      // 파일 추가 (새로 추가된 파일만)
-      fileList.forEach((file) => {
-        if (file instanceof File) {
-          formDataObj.append("files", file);
-        }
-      });
-
-      // 디버깅 로그
-      console.log("서버에 보내는 데이터:", JSON.stringify(apiData, null, 2));
-
-      // 요청 옵션 설정
-      const url =
-        mode === "create"
-          ? `${API_URL}biddings`
-          : `${API_URL}biddings/${biddingId}`;
-
-      const method = mode === "create" ? "POST" : "PUT";
-
-      // 파일이 있는 경우 multipart/form-data로 전송
-      let response;
-      if (
-        fileList &&
-        fileList.length > 0 &&
-        fileList.some((file) => file instanceof File)
-      ) {
+      // 첨부 파일이 있는 경우 FormData로 변환
+      if (formData.files && formData.files.length > 0) {
         const formDataObj = new FormData();
+
+        // JSON 데이터 추가
         formDataObj.append("data", JSON.stringify(apiData));
 
-        fileList.forEach((file) => {
-          if (file instanceof File) {
-            formDataObj.append("files", file);
-          }
+        // 파일 추가
+        formData.files.forEach((file) => {
+          formDataObj.append("files", file);
         });
 
-        response = await fetchWithAuth(url, {
-          method: method,
-          body: formDataObj
-        });
-      } else {
-        // 파일 없으면 JSON으로 전송
-        response = await fetchWithAuth(url, {
-          method: method,
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(apiData)
-        });
-      }
+        // 파일 업로드 API 요청
+        const response =
+          mode === "create"
+            ? await fetchWithAuth(`${API_URL}biddings/with-files`, {
+                method: "POST",
+                body: formDataObj
+              })
+            : await fetchWithAuth(`${API_URL}biddings/${id}/with-files`, {
+                method: "PUT",
+                body: formDataObj
+              });
 
-      console.log("서버 응답 상태:", response.status);
+        if (!response.ok) {
+          throw new Error(
+            `입찰 공고 ${
+              mode === "create" ? "등록" : "수정"
+            }에 실패했습니다. (${response.status})`
+          );
+        }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("서버 에러 응답:", errorText);
-        throw new Error(
-          `HTTP error! Status: ${response.status}, Body: ${
-            errorText || "응답 없음"
-          }`
+        const data = await response.json();
+
+        alert(
+          `입찰 공고가 성공적으로 ${
+            mode === "create" ? "등록" : "수정"
+          }되었습니다.`
         );
+        navigate(`/biddings/${data.id}`);
+      } else {
+        // 일반 JSON 요청
+        const response =
+          mode === "create"
+            ? await fetchWithAuth(`${API_URL}biddings`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(apiData)
+              })
+            : await fetchWithAuth(`${API_URL}biddings/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(apiData)
+              });
+
+        if (!response.ok) {
+          throw new Error(
+            `입찰 공고 ${
+              mode === "create" ? "등록" : "수정"
+            }에 실패했습니다. (${response.status})`
+          );
+        }
+
+        const data = await response.json();
+
+        alert(
+          `입찰 공고가 성공적으로 ${
+            mode === "create" ? "등록" : "수정"
+          }되었습니다.`
+        );
+        navigate(`/biddings/${data.id}`);
       }
-
-      // 성공 알림
-      alert(`입찰 공고가 ${mode === "create" ? "등록" : "수정"}되었습니다.`);
-
-      // 목록 페이지로 이동
-      navigate("/biddings");
     } catch (error) {
-      console.error("저장 중 오류:", error);
-      setRequestError(error.message);
+      console.error("입찰 공고 제출 오류:", error);
+      alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -607,12 +469,12 @@ function BiddingFormPage() {
           ) {
             // 공급자 정보가 없는 경우, description에서 추출 시도
             if (mappedFormData.description) {
-              const supplierNames = mappedFormData.description
+              const companyName = mappedFormData.description
                 .split(",")
                 .map((name) => name.trim());
               // 가능하다면 이름으로 공급자 객체 찾기
               const foundSuppliers = suppliers.filter((s) =>
-                supplierNames.includes(s.name)
+                companyName.includes(s.name)
               );
 
               if (foundSuppliers.length > 0) {
@@ -630,6 +492,8 @@ function BiddingFormPage() {
       }
     };
 
+    fetchSuppliers();
+    fetchPurchaseRequests();
     fetchBiddingData();
   }, [mode, biddingId, suppliers]);
 
@@ -656,7 +520,8 @@ function BiddingFormPage() {
       itemQuantity: item ? item.quantity : 0,
       unitPrice: item ? item.unitPrice : 0,
       supplyPrice: item ? item.supplyPrice : 0,
-      vat: item ? item.vat : 0
+      vat: item ? item.vat : 0,
+      totalAmount: item ? item.supplyPrice + item.vat : 0
     }));
 
     setIsPurchaseRequestModalOpen(false);
@@ -665,15 +530,22 @@ function BiddingFormPage() {
   // 공급자 선택 핸들러
   const handleSupplierSelect = (supplier) => {
     setFormData((prev) => {
-      const updatedSuppliers = prev.suppliers.some((s) => s.id === supplier.id)
-        ? prev.suppliers.filter((s) => s.id !== supplier.id)
-        : [...prev.suppliers, supplier];
+      // 이미 선택된 공급자인지 확인
+      const isSelected = prev.suppliers.some((s) => s.id === supplier.id);
 
-      return {
-        ...prev,
-        suppliers: updatedSuppliers,
-        description: updatedSuppliers.map((s) => s.name).join(", ")
-      };
+      if (isSelected) {
+        // 이미 선택된 경우 제거
+        return {
+          ...prev,
+          suppliers: prev.suppliers.filter((s) => s.id !== supplier.id)
+        };
+      } else {
+        // 새로 선택한 경우 추가
+        return {
+          ...prev,
+          suppliers: [...prev.suppliers, supplier]
+        };
+      }
     });
   };
 
@@ -685,18 +557,18 @@ function BiddingFormPage() {
   // 구매 요청 검색 필터링
   const filteredPurchaseRequests = purchaseRequests.filter(
     (request) =>
-      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.id.toString().includes(searchTerm)
+      request.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.id?.toString().includes(searchTerm)
   );
 
   // 공급자 검색 필터링
   const filteredSuppliers = suppliers.filter(
     (supplier) =>
-      supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()) ||
-      supplier.id.toString().includes(supplierSearchTerm)
+      supplier.name?.toLowerCase().includes(supplierSearchTerm.toLowerCase()) ||
+      supplier.id?.toString().includes(supplierSearchTerm)
   );
 
-  // 파일 렌더링 컴포넌트
+  // 파일 리스트 렌더링
   const renderFileList = () => {
     return (
       <Box sx={{ mt: 2 }}>
@@ -741,7 +613,7 @@ function BiddingFormPage() {
     );
   };
 
-  // 파일 첨부 input 수정
+  // 파일 첨부 input 컴포넌트
   const renderFileUploadInput = () => (
     <>
       <input
@@ -897,8 +769,10 @@ function BiddingFormPage() {
                   label="입찰 방식"
                   onChange={handleChange}
                   disabled={mode === "edit"}>
-                  <MenuItem value="정가제안">정가제안</MenuItem>
-                  <MenuItem value="가격제안">가격제안</MenuItem>
+                  <MenuItem value={BiddingMethod.FIXED_PRICE}>
+                    정가제안
+                  </MenuItem>
+                  <MenuItem value={BiddingMethod.OPEN_PRICE}>가격제안</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -914,10 +788,10 @@ function BiddingFormPage() {
                   label="상태"
                   onChange={handleChange}
                   disabled={mode === "edit"}>
-                  <MenuItem value="PENDING">대기중</MenuItem>
-                  <MenuItem value="ONGOING">진행중</MenuItem>
-                  <MenuItem value="CLOSED">마감</MenuItem>
-                  <MenuItem value="CANCELED">취소</MenuItem>
+                  <MenuItem value={BiddingStatus.PENDING}>대기중</MenuItem>
+                  <MenuItem value={BiddingStatus.ONGOING}>진행중</MenuItem>
+                  <MenuItem value={BiddingStatus.CLOSED}>마감</MenuItem>
+                  <MenuItem value={BiddingStatus.CANCELED}>취소</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -931,7 +805,12 @@ function BiddingFormPage() {
                 onChange={(e) =>
                   handleNumberChange("itemQuantity", Number(e.target.value))
                 }
-                disabled={mode === "edit" || formData.bidMethod === "가격제안"}
+                disabled={
+                  mode === "edit" ||
+                  formData.bidMethod === BiddingMethod.OPEN_PRICE
+                }
+                error={!!errors.itemQuantity}
+                helperText={errors.itemQuantity}
                 margin="normal"
               />
             </Grid>
@@ -945,7 +824,12 @@ function BiddingFormPage() {
                 onChange={(e) =>
                   handleNumberChange("unitPrice", Number(e.target.value))
                 }
-                disabled={mode === "edit" || formData.bidMethod === "가격제안"}
+                disabled={
+                  mode === "edit" ||
+                  formData.bidMethod === BiddingMethod.OPEN_PRICE
+                }
+                error={!!errors.unitPrice}
+                helperText={errors.unitPrice}
                 margin="normal"
               />
             </Grid>
@@ -981,20 +865,22 @@ function BiddingFormPage() {
                 </Select>
               </FormControl>
             </Grid>
-            {/* 입찰 조건 필드 수정 */}
-            <TextField
-              fullWidth
-              label="입찰 조건"
-              name="biddingConditions"
-              multiline
-              rows={4}
-              value={formData.biddingConditions}
-              onChange={handleChange}
-              placeholder="예: 1. 납품 일정 2. 품질 요구사항 3. 결제 조건 등"
-              error={!!errors.biddingConditions}
-              helperText={errors.biddingConditions}
-              margin="normal"
-            />
+            {/* 입찰 조건 필드 */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="입찰 조건"
+                name="biddingConditions"
+                multiline
+                rows={4}
+                value={formData.biddingConditions}
+                onChange={handleChange}
+                placeholder="예: 1. 납품 일정 2. 품질 요구사항 3. 결제 조건 등"
+                error={!!errors.biddingConditions}
+                helperText={errors.biddingConditions}
+                margin="normal"
+              />
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -1010,15 +896,13 @@ function BiddingFormPage() {
             </Grid>
           </Grid>
           {/* 첨부 파일 */}
-          <Grid item xs={12}>
-            {renderFileUploadInput()}
-            {renderFileList()}
-            <Typography variant="body2" color="textSecondary">
-              {fileList.length > 0
-                ? `첨부된 파일: ${fileList.map((file) => file.name).join(", ")}`
-                : "첨부된 파일이 없습니다."}
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              첨부 파일
             </Typography>
-          </Grid>
+            {renderFileList()}
+            {renderFileUploadInput()}
+          </Box>
         </Paper>
 
         <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
@@ -1026,8 +910,8 @@ function BiddingFormPage() {
             variant="contained"
             color="primary"
             type="submit"
-            disabled={isLoading}>
-            {isLoading ? (
+            disabled={isSubmitting}>
+            {isSubmitting ? (
               <CircularProgress size={24} />
             ) : mode === "create" ? (
               "등록"
@@ -1038,7 +922,7 @@ function BiddingFormPage() {
           <Button
             variant="outlined"
             type="button"
-            disabled={isLoading}
+            disabled={isSubmitting}
             onClick={handleCancel}>
             취소
           </Button>
@@ -1072,9 +956,9 @@ function BiddingFormPage() {
                       secondary={
                         <>
                           상태: {request.status} | 품목 수:{" "}
-                          {request.items.length} | 총 금액:{" "}
-                          {request.totalAmount.toLocaleString()}원 | 납기일:{" "}
-                          {request.deliveryDate}
+                          {request.items?.length || 0} | 총 금액:{" "}
+                          {(request.totalAmount || 0).toLocaleString()}원 |
+                          납기일: {request.deliveryDate}
                         </>
                       }
                     />

@@ -1,5 +1,12 @@
 package com.orbit.dto.procurement;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.web.multipart.MultipartFile;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -7,12 +14,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 프로젝트 정보를 전송하기 위한 데이터 전송 객체 (DTO)
@@ -57,6 +58,7 @@ public class ProjectDTO {
     private MultipartFile[] files;
 
     // 첨부파일 목록 (응답에만 사용)
+    @Builder.Default
     private List<ProjectAttachmentDTO> attachments = new ArrayList<>();
 
     // 생성 및 수정 시간 (응답에만 사용)

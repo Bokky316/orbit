@@ -1,8 +1,10 @@
 package com.orbit.event.event;
 
-import lombok.*;
-import org.springframework.context.ApplicationEvent;
 import java.time.LocalDateTime;
+
+import org.springframework.context.ApplicationEvent;
+
+import lombok.Getter;
 
 @Getter
 public class PurchaseRequestStatusChangeEvent extends ApplicationEvent {
