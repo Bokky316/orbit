@@ -298,6 +298,19 @@ const SupplierListPage = () => {
     );
   }
 
+  // 접근 제한 알림 표시
+  if (accessDenied) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="body1">
+            SUPPLIER와 ADMIN 역할을 가진 사용자만 접근할 수 있는 페이지입니다. 메인 페이지로 이동합니다.
+          </Typography>
+        </Alert>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -719,15 +732,6 @@ const SupplierListPage = () => {
               labelDisplayedRows={({ from, to, count, page }) => {
                 const totalPages = Math.ceil(count / rowsPerPage);
                 return `${page + 1} / ${totalPages}`;
-              }}
-              sx={{
-                '& .MuiTablePagination-selectLabel': {
-                  marginRight: '8px',
-                },
-                '& .MuiTablePagination-select': {
-                  marginRight: '16px',
-                  minWidth: '45px'
-                }
               }}
             />
           </>
