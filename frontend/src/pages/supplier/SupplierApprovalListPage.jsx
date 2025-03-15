@@ -227,15 +227,6 @@ const SupplierApprovalListPage = () => {
                 const totalPages = Math.ceil(count / rowsPerPage);
                 return `${page + 1} / ${totalPages}`;
               }}
-              sx={{
-                '& .MuiTablePagination-selectLabel': {
-                  marginRight: '8px',
-                },
-                '& .MuiTablePagination-select': {
-                  marginRight: '16px',
-                  minWidth: '45px'
-                }
-              }}
             />
           </>
         )}
