@@ -856,14 +856,6 @@ const SupplierReviewPage = () => {
         {isAdmin && currentSupplier.status?.childCode === 'PENDING' && (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
             <Button
-              variant="contained"
-              color="success"
-              startIcon={<CheckCircleIcon />}
-              onClick={handleOpenApproveModal}
-            >
-              승인
-            </Button>
-            <Button
               variant="outlined"
               color="error"
               startIcon={<CancelIcon />}
@@ -871,44 +863,16 @@ const SupplierReviewPage = () => {
             >
               반려
             </Button>
-          </Box>
-        )}
-
-        {/* ADMIN에게만 보이는 블랙리스트/일시정지 버튼 추가 - 승인 상태일 때만 표시 */}
-        {isAdmin && currentSupplier.status?.childCode === 'APPROVED' && (
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
             <Button
               variant="contained"
-              color="warning"
-              startIcon={<PauseCircleIcon />}
-              onClick={handleOpenSuspendModal}
+              color="success"
+              startIcon={<CheckCircleIcon />}
+              onClick={handleOpenApproveModal}
             >
-              일시정지
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<ReportIcon />}
-              onClick={handleOpenBlacklistModal}
-            >
-              블랙리스트 등록
+              승인
             </Button>
           </Box>
         )}
-
-      {/* ADMIN에게만 보이는 일시정지/블랙리스트 해제 버튼 - 해당 상태일 때만 표시 */}
-      {isAdmin && (currentSupplier.status?.childCode === 'SUSPENDED' || currentSupplier.status?.childCode === 'BLACKLIST') && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<CheckCircleIcon />}
-            onClick={handleOpenActivateModal}
-          >
-            {currentSupplier.status?.childCode === 'SUSPENDED' ? '일시정지 해제' : '블랙리스트 해제'}
-          </Button>
-        </Box>
-      )}
       </Paper>
 
       {/* 하단 네비게이션 버튼 */}
