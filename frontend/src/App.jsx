@@ -43,7 +43,7 @@ import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
-import CommonCodeManagement from "@/pages/commonCode/CommonCodeManagement";
+import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
 import CategoryListPage from "@pages/item/CategoryListPage";
 import CategoryFormPage from "@pages/item/CategoryFormPage";
 import ItemListPage from "@pages/item/ItemListPage";
@@ -113,55 +113,12 @@ function AppContent() {
                 </>
               )}
 
-              {!isSupplier && (
-                <>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/purchase-requests/dashboard" element={<PurchaseRequestDashboard />} />
-                  <Route path="/biddings" element={<BiddingListPage />} />
-                  <Route path="/biddings/new" element={<BiddingFormPage mode="create" />} />
-                  <Route path="/biddings/:id/edit" element={<BiddingFormPage mode="edit" />} />
-                  <Route path="/biddings/:id" element={<BiddingDetailPage />} />
-                  {/* 평가 페이지 */}
-                  <Route
-                    path="/biddings/evaluations"
-                    element={<BiddingEvaluationListPage />}
-                  />
-                  {/* 평가 상세 페이지 */}
-                  <Route
-                    path="/biddings/bidding-evaluations/:id"
-                    element={<BiddingEvaluationDetailPage />}
-                  />
-                  {/* 계약 목록 페이지 */}
-                  <Route path="/contracts" element={<ContractsListPage />} />
-                  {/* 계약 생성 페이지 */}
-                  <Route
-                    path="/contracts/:id"
-                    element={<ContractDetailPage />}
-                  />
-                  {/* 주문 목록 페이지 */}
-                  <Route path="/orders" element={<BiddingOrderListPage />} />
-                  <Route path="/orders/:id" element={<BiddingOrderDetailPage />} />
-                  <Route path="/projects" element={<ProjectListPage />} />
-                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                  <Route path="/projects/new" element={<ProjectCreatePage />} />
-                  <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
-                  <Route path="/purchase-requests" element={<PurchaseRequestListPage />} />
-                  <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-                  <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />} />
-                  <Route path="/purchase-requests/edit/:id" element={<PurchaseRequestEditPage />} />
-                  <Route path="/approvals" element={<ApprovalListPage />} />
-                  <Route
-                    path="/approvals/:id"
-                    element={<ApprovalDetailPage />}
-                  />
-                  <Route
-                    path="/approval-management"
-                    element={<ApprovalManagementPage />}
-                  />
-                  <Route
-                    path="/approval-lines"
-                    element={<ApprovalLineAdministration />}
-                  />
+              {/* 입고 관리 */}
+              <Route path="/deliveries" element={<DeliveryListPage />} />
+              <Route
+                path="/deliveries/new"
+                element={<DeliveryCreatePage />}
+              />
 
                   {/* 입고 관리 */}
                   <Route path="/deliveries" element={<DeliveryListPage />} />
