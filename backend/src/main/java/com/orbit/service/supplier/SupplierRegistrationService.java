@@ -1,5 +1,27 @@
 package com.orbit.service.supplier;
 
+import com.orbit.dto.supplier.SupplierRegistrationRequestDto;
+import com.orbit.entity.commonCode.SystemStatus;
+import com.orbit.entity.member.Member;
+import com.orbit.entity.supplier.SupplierAttachment;
+import com.orbit.entity.supplier.SupplierRegistration;
+import com.orbit.event.event.SupplierStatusChangeEvent;
+import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.supplier.SupplierAttachmentRepository;
+import com.orbit.repository.supplier.SupplierRegistrationRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

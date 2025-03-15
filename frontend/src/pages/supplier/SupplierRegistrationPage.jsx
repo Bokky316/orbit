@@ -799,13 +799,6 @@ const SupplierRegistrationPage = () => {
               >
                 취소
               </Button>
-              <Button
-                variant="outlined"
-                onClick={() => isEditMode ? navigate(`/supplier/review/${id}`) : navigate('/supplier')}
-                disabled={loading}
-              >
-                취소
-              </Button>
             </Box>
           </form>
         </Paper>
