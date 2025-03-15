@@ -856,20 +856,20 @@ const SupplierReviewPage = () => {
         {isAdmin && currentSupplier.status?.childCode === 'PENDING' && (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
             <Button
-              variant="outlined"
-              color="error"
-              startIcon={<CancelIcon />}
-              onClick={handleOpenRejectModal}
-            >
-              반려
-            </Button>
-            <Button
               variant="contained"
               color="success"
               startIcon={<CheckCircleIcon />}
               onClick={handleOpenApproveModal}
             >
               승인
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<CancelIcon />}
+              onClick={handleOpenRejectModal}
+            >
+              반려
             </Button>
           </Box>
         )}
@@ -1004,82 +1004,6 @@ const SupplierReviewPage = () => {
             활성화
           </Button>
           <Button onClick={handleCloseActivateModal} color="inherit">
-            취소
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 블랙리스트 확인 모달 */}
-      <Dialog
-        open={openBlacklistModal}
-        onClose={handleCloseBlacklistModal}
-        aria-labelledby="blacklist-dialog-title"
-      >
-        <DialogTitle id="blacklist-dialog-title">협력업체 블랙리스트 등록</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 블랙리스트에 등록하시겠습니까?
-            블랙리스트 등록 후에는 해당 업체와의 거래가 완전히 차단됩니다.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            id="blacklist-reason"
-            label="블랙리스트 등록 사유"
-            type="text"
-            fullWidth
-            multiline
-            variant="filled"
-            value={blacklistReason}
-            onChange={(e) => setBlacklistReason(e.target.value)}
-            variant="outlined"
-            sx={{ mt: 2 }}
-            required
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleBlacklistSupplier} color="error" variant="contained">
-            블랙리스트 등록
-          </Button>
-          <Button onClick={handleCloseBlacklistModal} color="inherit">
-            취소
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 일시정지 확인 모달 */}
-      <Dialog
-        open={openSuspendModal}
-        onClose={handleCloseSuspendModal}
-        aria-labelledby="suspend-dialog-title"
-      >
-        <DialogTitle id="suspend-dialog-title">협력업체 일시정지</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 일시정지하시겠습니까?
-            일시정지 상태에서는 필요시 다시 재개할 수 있습니다.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            id="suspend-reason"
-            label="일시정지 사유"
-            type="text"
-            fullWidth
-            multiline
-            variant="filled"
-            value={suspendReason}
-            onChange={(e) => setSuspendReason(e.target.value)}
-            variant="outlined"
-            sx={{ mt: 2 }}
-            required
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleSuspendSupplier} color="warning" variant="contained">
-            일시정지
-          </Button>
-          <Button onClick={handleCloseSuspendModal} color="inherit">
             취소
           </Button>
         </DialogActions>

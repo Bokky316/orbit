@@ -783,23 +783,14 @@ const SupplierRegistrationPage = () => {
                 type="submit"
                 variant="contained"
                 color="primary"
-                disabled={loading}>
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <CircularProgress size={20} sx={{ mr: 1 }} />
-                    {isReapplyMode
-                      ? "재승인 요청 중..."
-                      : isEditMode
-                      ? "수정 중..."
-                      : "등록 중..."}
+                    {isReapplyMode ? '재승인 요청 중...' : isEditMode ? '수정 중...' : '등록 중...'}
                   </>
-                ) : isReapplyMode ? (
-                  "재승인 요청하기"
-                ) : isEditMode ? (
-                  "수정하기"
-                ) : (
-                  "등록하기"
-                )}
+                ) : isReapplyMode ? '재승인 요청하기' : isEditMode ? '수정하기' : '등록하기'}
               </Button>
               <Button
                 variant="outlined"
