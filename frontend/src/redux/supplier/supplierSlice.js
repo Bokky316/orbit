@@ -567,69 +567,93 @@ const initialState = {
 };
 
 const supplierSlice = createSlice({
-  name: "supplier",
-  initialState,
-  reducers: {
-    resetSupplierState: (state) => {
-      state.success = false;
-      state.error = null;
-      state.message = "";
-    },
-    clearCurrentSupplier: (state) => {
-      state.currentSupplier = null;
-    },
-    initializeCategoriesFromSuppliers: (state, action) => {
-      const suppliers = action.payload;
-      // 고유한 대분류 추출
-      const uniqueCategories = [
-        ...new Set(suppliers.map((s) => s.sourcingCategory))
-      ]
-        .filter(Boolean)
-        .map((category) => ({ value: category, label: category }));
-      state.sourcingCategories = uniqueCategories;
+ name: 'supplier',
+ initialState,
+ reducers: {
+   resetSupplierState: (state) => {
+     state.success = false;
+     state.error = null;
+     state.message = '';
+   },
+   clearCurrentSupplier: (state) => {
+     state.currentSupplier = null;
+   },
+   initializeCategoriesFromSuppliers: (state, action) => {
+     const suppliers = action.payload;
+     // 고유한 대분류 추출
+     const uniqueCategories = [...new Set(suppliers.map(s => s.sourcingCategory))].filter(Boolean)
+       .map(category => ({ value: category, label: category }));
+     state.sourcingCategories = uniqueCategories;
 
-      // 고유한 중분류 추출
-      const uniqueSubCategories = {};
-      uniqueCategories.forEach((category) => {
-        const subCats = [
-          ...new Set(
-            suppliers
-              .filter((s) => s.sourcingCategory === category.value)
-              .map((s) => s.sourcingSubCategory)
-          )
-        ]
-          .filter(Boolean)
-          .map((subCat) => ({ value: subCat, label: subCat }));
+     // 고유한 중분류 추출
+     const uniqueSubCategories = {};
+     uniqueCategories.forEach(category => {
+       const subCats = [...new Set(
+         suppliers
+           .filter(s => s.sourcingCategory === category.value)
+           .map(s => s.sourcingSubCategory)
+       )].filter(Boolean)
+       .map(subCat => ({ value: subCat, label: subCat }));
 
-        uniqueSubCategories[category.value] = subCats;
-      });
-      state.sourcingSubCategories = uniqueSubCategories;
+       uniqueSubCategories[category.value] = subCats;
+     });
+     state.sourcingSubCategories = uniqueSubCategories;
 
-      // 고유한 소분류 추출
-      const uniqueDetailCategories = {};
-      Object.keys(uniqueSubCategories).forEach((category) => {
-        uniqueSubCategories[category].forEach((subCat) => {
-          const detailCats = [
-            ...new Set(
-              suppliers
-                .filter(
-                  (s) =>
-                    s.sourcingCategory === category &&
-                    s.sourcingSubCategory === subCat.value
-                )
-                .map((s) => s.sourcingDetailCategory)
-            )
-          ]
-            .filter(Boolean)
-            .map((detailCat) => ({ value: detailCat, label: detailCat }));
+     // 고유한 소분류 추출
+     const uniqueDetailCategories = {};
+     Object.keys(uniqueSubCategories).forEach(category => {
+       uniqueSubCategories[category].forEach(subCat => {
+         const detailCats = [...new Set(
+           suppliers
+             .filter(s => s.sourcingCategory === category && s.sourcingSubCategory === subCat.value)
+             .map(s => s.sourcingDetailCategory)
+         )].filter(Boolean)
+         .map(detailCat => ({ value: detailCat, label: detailCat }));
 
-          uniqueDetailCategories[subCat.value] = detailCats;
-        });
-      });
-      state.sourcingDetailCategories = uniqueDetailCategories;
-    }
-  },
-  extraReducers: (builder) => {
+         uniqueDetailCategories[subCat.value] = detailCats;
+       });
+     });
+     state.sourcingDetailCategories = uniqueDetailCategories;
+   },
+   // 웹소켓을 통한 상태 업데이트를 위한 액션 추가
+   updateSupplierStatus: (state, action) => {
+     const { id, fromStatus, toStatus } = action.payload;
+
+     // 웹소켓으로부터 받은 데이터의 형식에 따라 처리
+     let statusCode;
+     if (toStatus && toStatus.includes('-')) {
+       // 'SUPPLIER-STATUS-APPROVED' 형식인 경우 마지막 부분만 추출
+       statusCode = toStatus.split('-').pop();
+     } else {
+       // 이미 'APPROVED' 형식인 경우 그대로 사용
+       statusCode = toStatus;
+     }
+
+     // 협력업체 목록 상태 업데이트
+     const supplierIndex = state.suppliers.findIndex(supplier => supplier.id === id);
+     if (supplierIndex !== -1) {
+       const supplier = state.suppliers[supplierIndex];
+
+       // status가 객체인 경우
+       if (supplier.status && typeof supplier.status === 'object') {
+         supplier.status.childCode = statusCode;
+       } else {
+         // status가 문자열인 경우 직접 설정
+         supplier.status = statusCode;
+       }
+     }
+
+     // 현재 상세 보기 중인 협력업체도 업데이트
+     if (state.currentSupplier && state.currentSupplier.id === id) {
+       if (state.currentSupplier.status && typeof state.currentSupplier.status === 'object') {
+         state.currentSupplier.status.childCode = statusCode;
+       } else {
+         state.currentSupplier.status = statusCode;
+       }
+     }
+   }
+ },
+ extraReducers: (builder) => {
     builder
       // fetchSuppliers
       .addCase(fetchSuppliers.pending, (state) => {

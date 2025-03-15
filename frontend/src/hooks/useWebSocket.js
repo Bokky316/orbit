@@ -4,6 +4,7 @@ import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { SERVER_URL } from "@/utils/constants";
 import { changePurchaseRequestStatus } from "@/redux/purchaseRequestSlice";
+import { updateSupplierStatus } from "@/redux/supplier/supplierSlice";
 import { updateBiddingStatus } from "@/redux/biddingSlice";
 import { addRealTimeNotification } from "@/redux/notificationSlice";
 
@@ -110,6 +111,30 @@ const useWebSocket = (user, options = {}) => {
               }
             );
           }
+
+          // 1. 사용자 공급업체 ID별 구독 추가
+          client.subscribe(`/topic/supplier/${user.id}`, (message) => {
+            try {
+              const updateData = JSON.parse(message.body);
+              console.log(
+                "📣 사용자별 공급업체 상태 변경 이벤트 수신:",
+                updateData
+              );
+              dispatch(
+                updateSupplierStatus({
+                  id: updateData.supplierId,
+                  fromStatus: updateData.fromStatus,
+                  toStatus: updateData.toStatus
+                })
+              );
+            } catch (error) {
+              console.error("❌ 사용자별 협력업체 상태 업데이트 오류:", error);
+            }
+          });
+
+          // 2. 공급업체 상태 변경 구독을 위한 준비
+          // 참고: 현재 보고 있는 개별 공급업체에 대한 구독은
+          // 해당 페이지에서 구체적인 supplierId를 알 때 subscribeToSupplier 메서드로 처리
         },
 
         onStompError: (frame) => {
@@ -139,131 +164,112 @@ const useWebSocket = (user, options = {}) => {
     }
 
     return () => {
-      clearTimeout(connectionTimeoutId);
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-      }
-      if (stompClientRef.current) {
-        stompClientRef.current.deactivate();
-        stompClientRef.current = null;
+      if (client) {
+        client.deactivate();
       }
     };
-  }, [user, dispatch, features]);
+  }, [user, dispatch]);
 
-  // 재연결 스케줄
-  const scheduleReconnect = () => {
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-    }
-
-    reconnectTimerRef.current = setTimeout(() => {
-      connectingRef.current = false; // 재연결 시도 가능하도록 플래그 리셋
-    }, 5000);
-  };
-
-  // 구매요청 상태 변경 메시지 전송
   const sendStatusChange = (purchaseRequestId, fromStatus, toStatus) => {
-    if (!stompClientRef.current || !isConnected) {
-      console.warn("⚠️ WebSocket 연결이 없어 상태 변경을 전송할 수 없습니다");
-      return false;
-    }
-
-    try {
-      stompClientRef.current.publish({
-        destination: "/app/purchase-request/status",
-        body: JSON.stringify({
-          purchaseRequestId,
-          fromStatus,
-          toStatus
-        })
-      });
-      return true;
-    } catch (error) {
-      console.error("❌ 상태 변경 전송 실패:", error);
-      return false;
+    if (stompClient && isConnected) {
+      try {
+        stompClient.publish({
+          destination: "/app/purchase-request/status",
+          body: JSON.stringify({
+            purchaseRequestId,
+            fromStatus,
+            toStatus
+          })
+        });
+      } catch (error) {
+        console.error("❌ 상태 변경 전송 실패:", error);
+      }
     }
   };
 
-  // 입찰 상태 변경 메시지 전송
-  const sendBiddingStatusChange = (biddingId, fromStatus, toStatus) => {
-    if (!features.biddings) {
-      console.warn("⚠️ 입찰 기능이 비활성화되어 있습니다");
-      return false;
-    }
-
-    if (!stompClientRef.current || !isConnected) {
+  // 공급업체 상태 변경 전송 메서드 추가
+  const sendSupplierStatusChange = (supplierId, fromStatus, toStatus) => {
+    if (stompClient && isConnected) {
+      try {
+        stompClient.publish({
+          destination: `/app/supplier/${supplierId}/status`,
+          body: JSON.stringify({
+            supplierId,
+            fromStatus,
+            toStatus,
+            changedBy: user?.username || "anonymous",
+            timestamp: new Date().toISOString()
+          })
+        });
+        console.log(
+          `📤 공급업체 상태 변경 메시지 전송: ID=${supplierId}, ${fromStatus} → ${toStatus}`
+        );
+      } catch (error) {
+        console.error("❌ 공급업체 상태 변경 전송 실패:", error);
+      }
+    } else {
       console.warn(
-        "⚠️ WebSocket 연결이 없어 입찰 상태 변경을 전송할 수 없습니다"
+        "⚠️ WebSocket 연결이 활성화되지 않아 메시지를 전송할 수 없습니다."
       );
-      return false;
-    }
-
-    try {
-      stompClientRef.current.publish({
-        destination: "/app/bidding/status",
-        body: JSON.stringify({
-          biddingId,
-          fromStatus,
-          toStatus
-        })
-      });
-      return true;
-    } catch (error) {
-      console.error("❌ 입찰 상태 변경 전송 실패:", error);
-      return false;
     }
   };
 
-  // 알림 전송
-  const sendNotification = (type, message, receiverId = null) => {
-    if (!features.notifications) {
-      console.warn("⚠️ 알림 기능이 비활성화되어 있습니다");
-      return false;
+  // 공급업체 구독 메서드 추가
+  const subscribeToSupplier = (supplierId) => {
+    if (stompClient && isConnected && supplierId) {
+      try {
+        const subscription = stompClient.subscribe(
+          `/topic/supplier/${supplierId}`,
+          (message) => {
+            try {
+              const updateData = JSON.parse(message.body);
+              console.log(
+                `📣 공급업체(${supplierId}) 상태 변경 이벤트 수신:`,
+                updateData
+              );
+              dispatch(
+                updateSupplierStatus({
+                  id: updateData.supplierId,
+                  fromStatus: updateData.fromStatus,
+                  toStatus: updateData.toStatus
+                })
+              );
+            } catch (error) {
+              console.error(
+                `❌ 특정 공급업체(${supplierId}) 상태 업데이트 오류:`,
+                error
+              );
+            }
+          }
+        );
+        console.log(`✅ 공급업체(${supplierId}) 구독 성공`);
+        return subscription; // 구독 해제를 위해 subscription 객체 반환
+      } catch (error) {
+        console.error(`❌ 공급업체(${supplierId}) 구독 실패:`, error);
+        return null;
+      }
     }
-
-    if (!stompClientRef.current || !isConnected) {
-      console.warn("⚠️ WebSocket 연결이 없어 알림을 전송할 수 없습니다");
-      return false;
-    }
-
-    try {
-      stompClientRef.current.publish({
-        destination: "/app/notifications",
-        body: JSON.stringify({
-          type,
-          message,
-          senderId: user?.id,
-          receiverId,
-          timestamp: new Date().toISOString()
-        })
-      });
-      return true;
-    } catch (error) {
-      console.error("❌ 알림 전송 실패:", error);
-      return false;
-    }
+    return null;
   };
 
-  // 기능 활성화/비활성화
-  const enableFeature = (feature, enabled = true) => {
-    if (!["purchaseRequests", "biddings", "notifications"].includes(feature)) {
-      console.error(`⚠️ 알 수 없는 기능: ${feature}`);
-      return;
+  // 구독 해제 메서드 추가
+  const unsubscribeFromSupplier = (subscription) => {
+    if (subscription) {
+      try {
+        subscription.unsubscribe();
+        console.log("✅ 공급업체 구독 해제 성공");
+      } catch (error) {
+        console.error("❌ 공급업체 구독 해제 실패:", error);
+      }
     }
-
-    setFeatures((prev) => ({
-      ...prev,
-      [feature]: enabled
-    }));
   };
 
   return {
-    isConnected,
-    features,
-    enableFeature,
     sendStatusChange,
-    sendBiddingStatusChange,
-    sendNotification
+    sendSupplierStatusChange,
+    subscribeToSupplier,
+    unsubscribeFromSupplier,
+    isConnected
   };
 };
 

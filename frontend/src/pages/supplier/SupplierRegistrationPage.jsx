@@ -495,16 +495,24 @@ const SupplierRegistrationPage = () => {
 
             {/* 반려 상태일 때 반려 사유 표시 */}
             {isReapplyMode && currentSupplier?.rejectionReason && (
-              <Alert severity="warning" sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" fontWeight="bold">
+              <Alert
+                severity="warning"
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  backgroundColor: '#fff',
+                  border: '1px solid rgba(237, 108, 2, 0.6)',
+                  borderRadius: 2
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold" color="warning.dark">
                   반려 사유
                 </Typography>
                 <Typography variant="body2">
-                  {currentSupplier.rejectionReason}
+                  {currentSupplier.rejectionReason || '반려 사유가 입력되지 않았습니다.'}
                 </Typography>
                 <Typography variant="body1" sx={{ mt: 1 }}>
-                  위 사유로 반려된 신청입니다. 내용을 수정하여 재승인을
-                  요청해주세요.
+                  위 사유로 반려된 신청입니다. 내용을 수정하여 재승인을 요청해주세요.
                 </Typography>
               </Alert>
             )}
@@ -770,18 +778,7 @@ const SupplierRegistrationPage = () => {
             </Grid>
 
             {/* 제출 버튼 */}
-            <Box
-              sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
-              <Button
-                variant="outlined"
-                onClick={() =>
-                  isEditMode
-                    ? navigate(`/supplier/review/${id}`)
-                    : navigate("/supplier")
-                }
-                disabled={loading}>
-                취소
-              </Button>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               <Button
                 type="submit"
                 variant="contained"
@@ -803,6 +800,13 @@ const SupplierRegistrationPage = () => {
                 ) : (
                   "등록하기"
                 )}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => isEditMode ? navigate(`/supplier/review/${id}`) : navigate('/supplier')}
+                disabled={loading}
+              >
+                취소
               </Button>
             </Box>
           </form>

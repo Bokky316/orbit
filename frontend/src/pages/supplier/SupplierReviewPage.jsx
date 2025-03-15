@@ -779,20 +779,20 @@ const SupplierReviewPage = () => {
         {isAdmin && currentSupplier.status?.childCode === 'PENDING' && (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
             <Button
-              variant="outlined"
-              color="error"
-              startIcon={<CancelIcon />}
-              onClick={handleOpenRejectModal}
-            >
-              반려
-            </Button>
-            <Button
               variant="contained"
               color="success"
               startIcon={<CheckCircleIcon />}
               onClick={handleOpenApproveModal}
             >
               승인
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<CancelIcon />}
+              onClick={handleOpenRejectModal}
+            >
+              반려
             </Button>
           </Box>
         )}
@@ -834,11 +834,11 @@ const SupplierReviewPage = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRejectModal} color="inherit">
-            취소
-          </Button>
           <Button onClick={handleReject} color="error" variant="contained">
             반려하기
+          </Button>
+          <Button onClick={handleCloseRejectModal} color="inherit">
+            취소
           </Button>
         </DialogActions>
       </Dialog>
@@ -853,11 +853,11 @@ const SupplierReviewPage = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseApproveModal} color="inherit">
-            취소
-          </Button>
           <Button onClick={handleApprove} color="success" variant="contained">
             승인하기
+          </Button>
+          <Button onClick={handleCloseApproveModal} color="inherit">
+            취소
           </Button>
         </DialogActions>
       </Dialog>
@@ -892,14 +892,11 @@ const SupplierReviewPage = () => {
           />
         </DialogContent>
         <DialogActions>
+          <Button onClick={handleInactivateSupplier} color="error" variant="contained">
+            비활성화
+          </Button>
           <Button onClick={handleCloseInactivateModal} color="inherit">
             취소
-          </Button>
-          <Button
-            onClick={handleInactivateSupplier}
-            color="error"
-            variant="contained">
-            비활성화
           </Button>
         </DialogActions>
       </Dialog>
@@ -926,14 +923,11 @@ const SupplierReviewPage = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
+          <Button onClick={handleActivateSupplier} color="success" variant="contained">
+            활성화
+          </Button>
           <Button onClick={handleCloseActivateModal} color="inherit">
             취소
-          </Button>
-          <Button
-            onClick={handleActivateSupplier}
-            color="success"
-            variant="contained">
-            활성화
           </Button>
         </DialogActions>
       </Dialog>
