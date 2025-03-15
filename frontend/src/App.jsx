@@ -56,6 +56,7 @@ import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage"
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
 import CommonCodeManagement from "@/pages/commonCode/CommonCodeManagement";
+import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
 import CategoryListPage from "@pages/item/CategoryListPage";
 import CategoryFormPage from "@pages/item/CategoryFormPage";
 import ItemListPage from "@pages/item/ItemListPage";
@@ -138,6 +139,12 @@ function AppContent() {
                   />
                 </>
               )}
+              {/* 입고 관리 */}
+              <Route path="/deliveries" element={<DeliveryListPage />} />
+              <Route
+                path="/deliveries/new"
+                element={<DeliveryCreatePage />}
+              />
 
               {/* 구매자/관리자 전용 라우트 */}
               {!isSupplier && (
