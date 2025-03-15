@@ -77,4 +77,41 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
      * 입찰 번호로 입찰 공고 조회
      */
     Bidding findByBidNumber(String bidNumber);
+
+     // ===== 공급자 메서드 =====
+    
+    // 특정 공급사가 초대된 입찰 공고 중 특정 상태의 목록 조회
+    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId AND b.statusChild IN :statuses")
+    List<Bidding> findBiddingsInvitedSupplierByStatuses(
+            @Param("supplierId") Long supplierId, 
+            @Param("statuses") List<ChildCode> statuses);
+    
+    // 특정 공급사가 초대된 입찰 공고 중 특정 상태의 개수 조회
+    @Query("SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId AND b.statusChild = :status")
+    long countBiddingsInvitedSupplierByStatus(
+            @Param("supplierId") Long supplierId, 
+            @Param("status") ChildCode status);
+    
+    // 특정 공급사가 낙찰받은 입찰 공고 목록 조회
+        @Query("SELECT DISTINCT b FROM Bidding b JOIN b.evaluations e JOIN e.participation p WHERE e.isSelectedBidder = true AND p.supplierId = :supplierId")
+        List<Bidding> findBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
+
+        // 특정 공급사가 낙찰받은 입찰 공고 개수 조회
+        @Query("SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.evaluations e JOIN e.participation p WHERE e.isSelectedBidder = true AND p.supplierId = :supplierId")
+        long countBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
+
+    // 특정 공급사가 최근에 초대받은 입찰 공고 목록 조회 (최신순, 제한 개수)
+    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId ORDER BY b.startDate DESC")
+    List<Bidding> findRecentBiddingsInvitedSupplier(
+            @Param("supplierId") Long supplierId, 
+            @Param("limit") int limit);
+    
+    // 특정 공급사가 초대받은 입찰 공고 중 특정 기간 내 마감되는 목록 조회
+    @Query("SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplierId = :supplierId AND b.endDate BETWEEN :startDate AND :endDate ORDER BY b.endDate ASC")
+    List<Bidding> findBiddingsInvitedSupplierWithDeadlineBetween(
+            @Param("supplierId") Long supplierId, 
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("limit") int limit);
+
 }

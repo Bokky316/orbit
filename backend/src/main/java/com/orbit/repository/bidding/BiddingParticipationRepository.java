@@ -1,6 +1,7 @@
 package com.orbit.repository.bidding;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -54,4 +55,14 @@ public interface BiddingParticipationRepository extends JpaRepository<BiddingPar
      */
     @Query("SELECT p FROM BiddingParticipation p WHERE p.bidding.id = :biddingId AND p.isSelectedBidder = true")
     List<BiddingParticipation> findSelectedBidderParticipations(@Param("biddingId") Long biddingId);
+
+
+    // ===== 공급자 메서드 =====
+    
+    // 특정 공급사의 참여 수 조회
+    long countBySupplierId(Long supplierId);
+    
+    // 특정 입찰 및 공급사에 대한 참여 정보 조회
+    Optional<BiddingParticipation> findByBiddingIdAndSupplierId(Long biddingId, Long supplierId);
+    
 }

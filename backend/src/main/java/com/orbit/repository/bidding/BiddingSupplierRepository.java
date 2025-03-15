@@ -42,18 +42,19 @@ public interface BiddingSupplierRepository extends JpaRepository<BiddingSupplier
      */
     @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId AND s.isParticipating = true")
     List<BiddingSupplier> findParticipatingSuppliers(@Param("biddingId") Long biddingId);
-    
+
     /**
      * 특정 입찰에 초대된 공급사 중 참여를 거부한 공급사 조회
      */
     @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId AND s.isRejected = true")
     List<BiddingSupplier> findRejectedSuppliers(@Param("biddingId") Long biddingId);
-    
+
     /**
      * 특정 입찰에 초대된 공급사 중 응답하지 않은 공급사 조회
      */
-    @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId " +
-           "AND (s.isParticipating = false OR s.isParticipating IS NULL) " +
-           "AND (s.isRejected = false OR s.isRejected IS NULL)")
+   @Query("SELECT s FROM BiddingSupplier s WHERE s.biddingId = :biddingId " +
+   "AND (s.isParticipating = false OR s.isParticipating IS NULL) " +
+   "AND (s.isRejected = false OR s.isRejected IS NULL)")
     List<BiddingSupplier> findNonRespondedSuppliers(@Param("biddingId") Long biddingId);
+
 }

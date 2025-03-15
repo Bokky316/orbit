@@ -20,13 +20,23 @@ import {
   InputAdornment
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/GetApp";
-import {
-  canParticipateInBidding,
-  getStatusText,
-  getBidMethodText
-} from "./helpers/biddingHelpers";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { API_URL } from "@/utils/constants";
+
+import {
+  getStatusText,
+  getBidMethodText
+} from "./helpers/commonBiddingHelpers";
+
+import {
+  BiddingStatus,
+  UserRole,
+  BiddingMethod,
+  canParticipateInBidding,
+  calculateParticipationAmount,
+  validatePriceProposal,
+  prepareParticipationSubmission
+} from "./helpers/supplierBiddingHelpers";
 
 function SupplierBiddingDetailPage() {
   const { id } = useParams();
@@ -46,6 +56,16 @@ function SupplierBiddingDetailPage() {
     note: ""
   });
 
+  // 계산된 금액 상태
+  const [calculatedAmount, setCalculatedAmount] = useState({
+    supplyPrice: 0,
+    vat: 0,
+    totalAmount: 0
+  });
+
+  // 입력 유효성 검사 오류
+  const [validationErrors, setValidationErrors] = useState({});
+
   // 사용자 정보 상태
   const [userSupplierInfo, setUserSupplierInfo] = useState(null);
 
@@ -61,7 +81,7 @@ function SupplierBiddingDetailPage() {
       const userData = await userResponse.json();
 
       // 사용자가 공급사인 경우 공급사 정보 가져오기
-      if (userData.role === "SUPPLIER") {
+      if (userData.role === UserRole.SUPPLIER) {
         const supplierResponse = await fetchWithAuth(
           `${API_URL}suppliers/by-user/${userData.id}`
         );
@@ -79,21 +99,37 @@ function SupplierBiddingDetailPage() {
   const fetchBiddingDetail = async () => {
     try {
       setLoading(true);
+
       const response = await fetchWithAuth(`${API_URL}biddings/${id}`);
       if (!response.ok) {
-        throw new Error("입찰 공고 정보를 불러올 수 없습니다.");
+        const errorText = await response.text();
+        throw new Error(`입찰 공고 정보를 불러올 수 없습니다: ${errorText}`);
       }
 
-      const data = await response.json();
+      const responseText = await response.text();
+
+      // 빈 응답 처리
+      if (!responseText.trim()) {
+        throw new Error("빈 응답이 반환되었습니다.");
+      }
+
+      const data = JSON.parse(responseText);
       setBidding(data);
 
       // 기본 참여 데이터 설정 (정가제안 방식인 경우 단가는 고정)
-      if (data.bidMethod === "정가제안") {
+      if (data.bidMethod === BiddingMethod.FIXED_PRICE) {
         setParticipationData((prev) => ({
           ...prev,
           unitPrice: data.unitPrice || 0,
           quantity: data.quantity || 1
         }));
+
+        // 금액 계산
+        const amounts = calculateParticipationAmount(
+          data.unitPrice,
+          data.quantity
+        );
+        setCalculatedAmount(amounts);
       }
 
       // 내 참여 정보 확인
@@ -122,40 +158,35 @@ function SupplierBiddingDetailPage() {
       }
 
       // 참여 가능 여부 확인
-      if (!canParticipateInBidding(bidding, "SUPPLIER", userSupplierInfo)) {
+      if (
+        !canParticipateInBidding(bidding, UserRole.SUPPLIER, userSupplierInfo)
+      ) {
         throw new Error("현재 입찰에 참여할 수 없습니다.");
       }
 
-      // 가격제안 방식일 때 단가가 입력되었는지 확인
-      if (
-        bidding.bidMethod === "가격제안" &&
-        (!participationData.unitPrice || participationData.unitPrice <= 0)
-      ) {
-        throw new Error("제안 단가를 입력해주세요.");
-      }
+      // 가격 유효성 검사
+      const validation = validatePriceProposal(
+        participationData.unitPrice,
+        participationData.quantity
+      );
 
-      // 수량 검증
-      if (participationData.quantity <= 0) {
-        throw new Error("수량은 1 이상이어야 합니다.");
+      if (!validation.isValid) {
+        setValidationErrors(validation.errors);
+        throw new Error("입력값이 유효하지 않습니다.");
       }
 
       setSubmitting(true);
 
       // 참여 데이터 준비
-      const participationPayload = {
-        biddingId: bidding.id,
-        supplierId: userSupplierInfo.id,
-        unitPrice:
-          bidding.bidMethod === "정가제안"
-            ? bidding.unitPrice
-            : participationData.unitPrice,
-        quantity: participationData.quantity,
-        note: participationData.note
-      };
+      const participationPayload = prepareParticipationSubmission(
+        bidding,
+        participationData,
+        userSupplierInfo
+      );
 
       // API 호출
       const response = await fetchWithAuth(
-        `${API_URL}biddings/${bidding.id}/participations`,
+        `${API_URL}supplier/biddings/${bidding.id}/participate`,
         {
           method: "POST",
           headers: {
@@ -218,6 +249,46 @@ function SupplierBiddingDetailPage() {
     }
   };
 
+  // 참여 데이터 변경 핸들러
+  const handleParticipationChange = (e) => {
+    const { name, value } = e.target;
+    const numValue =
+      name === "unitPrice" || name === "quantity" ? Number(value) : value;
+
+    setParticipationData((prev) => ({
+      ...prev,
+      [name]: numValue
+    }));
+
+    // 가격제안 방식일 때 금액 재계산
+    if (
+      bidding?.bidMethod === BiddingMethod.OPEN_PRICE &&
+      (name === "unitPrice" || name === "quantity")
+    ) {
+      const updatedData = {
+        ...participationData,
+        [name]: numValue
+      };
+
+      const unitPrice = name === "unitPrice" ? numValue : updatedData.unitPrice;
+      const quantity = name === "quantity" ? numValue : updatedData.quantity;
+
+      const amounts = calculateParticipationAmount(unitPrice, quantity);
+      setCalculatedAmount(amounts);
+
+      // 유효성 검사 오류 초기화
+      setValidationErrors({});
+    }
+  };
+
+  // 이 공급사가 초대되었는지 확인
+  const isInvited = () => {
+    return (
+      bidding?.suppliers?.some((s) => s.supplierId === userSupplierInfo?.id) ||
+      false
+    );
+  };
+
   // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
     fetchUserInfo();
@@ -229,21 +300,6 @@ function SupplierBiddingDetailPage() {
       fetchBiddingDetail();
     }
   }, [id, userSupplierInfo]);
-
-  // 참여 데이터 변경 핸들러
-  const handleParticipationChange = (e) => {
-    const { name, value } = e.target;
-    setParticipationData((prev) => ({
-      ...prev,
-      [name]:
-        name === "unitPrice" || name === "quantity" ? Number(value) : value
-    }));
-  };
-
-  // 이 공급사가 초대되었는지 확인
-  const isInvited = (bidding, supplierId) => {
-    return bidding?.suppliers?.some((s) => s.supplierId === supplierId);
-  };
 
   // 로딩 상태
   if (loading) {
@@ -270,7 +326,9 @@ function SupplierBiddingDetailPage() {
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-        <Button variant="contained" onClick={() => navigate("/biddings")}>
+        <Button
+          variant="contained"
+          onClick={() => navigate("/supplier/biddings")}>
           목록으로
         </Button>
       </Box>
@@ -284,7 +342,9 @@ function SupplierBiddingDetailPage() {
         <Alert severity="warning" sx={{ mb: 2 }}>
           입찰 공고를 찾을 수 없습니다
         </Alert>
-        <Button variant="contained" onClick={() => navigate("/biddings")}>
+        <Button
+          variant="contained"
+          onClick={() => navigate("/supplier/biddings")}>
           목록으로
         </Button>
       </Box>
@@ -302,7 +362,9 @@ function SupplierBiddingDetailPage() {
           mb: 4
         }}>
         <Typography variant="h4">입찰 공고 상세</Typography>
-        <Button variant="outlined" onClick={() => navigate("/biddings")}>
+        <Button
+          variant="outlined"
+          onClick={() => navigate("/supplier/biddings")}>
           목록으로
         </Button>
       </Box>
@@ -326,13 +388,13 @@ function SupplierBiddingDetailPage() {
             <Chip
               label={getStatusText(bidding.status)}
               color={
-                bidding.status?.childCode === "PENDING"
+                bidding.status?.childCode === BiddingStatus.PENDING
                   ? "default"
-                  : bidding.status?.childCode === "ONGOING"
+                  : bidding.status?.childCode === BiddingStatus.ONGOING
                   ? "primary"
-                  : bidding.status?.childCode === "CLOSED"
+                  : bidding.status?.childCode === BiddingStatus.CLOSED
                   ? "success"
-                  : bidding.status?.childCode === "CANCELED"
+                  : bidding.status?.childCode === BiddingStatus.CANCELED
                   ? "error"
                   : "default"
               }
@@ -525,24 +587,27 @@ function SupplierBiddingDetailPage() {
         // 참여 가능 여부에 따른 섹션 표시
         <>
           {/* 정가제안일 경우 초대 확인 */}
-          {bidding.bidMethod === "정가제안" &&
-          !isInvited(bidding, userSupplierInfo?.id) ? (
+          {bidding.bidMethod === BiddingMethod.FIXED_PRICE && !isInvited() ? (
             <Paper sx={{ p: 3, mb: 3, bgcolor: "warning.light" }}>
               <Typography variant="h6" sx={{ color: "white" }}>
                 초대된 공급사만 참여 가능한 입찰입니다.
               </Typography>
             </Paper>
           ) : // 참여 가능 여부에 따른 폼 표시
-          canParticipateInBidding(bidding, "SUPPLIER", userSupplierInfo) ? (
+          canParticipateInBidding(
+              bidding,
+              UserRole.SUPPLIER,
+              userSupplierInfo
+            ) ? (
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h5" sx={{ mb: 2 }}>
                 입찰 참여
               </Typography>
               <Grid container spacing={3}>
                 {/* 입찰 방식에 따른 입력 필드 */}
-                {bidding.bidMethod === "가격제안" ? (
+                {bidding.bidMethod === BiddingMethod.OPEN_PRICE ? (
                   <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
+                    <FormControl fullWidth error={!!validationErrors.unitPrice}>
                       <InputLabel htmlFor="unitPrice">제안 단가</InputLabel>
                       <Input
                         id="unitPrice"
@@ -555,6 +620,11 @@ function SupplierBiddingDetailPage() {
                         }
                         inputProps={{ min: 0 }}
                       />
+                      {validationErrors.unitPrice && (
+                        <Typography color="error" variant="caption">
+                          {validationErrors.unitPrice}
+                        </Typography>
+                      )}
                     </FormControl>
                   </Grid>
                 ) : (
@@ -575,7 +645,7 @@ function SupplierBiddingDetailPage() {
                 )}
 
                 <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
+                  <FormControl fullWidth error={!!validationErrors.quantity}>
                     <InputLabel htmlFor="quantity">수량</InputLabel>
                     <Input
                       id="quantity"
@@ -584,6 +654,50 @@ function SupplierBiddingDetailPage() {
                       value={participationData.quantity}
                       onChange={handleParticipationChange}
                       inputProps={{ min: 1 }}
+                    />
+                    {validationErrors.quantity && (
+                      <Typography color="error" variant="caption">
+                        {validationErrors.quantity}
+                      </Typography>
+                    )}
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth disabled>
+                    <InputLabel htmlFor="supplyPrice">공급가액</InputLabel>
+                    <Input
+                      id="supplyPrice"
+                      value={calculatedAmount.supplyPrice.toLocaleString()}
+                      endAdornment={
+                        <InputAdornment position="end">원</InputAdornment>
+                      }
+                    />
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth disabled>
+                    <InputLabel htmlFor="vat">부가세</InputLabel>
+                    <Input
+                      id="vat"
+                      value={calculatedAmount.vat.toLocaleString()}
+                      endAdornment={
+                        <InputAdornment position="end">원</InputAdornment>
+                      }
+                    />
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth disabled>
+                    <InputLabel htmlFor="totalAmount">총액</InputLabel>
+                    <Input
+                      id="totalAmount"
+                      value={calculatedAmount.totalAmount.toLocaleString()}
+                      endAdornment={
+                        <InputAdornment position="end">원</InputAdornment>
+                      }
                     />
                   </FormControl>
                 </Grid>
@@ -609,7 +723,7 @@ function SupplierBiddingDetailPage() {
                       onClick={handleParticipate}
                       disabled={
                         submitting ||
-                        (bidding.bidMethod === "가격제안" &&
+                        (bidding.bidMethod === BiddingMethod.OPEN_PRICE &&
                           (!participationData.unitPrice ||
                             participationData.unitPrice <= 0))
                       }>
@@ -623,7 +737,7 @@ function SupplierBiddingDetailPage() {
                 </Grid>
               </Grid>
             </Paper>
-          ) : bidding.status?.childCode !== "ONGOING" ? (
+          ) : bidding.status?.childCode !== BiddingStatus.ONGOING ? (
             <Paper sx={{ p: 3, mb: 3, bgcolor: "warning.light" }}>
               <Typography variant="h6" sx={{ color: "white" }}>
                 현재 입찰 상태는 "{getStatusText(bidding.status)}"이므로 참여할
