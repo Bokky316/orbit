@@ -1,101 +1,120 @@
 package com.orbit.controller.delivery;
 
-import com.orbit.dto.delivery.DeliveryRequestDto;
-import com.orbit.dto.delivery.DeliveryResponseDto;
-import com.orbit.dto.delivery.DeliveryUpdateRequest;
+import com.orbit.dto.delivery.DeliveryDto;
+import com.orbit.entity.member.Member;
 import com.orbit.service.delivery.DeliveryService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.orbit.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/deliveries")
 @RequiredArgsConstructor
-@Tag(name = "입고 관리", description = "입고 관련 API")
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
+    private final MemberService memberService;
 
-    @Operation(summary = "입고 목록 조회", description = "조건에 맞는 입고 목록을 페이징하여 조회합니다.")
+    /**
+     * 입고 목록 조회
+     */
     @GetMapping
-    public ResponseEntity<List<DeliveryResponseDto>> getDeliveryList(
+    public ResponseEntity<Page<DeliveryDto.Response>> getDeliveries(
             @RequestParam(required = false) String deliveryNumber,
             @RequestParam(required = false) String orderNumber,
             @RequestParam(required = false) Long supplierId,
+            @RequestParam(required = false) String supplierName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long receiverId,
-            @RequestParam(required = false) String deliveryItemId,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
-        Page<DeliveryResponseDto> result = deliveryService.getDeliveryList(
-                deliveryNumber, orderNumber, supplierId, startDate, endDate, receiverId, deliveryItemId, pageable);
+        DeliveryDto.SearchCondition condition = DeliveryDto.SearchCondition.builder()
+                .deliveryNumber(deliveryNumber)
+                .orderNumber(orderNumber)
+                .supplierId(supplierId)
+                .supplierName(supplierName)
+                .startDate(startDate)
+                .endDate(endDate)
+                .page(page)
+                .size(size)
+                .build();
 
-        return ResponseEntity.ok(result.getContent());
+        Page<DeliveryDto.Response> deliveries = deliveryService.getDeliveries(condition);
+        return ResponseEntity.ok(deliveries);
     }
 
-//    @Operation(summary = "전체 입고 목록 조회", description = "모든 입고 목록을 조회합니다.")
-//    @GetMapping("/all")
-//    public ResponseEntity<ApiResponse<List<DeliveryDto.ListResponseDto>>> getAllDeliveries() {
-//        List<DeliveryDto.ListResponseDto> result = deliveryService.getAllDeliveries();
-//        return ResponseEntity.ok(ApiResponse.success(result));
-//    }
-
-    @Operation(summary = "이번달 입고 목록 조회", description = "이번달 입고된 목록을 조회합니다.")
-    @GetMapping("/current-month")
-    public ResponseEntity<List<DeliveryResponseDto>> getCurrentMonthDeliveries() {
-        List<DeliveryResponseDto> result = deliveryService.getCurrentMonthDeliveries();
-        return ResponseEntity.ok(result);
-    }
-
-    @Operation(summary = "입고 상세 조회", description = "입고 ID로 상세 정보를 조회합니다.")
+    /**
+     * 입고 상세 조회
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<DeliveryResponseDto> getDelivery(@PathVariable("id") Long id) {
-        DeliveryResponseDto result = deliveryService.getDelivery(id);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<DeliveryDto.Response> getDelivery(@PathVariable Long id) {
+        DeliveryDto.Response delivery = deliveryService.getDelivery(id);
+        return ResponseEntity.ok(delivery);
     }
 
-    @Operation(summary = "입고번호로 조회", description = "입고번호로 입고 정보를 조회합니다.")
+    /**
+     * 입고번호로 조회
+     */
     @GetMapping("/number/{deliveryNumber}")
-    public ResponseEntity<DeliveryResponseDto> getDeliveryByNumber(
-            @PathVariable("deliveryNumber") String deliveryNumber) {
-        DeliveryResponseDto result = deliveryService.getDeliveryByNumber(deliveryNumber);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<DeliveryDto.Response> getDeliveryByNumber(@PathVariable String deliveryNumber) {
+        DeliveryDto.Response delivery = deliveryService.getDeliveryByNumber(deliveryNumber);
+        return ResponseEntity.ok(delivery);
     }
 
-    @Operation(summary = "입고 등록", description = "새로운 입고를 등록합니다. 자동으로 검수도 완료 처리됩니다.")
+    /**
+     * 발주에 대한 입고 목록 조회
+     */
+    @GetMapping("/order/{biddingOrderId}")
+    public ResponseEntity<List<DeliveryDto.Response>> getDeliveriesByBiddingOrderId(@PathVariable Long biddingOrderId) {
+        List<DeliveryDto.Response> deliveries = deliveryService.getDeliveriesByBiddingOrderId(biddingOrderId);
+        return ResponseEntity.ok(deliveries);
+    }
+
+    /**
+     * 입고 등록
+     */
     @PostMapping
-    public ResponseEntity<DeliveryResponseDto> createDelivery(
-            @Valid @RequestBody DeliveryRequestDto requestDto) {
-        DeliveryResponseDto result = deliveryService.createDelivery(requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    public ResponseEntity<DeliveryDto.Response> createDelivery(
+            @RequestBody DeliveryDto.Request request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        // 현재 로그인한 사용자 정보로 입고 담당자 설정
+        Member member = memberService.findByUsername(userDetails.getUsername());
+        request.setReceiverId(member.getId());
+
+        DeliveryDto.Response delivery = deliveryService.createDelivery(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(delivery);
     }
 
-    @Operation(summary = "입고 수정", description = "기존 입고 정보를 수정합니다.")
+    /**
+     * 입고 수정
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<DeliveryResponseDto> updateDelivery(
-            @PathVariable("id") Long id,
-            @Valid @RequestBody DeliveryUpdateRequest requestDto) {
-        DeliveryResponseDto result = deliveryService.updateDelivery(id, requestDto);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<DeliveryDto.Response> updateDelivery(
+            @PathVariable Long id,
+            @RequestBody DeliveryDto.Request request) {
+
+        DeliveryDto.Response updatedDelivery = deliveryService.updateDelivery(id, request);
+        return ResponseEntity.ok(updatedDelivery);
     }
 
-    @Operation(summary = "입고 삭제", description = "입고 정보를 삭제합니다. 관련된 검수 정보도 함께 삭제됩니다.")
+    /**
+     * 입고 삭제
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDelivery(@PathVariable("id") Long id) {
+    public ResponseEntity<Void> deleteDelivery(@PathVariable Long id) {
         deliveryService.deleteDelivery(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     /**

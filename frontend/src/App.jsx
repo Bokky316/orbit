@@ -59,6 +59,7 @@ import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
+import CommonCodeManagement from "@/pages/commonCode/CommonCodeManagement";
 import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
 import CategoryListPage from "@pages/item/CategoryListPage";
 import CategoryFormPage from "@pages/item/CategoryFormPage";
@@ -115,6 +116,12 @@ function AppContent() {
                   <Route path="/suppliers/orders/:id" element={<SupplierOrderDetailPage />} />
                 </>
               )}
+              {/* 입고 관리 */}
+              <Route path="/deliveries" element={<DeliveryListPage />} />
+              <Route
+                path="/deliveries/new"
+                element={<DeliveryCreatePage />}
+              />
 
               {!isSupplier && (
                 <>
