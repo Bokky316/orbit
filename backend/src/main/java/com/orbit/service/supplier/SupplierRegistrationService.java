@@ -5,14 +5,18 @@ import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.supplier.SupplierAttachment;
 import com.orbit.entity.supplier.SupplierRegistration;
+import com.orbit.event.event.SupplierStatusChangeEvent;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.supplier.SupplierAttachmentRepository;
 import com.orbit.repository.supplier.SupplierRegistrationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -35,6 +39,7 @@ public class SupplierRegistrationService {
     private final SupplierRegistrationRepository supplierRegistrationRepository;
     private final SupplierAttachmentRepository attachmentRepository;
     private final MemberRepository memberRepository;
+    private final ApplicationEventPublisher applicationEventPublisher; // 추가
 
     @Value("${uploadPath}")
     private String uploadPath;
@@ -247,7 +252,15 @@ public class SupplierRegistrationService {
      */
     public void approveSupplier(Long id) {
         SupplierRegistration registration = getSupplierById(id);
+
+        // 이전 상태 저장
+        String oldStatus = registration.getStatus() != null ? registration.getStatus().getFullCode() : null;
+
+        // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "APPROVED"));
+
+        // 이벤트 발행
+        publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-APPROVED", getCurrentUsername());
     }
 
     /**
@@ -255,8 +268,16 @@ public class SupplierRegistrationService {
      */
     public void rejectSupplier(Long id, String reason) {
         SupplierRegistration registration = getSupplierById(id);
+
+        // 이전 상태 저장
+        String oldStatus = registration.getStatus() != null ? registration.getStatus().getFullCode() : null;
+
+        // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "REJECTED"));
         registration.setRejectionReason(reason);
+
+        // 이벤트 발행
+        publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-REJECTED", getCurrentUsername());
     }
 
     /**
@@ -264,8 +285,16 @@ public class SupplierRegistrationService {
      */
     public void suspendSupplier(Long id, String reason) {
         SupplierRegistration registration = getSupplierById(id);
+
+        // 이전 상태 저장
+        String oldStatus = registration.getStatus() != null ? registration.getStatus().getFullCode() : null;
+
+        // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "SUSPENDED"));
         registration.setRejectionReason(reason);
+
+        // 이벤트 발행
+        publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-SUSPENDED", getCurrentUsername());
     }
 
     /**
@@ -273,8 +302,16 @@ public class SupplierRegistrationService {
      */
     public void blacklistSupplier(Long id, String reason) {
         SupplierRegistration registration = getSupplierById(id);
+
+        // 이전 상태 저장
+        String oldStatus = registration.getStatus() != null ? registration.getStatus().getFullCode() : null;
+
+        // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "BLACKLIST"));
         registration.setRejectionReason(reason);
+
+        // 이벤트 발행
+        publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-BLACKLIST", getCurrentUsername());
     }
 
     /**
@@ -282,8 +319,16 @@ public class SupplierRegistrationService {
      */
     public void inactivateSupplier(Long id, String reason) {
         SupplierRegistration registration = getSupplierById(id);
+
+        // 이전 상태 저장
+        String oldStatus = registration.getStatus() != null ? registration.getStatus().getFullCode() : null;
+
+        // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "INACTIVE"));
         registration.setRejectionReason(reason);
+
+        // 이벤트 발행
+        publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-INACTIVE", getCurrentUsername());
     }
 
     /**
@@ -291,8 +336,16 @@ public class SupplierRegistrationService {
      */
     public void activateSupplier(Long id) {
         SupplierRegistration registration = getSupplierById(id);
+
+        // 이전 상태 저장
+        String oldStatus = registration.getStatus() != null ? registration.getStatus().getFullCode() : null;
+
+        // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "APPROVED"));
         registration.setRejectionReason(null); // 비활성화 사유 제거
+
+        // 이벤트 발행
+        publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-APPROVED", getCurrentUsername());
     }
 
     /**
@@ -378,5 +431,76 @@ public class SupplierRegistrationService {
         }
 
         return supplierRegistrationRepository.save(supplier);
+    }
+
+    /**
+     * 상태 변경 이벤트 발행
+     */
+    private void publishStatusChangeEvent(Long supplierId, String fromStatus, String toStatus, String username) {
+        SupplierStatusChangeEvent event = new SupplierStatusChangeEvent(
+                this,
+                supplierId,
+                fromStatus,
+                toStatus,
+                username
+        );
+        applicationEventPublisher.publishEvent(event);
+        log.info("상태 변경 이벤트 발행: supplierId={}, fromStatus={}, toStatus={}, username={}",
+                supplierId, fromStatus, toStatus, username);
+    }
+
+    /**
+     * 현재 인증된 사용자 이름 조회
+     */
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            return authentication.getName();
+        }
+        return "system";
+    }
+
+    /**
+     * 웹소켓을 통한 업체 상태 변경 처리
+     * @param supplierId 협력업체 ID
+     * @param newStatusCode 새로운 상태 코드
+     * @param username 변경 요청자 사용자명
+     * @return 업데이트된 협력업체 정보
+     */
+    @Transactional
+    public SupplierRegistration updateSupplierStatusWithEvent(
+            Long supplierId,
+            String newStatusCode,
+            String username
+    ) {
+        log.info("웹소켓을 통한 공급업체 상태 변경: id={}, toStatus={}, username={}",
+                supplierId, newStatusCode, username);
+
+        // 1. 협력업체 조회
+        SupplierRegistration supplier = supplierRegistrationRepository.findById(supplierId)
+                .orElseThrow(() -> new IllegalArgumentException("협력업체가 존재하지 않습니다: " + supplierId));
+
+        // 2. 이전 상태값 저장
+        String oldStatusCode = supplier.getStatus() != null ? supplier.getStatus().getFullCode() : null;
+
+        // 3. 새로운 상태값 설정 (newStatusCode 형식에 따라 처리)
+        String processedStatusCode = newStatusCode;
+        if (newStatusCode.contains("-")) {
+            processedStatusCode = newStatusCode.split("-")[2]; // SUPPLIER-STATUS-APPROVED 형식에서 APPROVED 추출
+        }
+
+        // 4. 상태 변경 적용
+        SystemStatus newStatus = new SystemStatus("SUPPLIER", processedStatusCode);
+        supplier.setStatus(newStatus);
+
+        // 5. 상태 변경 이벤트 발행
+        publishStatusChangeEvent(
+                supplierId,
+                oldStatusCode,
+                "SUPPLIER-STATUS-" + processedStatusCode,
+                username
+        );
+
+        return supplier;
     }
 }
