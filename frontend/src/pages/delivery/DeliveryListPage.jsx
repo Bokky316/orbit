@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, Button,
-    Grid, CircularProgress, IconButton, InputAdornment
+    Grid, CircularProgress, IconButton, InputAdornment, TablePagination
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -19,6 +19,15 @@ import { Search as SearchIcon, Add as AddIcon, Refresh as RefreshIcon } from '@m
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   boxShadow: theme.shadows[2]
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+    '&:nth-of-type(odd)': {
+        backgroundColor: theme.palette.action.hover,
+    },
+    '&:hover': {
+        backgroundColor: theme.palette.action.selected,
+    },
 }));
 
 function DeliveryListPage() {
@@ -37,7 +46,9 @@ function DeliveryListPage() {
     const [supplier, setSupplier] = useState('');
     const [invoiceStatus, setInvoiceStatus] = useState('');
     const [page, setPage] = useState(0);
-    const [rowsPerPage] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
 
     const fetchDeliveries = async () => {
         try {
@@ -52,6 +63,7 @@ function DeliveryListPage() {
             params.append('page', page);
             params.append('size', rowsPerPage);
 
+            // 기존 API 엔드포인트를 유지합니다
             const response = await fetchWithAuth(`${API_URL}deliveries?${params.toString()}`);
 
             if (!response.ok) {
@@ -59,13 +71,35 @@ function DeliveryListPage() {
             }
 
             const data = await response.json();
+            console.log('API 응답 데이터:', data); // 디버깅용 로그
+
             if (data) {
-                setDeliveries(data);
+                // Spring Data의 Page 응답 처리
+                if (data.content) {
+                    // Page 객체가 반환된 경우
+                    setDeliveries(data.content);
+                    setTotalPages(data.totalPages);
+                    setTotalElements(data.totalElements);
+                } else if (Array.isArray(data)) {
+                    // 배열이 바로 반환된 경우
+                    setDeliveries(data);
+                    setTotalElements(data.length);
+                    setTotalPages(Math.ceil(data.length / rowsPerPage));
+                } else {
+                    // 다른 형태로 반환된 경우
+                    console.error('예상치 못한 응답 형식:', data);
+                    setDeliveries([]);
+                    setTotalElements(0);
+                    setTotalPages(0);
+                }
             } else {
                 throw new Error('입고 목록 조회 실패');
             }
         } catch (error) {
             console.error('입고 목록을 불러오는 중 오류 발생:', error);
+            setDeliveries([]);
+            setTotalElements(0);
+            setTotalPages(0);
         } finally {
             setLoading(false);
         }
@@ -74,25 +108,40 @@ function DeliveryListPage() {
     // 컴포넌트 마운트 시 데이터 로드
     useEffect(() => {
         fetchDeliveries();
-    }, [searchTerm, deliveryDate, supplier, page, rowsPerPage]); // 검색 조건이 변경될 때마다 실행
+    }, [page, rowsPerPage]); // 페이지와 페이지 크기가 변경될 때만 자동 조회
 
     const handleSearch = () => {
-        setPage(0);
+        setPage(0); // 검색 시 첫 페이지로 이동
+        fetchDeliveries(); // 검색 버튼 클릭 시 명시적으로 데이터 조회
     };
 
     const handleCreateDelivery = () => {
         navigate('/deliveries/new');
     };
 
-    const filteredDeliveries = deliveries.filter(delivery => {
+    // 페이지 변경 핸들러
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    // 페이지당 행 수 변경 핸들러
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    // 필터링 로직은 기존대로 유지
+    const filteredDeliveries = Array.isArray(deliveries) ? deliveries.filter(delivery => {
         const searchMatch = searchTerm
-            ? delivery.deliveryNumber.includes(searchTerm) ||
-            delivery.orderNumber.includes(searchTerm)
+            ? (delivery.deliveryNumber && delivery.deliveryNumber.includes(searchTerm)) ||
+              (delivery.orderNumber && delivery.orderNumber.includes(searchTerm))
             : true;
-        const dateMatch = !deliveryDate || moment(delivery.deliveryDate).isSame(deliveryDate, 'day');
-        const supplierMatch = !supplier || delivery.supplierName.includes(supplier);
+        const dateMatch = !deliveryDate ||
+            (delivery.deliveryDate && moment(delivery.deliveryDate).isSame(deliveryDate, 'day'));
+        const supplierMatch = !supplier ||
+            (delivery.supplierName && delivery.supplierName.includes(supplier));
         return searchMatch && dateMatch && supplierMatch;
-    });
+    }) : [];
 
     return (
         <Box sx={{ p: 3 }}>
@@ -173,6 +222,13 @@ function DeliveryListPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <SearchIcon />
+                                    </InputAdornment>
+                                ),
+                            }}
                         />
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
@@ -222,43 +278,65 @@ function DeliveryListPage() {
                 </Grid>
             </Paper>
 
-            <StyledTableContainer component={Paper}>
-                {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                        <CircularProgress />
-                    </Box>
-                ) : (
-                    <Table stickyHeader>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>입고번호</TableCell>
-                                <TableCell>발주번호</TableCell>
-                                <TableCell>공급업체명</TableCell>
-                                <TableCell>입고일</TableCell>
-                                <TableCell>입고 담당자</TableCell>
-                                <TableCell>총 금액</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {filteredDeliveries.map(delivery => (
-                                <TableRow
-                                    key={delivery.id}
-                                    hover
-                                    onClick={() => navigate(`/deliveries/${delivery.id}`)}
-                                    sx={{ cursor: 'pointer' }}
-                                >
-                                    <TableCell>{delivery.deliveryNumber}</TableCell>
-                                    <TableCell>{delivery.orderNumber}</TableCell>
-                                    <TableCell>{delivery.supplierName}</TableCell>
-                                    <TableCell>{moment(delivery.deliveryDate).format('YYYY-MM-DD')}</TableCell>
-                                    <TableCell>{delivery.receiverName || '-'}</TableCell>
-                                    <TableCell>{delivery.totalAmount?.toLocaleString() || '-'}</TableCell>
+            <Paper variant="outlined">
+                <TableContainer sx={{ maxHeight: 440 }}>
+                    {loading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <Table stickyHeader>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>입고번호</TableCell>
+                                    <TableCell>발주번호</TableCell>
+                                    <TableCell>공급업체명</TableCell>
+                                    <TableCell>입고일</TableCell>
+                                    <TableCell>입고 담당자</TableCell>
+                                    <TableCell>총 금액</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHead>
+                            <TableBody>
+                                {filteredDeliveries.length > 0 ? (
+                                    filteredDeliveries.map(delivery => (
+                                        <StyledTableRow
+                                            key={delivery.id}
+                                            hover
+                                            onClick={() => navigate(`/deliveries/${delivery.id}`)}
+                                            sx={{ cursor: 'pointer' }}
+                                        >
+                                            <TableCell>{delivery.deliveryNumber}</TableCell>
+                                            <TableCell>{delivery.orderNumber}</TableCell>
+                                            <TableCell>{delivery.supplierName}</TableCell>
+                                            <TableCell>{delivery.deliveryDate ? moment(delivery.deliveryDate).format('YYYY-MM-DD') : '-'}</TableCell>
+                                            <TableCell>{delivery.receiverName || '-'}</TableCell>
+                                            <TableCell>{delivery.totalAmount ? delivery.totalAmount.toLocaleString() : '-'}</TableCell>
+                                        </StyledTableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center">
+                                            데이터가 없습니다.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </TableContainer>
+                {!loading && (
+                    <TablePagination
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                        component="div"
+                        count={totalElements}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                        labelRowsPerPage="페이지당 행 수"
+                    />
                 )}
-            </StyledTableContainer>
+            </Paper>
         </Box>
     );
 }
