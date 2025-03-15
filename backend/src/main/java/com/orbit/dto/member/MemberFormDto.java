@@ -1,11 +1,12 @@
 package com.orbit.dto.member;
 
+import org.hibernate.validator.constraints.Length;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.validator.constraints.Length;
 
 /**
  * 회원 가입 폼 데이터를 전달하는 DTO
@@ -21,7 +22,11 @@ public class MemberFormDto {
     private String name;
 
     @NotBlank(message = "비밀번호를 입력해주세요.")
-    @Length(min = 4, max = 16, message = "비밀번호는 4자 이상 16자 이하로 입력해주세요.")
+    @Length(min = 6, message = "비밀번호는 6자 이상 입력해주세요.")
+    @Pattern(
+        regexp = "^(?=.*[0-9])|(?=.*[a-zA-Z])|(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).*$", 
+        message = "비밀번호는 영문, 숫자, 특수문자 중 적어도 1가지 이상을 포함해야 합니다."
+    )
     private String password;
 
     @NotBlank(message = "이메일을 입력해주세요.")

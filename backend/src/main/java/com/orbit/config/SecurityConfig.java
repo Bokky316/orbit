@@ -171,6 +171,8 @@ public class SecurityConfig {
                 // 입찰 공고 관리 (BUYER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/biddings/**").hasAnyRole("BUYER", "ADMIN")
 
+                .requestMatchers("/api/supplier/biddings/**","/api/supplier/contracts/**").hasAnyRole("SUPPLIER")
+
                 
 
                 // 정적 리소스는 모두 허용

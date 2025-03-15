@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/bidding-suppliers")
+@RequestMapping("/api/suppliers")
 @RequiredArgsConstructor
 public class BiddingSupplierController {
     private final BiddingSupplierService supplierService;
