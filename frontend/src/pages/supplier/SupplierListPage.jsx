@@ -84,6 +84,7 @@ const SupplierListPage = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedSupplierId, setSelectedSupplierId] = useState(null);
   const [selectedSupplierName, setSelectedSupplierName] = useState('');
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // 사용 가능한 소싱 중분류 및 소분류 옵션
   const [availableSubCategories, setAvailableSubCategories] = useState([]);
@@ -93,16 +94,34 @@ const SupplierListPage = () => {
   const [page, setPage] = useState(0); // TablePagination은 0부터 시작
   const [rowsPerPage, setRowsPerPage] = useState(15); // 페이지당 표시할 항목 수
 
+  // 사용자의 역할에 따른 권한 확인
+  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
+  const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
+
+  // 페이지 접근 시 권한 체크
+  useEffect(() => {
+    if (!isAdmin && !isSupplier) {
+      setAccessDenied(true);
+      // 3초 후 리다이렉트
+      const timer = setTimeout(() => {
+        navigate('/');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAdmin, isSupplier, navigate]);
+
   // 컴포넌트 마운트 시 초기 데이터 로드 - 이 부분이 추가됨
   useEffect(() => {
-    try {
-      console.log('초기 데이터 로드 시작');
-      dispatch(fetchSuppliers({})); // 빈 필터로 초기 데이터 로드
-      initialLoadComplete.current = true; // 초기 로드 완료 표시
-    } catch (err) {
-      console.error('Error fetching initial suppliers:', err);
+    if (!accessDenied) {
+      try {
+        console.log('초기 데이터 로드 시작');
+        dispatch(fetchSuppliers({})); // 빈 필터로 초기 데이터 로드
+        initialLoadComplete.current = true; // 초기 로드 완료 표시
+      } catch (err) {
+        console.error('Error fetching initial suppliers:', err);
+      }
     }
-  }, [dispatch]); // 의존성 배열에 dispatch만 포함하여 마운트 시 한 번만 실행
+  }, [dispatch, accessDenied]); // 의존성 배열에 accessDenied 추가
 
   // 필터 변경 시 데이터 로드 - 기존 코드 수정
   useEffect(() => {
@@ -212,10 +231,6 @@ const SupplierListPage = () => {
     setOpenModal(true);
   };
 
-  // 사용자의 역할에 따른 권한 확인
-  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
-  const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
-
   // 상태에 따른 Chip 색상 설정
   const getStatusChip = (status) => {
     // status가 객체인 경우 childCode를 사용
@@ -245,6 +260,19 @@ const SupplierListPage = () => {
     console.error('Error in supplier list:', error);
   }
 
+  // 접근 제한 알림 표시
+  if (accessDenied) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="body1">
+            SUPPLIER와 ADMIN 역할을 가진 사용자만 접근할 수 있는 페이지입니다. 메인 페이지로 이동합니다.
+          </Typography>
+        </Alert>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -266,14 +294,20 @@ const SupplierListPage = () => {
           {/* 첫 번째 줄: 소싱 분류 필터 */}
           <Grid item xs={12} md={4}>
             <FormControl fullWidth size="small">
-              <InputLabel>소싱대분류</InputLabel>
+              <InputLabel id="sourcing-category-label">소싱대분류</InputLabel>
               <Select
+                labelId="sourcing-category-label"
                 name="sourcingCategory"
                 value={filters.sourcingCategory}
                 onChange={handleFilterChange}
                 label="소싱대분류"
+                renderValue={(selected) => {
+                  return selected || "전체";
+                }}
               >
-                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="">
+                  <em>전체</em>
+                </MenuItem>
                 {sourcingCategories.map(category => (
                   <MenuItem key={category.value} value={category.value}>
                     {category.label}
@@ -284,22 +318,20 @@ const SupplierListPage = () => {
           </Grid>
           <Grid item xs={12} md={4}>
             <FormControl fullWidth size="small" disabled={!filters.sourcingCategory}>
-              <InputLabel>소싱중분류</InputLabel>
+              <InputLabel id="sourcing-sub-category-label">소싱중분류</InputLabel>
               <Select
+                labelId="sourcing-sub-category-label"
                 name="sourcingSubCategory"
                 value={filters.sourcingSubCategory}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  console.log('소싱중분류 직접 선택:', value);
-                  setFilters({
-                    ...filters,
-                    sourcingSubCategory: value,
-                    sourcingDetailCategory: ''
-                  });
-                }}
+                onChange={handleFilterChange}
                 label="소싱중분류"
+                renderValue={(selected) => {
+                  return selected || "전체";
+                }}
               >
-                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="">
+                  <em>전체</em>
+                </MenuItem>
                 {availableSubCategories.map(category => (
                   <MenuItem key={category.value} value={category.value}>
                     {category.label}
@@ -310,14 +342,20 @@ const SupplierListPage = () => {
           </Grid>
           <Grid item xs={12} md={4}>
             <FormControl fullWidth size="small" disabled={!filters.sourcingSubCategory}>
-              <InputLabel>소싱소분류</InputLabel>
+              <InputLabel id="sourcing-detail-category-label">소싱소분류</InputLabel>
               <Select
+                labelId="sourcing-detail-category-label"
                 name="sourcingDetailCategory"
                 value={filters.sourcingDetailCategory}
                 onChange={handleFilterChange}
                 label="소싱소분류"
+                renderValue={(selected) => {
+                  return selected || "전체";
+                }}
               >
-                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="">
+                  <em>전체</em>
+                </MenuItem>
                 {availableDetailCategories.map(category => (
                   <MenuItem key={category.value} value={category.value}>
                     {category.label}
@@ -352,14 +390,27 @@ const SupplierListPage = () => {
           </Grid>
           <Grid item xs={12} md={5}>
             <FormControl fullWidth size="small">
-              <InputLabel>상태</InputLabel>
+              <InputLabel id="status-label">상태</InputLabel>
               <Select
+                labelId="status-label"
                 name="status"
                 value={filters.status}
                 onChange={handleFilterChange}
                 label="상태"
+                renderValue={(selected) => {
+                  return selected ?
+                    selected === "APPROVED" ? "승인" :
+                    selected === "PENDING" ? "심사대기" :
+                    selected === "REJECTED" ? "반려" :
+                    selected === "SUSPENDED" ? "일시정지" :
+                    selected === "BLACKLIST" ? "블랙리스트" :
+                    selected === "INACTIVE" ? "비활성" : selected
+                    : "전체";
+                }}
               >
-                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="">
+                  <em>전체</em>
+                </MenuItem>
                 <MenuItem value="APPROVED">승인</MenuItem>
                 <MenuItem value="PENDING">심사대기</MenuItem>
                 <MenuItem value="REJECTED">반려</MenuItem>
@@ -577,9 +628,9 @@ const SupplierListPage = () => {
               onPageChange={handlePageChange}
               onRowsPerPageChange={handleChangeRowsPerPage}
               labelRowsPerPage="페이지당 행 수"
-              labelDisplayedRows={({ page, count, rowsPerPage }) => {
-                const totalPages = rowsPerPage > 0 ? Math.max(1, Math.ceil(count / rowsPerPage)) : 1;
-                return `${Math.max(1, page + 1)} / ${totalPages}`;
+              labelDisplayedRows={({ from, to, count, page }) => {
+                const totalPages = Math.ceil(count / rowsPerPage);
+                return `${page + 1} / ${totalPages}`;
               }}
             />
           </>

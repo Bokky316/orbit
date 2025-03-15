@@ -122,9 +122,12 @@ public class SupplierRegistrationService {
         registration.setSourcingSubCategory(requestDto.getSourcingSubCategory());
         registration.setSourcingDetailCategory(requestDto.getSourcingDetailCategory());
         registration.setPhoneNumber(requestDto.getPhoneNumber());
+
+        // 주소 관련 필드 설정 (headOfficeAddress 대신 개별 필드 사용)
         registration.setPostalCode(requestDto.getPostalCode());
         registration.setRoadAddress(requestDto.getRoadAddress());
         registration.setDetailAddress(requestDto.getDetailAddress());
+
         registration.setComments(requestDto.getComments());
         registration.setStatus(new SystemStatus("SUPPLIER", "PENDING"));
         registration.setRegistrationDate(LocalDate.now());
@@ -336,9 +339,12 @@ public class SupplierRegistrationService {
         supplier.setSourcingSubCategory(requestDto.getSourcingSubCategory());
         supplier.setSourcingDetailCategory(requestDto.getSourcingDetailCategory());
         supplier.setPhoneNumber(requestDto.getPhoneNumber());
+
+        // 주소 관련 필드 업데이트 (headOfficeAddress 대신 개별 필드 사용)
         supplier.setPostalCode(requestDto.getPostalCode());
         supplier.setRoadAddress(requestDto.getRoadAddress());
         supplier.setDetailAddress(requestDto.getDetailAddress());
+
         supplier.setComments(requestDto.getComments());
         supplier.setContactPerson(requestDto.getContactPerson());
         supplier.setContactPhone(requestDto.getContactPhone());

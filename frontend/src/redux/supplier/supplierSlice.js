@@ -302,6 +302,7 @@ export const fetchSuppliers = createAsyncThunk(
         url += `?${queryParams.join('&')}`;
       }
 
+      console.log("API 호출 URL:", url);
       const response = await fetchWithAuth(url);
 
       // HTML 응답 방지 처리 (purchaseRequestSlice에서 가져옴)
@@ -316,6 +317,7 @@ export const fetchSuppliers = createAsyncThunk(
       }
 
       const data = await response.json();
+      console.log("API 응답 데이터:", data);
       return data;
     } catch (error) {
       // HTML 응답 시 별도 처리 (purchaseRequestSlice에서 가져옴)
@@ -324,49 +326,7 @@ export const fetchSuppliers = createAsyncThunk(
       }
 
       console.log('API 호출 실패, 더미 데이터 사용:', error);
-
-      // 더미 데이터에서 현재 사용자 권한 및 ID에 따라 필터링
-      const { auth } = getState();
-      const userRole = auth.user?.roles?.[0] || '';
-      const userId = auth.user?.id || 0;
-
-      // admin이 아닌 경우 본인의 것만 보이도록 필터링
-      let filteredSuppliers = [...dummySuppliers];
-      if (userRole !== 'ROLE_ADMIN') {
-        filteredSuppliers = filteredSuppliers.filter(supplier =>
-          supplier.supplierId === userId
-        );
-      }
-
-      // 추가 필터 적용
-      if (filters.status) {
-        filteredSuppliers = filteredSuppliers.filter(supplier => {
-          // status가 문자열인 경우와 객체인 경우 모두 처리
-          const statusCode = supplier.status?.childCode || supplier.status;
-          return statusCode === filters.status;
-        });
-      }
-      if (filters.sourcingCategory) {
-        filteredSuppliers = filteredSuppliers.filter(supplier =>
-          supplier.sourcingCategory === filters.sourcingCategory
-        );
-      }
-      if (filters.sourcingSubCategory) {
-        filteredSuppliers = filteredSuppliers.filter(supplier =>
-          supplier.sourcingSubCategory === filters.sourcingSubCategory
-        );
-      }
-      if (filters.sourcingDetailCategory) {
-        filteredSuppliers = filteredSuppliers.filter(supplier =>
-          supplier.sourcingDetailCategory === filters.sourcingDetailCategory
-        );
-      }
-      if (filters.supplierName) {
-        filteredSuppliers = filteredSuppliers.filter(supplier =>
-          supplier.supplierName.includes(filters.supplierName)
-        );
-      }
-      return filteredSuppliers;
+      return [];
     }
   }
 );
