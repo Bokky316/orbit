@@ -33,6 +33,10 @@ import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
+import SupplierListPage from "@/pages/supplier/SupplierListPage";
+import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
+import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
+import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
 import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
 import RegisterMember from "@/pages/member/RegisterMember";
 import CategoryListPage from "@pages/item/CategoryListPage";
@@ -119,6 +123,13 @@ function AppContent() {
               <Route path="/invoices/create" element={<InvoiceCreatePage />} />
               <Route path="/payments" element={<PaymentListPage />} />
               <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
+
+              {/* 협력사 관리 */}
+              <Route path="/supplier" element={<SupplierListPage />} />
+              <Route path="/supplier/registrations" element={<SupplierRegistrationPage />} />
+              <Route path="/supplier/review/:id" element={<SupplierReviewPage />} />
+              <Route path="/supplier/approval" element={<SupplierApprovalListPage />} />
+              <Route path="/supplier/edit/:id" element={<SupplierRegistrationPage />} />
 
 
               <Route path="/categories" element={<CategoryListPage />} />
