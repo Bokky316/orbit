@@ -483,4 +483,23 @@ public class BiddingOrderService {
     public List<Object[]> getSupplierOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
         return biddingOrderRepository.findSupplierOrderStatistics(startDate, endDate);
     }
+
+    /**
+     * 입고되지 않은 발주 목록 조회
+     */
+    public List<BiddingOrderDto> getUnreceivedBiddingOrders() {
+        return orderRepository.findUnreceivedBiddingOrders().stream()
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 특정 발주 상세 정보 조회
+     */
+    public BiddingOrderDto getBiddingOrderDetail(Long biddingOrderId) {
+        BiddingOrder order = biddingOrderRepository.findBiddingOrderById(biddingOrderId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 발주입니다. ID: " + biddingOrderId));
+
+        return BiddingOrderDto.fromEntity(order);
+    }
 }
