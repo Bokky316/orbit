@@ -1,55 +1,58 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
   Paper,
-  Grid,
-  Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Button,
   Chip,
-  TextField,
-  CircularProgress,
-  Alert,
-  Link,
-  Card,
-  CardContent,
   FormControl,
   InputLabel,
-  Input,
-  InputAdornment
+  Select,
+  MenuItem,
+  TextField,
+  Grid,
+  CircularProgress
 } from "@mui/material";
-import DownloadIcon from "@mui/icons-material/GetApp";
-import { BiddingStatus, BiddingMethod, UserRole } from "./helpers/biddingTypes";
+
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { API_URL } from "@/utils/constants";
+// 헬퍼 함수 import
 import {
   getStatusText,
   getBidMethodText
 } from "./helpers/commonBiddingHelpers";
-import {
-  canParticipateInBidding,
-  calculateParticipationAmount,
-  validatePriceProposal
-} from "./helpers/biddingHelpers";
-import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { API_URL } from "@/utils/constants";
 
-function SupplierBiddingDetailPage() {
-  const { id } = useParams();
+import {
+  BiddingStatus,
+  UserRole,
+  BiddingMethod,
+  canParticipateInBidding,
+  filterParticipableBiddings,
+  filterMyParticipations,
+  filterInvitedBiddings
+} from "./helpers/supplierBiddingHelpers";
+
+function SupplierBiddingListPage() {
   const navigate = useNavigate();
 
   // 상태 관리
-  const [bidding, setBidding] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [biddings, setBiddings] = useState([]);
+  const [filteredBiddings, setFilteredBiddings] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [myParticipation, setMyParticipation] = useState(null);
 
-  // 참여 관련 상태
-  const [participationData, setParticipationData] = useState({
-    unitPrice: 0,
-    quantity: 1,
-    note: ""
-  });
+  // 필터링 상태
+  const [statusFilter, setStatusFilter] = useState("");
+  const [methodFilter, setMethodFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("all"); // 'all', 'participable', 'participated', 'invited'
 
   // 사용자 정보 상태
   const [userSupplierInfo, setUserSupplierInfo] = useState(null);
@@ -80,168 +83,98 @@ function SupplierBiddingDetailPage() {
     }
   };
 
-  // 입찰 공고 상세 정보 가져오기
-  const fetchBiddingDetail = async () => {
+  // 입찰 공고 목록 불러오기
+  const fetchBiddings = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await fetchWithAuth(`${API_URL}biddings/${id}`);
-      if (!response.ok) {
-        throw new Error("입찰 공고 정보를 불러올 수 없습니다.");
+      // 초대된 입찰 공고 + 공개 입찰 공고 모두 조회
+      const [invitedResponse, openResponse] = await Promise.all([
+        fetchWithAuth(`${API_URL}supplier/biddings/invited`),
+        fetchWithAuth(`${API_URL}biddings/open`)
+      ]);
+
+      if (!invitedResponse.ok || !openResponse.ok) {
+        throw new Error("입찰 공고를 불러오는 중 오류가 발생했습니다.");
       }
 
-      const data = await response.json();
-      setBidding(data);
+      const invitedBiddings = await invitedResponse.json();
+      const openBiddings = await openResponse.json();
 
-      // 기본 참여 데이터 설정 (정가제안 방식인 경우 단가는 고정)
-      if (data.bidMethod === BiddingMethod.FIXED_PRICE) {
-        setParticipationData((prev) => ({
-          ...prev,
-          unitPrice: data.unitPrice || 0,
-          quantity: data.quantity || 1
-        }));
-      }
+      // 중복 제거 및 병합
+      const combinedBiddings = [
+        ...invitedBiddings,
+        ...openBiddings.filter(
+          (open) => !invitedBiddings.some((invited) => invited.id === open.id)
+        )
+      ];
 
-      // 내 참여 정보 확인
-      if (userSupplierInfo && data.participations) {
-        const myPart = data.participations.find(
-          (p) => p.supplierId === userSupplierInfo.id
-        );
-        if (myPart) {
-          setMyParticipation(myPart);
-        }
-      }
+      setBiddings(combinedBiddings);
+      applyFilters(
+        combinedBiddings,
+        viewMode,
+        statusFilter,
+        methodFilter,
+        searchTerm
+      );
     } catch (error) {
-      console.error("입찰 공고 상세 정보 로드 중 오류:", error);
-      setError(error.message);
+      setError("입찰 공고를 불러오는 중 오류가 발생했습니다.");
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 입찰 참여 처리
-  const handleParticipate = async () => {
-    try {
-      // 유효성 검증
-      if (!userSupplierInfo) {
-        throw new Error("공급사 정보가 없습니다. 로그인 후 다시 시도해주세요.");
-      }
+  // 필터 적용
+  const applyFilters = (
+    biddingList,
+    currentViewMode,
+    status,
+    method,
+    search
+  ) => {
+    let filtered = [...biddingList];
 
-      // 참여 가능 여부 확인
-      if (
-        !canParticipateInBidding(bidding, UserRole.SUPPLIER, userSupplierInfo)
-      ) {
-        throw new Error("현재 입찰에 참여할 수 없습니다.");
-      }
-
-      // 가격제안 방식일 때 단가가 입력되었는지 확인
-      if (
-        bidding.bidMethod === BiddingMethod.OPEN_PRICE &&
-        (!participationData.unitPrice || participationData.unitPrice <= 0)
-      ) {
-        throw new Error("제안 단가를 입력해주세요.");
-      }
-
-      // 수량 검증
-      if (participationData.quantity <= 0) {
-        throw new Error("수량은 1 이상이어야 합니다.");
-      }
-
-      // 가격 유효성 검사
-      const { isValid, errors } = validatePriceProposal(
-        participationData.unitPrice,
-        participationData.quantity
-      );
-
-      if (!isValid) {
-        throw new Error(Object.values(errors).join("\n"));
-      }
-
-      setSubmitting(true);
-
-      // 가격 계산
-      const { supplyPrice, vat, totalAmount } = calculateParticipationAmount(
-        participationData.unitPrice,
-        participationData.quantity
-      );
-
-      // 참여 데이터 준비
-      const participationPayload = {
-        biddingId: bidding.id,
-        supplierId: userSupplierInfo.id,
-        unitPrice:
-          bidding.bidMethod === BiddingMethod.FIXED_PRICE
-            ? bidding.unitPrice
-            : participationData.unitPrice,
-        quantity: participationData.quantity,
-        supplyPrice,
-        vat,
-        totalAmount,
-        note: participationData.note
-      };
-
-      // API 호출
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${bidding.id}/participations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(participationPayload)
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`입찰 참여 중 오류가 발생했습니다: ${errorText}`);
-      }
-
-      // 성공 처리
-      alert("입찰에 성공적으로 참여했습니다.");
-
-      // 내 참여 정보 업데이트
-      const data = await response.json();
-      setMyParticipation(data);
-
-      // 상세 정보 새로고침
-      fetchBiddingDetail();
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setSubmitting(false);
+    // 보기 모드에 따른 필터링
+    switch (currentViewMode) {
+      case "participable":
+        filtered = filterParticipableBiddings(filtered, userSupplierInfo);
+        break;
+      case "participated":
+        filtered = filterMyParticipations(filtered, userSupplierInfo);
+        break;
+      case "invited":
+        filtered = filterInvitedBiddings(filtered, userSupplierInfo);
+        break;
+      default:
+        // 모두 보기는 필터링 없음
+        break;
     }
-  };
 
-  // 첨부 파일 다운로드
-  const downloadFile = async (filePath) => {
-    try {
-      const fileNameOnly = filePath.split("/").pop();
-
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${bidding.id}/files/${encodeURIComponent(
-          fileNameOnly
-        )}`,
-        { method: "GET" }
+    // 상태 필터
+    if (status) {
+      filtered = filtered.filter(
+        (bidding) => bidding.status?.childCode === status
       );
-
-      if (!response.ok) {
-        throw new Error("파일을 다운로드할 수 없습니다.");
-      }
-
-      // Blob으로 변환 및 다운로드
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileNameOnly;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-    } catch (error) {
-      console.error("파일 다운로드 중 오류:", error);
-      alert(error.message);
     }
+
+    // 입찰 방식 필터
+    if (method) {
+      filtered = filtered.filter((bidding) => bidding.bidMethod === method);
+    }
+
+    // 검색어 필터
+    if (search) {
+      const searchTermLower = search.toLowerCase();
+      filtered = filtered.filter(
+        (bidding) =>
+          (bidding.title &&
+            bidding.title.toLowerCase().includes(searchTermLower)) ||
+          (bidding.bidNumber &&
+            bidding.bidNumber.toLowerCase().includes(searchTermLower))
+      );
+    }
+
+    setFilteredBiddings(filtered);
   };
 
   // 컴포넌트 마운트 시 데이터 로드
@@ -251,442 +184,233 @@ function SupplierBiddingDetailPage() {
 
   // 사용자 정보가 로드된 후 입찰 정보 가져오기
   useEffect(() => {
-    if (id && userSupplierInfo) {
-      fetchBiddingDetail();
+    if (userSupplierInfo) {
+      fetchBiddings();
     }
-  }, [id, userSupplierInfo]);
+  }, [userSupplierInfo]);
 
-  // 참여 데이터 변경 핸들러
-  const handleParticipationChange = (e) => {
-    const { name, value } = e.target;
-    setParticipationData((prev) => ({
-      ...prev,
-      [name]:
-        name === "unitPrice" || name === "quantity" ? Number(value) : value
-    }));
+  // 필터 변경 시 필터 적용
+  useEffect(() => {
+    applyFilters(biddings, viewMode, statusFilter, methodFilter, searchTerm);
+  }, [viewMode, statusFilter, methodFilter, searchTerm, biddings]);
+
+  // 입찰 상세 페이지로 이동
+  const handleViewDetail = (id) => {
+    navigate(`/supplier/biddings/${id}`);
   };
 
-  // 이 공급사가 초대되었는지 확인
-  const isInvited = (bidding, supplierId) => {
-    return bidding?.suppliers?.some((s) => s.supplierId === supplierId);
+  // 입찰 참여 가능 여부 확인
+  const checkParticipationEligibility = (bidding) => {
+    return canParticipateInBidding(
+      bidding,
+      UserRole.SUPPLIER,
+      userSupplierInfo
+    );
   };
 
-  // 로딩 상태
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "70vh"
-        }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>
-          데이터를 불러오는 중...
-        </Typography>
-      </Box>
-    );
-  }
-
-  // 오류 상태
-  if (error) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={() => navigate("/biddings")}>
-          목록으로
-        </Button>
-      </Box>
-    );
-  }
-
-  // 입찰 공고가 없는 경우
-  if (!bidding) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          입찰 공고를 찾을 수 없습니다
-        </Alert>
-        <Button variant="contained" onClick={() => navigate("/biddings")}>
-          목록으로
-        </Button>
-      </Box>
-    );
-  }
+  // 보기 모드 변경 핸들러
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    applyFilters(biddings, mode, statusFilter, methodFilter, searchTerm);
+  };
 
   return (
     <Box sx={{ p: 4 }}>
-      {/* 헤더 */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 4
-        }}>
-        <Typography variant="h4">입찰 공고 상세</Typography>
-        <Button variant="outlined" onClick={() => navigate("/biddings")}>
-          목록으로
-        </Button>
-      </Box>
+      <Typography variant="h4" sx={{ mb: 4 }}>
+        입찰 공고 목록
+      </Typography>
 
-      {/* 기본 정보 */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
-          기본 정보
-        </Typography>
+      {/* 필터링 섹션 */}
+      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              입찰 번호
-            </Typography>
-            <Typography variant="body1">{bidding.bidNumber}</Typography>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              상태
-            </Typography>
-            <Chip
-              label={getStatusText(bidding.status)}
-              color={
-                bidding.status?.childCode === BiddingStatus.PENDING
-                  ? "default"
-                  : bidding.status?.childCode === BiddingStatus.ONGOING
-                  ? "primary"
-                  : bidding.status?.childCode === BiddingStatus.CLOSED
-                  ? "success"
-                  : bidding.status?.childCode === BiddingStatus.CANCELED
-                  ? "error"
-                  : "default"
-              }
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="검색어 입력"
+              variant="outlined"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              입찰 방식
-            </Typography>
-            <Typography variant="body1">
-              {getBidMethodText(bidding.bidMethod)}
-            </Typography>
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>상태</InputLabel>
+              <Select
+                value={statusFilter}
+                label="상태"
+                onChange={(e) => setStatusFilter(e.target.value)}>
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value={BiddingStatus.PENDING}>대기중</MenuItem>
+                <MenuItem value={BiddingStatus.ONGOING}>진행중</MenuItem>
+                <MenuItem value={BiddingStatus.CLOSED}>마감</MenuItem>
+                <MenuItem value={BiddingStatus.CANCELED}>취소</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              등록일
-            </Typography>
-            <Typography variant="body1">
-              {bidding.createdAt
-                ? new Date(bidding.createdAt).toLocaleDateString()
-                : "-"}
-            </Typography>
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>입찰 방식</InputLabel>
+              <Select
+                value={methodFilter}
+                label="입찰 방식"
+                onChange={(e) => setMethodFilter(e.target.value)}>
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value={BiddingMethod.FIXED_PRICE}>정가제안</MenuItem>
+                <MenuItem value={BiddingMethod.OPEN_PRICE}>가격제안</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
-
-          <Grid item xs={12}>
-            <Divider sx={{ my: 1 }} />
-          </Grid>
-
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" color="text.secondary">
-              제목
-            </Typography>
-            <Typography variant="body1">{bidding.title || "-"}</Typography>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              품목 수량
-            </Typography>
-            <Typography variant="body1">
-              {bidding.quantity?.toLocaleString() || "-"}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              단가
-            </Typography>
-            <Typography variant="body1">
-              {bidding.unitPrice
-                ? `${bidding.unitPrice.toLocaleString()}원`
-                : "-"}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              총액
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: "bold" }}>
-              {bidding.totalAmount
-                ? `${bidding.totalAmount.toLocaleString()}원`
-                : "-"}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              마감일
-            </Typography>
-            <Typography variant="body1">
-              {bidding.endDate ? (
-                <>
-                  {new Date(bidding.endDate).toLocaleDateString()} (
-                  {new Date() > new Date(bidding.endDate)
-                    ? "마감됨"
-                    : `D-${Math.ceil(
-                        (new Date(bidding.endDate) - new Date()) /
-                          (1000 * 60 * 60 * 24)
-                      )}`}
-                  )
-                </>
-              ) : (
-                "-"
-              )}
-            </Typography>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>보기 모드</InputLabel>
+              <Select
+                value={viewMode}
+                label="보기 모드"
+                onChange={(e) => handleViewModeChange(e.target.value)}>
+                <MenuItem value="all">모든 입찰</MenuItem>
+                <MenuItem value="participable">참여 가능한 입찰</MenuItem>
+                <MenuItem value="participated">참여한 입찰</MenuItem>
+                <MenuItem value="invited">초대된 입찰</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
         </Grid>
       </Paper>
 
-      {/* 입찰 조건 */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
-          입찰 조건
-        </Typography>
-        <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
-          {bidding.conditions || "입찰 조건이 없습니다."}
-        </Typography>
-      </Paper>
-
-      {/* 첨부 파일 */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
-          첨부 파일
-        </Typography>
-        {bidding.attachmentPaths && bidding.attachmentPaths.length > 0 ? (
-          <Box>
-            {bidding.attachmentPaths.map((filePath, index) => (
-              <Box
-                key={index}
-                sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                <Typography variant="body1" sx={{ mr: 2 }}>
-                  첨부파일 {index + 1}: {filePath.split("/").pop()}
-                </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<DownloadIcon />}
-                  onClick={() => downloadFile(filePath)}>
-                  다운로드
-                </Button>
-              </Box>
-            ))}
-          </Box>
-        ) : (
-          <Typography variant="body2" color="text.secondary">
-            첨부된 파일이 없습니다.
-          </Typography>
-        )}
-      </Paper>
-
-      {/* 참여 상태 표시 */}
-      {myParticipation ? (
-        <Paper sx={{ p: 3, mb: 3, bgcolor: "info.light" }}>
-          <Typography variant="h5" sx={{ mb: 2, color: "white" }}>
-            나의 참여 정보
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" sx={{ color: "white" }}>
-                제안 단가
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{ color: "white", fontWeight: "bold" }}>
-                {myParticipation.unitPrice?.toLocaleString()}원
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" sx={{ color: "white" }}>
-                수량
-              </Typography>
-              <Typography variant="body1" sx={{ color: "white" }}>
-                {myParticipation.quantity?.toLocaleString()}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" sx={{ color: "white" }}>
-                총액
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{ color: "white", fontWeight: "bold" }}>
-                {myParticipation.totalAmount?.toLocaleString()}원
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" sx={{ color: "white" }}>
-                참여일
-              </Typography>
-              <Typography variant="body1" sx={{ color: "white" }}>
-                {myParticipation.submittedAt
-                  ? new Date(myParticipation.submittedAt).toLocaleDateString()
-                  : "-"}
-              </Typography>
-            </Grid>
-
-            {myParticipation.note && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" sx={{ color: "white" }}>
-                  참고 사항
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{ color: "white", whiteSpace: "pre-line" }}>
-                  {myParticipation.note}
-                </Typography>
-              </Grid>
-            )}
-
-            {myParticipation.isSelectedBidder && (
-              <Grid item xs={12}>
-                <Chip
-                  label="낙찰"
-                  color="success"
-                  sx={{
-                    mt: 1,
-                    color: "white",
-                    borderColor: "white",
-                    bgcolor: "success.dark"
-                  }}
-                  variant="outlined"
-                />
-              </Grid>
-            )}
-          </Grid>
-        </Paper>
+      {/* 로딩 상태 */}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Box sx={{ my: 2 }}>
+          <Paper sx={{ p: 2, bgcolor: "error.light" }}>
+            <Typography color="error">{error}</Typography>
+          </Paper>
+        </Box>
       ) : (
-        // 참여 가능 여부에 따른 섹션 표시
         <>
-          {/* 정가제안일 경우 초대 확인 */}
-          {bidding.bidMethod === BiddingMethod.FIXED_PRICE &&
-          !isInvited(bidding, userSupplierInfo?.id) ? (
-            <Paper sx={{ p: 3, mb: 3, bgcolor: "warning.light" }}>
-              <Typography variant="h6" sx={{ color: "white" }}>
-                초대된 공급사만 참여 가능한 입찰입니다.
-              </Typography>
-            </Paper>
-          ) : // 참여 가능 여부에 따른 폼 표시
-          canParticipateInBidding(
-              bidding,
-              UserRole.SUPPLIER,
-              userSupplierInfo
-            ) ? (
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                입찰 참여
-              </Typography>
-              <Grid container spacing={3}>
-                {/* 입찰 방식에 따른 입력 필드 */}
-                {bidding.bidMethod === BiddingMethod.OPEN_PRICE ? (
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel htmlFor="unitPrice">제안 단가</InputLabel>
-                      <Input
-                        id="unitPrice"
-                        name="unitPrice"
-                        type="number"
-                        value={participationData.unitPrice}
-                        onChange={handleParticipationChange}
-                        endAdornment={
-                          <InputAdornment position="end">원</InputAdornment>
-                        }
-                        inputProps={{ min: 0 }}
-                      />
-                    </FormControl>
-                  </Grid>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>공고번호</TableCell>
+                  <TableCell>공고명</TableCell>
+                  <TableCell>입찰 방식</TableCell>
+                  <TableCell>공고 기간</TableCell>
+                  <TableCell>상태</TableCell>
+                  <TableCell>참여 가능 여부</TableCell>
+                  <TableCell>작업</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredBiddings.length > 0 ? (
+                  filteredBiddings.map((bidding) => (
+                    <TableRow key={bidding.id} hover>
+                      <TableCell>{bidding.bidNumber}</TableCell>
+                      <TableCell>{bidding.title}</TableCell>
+                      <TableCell>
+                        {getBidMethodText(bidding.bidMethod)}
+                      </TableCell>
+                      <TableCell>
+                        {bidding.startDate && bidding.endDate
+                          ? `${new Date(
+                              bidding.startDate
+                            ).toLocaleDateString()} ~ 
+                             ${new Date(bidding.endDate).toLocaleDateString()}`
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getStatusText(bidding.status)}
+                          color={
+                            bidding.status?.childCode === BiddingStatus.PENDING
+                              ? "default"
+                              : bidding.status?.childCode ===
+                                BiddingStatus.ONGOING
+                              ? "primary"
+                              : bidding.status?.childCode ===
+                                BiddingStatus.CLOSED
+                              ? "success"
+                              : bidding.status?.childCode ===
+                                BiddingStatus.CANCELED
+                              ? "error"
+                              : "default"
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {checkParticipationEligibility(bidding) ? (
+                          <Chip
+                            label="참여 가능"
+                            color="success"
+                            size="small"
+                          />
+                        ) : (
+                          <Chip label="참여 불가" color="error" size="small" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleViewDetail(bidding.id)}>
+                          상세보기
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth disabled>
-                      <InputLabel htmlFor="fixedUnitPrice">
-                        고정 단가
-                      </InputLabel>
-                      <Input
-                        id="fixedUnitPrice"
-                        value={bidding.unitPrice?.toLocaleString() || 0}
-                        endAdornment={
-                          <InputAdornment position="end">원</InputAdornment>
-                        }
-                      />
-                    </FormControl>
-                  </Grid>
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      <Typography variant="body1" sx={{ py: 2 }}>
+                        데이터가 없습니다.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
                 )}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel htmlFor="quantity">수량</InputLabel>
-                    <Input
-                      id="quantity"
-                      name="quantity"
-                      type="number"
-                      value={participationData.quantity}
-                      onChange={handleParticipationChange}
-                      inputProps={{ min: 1 }}
-                    />
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="참고 사항"
-                    name="note"
-                    value={participationData.note}
-                    onChange={handleParticipationChange}
-                    multiline
-                    rows={4}
-                    placeholder="추가적인 설명이 있다면 작성해주세요."
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleParticipate}
-                      disabled={
-                        submitting ||
-                        (bidding.bidMethod === BiddingMethod.OPEN_PRICE &&
-                          (!participationData.unitPrice ||
-                            participationData.unitPrice <= 0))
-                      }>
-                      {submitting ? (
-                        <CircularProgress size={24} />
-                      ) : (
-                        "입찰 참여"
-                      )}
-                    </Button>
-                  </Box>
-                </Grid>
+          {/* 추가 정보 및 요약 */}
+          <Box sx={{ mt: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2">
+                  총 입찰 공고: {filteredBiddings.length}건
+                </Typography>
               </Grid>
-            </Paper>
-          ) : bidding.status?.childCode !== BiddingStatus.ONGOING ? (
-            <Paper sx={{ p: 3, mb: 3, bgcolor: "warning.light" }}>
-              <Typography variant="h6" sx={{ color: "white" }}>
-                현재 입찰 상태는 "{getStatusText(bidding.status)}"이므로 참여할
-                수 없습니다.
-              </Typography>
-            </Paper>
-          ) : (
-            <Paper sx={{ p: 3, mb: 3, bgcolor: "info.light" }}>
-              <Typography variant="h6" sx={{ color: "white" }}>
-                입찰 참여 조건을 확인해주세요.
-              </Typography>
-            </Paper>
-          )}
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2">
+                  참여 가능 입찰 공고:{" "}
+                  {
+                    filteredBiddings.filter(checkParticipationEligibility)
+                      .length
+                  }
+                  건
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Typography variant="body2">
+                  참여한 입찰 공고:{" "}
+                  {
+                    filteredBiddings.filter((bidding) =>
+                      bidding.participations?.some(
+                        (p) => p.supplierId === userSupplierInfo?.id
+                      )
+                    ).length
+                  }
+                  건
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
         </>
       )}
     </Box>
   );
 }
 
-export default SupplierBiddingDetailPage;
+export default SupplierBiddingListPage;

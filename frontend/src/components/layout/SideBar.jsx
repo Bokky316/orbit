@@ -1,18 +1,18 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { clearUser } from "@/redux/authSlice";
 import "/public/css/layout/Layout.css";
 
-// 대카테고리 메뉴 데이터
-const mainMenuItems = [
+// 구매자(BUYER) 및 관리자(ADMIN) 메뉴
+const buyerAdminMenuItems = [
   { label: "대시보드", path: "/dashboard" },
-  { label: "사용자관리", path: "/members" },
+  { label: "사용자관리", path: "/members", roles: ["ADMIN"] },
   { label: "협력사관리", path: "/supplier" },
   { label: "품목관리", path: "/items" },
   { label: "프로젝트관리", path: "/projects" },
   { label: "구매요청관리", path: "/purchase-requests" },
-  { label: "결재관리", path: "/approvals" },  // 결재관리 메뉴 추가
+  { label: "결재관리", path: "/approvals" },
   { label: "입찰공고관리", path: "/biddings" },
   { label: "계약관리", path: "/contracts" },
   { label: "발주관리", path: "/orders" },
@@ -20,17 +20,41 @@ const mainMenuItems = [
   { label: "송장 관리", path: "/invoices" },
   { label: "자금 관리", path: "/funds" },
   { label: "보고서생성/관리", path: "/reports" },
-  { label: "시스템 설정", path: "/system" } // 시스템 설정 메뉴 추가
+  { label: "시스템 설정", path: "/system", roles: ["ADMIN"] }
+];
+
+// 공급업체(SUPPLIER) 메뉴
+const supplierMenuItems = [
+  { label: "대시보드", path: "/suppliers/dashboard" },
+  { label: "입찰 정보", path: "/suppliers/bidding" },
+  { label: "계약 정보", path: "/suppliers/contracts" },
+  { label: "주문 정보", path: "/suppliers/orders" },
+  { label: "송장 관리", path: "/suppliers/invoices" },
+  { label: "내 정보 관리", path: "/supplier/registrations" }
 ];
 
 function SideBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+
+  // 현재 사용자의 역할에 따라 메뉴 아이템 결정
+  const isSupplier = user?.roles?.includes("SUPPLIER");
+  const menuItems = isSupplier ? supplierMenuItems : buyerAdminMenuItems;
 
   // 현재 활성화된 메뉴 확인
   const isActive = (path) => {
     return location.pathname.startsWith(path);
+  };
+
+  // 사용자 역할에 따른 메뉴 접근 권한 확인
+  const hasAccess = (item) => {
+    // roles 속성이 없으면 모든 사용자가 접근 가능
+    if (!item.roles) return true;
+
+    // roles 속성이 있으면 해당 역할을 가진 사용자만 접근 가능
+    return user?.roles?.some((role) => item.roles.includes(role));
   };
 
   // 로그아웃 핸들러
@@ -58,23 +82,30 @@ function SideBar() {
 
   return (
     <div className="sidebar_container">
-      {/* 대카테고리 메뉴 */}
+      {/* 메뉴 항목 */}
       <ul className="sidebar_menu">
-        {mainMenuItems.map((item, index) => (
-          <li key={index} className="sidebar_menu_item">
-            <Link
-              to={item.path}
-              className={`sidebar_menu_link ${
-                isActive(item.path) ? "active" : ""
-              }`}>
-              {item.label}
-            </Link>
-          </li>
-        ))}
+        {menuItems.map(
+          (item, index) =>
+            // 접근 권한이 있는 메뉴만 표시
+            hasAccess(item) && (
+              <li key={index} className="sidebar_menu_item">
+                <Link
+                  to={item.path}
+                  className={`sidebar_menu_link ${
+                    isActive(item.path) ? "active" : ""
+                  }`}>
+                  {item.label}
+                </Link>
+              </li>
+            )
+        )}
       </ul>
 
       <div className="sidebar_bottom">
-        <button onClick={handleLogout} className="sidebar_logout">
+        <button
+          onClick={handleLogout}
+          className="sidebar_logout"
+          style={{ cursor: "pointer" }}>
           <svg
             width="18"
             height="18"
