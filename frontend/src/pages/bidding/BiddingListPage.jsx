@@ -18,21 +18,13 @@ import {
   Box,
   Typography,
   Grid,
-  CircularProgress
+  CircularProgress,
+  Chip
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { fetchWithAuth } from "@/utils/fetchWithAuth"; // 인증이 필요한 API 호출 함수 추가
-
-// 스티키 헤더를 위한 스타일링된 TableContainer
-const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
-  maxHeight: 440,
-  "& .MuiTableHead-root": {
-    position: "sticky",
-    top: 0,
-    backgroundColor: theme.palette.background.paper,
-    zIndex: 1
-  }
-}));
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
+// 헬퍼 함수 import
+import { getStatusText } from "./helpers/commonBiddingHelpers";
 
 function BiddingListPage() {
   // 상태 관리
@@ -42,14 +34,14 @@ function BiddingListPage() {
   const [error, setError] = useState(null);
   const [totalRows, setTotalRows] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [status, setStatus] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [dateRange, setDateRange] = useState({
     start: "",
     end: ""
   });
   const [paginationModel, setPaginationModel] = useState({
     page: 1,
-    pageSize: 10 // 페이지당 항목 수
+    pageSize: 10
   });
 
   const navigate = useNavigate();
@@ -67,8 +59,8 @@ function BiddingListPage() {
       });
 
       // 상태 필터 추가
-      if (status) {
-        queryParams.append("status", status);
+      if (statusFilter) {
+        queryParams.append("statusCode", statusFilter);
       }
 
       // 날짜 필터 추가
@@ -84,7 +76,7 @@ function BiddingListPage() {
         queryParams.append("keyword", searchTerm);
       }
 
-      // fetchWithAuth 함수 사용
+      // API 호출
       const response = await fetchWithAuth(
         `${API_URL}biddings?${queryParams.toString()}`
       );
@@ -97,13 +89,13 @@ function BiddingListPage() {
       }
 
       const data = await response.json();
-      //console.log("API 응답 데이터:", data);
+      console.log("API 응답 데이터:", data);
 
-      // biddings 필드 또는 content 필드에 따라 구조 조정
-      // Spring Data JPA Page 응답 구조에 맞춤
-      const biddingList = data.content || data.biddings || data;
-      const totalElements =
-        data.totalElements || data.total || biddingList.length;
+      // 데이터 구조 처리
+      const biddingList = Array.isArray(data) ? data : data.content || [];
+      const totalElements = Array.isArray(data)
+        ? biddingList.length
+        : data.totalElements || biddingList.length;
 
       setBiddings(biddingList);
       setFilteredBiddings(biddingList);
@@ -114,7 +106,6 @@ function BiddingListPage() {
         "입찰 공고 목록을 불러오는 중 오류가 발생했습니다. " + error.message
       );
 
-      // 에러 발생 시 빈 배열로 설정
       setBiddings([]);
       setFilteredBiddings([]);
       setTotalRows(0);
@@ -126,18 +117,17 @@ function BiddingListPage() {
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     fetchBiddings();
-  }, [paginationModel.page, paginationModel.pageSize]); // 페이지 변경 시 데이터 다시 가져오기
+  }, [paginationModel.page, paginationModel.pageSize]);
 
   // 필터 적용 시 데이터 다시 가져오기
   const handleSearch = () => {
-    // 페이지를 1로 리셋하고 데이터 다시 가져오기
     setPaginationModel((prev) => ({ ...prev, page: 1 }));
     fetchBiddings();
   };
 
   // 상태 변경 핸들러
   function handleStatusChange(event) {
-    setStatus(event.target.value);
+    setStatusFilter(event.target.value);
   }
 
   // 날짜 변경 핸들러
@@ -149,20 +139,34 @@ function BiddingListPage() {
     }));
   }
 
-  // 아이템 편집을 위한 핸들러
-  function handleEditItem(id) {
-    navigate(`/biddings/edit/${id}`);
-  }
-
   // 상세보기 핸들러
   function handleViewDetail(id) {
-    navigate(`/biddings/${id}`);
+    try {
+      console.log(`입찰 공고 상세 페이지로 이동 - ID: ${id}`);
+
+      // 상세 페이지에서 응답 처리를 담당하므로
+      // 여기서는 단순히 페이지 이동만 수행
+      navigate(`/biddings/${id}`);
+    } catch (error) {
+      console.error("상세 페이지 이동 중 오류:", error);
+    }
   }
 
   // 새 입찰 등록 페이지로 이동
   function handleCreateBidding() {
     navigate("/biddings/new");
   }
+
+  // 스티키 헤더를 위한 스타일링된 TableContainer
+  const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
+    maxHeight: 440,
+    "& .MuiTableHead-root": {
+      position: "sticky",
+      top: 0,
+      backgroundColor: theme.palette.background.paper,
+      zIndex: 1
+    }
+  }));
 
   return (
     <Box sx={{ p: 4 }}>
@@ -188,12 +192,13 @@ function BiddingListPage() {
               <InputLabel id="status-select-label">상태 선택</InputLabel>
               <Select
                 labelId="status-select-label"
-                value={status}
+                value={statusFilter}
                 label="상태 선택"
                 onChange={handleStatusChange}>
                 <MenuItem value="">전체</MenuItem>
+                {/* 상태 코드 시스템 사용 */}
                 <MenuItem value="PENDING">대기중</MenuItem>
-                <MenuItem value="OPEN">오픈</MenuItem>
+                <MenuItem value="ONGOING">진행중</MenuItem>
                 <MenuItem value="CLOSED">마감</MenuItem>
                 <MenuItem value="CANCELED">취소</MenuItem>
               </Select>
@@ -262,7 +267,7 @@ function BiddingListPage() {
           <CircularProgress />
         </Box>
       ) : (
-        /* 스티키 헤더를 사용한 테이블 영역 */
+        /* 테이블 영역 */
         <Paper>
           <StyledTableContainer>
             <Table stickyHeader aria-label="입찰 공고 목록 테이블">
@@ -276,7 +281,6 @@ function BiddingListPage() {
                   <TableCell>금액</TableCell>
                   <TableCell>공고상태</TableCell>
                   <TableCell>마감</TableCell>
-                  <TableCell>작업</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -303,33 +307,39 @@ function BiddingListPage() {
                           {item.title}
                         </Typography>
                       </TableCell>
-                      <TableCell>{`${item.startDate} ~ ${item.endDate}`}</TableCell>
-                      <TableCell>{item.itemName}</TableCell>
+                      <TableCell>
+                        {item.startDate
+                          ? new Date(item.startDate).toLocaleDateString()
+                          : "-"}{" "}
+                        ~
+                        {item.endDate
+                          ? new Date(item.endDate).toLocaleDateString()
+                          : "-"}
+                      </TableCell>
+                      <TableCell>{item.itemName || "-"}</TableCell>
                       <TableCell align="right">
-                        {item.totalAmount?.toLocaleString()}원
+                        {Number(item.totalAmount).toLocaleString()}원
                       </TableCell>
                       <TableCell>
-                        {item.status === "PENDING" && "대기중"}
-                        {item.status === "OPEN" && "오픈"}
-                        {item.status === "CLOSED" && "마감"}
-                        {item.status === "CANCELED" && "취소"}
+                        <Chip
+                          label={getStatusText(item.status)}
+                          color={
+                            item.status?.childCode === "PENDING"
+                              ? "default"
+                              : item.status?.childCode === "ONGOING"
+                              ? "primary"
+                              : item.status?.childCode === "CLOSED"
+                              ? "success"
+                              : item.status?.childCode === "CANCELED"
+                              ? "error"
+                              : "default"
+                          }
+                        />
                       </TableCell>
-                      <TableCell>{item.endDate}</TableCell>
                       <TableCell>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                          onClick={() => handleViewDetail(item.id)}
-                          sx={{ mr: 1 }}>
-                          상세보기
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => handleEditItem(item.id)}>
-                          편집
-                        </Button>
+                        {item.endDate
+                          ? new Date(item.endDate).toLocaleDateString()
+                          : "-"}
                       </TableCell>
                     </TableRow>
                   ))

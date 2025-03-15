@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.orbit.entity.bidding.BiddingOrder;
-import com.orbit.entity.bidding.BiddingOrder.OrderStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +20,7 @@ public class BiddingOrderDto {
     private String orderNumber;
     private Long biddingId;
     private Long biddingParticipationId;
-    private Long biddingItemId;
+    private Long purchaseRequestItemId;
     private Long supplierId;
     private String supplierName;
     private boolean isSelectedBidder;
@@ -35,10 +34,9 @@ public class BiddingOrderDto {
     private BigDecimal totalAmount;
     private String terms;
     private LocalDate expectedDeliveryDate;
-    private OrderStatus status;
-    private Long approvedBy;
+    private Long evaluationId;
     private LocalDateTime approvedAt;
-    private Long createdBy;
+    private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -53,7 +51,7 @@ public class BiddingOrderDto {
                 .orderNumber(entity.getOrderNumber())
                 .biddingId(entity.getBiddingId())
                 .biddingParticipationId(entity.getBiddingParticipationId())
-                .biddingItemId(entity.getBiddingItemId())
+                .purchaseRequestItemId(entity.getPurchaseRequestItemId())
                 .supplierId(entity.getSupplierId())
                 .supplierName(entity.getSupplierName())
                 .isSelectedBidder(entity.isSelectedBidder())
@@ -67,8 +65,7 @@ public class BiddingOrderDto {
                 .totalAmount(entity.getTotalAmount())
                 .terms(entity.getTerms())
                 .expectedDeliveryDate(entity.getExpectedDeliveryDate())
-                .status(entity.getStatus())
-                .approvedBy(entity.getApprovedBy())
+                .evaluationId(entity.getEvaluationId())
                 .approvedAt(entity.getApprovedAt())
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
@@ -82,7 +79,7 @@ public class BiddingOrderDto {
                 .orderNumber(this.orderNumber)
                 .biddingId(this.biddingId)
                 .biddingParticipationId(this.biddingParticipationId)
-                .biddingItemId(this.biddingItemId)
+                .purchaseRequestItemId(this.purchaseRequestItemId)
                 .supplierId(this.supplierId)
                 .supplierName(this.supplierName)
                 .isSelectedBidder(this.isSelectedBidder)
@@ -96,8 +93,7 @@ public class BiddingOrderDto {
                 .totalAmount(this.totalAmount)
                 .terms(this.terms)
                 .expectedDeliveryDate(this.expectedDeliveryDate)
-                .status(this.status)
-                .approvedBy(this.approvedBy)
+                .evaluationId(this.evaluationId)
                 .approvedAt(this.approvedAt)
                 .createdBy(this.createdBy)
                 .build();

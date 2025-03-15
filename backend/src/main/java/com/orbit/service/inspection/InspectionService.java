@@ -1,37 +1,42 @@
 package com.orbit.service.inspection;
 
-import com.orbit.dto.inspection.InspectionRequestDto;
-import com.orbit.dto.inspection.InspectionResponseDto;
-import com.orbit.entity.bidding.SimplifiedContract;
-import com.orbit.entity.inspection.Inspection;
-import com.orbit.repository.bidding.SimplifiedContractRepository;
-import com.orbit.repository.inspection.InspectionRepository;
-import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Service
-public class InspectionService {
-    private final InspectionRepository inspectionRepository;
-    private final SimplifiedContractRepository simplifiedContractRepository;
+import org.springframework.stereotype.Service;
 
-    public InspectionService(InspectionRepository inspectionRepository,
-                             SimplifiedContractRepository simplifiedContractRepository) {
-        this.inspectionRepository = inspectionRepository;
-        this.simplifiedContractRepository = simplifiedContractRepository;
-    }
+import com.orbit.dto.inspection.InspectionRequestDto;
+import com.orbit.dto.inspection.InspectionResponseDto;
+import com.orbit.entity.bidding.BiddingContract;
+import com.orbit.entity.inspection.Inspection;
+import com.orbit.repository.bidding.BiddingContractRepository;
+import com.orbit.repository.inspection.InspectionRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class InspectionService {
+
+    private final InspectionRepository inspectionRepository;
+    private final BiddingContractRepository biddingContractRepository;
+
+    // public InspectionService(InspectionRepository inspectionRepository,
+    // BiddingContractRepository biddingContractRepository) {
+    //     this.inspectionRepository = inspectionRepository;
+    //     this.biddingContractRepository = biddingContractRepository;
+    // }
 
     // 계약이 완료된 검수 목록 조회 - 수정된 로직
     public List<InspectionResponseDto> getCompletedContractInspections() {
         // 완료 상태의 계약 목록 조회
-        List<SimplifiedContract> completedContracts =
-                simplifiedContractRepository.findAllByStatus(SimplifiedContract.ContractStatus.완료);
+        List<BiddingContract> completedContracts =
+        biddingContractRepository.findAllByStatusChild_CodeValue("CLOSED");
 
         List<InspectionResponseDto> result = new ArrayList<>();
 
-        for (SimplifiedContract contract : completedContracts) {
+        for (BiddingContract contract : completedContracts) {
             // 해당 계약 ID로 검수 데이터 조회
             Optional<Inspection> existingInspection =
                     inspectionRepository.findByContractId(contract.getId());

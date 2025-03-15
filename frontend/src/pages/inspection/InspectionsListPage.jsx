@@ -1,10 +1,31 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Container, Typography, Grid, TextField, Select, MenuItem, Button,
-  Table, TableHead, TableBody, TableRow, TableCell, FormControl, InputLabel,
-  Box, Chip, IconButton, Tooltip, Alert, CircularProgress,
-  Card, CardContent, Divider, InputAdornment, Pagination
+  Container,
+  Typography,
+  Grid,
+  TextField,
+  Select,
+  MenuItem,
+  Button,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  FormControl,
+  InputLabel,
+  Box,
+  Chip,
+  IconButton,
+  Tooltip,
+  Alert,
+  CircularProgress,
+  Card,
+  CardContent,
+  Divider,
+  InputAdornment,
+  Pagination
 } from "@mui/material";
 
 // 아이콘 임포트
@@ -20,11 +41,31 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 
 // 결과 상태별 스타일 데이터
 const resultStatusMap = {
-  "검수대기": { color: "default", icon: <HistoryIcon fontSize="small" />, text: "검수대기" },
-  "합격": { color: "success", icon: <CheckCircleIcon fontSize="small" />, text: "합격" },
-  "불합격": { color: "error", icon: <ErrorIcon fontSize="small" />, text: "불합격" },
-  "반품요청": { color: "warning", icon: <WarningIcon fontSize="small" />, text: "반품요청" },
-  "재검수요청": { color: "info", icon: <RefreshIcon fontSize="small" />, text: "재검수요청" }
+  검수대기: {
+    color: "default",
+    icon: <HistoryIcon fontSize="small" />,
+    text: "검수대기"
+  },
+  합격: {
+    color: "success",
+    icon: <CheckCircleIcon fontSize="small" />,
+    text: "합격"
+  },
+  불합격: {
+    color: "error",
+    icon: <ErrorIcon fontSize="small" />,
+    text: "불합격"
+  },
+  반품요청: {
+    color: "warning",
+    icon: <WarningIcon fontSize="small" />,
+    text: "반품요청"
+  },
+  재검수요청: {
+    color: "info",
+    icon: <RefreshIcon fontSize="small" />,
+    text: "재검수요청"
+  }
 };
 
 const InspectionsListPage = () => {
@@ -50,8 +91,8 @@ const InspectionsListPage = () => {
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(today.getDate() - 30);
 
-    setEndDate(today.toISOString().split('T')[0]);
-    setStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
+    setEndDate(today.toISOString().split("T")[0]);
+    setStartDate(thirtyDaysAgo.toISOString().split("T")[0]);
   }, []);
 
   // 필터 리셋 함수
@@ -64,8 +105,8 @@ const InspectionsListPage = () => {
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(today.getDate() - 30);
 
-    setEndDate(today.toISOString().split('T')[0]);
-    setStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
+    setEndDate(today.toISOString().split("T")[0]);
+    setStartDate(thirtyDaysAgo.toISOString().split("T")[0]);
   };
 
   // 검수 목록 로드
@@ -149,7 +190,6 @@ const InspectionsListPage = () => {
           setInspections(mockData);
           setLoading(false);
         }, 800); // 로딩 시뮬레이션
-
       } catch (err) {
         console.error("검수 목록 불러오기 실패:", err);
         setError("검수 목록을 불러오는데 실패했습니다.");
@@ -170,9 +210,9 @@ const InspectionsListPage = () => {
       // 검색어 필터링
       const searchCheck = searchTerm
         ? Object.values(insp)
-            .filter(value => value !== null && value !== undefined)
-            .map(value => value.toString().toLowerCase())
-            .some(text => text.includes(searchTerm.toLowerCase()))
+            .filter((value) => value !== null && value !== undefined)
+            .map((value) => value.toString().toLowerCase())
+            .some((text) => text.includes(searchTerm.toLowerCase()))
         : true;
 
       // 날짜 필터링
@@ -209,12 +249,20 @@ const InspectionsListPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>검수 관리</Typography>
-
+      <Typography variant="h4" sx={{ mb: 3, fontWeight: "bold" }}>
+        검수 관리
+      </Typography>
       {/* 검색 및 필터 카드 */}
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent sx={{ pb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%', flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              width: "100%",
+              flexWrap: "wrap"
+            }}>
             {/* 검색창 */}
             <TextField
               placeholder="검색어 입력"
@@ -228,17 +276,16 @@ const InspectionsListPage = () => {
                 )
               }}
               size="small"
-              sx={{ flex: '1 1 150px', minWidth: '120px' }}
+              sx={{ flex: "1 1 150px", minWidth: "120px" }}
             />
 
             {/* 상태 필터 */}
-            <FormControl size="small" sx={{ width: '130px', flex: '0 0 auto' }}>
+            <FormControl size="small" sx={{ width: "130px", flex: "0 0 auto" }}>
               <InputLabel>검수 상태</InputLabel>
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                label="검수 상태"
-              >
+                label="검수 상태">
                 <MenuItem value="">전체</MenuItem>
                 <MenuItem value="검수대기">검수대기</MenuItem>
                 <MenuItem value="합격">합격</MenuItem>
@@ -249,27 +296,35 @@ const InspectionsListPage = () => {
             </FormControl>
 
             {/* 정렬 필터 */}
-            <FormControl size="small" sx={{ width: '130px', flex: '0 0 auto' }}>
+            <FormControl size="small" sx={{ width: "130px", flex: "0 0 auto" }}>
               <InputLabel>정렬</InputLabel>
               <Select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
-                label="정렬"
-              >
+                label="정렬">
                 <MenuItem value="desc">최신순</MenuItem>
                 <MenuItem value="asc">오래된순</MenuItem>
               </Select>
             </FormControl>
 
             {/* 기간 검색 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
-              <CalendarTodayIcon sx={{ color: 'text.secondary' }} fontSize="small" />
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flex: "0 0 auto"
+              }}>
+              <CalendarTodayIcon
+                sx={{ color: "text.secondary" }}
+                fontSize="small"
+              />
               <TextField
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 size="small"
-                sx={{ width: '140px' }}
+                sx={{ width: "140px" }}
                 InputLabelProps={{ shrink: true }}
               />
               <Typography sx={{ mx: 0.5 }}>~</Typography>
@@ -278,43 +333,58 @@ const InspectionsListPage = () => {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 size="small"
-                sx={{ width: '140px' }}
+                sx={{ width: "140px" }}
                 InputLabelProps={{ shrink: true }}
               />
             </Box>
 
             {/* 초기화 버튼 */}
             <Tooltip title="필터 초기화">
-              <IconButton onClick={resetFilters} size="small" sx={{ ml: 'auto' }}>
+              <IconButton
+                onClick={resetFilters}
+                size="small"
+                sx={{ ml: "auto" }}>
                 <RestartAltIcon />
               </IconButton>
             </Tooltip>
           </Box>
         </CardContent>
       </Card>
-
       {/* 검수 목록 테이블 */}
       <Card variant="outlined">
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 2,
+            py: 1.5,
+            borderBottom: "1px solid",
+            borderColor: "divider"
+          }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>
             검수 목록 ({filteredInspections.length}건)
           </Typography>
         </Box>
 
         {error ? (
-          <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>
+          <Alert severity="error" sx={{ m: 2 }}>
+            {error}
+          </Alert>
         ) : loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
             <CircularProgress />
           </Box>
         ) : filteredInspections.length === 0 ? (
-          <Alert severity="info" sx={{ m: 2 }}>검색 조건에 맞는 검수 내역이 없습니다.</Alert>
+          <Alert severity="info" sx={{ m: 2 }}>
+            검색 조건에 맞는 검수 내역이 없습니다.
+          </Alert>
         ) : (
           <>
-            <Box sx={{ overflowX: 'auto' }}>
+            <Box sx={{ overflowX: "auto" }}>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: 'background.default' }}>
+                  <TableRow sx={{ bgcolor: "background.default" }}>
                     <TableCell>검수 ID</TableCell>
                     <TableCell>계약 번호</TableCell>
                     <TableCell>공급업체명</TableCell>
@@ -328,25 +398,29 @@ const InspectionsListPage = () => {
                 </TableHead>
                 <TableBody>
                   {paginatedInspections.map((insp) => {
-                    const statusInfo = resultStatusMap[insp.result] || resultStatusMap["검수대기"];
+                    const statusInfo =
+                      resultStatusMap[insp.result] ||
+                      resultStatusMap["검수대기"];
 
                     return (
                       <TableRow
                         key={insp.id}
                         hover
                         sx={{
-                          cursor: 'pointer',
-                          '&:hover': { bgcolor: 'action.hover' }
+                          cursor: "pointer",
+                          "&:hover": { bgcolor: "action.hover" }
                         }}
-                        onClick={() => handleRowClick(insp.id)}
-                      >
-                        <TableCell sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+                        onClick={() => handleRowClick(insp.id)}>
+                        <TableCell
+                          sx={{ color: "primary.main", fontWeight: "medium" }}>
                           {insp.id}
                         </TableCell>
                         <TableCell>{insp.contractId}</TableCell>
                         <TableCell>{insp.supplierName}</TableCell>
                         <TableCell>{insp.productName}</TableCell>
-                        <TableCell align="center">{insp.quantity.toLocaleString()}</TableCell>
+                        <TableCell align="center">
+                          {insp.quantity.toLocaleString()}
+                        </TableCell>
                         <TableCell align="center">
                           <Chip
                             size="small"
@@ -357,8 +431,11 @@ const InspectionsListPage = () => {
                         </TableCell>
                         <TableCell>{insp.inspection_date || "-"}</TableCell>
                         <TableCell>{insp.inspectorName || "-"}</TableCell>
-                        <TableCell align="center" onClick={(e) => e.stopPropagation()}>
-                          {(insp.result === "검수대기" || insp.result === "재검수요청") && (
+                        <TableCell
+                          align="center"
+                          onClick={(e) => e.stopPropagation()}>
+                          {(insp.result === "검수대기" ||
+                            insp.result === "재검수요청") && (
                             <Tooltip title="검수하기">
                               <IconButton
                                 size="small"
@@ -366,8 +443,7 @@ const InspectionsListPage = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(`/inspections/${insp.id}/edit`);
-                                }}
-                              >
+                                }}>
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -381,16 +457,17 @@ const InspectionsListPage = () => {
             </Box>
 
             {/* 페이지네이션 컨트롤 */}
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              px: 2,
-              py: 1.5,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                px: 2,
+                py: 1.5,
+                borderTop: "1px solid",
+                borderColor: "divider"
+              }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography variant="body2" color="text.secondary">
                   페이지당 행:
                 </Typography>
@@ -398,8 +475,7 @@ const InspectionsListPage = () => {
                   value={rowsPerPage}
                   onChange={(e) => setRowsPerPage(e.target.value)}
                   size="small"
-                  sx={{ minWidth: 80 }}
-                >
+                  sx={{ minWidth: 80 }}>
                   <MenuItem value={5}>5</MenuItem>
                   <MenuItem value={10}>10</MenuItem>
                   <MenuItem value={20}>20</MenuItem>
@@ -407,38 +483,66 @@ const InspectionsListPage = () => {
                 </Select>
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-                  {`${page * rowsPerPage + 1}-${Math.min((page + 1) * rowsPerPage, filteredInspections.length)} / ${filteredInspections.length}`}
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mr: 2 }}>
+                  {`${page * rowsPerPage + 1}-${Math.min(
+                    (page + 1) * rowsPerPage,
+                    filteredInspections.length
+                  )} / ${filteredInspections.length}`}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Box sx={{ display: "flex", gap: 0.5 }}>
                   <IconButton
                     size="small"
                     onClick={() => setPage(0)}
-                    disabled={page === 0}
-                  >
-                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>«</Box>
+                    disabled={page === 0}>
+                    <Box
+                      component="span"
+                      sx={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+                      «
+                    </Box>
                   </IconButton>
                   <IconButton
                     size="small"
                     onClick={() => setPage(page - 1)}
-                    disabled={page === 0}
-                  >
-                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>‹</Box>
+                    disabled={page === 0}>
+                    <Box
+                      component="span"
+                      sx={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+                      ‹
+                    </Box>
                   </IconButton>
                   <IconButton
                     size="small"
                     onClick={() => setPage(page + 1)}
-                    disabled={page >= Math.ceil(filteredInspections.length / rowsPerPage) - 1}
-                  >
-                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>›</Box>
+                    disabled={
+                      page >=
+                      Math.ceil(filteredInspections.length / rowsPerPage) - 1
+                    }>
+                    <Box
+                      component="span"
+                      sx={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+                      ›
+                    </Box>
                   </IconButton>
                   <IconButton
                     size="small"
-                    onClick={() => setPage(Math.ceil(filteredInspections.length / rowsPerPage) - 1)}
-                    disabled={page >= Math.ceil(filteredInspections.length / rowsPerPage) - 1}
-                  >
-                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>»</Box>
+                    onClick={() =>
+                      setPage(
+                        Math.ceil(filteredInspections.length / rowsPerPage) - 1
+                      )
+                    }
+                    disabled={
+                      page >=
+                      Math.ceil(filteredInspections.length / rowsPerPage) - 1
+                    }>
+                    <Box
+                      component="span"
+                      sx={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+                      »
+                    </Box>
                   </IconButton>
                 </Box>
               </Box>

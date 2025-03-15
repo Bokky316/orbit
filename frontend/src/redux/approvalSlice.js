@@ -1,15 +1,18 @@
 // src/redux/approvalSlice.js
 
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { API_URL } from '@/utils/constants';
-import { fetchWithAuth } from '@/utils/fetchWithAuth';
-import { fetchPendingApprovals, fetchCompletedApprovals } from '@/utils/approvalUtils';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { API_URL } from "@/utils/constants";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import {
+  fetchPendingApprovals,
+  fetchCompletedApprovals
+} from "@/utils/approvalUtils";
 
 /**
  * 결재 목록을 가져오는 비동기 액션
  */
 export const fetchApprovals = createAsyncThunk(
-  'approval/fetchApprovals',
+  "approval/fetchApprovals",
   async (_, { rejectWithValue }) => {
     try {
       // 내 결재 대기 목록 조회 (현재 사용자가 결재해야 할 항목)
@@ -17,13 +20,15 @@ export const fetchApprovals = createAsyncThunk(
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`결재 목록 조회 실패: ${response.status} - ${errorText}`);
+        throw new Error(
+          `결재 목록 조회 실패: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('결재 목록 조회 중 오류 발생:', error);
+      console.error("결재 목록 조회 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -33,7 +38,7 @@ export const fetchApprovals = createAsyncThunk(
  * 특정 구매요청에 대한 결재선 목록 조회
  */
 export const fetchApprovalLines = createAsyncThunk(
-  'approval/fetchApprovalLines',
+  "approval/fetchApprovalLines",
   async (requestId, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}approvals/${requestId}`);
@@ -46,7 +51,7 @@ export const fetchApprovalLines = createAsyncThunk(
       const data = await response.json();
       return { requestId, lines: data };
     } catch (error) {
-      console.error('결재선 조회 중 오류 발생:', error);
+      console.error("결재선 조회 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -56,13 +61,13 @@ export const fetchApprovalLines = createAsyncThunk(
  * 결재선 생성
  */
 export const createApprovalLine = createAsyncThunk(
-  'approval/createApprovalLine',
+  "approval/createApprovalLine",
   async (approvalLineData, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}approvals`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(approvalLineData)
       });
@@ -74,7 +79,7 @@ export const createApprovalLine = createAsyncThunk(
 
       return approvalLineData.purchaseRequestId;
     } catch (error) {
-      console.error('결재선 생성 중 오류 발생:', error);
+      console.error("결재선 생성 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -84,20 +89,23 @@ export const createApprovalLine = createAsyncThunk(
  * 결재 처리 (승인/반려)
  */
 export const processApproval = createAsyncThunk(
-  'approval/processApproval',
+  "approval/processApproval",
   async ({ lineId, action, comment, nextStatusCode }, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}approvals/${lineId}/process`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action,
-          comment,
-          nextStatusCode
-        })
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}approvals/${lineId}/process`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action,
+            comment,
+            nextStatusCode
+          })
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -106,14 +114,14 @@ export const processApproval = createAsyncThunk(
 
       return { lineId, action };
     } catch (error) {
-      console.error('결재 처리 중 오류 발생:', error);
+      console.error("결재 처리 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
 );
 // 결재 대기 목록 조회 액션
 export const fetchPendingApprovalsAction = createAsyncThunk(
-  'approval/fetchPendingApprovals',
+  "approval/fetchPendingApprovals",
   async (_, { rejectWithValue }) => {
     try {
       const data = await fetchPendingApprovals();
@@ -126,7 +134,7 @@ export const fetchPendingApprovalsAction = createAsyncThunk(
 
 // 결재 완료 목록 조회 액션
 export const fetchCompletedApprovalsAction = createAsyncThunk(
-  'approval/fetchCompletedApprovals',
+  "approval/fetchCompletedApprovals",
   async (_, { rejectWithValue }) => {
     try {
       const data = await fetchCompletedApprovals();
@@ -144,16 +152,16 @@ const initialState = {
   pendingApprovals: [],
   completedApprovals: [],
   filters: {
-    searchTerm: '',
-    requestDate: '',
-    businessType: 'ALL'
+    searchTerm: "",
+    requestDate: "",
+    businessType: "ALL"
   },
   loading: false,
   error: null
 };
 
 const approvalSlice = createSlice({
-  name: 'approval',
+  name: "approval",
   initialState,
   reducers: {
     setApprovals: (state, action) => {
@@ -228,7 +236,9 @@ const approvalSlice = createSlice({
 
         // 해당 결재선의 상태 업데이트
         const { lineId, action: approvalAction } = action.payload;
-        state.approvals = state.approvals.filter(approval => approval.id !== lineId);
+        state.approvals = state.approvals.filter(
+          (approval) => approval.id !== lineId
+        );
       })
       .addCase(processApproval.rejected, (state, action) => {
         state.loading = false;

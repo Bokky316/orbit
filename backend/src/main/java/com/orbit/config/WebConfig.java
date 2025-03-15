@@ -1,4 +1,4 @@
-package com.javalab.student.config;
+package com.orbit.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -76,7 +76,7 @@ public class WebConfig implements WebMvcConfigurer {
 
         // 모든 URL 요청을 리액트의 index.html로 매핑하기 위한 설정[수정]
         registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/student_frontend/public/");
+                .addResourceLocations("classpath:/frontend/public/");
 
 
     }
@@ -92,6 +92,6 @@ public class WebConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         // React의 index.html을 기본 뷰로 매핑
         registry.addViewController("/{spring:[^\\.]*}")
-                .setViewName("forward:/student_frontend/public/index.html");
+                .setViewName("forward:/frontend/public/index.html");
     }
 }
