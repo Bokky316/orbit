@@ -42,11 +42,13 @@ import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
-import CommonCodeManagement from "@/pages/commonCode/CommonCodeManagement";
-import CategoryListPage from "@/pages/item/CategoryListPage";
-import CategoryFormPage from "@/pages/item/CategoryFormPage";
-import ItemListPage from "@/pages/item/ItemListPage";
-import ItemFormPage from "@/pages/item/ItemFormPage";
+import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
+import CategoryListPage from "@pages/item/CategoryListPage";
+import CategoryFormPage from "@pages/item/CategoryFormPage";
+import ItemListPage from "@pages/item/ItemListPage";
+import ItemFormPage from "@pages/item/ItemFormPage";
+import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
+import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -145,12 +147,8 @@ function AppContent() {
               {/* 검수 관리 */}
               <Route path="/inspections" element={<InspectionsListPage />} />
               <Route
-                path="/inspections/:id"
-                element={<InspectionDetailPage />}
-              />
-              <Route
-                path="/inspections/:id/edit"
-                element={<InspectionFormPage />}
+                path="/deliveries/new"
+                element={<DeliveryCreatePage />}
               />
               {/* 송장 관리 */}
               <Route path="/invoices" element={<InvoicesListPage />} />
