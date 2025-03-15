@@ -3,7 +3,10 @@ import { useDispatch } from "react-redux";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
 import { SERVER_URL } from "@/utils/constants";
-import { changePurchaseRequestStatus, fetchPurchaseRequests } from "@/redux/purchaseRequestSlice";
+import { changePurchaseRequestStatus } from "@/redux/purchaseRequestSlice";
+import { updateSupplierStatus } from "@/redux/supplier/supplierSlice";
+import { updateBiddingStatus } from "@/redux/biddingSlice";
+import { addRealTimeNotification } from "@/redux/notificationSlice";
 
 const useWebSocket = (user) => {
   const dispatch = useDispatch();
@@ -106,6 +109,45 @@ const useWebSocket = (user) => {
               }
             );
           }
+
+          // 1. 사용자 공급업체 ID별 구독 추가
+          client.subscribe(`/topic/supplier/${user.id}`, (message) => {
+            try {
+              const updateData = JSON.parse(message.body);
+              console.log(
+                "📣 사용자별 공급업체 상태 변경 이벤트 수신:",
+                updateData
+              );
+              dispatch(
+                updateSupplierStatus({
+                  id: updateData.supplierId,
+                  fromStatus: updateData.fromStatus,
+                  toStatus: updateData.toStatus
+                })
+              );
+            } catch (error) {
+              console.error("❌ 사용자별 협력업체 상태 업데이트 오류:", error);
+            }
+          });
+
+          // 2. 공급업체 상태 변경 구독을 위한 준비
+          // 참고: 현재 보고 있는 개별 공급업체에 대한 구독은
+          // 해당 페이지에서 구체적인 supplierId를 알 때 subscribeToSupplier 메서드로 처리
+        },
+
+        onStompError: (frame) => {
+          console.error("❌ WebSocket 연결 오류:", frame);
+          clearTimeout(connectionTimeoutId);
+          setIsConnected(false);
+          connectingRef.current = false;
+          scheduleReconnect();
+        },
+
+        onDisconnect: () => {
+          console.log("🔌 WebSocket 연결 해제");
+          setIsConnected(false);
+          connectingRef.current = false;
+          scheduleReconnect();
         }
 
         // 사용자별 개인 알림 구독
@@ -123,84 +165,16 @@ const useWebSocket = (user) => {
         );
       },
 
-    // 공급업체 상태 변경 전송 메서드 추가
-    const sendSupplierStatusChange = (supplierId, fromStatus, toStatus) => {
-        if (stompClient && isConnected) {
-            try {
-                stompClient.publish({
-                    destination: `/app/supplier/${supplierId}/status`,
-                    body: JSON.stringify({
-                        supplierId,
-                        fromStatus,
-                        toStatus,
-                        changedBy: user?.username || 'anonymous',
-                        timestamp: new Date().toISOString()
-                    })
-                });
-                console.log(`📤 공급업체 상태 변경 메시지 전송: ID=${supplierId}, ${fromStatus} → ${toStatus}`);
-            } catch (error) {
-                console.error("❌ 공급업체 상태 변경 전송 실패:", error);
-            }
-        } else {
-            console.warn("⚠️ WebSocket 연결이 활성화되지 않아 메시지를 전송할 수 없습니다.");
-        }
-    };
-
-    // 공급업체 구독 메서드 추가
-    const subscribeToSupplier = (supplierId) => {
-        if (stompClient && isConnected && supplierId) {
-            try {
-                const subscription = stompClient.subscribe(`/topic/supplier/${supplierId}`, (message) => {
-                    try {
-                        const updateData = JSON.parse(message.body);
-                        console.log(`📣 공급업체(${supplierId}) 상태 변경 이벤트 수신:`, updateData);
-                        dispatch(updateSupplierStatus({
-                            id: updateData.supplierId,
-                            fromStatus: updateData.fromStatus,
-                            toStatus: updateData.toStatus
-                        }));
-                    } catch (error) {
-                        console.error(`❌ 특정 공급업체(${supplierId}) 상태 업데이트 오류:`, error);
-                    }
-                });
-                console.log(`✅ 공급업체(${supplierId}) 구독 성공`);
-                return subscription; // 구독 해제를 위해 subscription 객체 반환
-            } catch (error) {
-                console.error(`❌ 공급업체(${supplierId}) 구독 실패:`, error);
-                return null;
-            }
-        }
-        return null;
-    };
-
-    // 구독 해제 메서드 추가
-    const unsubscribeFromSupplier = (subscription) => {
-        if (subscription) {
-            try {
-                subscription.unsubscribe();
-                console.log("✅ 공급업체 구독 해제 성공");
-            } catch (error) {
-                console.error("❌ 공급업체 구독 해제 실패:", error);
-            }
-        }
-    };
-
-    return {
-        sendStatusChange,
-        sendSupplierStatusChange,
-        subscribeToSupplier,
-        unsubscribeFromSupplier,
-        isConnected
+    return () => {
+      if (client) {
+        client.deactivate();
+      }
     };
   }, [user, dispatch]);
 
-  // 구매요청 상태 변경 함수
   const sendStatusChange = (purchaseRequestId, fromStatus, toStatus) => {
     if (stompClient && isConnected) {
       try {
-        console.log(`📤 상태 변경 요청: ${purchaseRequestId}(${fromStatus} -> ${toStatus})`);
-
-        // WebSocket을 통한 상태 변경 메시지 전송
         stompClient.publish({
           destination: "/app/purchase-request/status",
           body: JSON.stringify({
@@ -211,34 +185,92 @@ const useWebSocket = (user) => {
         });
       } catch (error) {
         console.error("❌ 상태 변경 전송 실패:", error);
-        // 실패한 경우 HTTP API로 대체
-        sendStatusChangeViaAPI(purchaseRequestId, fromStatus, toStatus);
       }
-    } else {
-      console.warn("⚠️ WebSocket 연결이 활성화되지 않았습니다. HTTP API 호출로 대체합니다.");
-      // WebSocket 연결이 없을 경우 HTTP API 호출로 대체
-      sendStatusChangeViaAPI(purchaseRequestId, fromStatus, toStatus);
     }
   };
 
-  // HTTP API를 통한 상태 변경 함수
-  const sendStatusChangeViaAPI = (purchaseRequestId, fromStatus, toStatus) => {
-    dispatch(
-      changePurchaseRequestStatus({
-        id: purchaseRequestId,
-        fromStatus,
-        toStatus
-      })
-    ).then(() => {
-      // 상태 변경 후 구매요청 목록 다시 불러오기
-      dispatch(fetchPurchaseRequests());
-    }).catch(error => {
-      console.error('상태 변경 API 호출 실패:', error);
-    });
+  // 공급업체 상태 변경 전송 메서드 추가
+  const sendSupplierStatusChange = (supplierId, fromStatus, toStatus) => {
+    if (stompClient && isConnected) {
+      try {
+        stompClient.publish({
+          destination: `/app/supplier/${supplierId}/status`,
+          body: JSON.stringify({
+            supplierId,
+            fromStatus,
+            toStatus,
+            changedBy: user?.username || "anonymous",
+            timestamp: new Date().toISOString()
+          })
+        });
+        console.log(
+          `📤 공급업체 상태 변경 메시지 전송: ID=${supplierId}, ${fromStatus} → ${toStatus}`
+        );
+      } catch (error) {
+        console.error("❌ 공급업체 상태 변경 전송 실패:", error);
+      }
+    } else {
+      console.warn(
+        "⚠️ WebSocket 연결이 활성화되지 않아 메시지를 전송할 수 없습니다."
+      );
+    }
+  };
+
+  // 공급업체 구독 메서드 추가
+  const subscribeToSupplier = (supplierId) => {
+    if (stompClient && isConnected && supplierId) {
+      try {
+        const subscription = stompClient.subscribe(
+          `/topic/supplier/${supplierId}`,
+          (message) => {
+            try {
+              const updateData = JSON.parse(message.body);
+              console.log(
+                `📣 공급업체(${supplierId}) 상태 변경 이벤트 수신:`,
+                updateData
+              );
+              dispatch(
+                updateSupplierStatus({
+                  id: updateData.supplierId,
+                  fromStatus: updateData.fromStatus,
+                  toStatus: updateData.toStatus
+                })
+              );
+            } catch (error) {
+              console.error(
+                `❌ 특정 공급업체(${supplierId}) 상태 업데이트 오류:`,
+                error
+              );
+            }
+          }
+        );
+        console.log(`✅ 공급업체(${supplierId}) 구독 성공`);
+        return subscription; // 구독 해제를 위해 subscription 객체 반환
+      } catch (error) {
+        console.error(`❌ 공급업체(${supplierId}) 구독 실패:`, error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  // 구독 해제 메서드 추가
+  const unsubscribeFromSupplier = (subscription) => {
+    if (subscription) {
+      try {
+        subscription.unsubscribe();
+        console.log("✅ 공급업체 구독 해제 성공");
+      } catch (error) {
+        console.error("❌ 공급업체 구독 해제 실패:", error);
+      }
+    }
   };
 
   return {
     sendStatusChange,
+    sendSupplierStatusChange,
+    subscribeToSupplier,
+    unsubscribeFromSupplier,
     isConnected
   };
 };
