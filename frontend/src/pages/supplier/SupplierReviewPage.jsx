@@ -35,7 +35,9 @@ import {
   AttachFile as AttachFileIcon,
   Block as BlockIcon,
   ErrorOutline as ErrorOutlineIcon,
-  Edit as EditIcon // 수정 아이콘 추가
+  Edit as EditIcon, // 수정 아이콘 추가
+  PauseCircle as PauseCircleIcon, // 일시정지 아이콘 추가
+  Report as ReportIcon // 블랙리스트 아이콘 추가
 } from '@mui/icons-material';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
@@ -102,6 +104,11 @@ const SupplierReviewPage = () => {
   const [openInactivateModal, setOpenInactivateModal] = useState(false);
   const [inactivateReason, setInactivateReason] = useState('');
   const [openActivateModal, setOpenActivateModal] = useState(false);
+  // 블랙리스트 및 일시정지 모달 상태 추가
+  const [openBlacklistModal, setOpenBlacklistModal] = useState(false);
+  const [blacklistReason, setBlacklistReason] = useState('');
+  const [openSuspendModal, setOpenSuspendModal] = useState(false);
+  const [suspendReason, setSuspendReason] = useState('');
 
   // ADMIN 권한 체크 수정
   const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
@@ -222,6 +229,30 @@ const SupplierReviewPage = () => {
     setOpenActivateModal(false);
   };
 
+  // 블랙리스트 모달 열기 함수 추가
+  const handleOpenBlacklistModal = () => {
+    console.log('블랙리스트 모달 열기 시도'); // 로그 추가
+    setOpenBlacklistModal(true);
+  };
+
+  // 블랙리스트 모달 닫기 함수 추가
+  const handleCloseBlacklistModal = () => {
+    setOpenBlacklistModal(false);
+    setBlacklistReason('');
+  };
+
+  // 일시정지 모달 열기 함수 추가
+  const handleOpenSuspendModal = () => {
+    console.log('일시정지 모달 열기 시도'); // 로그 추가
+    setOpenSuspendModal(true);
+  };
+
+  // 일시정지 모달 닫기 함수 추가
+  const handleCloseSuspendModal = () => {
+    setOpenSuspendModal(false);
+    setSuspendReason('');
+  };
+
   // 비활성화 처리 함수 추가
   const handleInactivateSupplier = () => {
     if (currentSupplier?.id) {
@@ -265,6 +296,64 @@ const SupplierReviewPage = () => {
           });
       } catch (err) {
         console.error('활성화 오류:', err);
+      }
+    }
+  };
+
+  // 블랙리스트 처리 함수 추가
+  const handleBlacklistSupplier = () => {
+    if (!blacklistReason.trim()) {
+      alert('블랙리스트 사유를 입력해주세요.');
+      return;
+    }
+
+    if (currentSupplier?.id) {
+      try {
+        dispatch(updateSupplierStatus({
+          id: currentSupplier.id,
+          statusCode: 'BLACKLIST',
+          rejectionReason: blacklistReason
+        }))
+          .unwrap()
+          .then(() => {
+            handleCloseBlacklistModal();
+            // 상태 변경 후 목록 페이지로 리다이렉트
+            navigate('/supplier');
+          })
+          .catch(error => {
+            console.error('블랙리스트 등록 오류:', error);
+          });
+      } catch (err) {
+        console.error('블랙리스트 등록 오류:', err);
+      }
+    }
+  };
+
+  // 일시정지 처리 함수 추가
+  const handleSuspendSupplier = () => {
+    if (!suspendReason.trim()) {
+      alert('일시정지 사유를 입력해주세요.');
+      return;
+    }
+
+    if (currentSupplier?.id) {
+      try {
+        dispatch(updateSupplierStatus({
+          id: currentSupplier.id,
+          statusCode: 'SUSPENDED',
+          rejectionReason: suspendReason
+        }))
+          .unwrap()
+          .then(() => {
+            handleCloseSuspendModal();
+            // 상태 변경 후 목록 페이지로 리다이렉트
+            navigate('/supplier');
+          })
+          .catch(error => {
+            console.error('일시정지 오류:', error);
+          });
+      } catch (err) {
+        console.error('일시정지 오류:', err);
       }
     }
   };
@@ -383,21 +472,10 @@ const SupplierReviewPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {getStatusChip(currentSupplier.status)}
 
-            {/* SUPPLIER 본인이고 상태가 PENDING일 때 수정 버튼 표시 */}
-            {isSupplier && currentSupplier && currentSupplier.status?.childCode === 'PENDING' && (
-              <Button
-                size="small"
-                color="primary"
-                variant="contained"
-                startIcon={<EditIcon />}
-                onClick={handleEdit}
-              >
-                수정하기
-              </Button>
-            )}
-
-            {/* ADMIN에게만 활성화/비활성화 버튼 표시 */}
-            {isAdmin && currentSupplier.status?.childCode !== 'PENDING' && (
+            {/* ADMIN에게만 활성화/비활성화 버튼 표시 - 일시정지/블랙리스트가 아닐 때만 */}
+            {isAdmin && currentSupplier.status?.childCode !== 'PENDING' &&
+              currentSupplier.status?.childCode !== 'SUSPENDED' &&
+              currentSupplier.status?.childCode !== 'BLACKLIST' && (
               <>
                 {currentSupplier.status === 'INACTIVE' || currentSupplier.status?.childCode === 'INACTIVE' ? (
                   <Button
@@ -676,6 +754,42 @@ const SupplierReviewPage = () => {
             </Button>
           </Box>
         )}
+
+        {/* ADMIN에게만 보이는 블랙리스트/일시정지 버튼 추가 - 승인 상태일 때만 표시 */}
+        {isAdmin && currentSupplier.status?.childCode === 'APPROVED' && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+            <Button
+              variant="contained"
+              color="warning"
+              startIcon={<PauseCircleIcon />}
+              onClick={handleOpenSuspendModal}
+            >
+              일시정지
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<ReportIcon />}
+              onClick={handleOpenBlacklistModal}
+            >
+              블랙리스트 등록
+            </Button>
+          </Box>
+        )}
+
+      {/* ADMIN에게만 보이는 일시정지/블랙리스트 해제 버튼 - 해당 상태일 때만 표시 */}
+      {isAdmin && (currentSupplier.status?.childCode === 'SUSPENDED' || currentSupplier.status?.childCode === 'BLACKLIST') && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3, pt: 3, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircleIcon />}
+            onClick={handleOpenActivateModal}
+          >
+            {currentSupplier.status?.childCode === 'SUSPENDED' ? '일시정지 해제' : '블랙리스트 해제'}
+          </Button>
+        </Box>
+      )}
       </Paper>
 
       {/* 하단 네비게이션 버튼 */}
@@ -805,6 +919,82 @@ const SupplierReviewPage = () => {
             활성화
           </Button>
           <Button onClick={handleCloseActivateModal} color="inherit">
+            취소
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 블랙리스트 확인 모달 */}
+      <Dialog
+        open={openBlacklistModal}
+        onClose={handleCloseBlacklistModal}
+        aria-labelledby="blacklist-dialog-title"
+      >
+        <DialogTitle id="blacklist-dialog-title">협력업체 블랙리스트 등록</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 블랙리스트에 등록하시겠습니까?
+            블랙리스트 등록 후에는 해당 업체와의 거래가 완전히 차단됩니다.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="blacklist-reason"
+            label="블랙리스트 등록 사유"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={blacklistReason}
+            onChange={(e) => setBlacklistReason(e.target.value)}
+            variant="outlined"
+            sx={{ mt: 2 }}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleBlacklistSupplier} color="error" variant="contained">
+            블랙리스트 등록
+          </Button>
+          <Button onClick={handleCloseBlacklistModal} color="inherit">
+            취소
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 일시정지 확인 모달 */}
+      <Dialog
+        open={openSuspendModal}
+        onClose={handleCloseSuspendModal}
+        aria-labelledby="suspend-dialog-title"
+      >
+        <DialogTitle id="suspend-dialog-title">협력업체 일시정지</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 일시정지하시겠습니까?
+            일시정지 상태에서는 필요시 다시 재개할 수 있습니다.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="suspend-reason"
+            label="일시정지 사유"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={suspendReason}
+            onChange={(e) => setSuspendReason(e.target.value)}
+            variant="outlined"
+            sx={{ mt: 2 }}
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleSuspendSupplier} color="warning" variant="contained">
+            일시정지
+          </Button>
+          <Button onClick={handleCloseSuspendModal} color="inherit">
             취소
           </Button>
         </DialogActions>
