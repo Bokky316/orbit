@@ -31,6 +31,8 @@ public class DeliveryService {
     private final MemberRepository memberRepository;
 //    private final InspectionRepository inspectionRepository;
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryService.class);
+
     /**
      * 입고 목록 조회
      */
@@ -75,40 +77,85 @@ public class DeliveryService {
      */
     @Transactional
     public DeliveryDto.Response createDelivery(DeliveryDto.Request request) {
-        // 발주 조회
-        BiddingOrder biddingOrder = biddingOrderRepository.findById(request.getBiddingOrderId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 발주입니다. ID: " + request.getBiddingOrderId()));
+        try {
+            // 필수 데이터 검증
+            if (request.getBiddingOrderId() == null) {
+                throw new IllegalArgumentException("발주 ID는 필수입니다.");
+            }
 
-        // 구매요청품목 조회
-        PurchaseRequestItem purchaseRequestItem = null;
-        if (request.getPurchaseRequestItemId() != null) {
-            purchaseRequestItem = purchaseRequestItemRepository.findById(request.getPurchaseRequestItemId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 구매요청품목입니다. ID: " + request.getPurchaseRequestItemId()));
+            if (request.getDeliveryDate() == null) {
+                throw new IllegalArgumentException("입고일은 필수입니다.");
+            }
+
+            // 발주 조회
+            BiddingOrder biddingOrder = biddingOrderRepository.findById(request.getBiddingOrderId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 발주입니다. ID: " + request.getBiddingOrderId()));
+
+            // 구매요청품목 조회 (null 허용)
+            PurchaseRequestItem purchaseRequestItem = null;
+            if (request.getPurchaseRequestItemId() != null) {
+                try {
+                    purchaseRequestItem = purchaseRequestItemRepository.findById(request.getPurchaseRequestItemId())
+                            .orElse(null); // 없어도 진행
+                } catch (Exception e) {
+                    // 조회 중 오류가 발생해도 계속 진행
+                    log.warn("구매요청품목 조회 중 오류 발생: {}", e.getMessage());
+                }
+            }
+
+            // 입고 담당자 조회 (null 허용)
+            Member receiver = null;
+            if (request.getReceiverId() != null) {
+                try {
+                    receiver = memberRepository.findById(request.getReceiverId())
+                            .orElse(null); // 없어도 진행
+                } catch (Exception e) {
+                    // 조회 중 오류가 발생해도 계속 진행
+                    log.warn("입고 담당자 조회 중 오류 발생: {}", e.getMessage());
+                }
+            }
+
+            // 입고 엔티티 생성
+            Delivery delivery = Delivery.builder()
+                    .biddingOrder(biddingOrder)
+                    .purchaseRequestItem(purchaseRequestItem)
+                    .receiver(receiver)
+                    .deliveryDate(request.getDeliveryDate())
+                    .notes(request.getNotes())
+                    .build();
+
+            // 발주 정보로부터 입고 정보 설정
+            delivery.setFromBiddingOrder(biddingOrder, purchaseRequestItem);
+
+            // 명시적으로 품목 ID 설정 (클라이언트에서 전달된 값이 있으면 우선 사용)
+            if (request.getDeliveryItemId() != null) {
+                delivery.setDeliveryItemId(request.getDeliveryItemId());
+            } else if (purchaseRequestItem != null) {
+                delivery.setDeliveryItemId(purchaseRequestItem.getId());
+            }
+
+            // 추가 정보 설정
+            if (request.getSupplierId() != null) {
+                delivery.setSupplierId(request.getSupplierId());
+            }
+
+            if (request.getSupplierName() != null) {
+                delivery.setSupplierName(request.getSupplierName());
+            }
+
+            // 수량 정보가 요청에 포함되어 있으면 우선 적용
+            if (request.getItemQuantity() != null) {
+                delivery.setItemQuantity(request.getItemQuantity());
+            }
+
+            // 저장
+            Delivery savedDelivery = deliveryRepository.save(delivery);
+
+            return DeliveryDto.Response.fromEntity(savedDelivery);
+        } catch (Exception e) {
+            log.error("입고 등록 중 예외 발생:", e);
+            throw e; // 상위 호출자에게 예외 전파
         }
-
-        // 입고 담당자 조회
-        Member receiver = null;
-        if (request.getReceiverId() != null) {
-            receiver = memberRepository.findById(request.getReceiverId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. ID: " + request.getReceiverId()));
-        }
-
-        // 입고 엔티티 생성
-        Delivery delivery = Delivery.builder()
-                .biddingOrder(biddingOrder)
-                .purchaseRequestItem(purchaseRequestItem)
-                .receiver(receiver)
-                .deliveryDate(request.getDeliveryDate())
-                .notes(request.getNotes())
-                .build();
-
-        // 발주 정보로부터 입고 정보 설정
-        delivery.setFromBiddingOrder(biddingOrder, purchaseRequestItem);
-
-        // 저장
-        Delivery savedDelivery = deliveryRepository.save(delivery);
-
-        return DeliveryDto.Response.fromEntity(savedDelivery);
     }
 
     /**

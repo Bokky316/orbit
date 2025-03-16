@@ -24,6 +24,8 @@ public class DeliveryController {
     private final DeliveryService deliveryService;
     private final MemberService memberService;
 
+    // @Slf4j 어노테이션이 자동으로 log 객체를 생성하므로 별도 정의 불필요
+
     /**
      * 입고 목록 조회
      */
@@ -88,12 +90,33 @@ public class DeliveryController {
             @RequestBody DeliveryDto.Request request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // 현재 로그인한 사용자 정보로 입고 담당자 설정
-        Member member = memberService.findByUsername(userDetails.getUsername());
-        request.setReceiverId(member.getId());
+        try {
+            // receiverId가 없는 경우에만 현재 인증된 사용자 ID 설정
+            if (request.getReceiverId() == null && userDetails != null) {
+                try {
+                    Member member = memberService.findByUsername(userDetails.getUsername());
+                    if (member != null) {
+                        request.setReceiverId(member.getId());
+                    }
+                } catch (Exception e) {
+                    log.warn("사용자 정보 조회 중 오류: {}", e.getMessage());
+                }
+            }
 
-        DeliveryDto.Response delivery = deliveryService.createDelivery(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(delivery);
+            // 클라이언트에서 보낸 요청 로깅
+            log.info("입고 등록 요청 데이터: {}", request);
+
+            // 서비스 호출 및 응답
+            DeliveryDto.Response delivery = deliveryService.createDelivery(request);
+            log.info("입고 등록 성공: {}", delivery.getDeliveryNumber());
+            return ResponseEntity.status(HttpStatus.CREATED).body(delivery);
+        } catch (IllegalArgumentException e) {
+            log.error("입고 등록 실패 - 잘못된 요청 데이터: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        } catch (Exception e) {
+            log.error("입고 등록 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     /**
