@@ -35,16 +35,18 @@ import {
   Grid,
   IconButton,
   Divider,
-  Alert
-} from "@mui/material";
+  Alert,
+  Tooltip
+} from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
   Block as BlockIcon,
   CheckCircle as CheckCircleIcon,
-  ErrorOutline as ErrorOutlineIcon
-} from "@mui/icons-material";
+  ErrorOutline as ErrorOutlineIcon,
+  Info as InfoIcon
+} from '@mui/icons-material';
 
 const SupplierListPage = () => {
   const dispatch = useDispatch();
@@ -494,15 +496,15 @@ const SupplierListPage = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>No</TableCell>
-                  <TableCell>업체명</TableCell>
-                  <TableCell>사업자등록번호</TableCell>
-                  <TableCell>대표자명</TableCell>
-                  <TableCell>소싱분류</TableCell>
-                  <TableCell>담당자</TableCell>
-                  <TableCell>등록일</TableCell>
-                  <TableCell>상태</TableCell>
-                  <TableCell>관리</TableCell>
+                  <TableCell width="5%">No</TableCell>
+                  <TableCell width="12%">업체명</TableCell>
+                  <TableCell width="12%">사업자등록번호</TableCell>
+                  <TableCell width="10%">대표자명</TableCell>
+                  <TableCell width="15%">소싱분류</TableCell>
+                  <TableCell width="10%">담당자</TableCell>
+                  <TableCell width="10%">등록일</TableCell>
+                  <TableCell width="8%">상태</TableCell>
+                  <TableCell width="18%">관리</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -546,40 +548,39 @@ const SupplierListPage = () => {
                     </TableCell>
                     <TableCell>{supplier.registrationDate || "-"}</TableCell>
                     <TableCell>{getStatusChip(supplier.status)}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", gap: 1 }}>
+                    <TableCell sx={{ minWidth: '160px', maxWidth: '160px' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 0.5 }}>
                         {/* 상세 버튼은 ADMIN과 SUPPLIER 모두 사용 가능 */}
                         <Button
                           size="small"
                           variant="outlined"
-                          onClick={() =>
-                            navigate(`/supplier/review/${supplier.id}`)
-                          }>
+                          sx={{ minWidth: '42px', padding: '2px 8px' }}
+                          onClick={() => navigate(`/supplier/review/${supplier.id}`)}
+                        >
                           상세
                         </Button>
 
                         {/* ADMIN에게만 활성화 상태 표시 */}
                         {isAdmin && (
-                          <Box sx={{ display: "flex", alignItems: "center" }}>
-                            {supplier.status === "INACTIVE" ||
-                            supplier.status?.childCode === "INACTIVE" ? (
-                              <Chip
-                                label="비활성"
-                                icon={<BlockIcon />}
-                                color="default"
-                                variant="outlined"
-                                size="small"
-                              />
-                            ) : (
-                              <Chip
-                                label="활성"
-                                icon={<CheckCircleIcon />}
-                                color="success"
-                                variant="outlined"
-                                size="small"
-                              />
-                            )}
-                          </Box>
+                          (supplier.status === 'INACTIVE' || supplier.status?.childCode === 'INACTIVE' ||
+                           supplier.status === 'SUSPENDED' || supplier.status?.childCode === 'SUSPENDED' ||
+                           supplier.status === 'BLACKLIST' || supplier.status?.childCode === 'BLACKLIST') ? (
+                            <Chip
+                              label="비활성"
+                              icon={<BlockIcon fontSize="small" />}
+                              color="default"
+                              size="small"
+                              sx={{ height: '24px', fontSize: '0.75rem', '& .MuiChip-icon': { fontSize: '14px', marginLeft: '2px' } }}
+                            />
+                          ) : (
+                            <Chip
+                              label="활성"
+                              icon={<CheckCircleIcon fontSize="small" />}
+                              color="success"
+                              size="small"
+                              sx={{ height: '24px', fontSize: '0.75rem', '& .MuiChip-icon': { fontSize: '14px', marginLeft: '2px' } }}
+                            />
+                          )
                         )}
 
                         {/* 반려 상태일 때는 반려사유 버튼과 재승인 요청 버튼 표시 */}
@@ -633,35 +634,75 @@ const SupplierListPage = () => {
                         {(supplier.status === "BLACKLIST" ||
                           supplier.status?.childCode === "BLACKLIST") &&
                           supplier.rejectionReason && (
-                            <Button
+                          <>
+                            <Tooltip title="반려사유">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                                sx={{ padding: '4px' }}
+                              >
+                                <InfoIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            {isSupplier && (
+                              <Button
+                                size="small"
+                                color="warning"
+                                variant="contained"
+                                sx={{ minWidth: '42px', padding: '2px 8px', fontSize: '0.75rem' }}
+                                onClick={() => navigate(`/supplier/edit/${supplier.id}`)}
+                              >
+                                재승인
+                              </Button>
+                            )}
+                          </>
+                        )}
+
+                        {/* 일시정지 상태일 때 정지사유 버튼 표시 */}
+                        {(supplier.status === 'SUSPENDED' || supplier.status?.childCode === 'SUSPENDED') &&
+                          supplier.rejectionReason && (
+                          <Tooltip title="일시정지 사유">
+                            <IconButton
+                              size="small"
+                              color="warning"
+                              onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                              sx={{ padding: '4px' }}
+                            >
+                              <InfoIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
+                        {/* 블랙리스트 상태일 때 블랙리스트 사유 버튼 표시 */}
+                        {(supplier.status === 'BLACKLIST' || supplier.status?.childCode === 'BLACKLIST') &&
+                          supplier.rejectionReason && (
+                          <Tooltip title="블랙리스트 사유">
+                            <IconButton
                               size="small"
                               color="error"
-                              variant="outlined"
-                              onClick={() =>
-                                handleShowRejectionReason(
-                                  supplier.rejectionReason
-                                )
-                              }>
-                              블랙리스트 사유
-                            </Button>
-                          )}
+                              onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                              sx={{ padding: '4px' }}
+                            >
+                              <InfoIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
 
                         {/* 비활성 상태일 때 비활성 사유 버튼 표시 */}
                         {(supplier.status === "INACTIVE" ||
                           supplier.status?.childCode === "INACTIVE") &&
                           supplier.rejectionReason && (
-                            <Button
+                          <Tooltip title="비활성 사유">
+                            <IconButton
                               size="small"
-                              color="default"
-                              variant="outlined"
-                              onClick={() =>
-                                handleShowRejectionReason(
-                                  supplier.rejectionReason
-                                )
-                              }>
-                              비활성 사유
-                            </Button>
-                          )}
+                              onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
+                              sx={{ padding: '4px' }}
+                            >
+                              <InfoIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
                     </TableCell>
                   </TableRow>
