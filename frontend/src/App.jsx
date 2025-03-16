@@ -66,10 +66,7 @@ import ApprovalDetailPage from "@/pages/procurement/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; // 추가
 import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
 import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
-import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
-import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
-import PaymentListPage from '@/pages/payment/PaymentListPage';
-import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
+import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage"
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -136,6 +133,7 @@ function AppContent() {
 
               {/* 입고 관리 */}
               <Route path="/deliveries" element={<DeliveryListPage />} />
+              <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
               <Route
                 path="/deliveries/new"
                 element={<DeliveryCreatePage />}
