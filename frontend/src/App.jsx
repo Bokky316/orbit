@@ -44,6 +44,7 @@ import ItemListPage from "@pages/item/ItemListPage";
 import ItemFormPage from "@pages/item/ItemFormPage";
 import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
 import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
+import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage"
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -132,6 +133,7 @@ function AppContent() {
 
               {/* 입고 관리 */}
               <Route path="/deliveries" element={<DeliveryListPage />} />
+              <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
               <Route
                 path="/deliveries/new"
                 element={<DeliveryCreatePage />}
