@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import com.orbit.entity.BaseEntity;
 import com.orbit.entity.Notification;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.procurement.PurchaseRequestItem;
 import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.member.MemberRepository;
 
@@ -62,7 +63,11 @@ public class BiddingOrder extends BaseEntity {
     private Long biddingParticipationId; // 입찰 참여 ID
     
     @Column(name = "purchase_request_item_id", nullable = false)
-    private Long purchaseRequestItemId; // 구매 요청 품목 ID    
+    private Long purchaseRequestItemId; // 구매 요청 품목 ID
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "purchase_request_item_id", insertable = false, updatable = false)
+    private PurchaseRequestItem purchaseRequestItem;
     
     @Column(name = "supplier_id", nullable = false)
     private Long supplierId; // 공급자 ID
@@ -253,5 +258,11 @@ public class BiddingOrder extends BaseEntity {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getItemName() {
+        return this.purchaseRequestItem != null && this.purchaseRequestItem.getItem() != null
+                ? this.purchaseRequestItem.getItem().getName()
+                : null;
     }
 }
