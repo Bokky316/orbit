@@ -257,7 +257,7 @@ function DeliveryDetailPage() {
                                     입고 처리 시간
                                 </Typography>
                                 <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                    {delivery.regTime ? moment(delivery.regTime).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                                    {delivery.createdAt ? moment(delivery.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
                                 </Typography>
                             </Grid>
 
