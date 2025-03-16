@@ -82,8 +82,8 @@ export const fetchSuppliers = createAsyncThunk(
         return rejectWithValue("서버 응답 형식 오류");
       }
 
-      console.log('API 호출 실패, 더미 데이터 사용:', error);
-      return [];
+      console.log('API 호출 실패:', error);
+      return rejectWithValue(error.message || '데이터 로드 중 오류 발생');
     }
   }
 );
