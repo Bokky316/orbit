@@ -138,14 +138,13 @@ const DeliveryCreatePage = () => {
         receiverName: receiverName,
         supplierId: selectedOrder.supplierId,
         supplierName: selectedOrder.supplierName,
-        deliveryItemId: selectedOrder.purchaseRequestItem?.itemId || selectedOrder.itemId,
-        itemName: selectedOrder.itemName,
-        itemSpecification: selectedOrder.specification,
+        purchaseRequestItemId: selectedOrder.purchaseRequestItem?.id || selectedOrder.purchaseRequestItemId || null,
+        deliveryItemId: selectedOrder.purchaseRequestItem?.id || selectedOrder.purchaseRequestItemId || null,
         itemQuantity: selectedOrder.quantity,
-        itemUnitPrice: selectedOrder.unitPrice,
-        totalAmount: selectedOrder.totalAmount,
-        notes: notes,
+        notes: notes
       };
+
+      console.log("요청할 데이터:", JSON.stringify(requestData, null, 2));
 
       const response = await fetchWithAuth(`${API_URL}deliveries`, {
         method: "POST",
@@ -320,10 +319,11 @@ const DeliveryCreatePage = () => {
                       <TableBody>
                         {selectedOrder ? (
                           <TableRow>
-                            <TableCell>{selectedOrder.itemName || `-`}</TableCell>
-                            <TableCell align="right">{selectedOrder.quantity || `-`}</TableCell>
-                            <TableCell align="right">{selectedOrder.quantity || `-`}</TableCell>
-                            <TableCell align="right">
+                            <TableCell align="center">{selectedOrder?.purchaseRequestItem?.id || selectedOrder?.purchaseRequestItemId || `-`}</TableCell>
+                            <TableCell align="center">{selectedOrder.itemName || `-`}</TableCell>
+                            <TableCell align="center">{selectedOrder.quantity || `-`}</TableCell>
+                            <TableCell align="center">{selectedOrder.quantity || `-`}</TableCell>
+                            <TableCell align="center">
                               {selectedOrder.unitPrice ? selectedOrder.unitPrice.toLocaleString() : `-`}
                             </TableCell>
                             <TableCell align="right">
