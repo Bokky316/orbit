@@ -88,6 +88,19 @@ function DeliveryDetailPage() {
         );
     }
 
+    // 단일 품목 구조로 변환 (백엔드에서 items 배열을 제공하지 않는 경우)
+    const items = delivery.items && delivery.items.length > 0
+        ? delivery.items
+        : [{
+            id: delivery.id,
+            itemName: delivery.itemName,
+            specification: delivery.itemSpecification,
+            orderQuantity: delivery.itemQuantity,
+            deliveryQuantity: delivery.itemQuantity,
+            unitPrice: delivery.itemUnitPrice,
+            totalPrice: delivery.totalAmount
+        }];
+
     return (
         <Box sx={{ p: 3 }}>
             {/* 헤더 영역 */}
@@ -122,7 +135,7 @@ function DeliveryDetailPage() {
                     <Divider sx={{ mb: 2 }} />
 
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={4}>
                             <Typography variant="subtitle2" color="text.secondary">
                                 입고번호
                             </Typography>
@@ -130,7 +143,7 @@ function DeliveryDetailPage() {
                                 {delivery.deliveryNumber || '-'}
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={4}>
                             <Typography variant="subtitle2" color="text.secondary">
                                 발주번호
                             </Typography>
@@ -138,26 +151,13 @@ function DeliveryDetailPage() {
                                 {delivery.orderNumber || '-'}
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={4}>
                             <Typography variant="subtitle2" color="text.secondary">
                                 입고일
                             </Typography>
                             <Typography variant="body1" sx={{ mt: 1 }}>
                                 {delivery.deliveryDate ? moment(delivery.deliveryDate).format('YYYY-MM-DD') : '-'}
                             </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                                상태
-                            </Typography>
-                            <Box sx={{ mt: 1 }}>
-                                <Chip
-                                    label="입고완료"
-                                    color="success"
-                                    size="small"
-                                    sx={{ fontWeight: 'medium' }}
-                                />
-                            </Box>
                         </Grid>
                     </Grid>
                 </CardContent>
@@ -172,7 +172,7 @@ function DeliveryDetailPage() {
                     <Divider sx={{ mb: 2 }} />
 
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6} md={4}>
+                        <Grid item xs={12} sm={6} md={6}>
                             <Typography variant="subtitle2" color="text.secondary">
                                 공급업체명
                             </Typography>
@@ -180,20 +180,13 @@ function DeliveryDetailPage() {
                                 {delivery.supplierName || '-'}
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={4}>
+                        {/* 공급업체 담당자와 연락처는 API에서 제공하지 않을 수 있음 */}
+                        <Grid item xs={12} sm={6} md={6}>
                             <Typography variant="subtitle2" color="text.secondary">
-                                담당자
+                                공급업체 ID
                             </Typography>
                             <Typography variant="body1" sx={{ mt: 1 }}>
-                                {delivery.supplierManager || '-'}
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={4}>
-                            <Typography variant="subtitle2" color="text.secondary">
-                                연락처
-                            </Typography>
-                            <Typography variant="body1" sx={{ mt: 1 }}>
-                                {delivery.supplierContact || '-'}
+                                {delivery.supplierId || '-'}
                             </Typography>
                         </Grid>
                     </Grid>
@@ -213,7 +206,6 @@ function DeliveryDetailPage() {
                             <TableHead>
                                 <TableRow>
                                     <TableCell>품목명</TableCell>
-                                    <TableCell>규격</TableCell>
                                     <TableCell align="right">발주수량</TableCell>
                                     <TableCell align="right">입고수량</TableCell>
                                     <TableCell align="right">단가</TableCell>
@@ -221,11 +213,10 @@ function DeliveryDetailPage() {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {delivery.items && delivery.items.length > 0 ? (
-                                    delivery.items.map((item) => (
-                                        <TableRow key={item.id}>
+                                {items.length > 0 ? (
+                                    items.map((item, index) => (
+                                        <TableRow key={item.id || index}>
                                             <TableCell>{item.itemName || '-'}</TableCell>
-                                            <TableCell>{item.specification || '-'}</TableCell>
                                             <TableCell align="right">{item.orderQuantity || '-'}</TableCell>
                                             <TableCell align="right">{item.deliveryQuantity || '-'}</TableCell>
                                             <TableCell align="right">{item.unitPrice ? item.unitPrice.toLocaleString() : '-'}</TableCell>
@@ -234,7 +225,7 @@ function DeliveryDetailPage() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} align="center">
+                                        <TableCell colSpan={5} align="center">
                                             <Typography variant="body2">
                                                 품목 정보가 없습니다.
                                             </Typography>
@@ -243,7 +234,7 @@ function DeliveryDetailPage() {
                                 )}
                                 {/* 총액 정보 */}
                                 <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                                    <TableCell colSpan={5} align="right" sx={{ fontWeight: 'bold' }}>
+                                    <TableCell colSpan={4} align="right" sx={{ fontWeight: 'bold' }}>
                                         총 합계
                                     </TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 'bold' }}>
@@ -278,7 +269,7 @@ function DeliveryDetailPage() {
                                 입고 처리 시간
                             </Typography>
                             <Typography variant="body1" sx={{ mt: 1 }}>
-                                {delivery.createdAt ? moment(delivery.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                                {delivery.regTime ? moment(delivery.regTime).format('YYYY-MM-DD HH:mm:ss') : '-'}
                             </Typography>
                         </Grid>
                         <Grid item xs={12}>
