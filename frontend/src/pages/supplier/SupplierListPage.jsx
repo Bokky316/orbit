@@ -710,21 +710,6 @@ const SupplierListPage = () => {
                         {/* 일시정지 상태일 때 정지사유 버튼 표시 */}
                         {(supplier.status === 'SUSPENDED' || supplier.status?.childCode === 'SUSPENDED') &&
                           supplier.rejectionReason && (
-                          <Tooltip title="일시정지 사유">
-                            <IconButton
-                              size="small"
-                              color="warning"
-                              onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
-                              sx={{ padding: '4px' }}
-                            >
-                              <InfoIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-
-                        {/* 블랙리스트 상태일 때 블랙리스트 사유 버튼 표시 */}
-                        {(supplier.status === 'BLACKLIST' || supplier.status?.childCode === 'BLACKLIST') &&
-                          supplier.rejectionReason && (
                           <>
                             <Tooltip title="반려사유">
                               <IconButton
