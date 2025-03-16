@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.orbit.repository.delivery.DeliveryRepository;
+import com.orbit.service.delivery.DeliveryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +39,7 @@ public class BiddingOrderService {
     private final ParentCodeRepository parentCodeRepository; // 사용되지 않지만 주입 필요
     private final ChildCodeRepository childCodeRepository; // 사용되지 않지만 주입 필요
     private final BiddingOrderRepository biddingOrderRepository;
-
+    private final DeliveryRepository deliveryRepository;
     /**
      * 발주 목록 조회
      */
@@ -422,21 +424,30 @@ public class BiddingOrderService {
         return BiddingOrderDto.fromEntity(order);
     }
 
-    /**
-     * 입고되지 않은 발주 목록 조회
-     */
-    public List<BiddingOrderDto> getUnreceivedBiddingOrders() {
-        return orderRepository.findUnreceivedBiddingOrders().stream()
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getAvailableBiddingOrderIds() {
+        // 승인된 발주 목록 조회
+        List<BiddingOrder> approvedOrders = biddingOrderRepository.findByApprovedAtIsNotNull();
+
+        // 입고된 발주 ID 목록 조회
+        List<Long> receivedOrderIds = deliveryRepository.findAll().stream()
+                .map(delivery -> delivery.getBiddingOrder().getId())
+                .collect(Collectors.toList());
+
+        // 승인되었지만 입고되지 않은 발주 필터링
+        List<BiddingOrderDto> availableOrders = approvedOrders.stream()
+                .filter(order -> !receivedOrderIds.contains(order.getId()))
                 .map(BiddingOrderDto::fromEntity)
                 .collect(Collectors.toList());
+
+        return availableOrders;
     }
 
-    /**
-     * 특정 발주 상세 정보 조회
-     */
+
+    @Transactional(readOnly = true)
     public BiddingOrderDto getBiddingOrderDetail(Long biddingOrderId) {
-        BiddingOrder order = biddingOrderRepository.findBiddingOrderById(biddingOrderId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 발주입니다. ID: " + biddingOrderId));
+        BiddingOrder order = biddingOrderRepository.findById(biddingOrderId)
+                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + biddingOrderId));
 
         return BiddingOrderDto.fromEntity(order);
     }

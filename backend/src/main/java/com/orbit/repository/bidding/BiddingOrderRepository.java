@@ -82,9 +82,9 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
      */
     List<BiddingOrder> findByCreatedBy(String createdBy);
 
-    @Query("SELECT bo FROM BiddingOrder bo WHERE bo.id NOT IN (SELECT d.biddingOrder.id FROM Delivery d)")
-    List<BiddingOrder> findUnreceivedBiddingOrders();
+    @Query("SELECT bo FROM BiddingOrder bo WHERE bo.approvedAt IS NULL AND bo.id NOT IN (SELECT d.biddingOrder.id FROM Delivery d)")
+    List<BiddingOrder> findUnapprovedAndUnreceivedOrders();
 
-    @Query("SELECT bo FROM BiddingOrder bo WHERE bo.id = :biddingOrderId")
-    Optional<BiddingOrder> findBiddingOrderById(@Param("biddingOrderId") Long biddingOrderId);
+
+
 }
