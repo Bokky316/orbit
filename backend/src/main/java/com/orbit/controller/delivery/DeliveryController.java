@@ -26,6 +26,8 @@ public class DeliveryController {
     private final DeliveryService deliveryService;
     private final MemberService memberService;
 
+    // @Slf4j 어노테이션이 자동으로 log 객체를 생성하므로 별도 정의 불필요
+
     /**
      * 입고 목록 조회
      */
@@ -91,30 +93,33 @@ public class DeliveryController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            // ✅ `getUserFromUserDetails()`를 사용해서 안전하게 사용자 조회
-            Member member = getUserFromUserDetails(userDetails);
-            request.setReceiverId(member.getId());
+            // receiverId가 없는 경우에만 현재 인증된 사용자 ID 설정
+            if (request.getReceiverId() == null && userDetails != null) {
+                try {
+                    Member member = memberService.findByUsername(userDetails.getUsername());
+                    if (member != null) {
+                        request.setReceiverId(member.getId());
+                    }
+                } catch (Exception e) {
+                    log.warn("사용자 정보 조회 중 오류: {}", e.getMessage());
+                }
+            }
 
+            // 클라이언트에서 보낸 요청 로깅
+            log.info("입고 등록 요청 데이터: {}", request);
+
+            // 서비스 호출 및 응답
             DeliveryDto.Response delivery = deliveryService.createDelivery(request);
+            log.info("입고 등록 성공: {}", delivery.getDeliveryNumber());
             return ResponseEntity.status(HttpStatus.CREATED).body(delivery);
         } catch (IllegalArgumentException e) {
-            log.error("입고 등록 실패 - 사용자 정보 없음: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+            log.error("입고 등록 실패 - 잘못된 요청 데이터: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         } catch (Exception e) {
             log.error("입고 등록 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
-
-    // ✅ 안전한 사용자 조회 메서드 추가
-    private Member getUserFromUserDetails(UserDetails userDetails) {
-        if (userDetails == null) {
-            throw new IllegalArgumentException("인증된 사용자 정보가 필요합니다.");
-        }
-
-        return memberService.findByUsername(userDetails.getUsername());
-    }
-
 
     /**
      * 입고 수정
