@@ -45,14 +45,29 @@ const DeliveryCreatePage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [searchText, setSearchText] = useState("");
 
+  useEffect(() => {
+      // Redux에 사용자 정보가 없으면 백엔드에서 가져오기
+      if (currentUser?.name) {
+        setReceiverName(currentUser.name);
+      } else {
+        axios.get("/api/members/me", { withCredentials: true })
+          .then(response => {
+            setReceiverName(response.data.name);
+          })
+          .catch(error => {
+            console.error("사용자 정보를 불러오는 중 오류 발생:", error);
+          });
+      }
+    }, [currentUser]);
+
   // 발주 목록 조회
   const fetchOrders = async (searchQuery = "") => {
     try {
       setLoading(true);
       const response = await fetchWithAuth(
         searchQuery
-          ? `${API_URL}biddings/orders/search?orderNumber=${encodeURIComponent(searchQuery)}`
-          : `${API_URL}biddings/orders/available-ids`
+            ? `${API_URL}orders/number/${encodeURIComponent(searchQuery)}` // 또는 다른 적절한 검색 엔드포인트
+            : `${API_URL}orders/available-ids`
       );
 
       if (response.ok) {
@@ -81,7 +96,7 @@ const DeliveryCreatePage = () => {
     if (newValue) {
       try {
         setLoading(true);
-        const response = await fetchWithAuth(`${API_URL}biddings/orders/delivery/${newValue.id}`);
+        const response = await fetchWithAuth(`${API_URL}orders/${newValue.id}/detail`);
         if (response.ok) {
           const data = await response.json();
           setSelectedOrder(data);
@@ -145,7 +160,13 @@ const DeliveryCreatePage = () => {
         itemUnitPrice: selectedOrder.unitPrice,
         totalAmount: selectedOrder.totalAmount,
         notes: notes,
+
+        deliveryItemId: selectedOrder?.purchaseRequestItem?.id || 0,  // ✅ 기본값 설정
+        itemName: selectedOrder?.itemName || "알 수 없음",  // ✅ 기본값 설정
+        itemSpecification: selectedOrder?.specification || "기본 규격"  // ✅ 기본값 설정
       };
+    console.log("입고 요청 데이터:", requestData);  // ✅ console.log 추가
+    console.log("현재 로그인한 사용자 정보:", currentUser);
 
       const response = await fetchWithAuth(`${API_URL}deliveries`, {
         method: "POST",
@@ -269,7 +290,6 @@ const DeliveryCreatePage = () => {
                             {selectedOrder ? (
                               <>
                                 {selectedOrder.supplierName || `-`}
-                                <Chip size="small" label="공급업체" color="primary" sx={{ ml: 1 }} />
                               </>
                             ) : "미선택"}
                           </Typography>
@@ -280,8 +300,8 @@ const DeliveryCreatePage = () => {
                           </Typography>
                           <Typography variant="body1" sx={{ mt: 0.5 }}>
                             {selectedOrder ? (
-                              selectedOrder.orderDate ? moment(selectedOrder.orderDate).format('YYYY-MM-DD') : `-`
-                            ) : "미선택"}
+                                selectedOrder.approvedAt ? moment(selectedOrder.approvedAt).format('YYYY-MM-DD') : `-`
+                              ) : "미선택"}
                           </Typography>
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
@@ -310,29 +330,31 @@ const DeliveryCreatePage = () => {
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell width="25%">품목명</TableCell>
-                          <TableCell align="right" width="20%">발주수량</TableCell>
-                          <TableCell align="right" width="20%">입고수량</TableCell>
-                          <TableCell align="right" width="15%">단가</TableCell>
-                          <TableCell align="right" width="20%">총액</TableCell>
+                          <TableCell width="10%" align="center">품목ID</TableCell>
+                          <TableCell width="10%" align="center">품목명</TableCell>
+                          <TableCell width="10%" align="center">발주수량</TableCell>
+                          <TableCell width="10%" align="center">입고수량</TableCell>
+                          <TableCell width="10%" align="center">단가</TableCell>
+                          <TableCell width="10%" align="center">총액</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {selectedOrder ? (
                           <TableRow>
-                            <TableCell>{selectedOrder.itemName || `-`}</TableCell>
-                            <TableCell align="right">{selectedOrder.quantity || `-`}</TableCell>
-                            <TableCell align="right">{selectedOrder.quantity || `-`}</TableCell>
-                            <TableCell align="right">
+                            <TableCell align="center">{selectedOrder.purchaseRequestItemId || `-`}</TableCell>
+                            <TableCell align="center">{selectedOrder.itemName || `-`}</TableCell>
+                            <TableCell align="center">{selectedOrder.quantity || `-`}</TableCell>
+                            <TableCell align="center">{selectedOrder.quantity || `-`}</TableCell>
+                            <TableCell align="center">
                               {selectedOrder.unitPrice ? selectedOrder.unitPrice.toLocaleString() : `-`}
                             </TableCell>
-                            <TableCell align="right">
+                            <TableCell align="center">
                               {selectedOrder.totalAmount ? selectedOrder.totalAmount.toLocaleString() : `-`}
                             </TableCell>
                           </TableRow>
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={5} align="center">
+                            <TableCell colSpan={6} align="center">
                               발주를 선택하면 품목 정보가 표시됩니다.
                             </TableCell>
                           </TableRow>

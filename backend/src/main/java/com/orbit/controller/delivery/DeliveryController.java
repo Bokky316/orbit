@@ -5,6 +5,7 @@ import com.orbit.entity.member.Member;
 import com.orbit.service.delivery.DeliveryService;
 import com.orbit.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/deliveries")
 @RequiredArgsConstructor
@@ -88,13 +90,31 @@ public class DeliveryController {
             @RequestBody DeliveryDto.Request request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // 현재 로그인한 사용자 정보로 입고 담당자 설정
-        Member member = memberService.findByUsername(userDetails.getUsername());
-        request.setReceiverId(member.getId());
+        try {
+            // ✅ `getUserFromUserDetails()`를 사용해서 안전하게 사용자 조회
+            Member member = getUserFromUserDetails(userDetails);
+            request.setReceiverId(member.getId());
 
-        DeliveryDto.Response delivery = deliveryService.createDelivery(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(delivery);
+            DeliveryDto.Response delivery = deliveryService.createDelivery(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(delivery);
+        } catch (IllegalArgumentException e) {
+            log.error("입고 등록 실패 - 사용자 정보 없음: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+        } catch (Exception e) {
+            log.error("입고 등록 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
+
+    // ✅ 안전한 사용자 조회 메서드 추가
+    private Member getUserFromUserDetails(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new IllegalArgumentException("인증된 사용자 정보가 필요합니다.");
+        }
+
+        return memberService.findByUsername(userDetails.getUsername());
+    }
+
 
     /**
      * 입고 수정
