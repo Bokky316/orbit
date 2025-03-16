@@ -153,20 +153,13 @@ const DeliveryCreatePage = () => {
         receiverName: receiverName,
         supplierId: selectedOrder.supplierId,
         supplierName: selectedOrder.supplierName,
-        deliveryItemId: selectedOrder.purchaseRequestItem?.itemId || selectedOrder.itemId,
-        itemName: selectedOrder.itemName,
-        itemSpecification: selectedOrder.specification,
+        purchaseRequestItemId: selectedOrder.purchaseRequestItem?.id || selectedOrder.purchaseRequestItemId || null,
+        deliveryItemId: selectedOrder.purchaseRequestItem?.id || selectedOrder.purchaseRequestItemId || null,
         itemQuantity: selectedOrder.quantity,
-        itemUnitPrice: selectedOrder.unitPrice,
-        totalAmount: selectedOrder.totalAmount,
-        notes: notes,
-
-        deliveryItemId: selectedOrder?.purchaseRequestItem?.id || 0,  // ✅ 기본값 설정
-        itemName: selectedOrder?.itemName || "알 수 없음",  // ✅ 기본값 설정
-        itemSpecification: selectedOrder?.specification || "기본 규격"  // ✅ 기본값 설정
+        notes: notes
       };
-    console.log("입고 요청 데이터:", requestData);  // ✅ console.log 추가
-    console.log("현재 로그인한 사용자 정보:", currentUser);
+
+      console.log("요청할 데이터:", JSON.stringify(requestData, null, 2));
 
       const response = await fetchWithAuth(`${API_URL}deliveries`, {
         method: "POST",
@@ -311,7 +304,7 @@ const DeliveryCreatePage = () => {
                       <TableBody>
                         {selectedOrder ? (
                           <TableRow>
-                            <TableCell align="center">{selectedOrder.purchaseRequestItemId || `-`}</TableCell>
+                            <TableCell align="center">{selectedOrder?.purchaseRequestItem?.id || selectedOrder?.purchaseRequestItemId || `-`}</TableCell>
                             <TableCell align="center">{selectedOrder.itemName || `-`}</TableCell>
                             <TableCell align="center">{selectedOrder.quantity || `-`}</TableCell>
                             <TableCell align="center">{selectedOrder.quantity || `-`}</TableCell>
