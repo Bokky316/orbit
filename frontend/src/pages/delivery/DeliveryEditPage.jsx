@@ -55,7 +55,6 @@ const DeliveryEditPage = () => {
         }
 
         const data = await response.json();
-        console.log('입고 정보 데이터:', data);
         setDelivery(data);
 
         // 입고일 설정
@@ -181,6 +180,16 @@ const DeliveryEditPage = () => {
     );
   }
 
+  // 단일 품목 객체 생성
+  const item = {
+    id: delivery.id,
+    itemName: delivery.itemName,
+    orderQuantity: delivery.itemQuantity,
+    deliveryQuantity: delivery.itemQuantity,
+    unitPrice: delivery.itemUnitPrice,
+    totalPrice: delivery.totalAmount
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -206,56 +215,44 @@ const DeliveryEditPage = () => {
           <CardContent>
             <form onSubmit={handleSubmit}>
               <Grid container spacing={3}>
-                {/* 입고 기본 정보 */}
+                {/* 입고 기본 정보 카드 */}
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>
                     입고 기본 정보
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
 
-                  <Card variant="outlined" sx={{ bgcolor: "#f9f9f9" }}>
-                    <CardContent>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            입고번호
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.deliveryNumber || "-"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            발주번호
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.orderNumber || "-"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            공급업체명
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.supplierName || "-"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            총액
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.totalAmount ? delivery.totalAmount.toLocaleString() + " 원" : "-"}
-                          </Typography>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Card>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        입고번호
+                      </Typography>
+                      <Typography variant="body1" sx={{ mt: 1 }}>
+                        {delivery.deliveryNumber || "-"}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        발주번호
+                      </Typography>
+                      <Typography variant="body1" sx={{ mt: 1 }}>
+                        {delivery.orderNumber || "-"}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        공급업체명
+                      </Typography>
+                      <Typography variant="body1" sx={{ mt: 1 }}>
+                        {delivery.supplierName || "-"}
+                      </Typography>
+                    </Grid>
+                  </Grid>
                 </Grid>
 
                 {/* 품목 정보 테이블 */}
                 <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                  <Typography variant="h6" gutterBottom>
                     품목 정보
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
@@ -264,25 +261,32 @@ const DeliveryEditPage = () => {
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell width="10%" align="center">품목ID</TableCell>
-                          <TableCell width="10%" align="center">품목명</TableCell>
-                          <TableCell width="10%" align="center">발주수량</TableCell>
-                          <TableCell width="10%" align="center">입고수량</TableCell>
-                          <TableCell width="10%" align="center">단가</TableCell>
-                          <TableCell width="10%" align="center">총액</TableCell>
+                          <TableCell>품목명</TableCell>
+                          <TableCell align="right">발주수량</TableCell>
+                          <TableCell align="right">입고수량</TableCell>
+                          <TableCell align="right">단가</TableCell>
+                          <TableCell align="right">총액</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         <TableRow>
-                          <TableCell align="center">{delivery.deliveryItemId || "-"}</TableCell>
-                          <TableCell align="center">{delivery.itemName || "-"}</TableCell>
-                          <TableCell align="center">{delivery.itemQuantity || "-"}</TableCell>
-                          <TableCell align="center">{delivery.itemQuantity || "-"}</TableCell>
-                          <TableCell align="center">
-                            {delivery.itemUnitPrice ? delivery.itemUnitPrice.toLocaleString() : "-"}
+                          <TableCell>{item.itemName || "-"}</TableCell>
+                          <TableCell align="right">{item.orderQuantity || "-"}</TableCell>
+                          <TableCell align="right">{item.deliveryQuantity || "-"}</TableCell>
+                          <TableCell align="right">
+                            {item.unitPrice ? item.unitPrice.toLocaleString() : "-"}
                           </TableCell>
-                          <TableCell align="center">
-                            {delivery.totalAmount ? delivery.totalAmount.toLocaleString() : "-"}
+                          <TableCell align="right">
+                            {item.totalPrice ? item.totalPrice.toLocaleString() : "-"}
+                          </TableCell>
+                        </TableRow>
+                        {/* 총액 정보 */}
+                        <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                          <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold" }}>
+                            총 합계
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                            {delivery.totalAmount ? delivery.totalAmount.toLocaleString() : "-"} 원
                           </TableCell>
                         </TableRow>
                       </TableBody>
@@ -347,12 +351,14 @@ const DeliveryEditPage = () => {
                       variant="contained"
                       color="primary"
                       disabled={submitting}
+                      startIcon={submitting ? <CircularProgress size={24} /> : <SaveIcon />}
                       sx={{ minWidth: 120 }}
                     >
-                      {submitting ? <CircularProgress size={24} /> : "저장"}
+                      저장
                     </Button>
                     <Button
                       variant="outlined"
+                      startIcon={<ArrowBackIcon />}
                       onClick={handleCancel}
                       sx={{ minWidth: 120 }}
                     >
