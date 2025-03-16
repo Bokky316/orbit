@@ -44,20 +44,28 @@ const DeliveryCreatePage = () => {
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
 
-  // 입고되지 않은 발주 목록 조회
-  const fetchBiddingOrders = async () => {
+  // 발주 목록 조회
+  const fetchBiddingOrders = async (searchQuery = "") => {
     try {
       setLoading(true);
-      const response = await fetchWithAuth(`${API_URL}orders/unreceived`);
-      console.log("입고되지 않은 발주 목록 조회 응답:", response);
+      // 여기서 경로 변경: 이제 available-ids 엔드포인트를 사용
+      const response = await fetchWithAuth(
+        searchQuery
+          ? `${API_URL}orders/search?query=${encodeURIComponent(searchQuery)}`
+          : `${API_URL}orders/available-ids`
+      );
+      console.log("발주 목록 조회 응답:", response);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("입고되지 않은 발주 목록 데이터:", data);
-        setBiddingOrders(data);
+        console.log("발주 목록 데이터:", data);
+        // 응답 데이터가 배열이 아닌 경우 배열로 변환
+        const ordersArray = Array.isArray(data) ? data : data.content || [data];
+        console.log("변환된 발주 목록:", ordersArray);
+        setBiddingOrders(ordersArray.filter((order) => order && order.id));
       }
     } catch (error) {
-      console.error("입고되지 않은 발주 목록 조회 실패:", error);
+      console.error("발주 목록 조회 실패:", error);
       setBiddingOrders([]);
     } finally {
       setLoading(false);
@@ -69,25 +77,25 @@ const DeliveryCreatePage = () => {
     fetchBiddingOrders();
   }, []);
 
-// 발주 선택 시 상세 정보 조회
-const handleOrderSelect = async (event, newValue) => {
-  if (!newValue) {
-    setSelectedOrder(null);
-    return;
-  }
-
-  setSelectedOrder(newValue); // UI 깜빡임 방지
-
-  try {
-    const response = await fetchWithAuth(`${API_URL}orders/${newValue.id}`);
-    if (response.ok) {
-      const data = await response.json();
-      setSelectedOrder(data);
+  // 발주 선택 시 상세 정보 조회
+  const handleOrderSelect = async (event, newValue) => {
+    setSelectedOrder(null); // 기존 선택 초기화
+    if (newValue) {
+      try {
+        // 여기서 경로 변경: 이제 detail 엔드포인트를 사용
+        const response = await fetchWithAuth(
+          `${API_URL}orders/${newValue.id}/detail`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setSelectedOrder(data);
+          setSearchText(""); // 검색어 초기화
+        }
+      } catch (error) {
+        console.error("발주 정보 조회 실패:", error);
+      }
     }
-  } catch (error) {
-    console.error("발주 정보 조회 실패:", error);
-  }
-};
+  };
 
   // 검색어 변경 시 실시간 검색
   const handleSearchInputChange = (event, newInputValue, reason) => {
