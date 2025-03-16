@@ -244,21 +244,27 @@ public class BiddingOrderController {
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
 
-    /**
-     * 입고되지 않은 발주 목록 조회
-     */
-    @GetMapping("/unreceived")
-    public ResponseEntity<List<BiddingOrderDto>> getUnreceivedBiddingOrders() {
-        List<BiddingOrderDto> orders = orderService.getUnreceivedBiddingOrders();
-        return ResponseEntity.ok(orders);
+    @GetMapping("/available-ids")
+    public ResponseEntity<List<BiddingOrderDto>> getAvailableBiddingOrderIds() {
+        try {
+            List<BiddingOrderDto> orderIds = orderService.getAvailableBiddingOrderIds();
+            return ResponseEntity.ok(orderIds);
+        } catch (Exception e) {
+            log.error("발주 목록 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
-    /**
-     * 특정 발주 상세 정보 조회
-     */
-    @GetMapping("/{biddingOrderId}")
+    @GetMapping("/{biddingOrderId}/detail")
     public ResponseEntity<BiddingOrderDto> getBiddingOrderDetail(@PathVariable Long biddingOrderId) {
-        BiddingOrderDto order = orderService.getBiddingOrderDetail(biddingOrderId);
-        return ResponseEntity.ok(order);
+        try {
+            BiddingOrderDto order = orderService.getBiddingOrderDetail(biddingOrderId);
+            return ResponseEntity.ok(order);
+        } catch (Exception e) {
+            log.error("발주 상세 조회 중 오류 발생: {}", biddingOrderId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
+
+
 }
