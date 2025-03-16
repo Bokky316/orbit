@@ -221,46 +221,16 @@ const DeliveryCreatePage = () => {
 
                   <Autocomplete
                     options={orders}
-                    value={selectedOrder}
-                    getOptionLabel={(option) => {
-                      if (!option) return "";
-                      return `발주 #${option.id} - ${option.title || option.orderNumber || "제목 없음"}`;
-                    }}
-                    isOptionEqualToValue={(option, value) => {
-                      if (!option || !value) return false;
-                      return option.id === value.id;
-                    }}
+                    getOptionLabel={(option) => `발주번호: ${option.orderNumber} - ${option.title || "제목 없음"}`}
+                    isOptionEqualToValue={(option, value) => option.orderNumber === value.orderNumber}
                     onChange={handleOrderSelect}
-                    onInputChange={handleSearchInputChange}
-                    loading={loading}
-                    blurOnSelect={true}
-                    clearOnBlur={true}
                     renderOption={(props, option) => (
-                      <li {...props} key={option.id}>
-                        발주 #{option.id} - {option.title || option.orderNumber || "제목 없음"}
+                      <li {...props} key={option.orderNumber}>
+                        발주번호: {option.orderNumber} - {option.title || "제목 없음"}
                       </li>
                     )}
                     renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="발주 선택"
-                        helperText="발주 번호나 제목으로 검색하세요 (선택사항)"
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {loading ? (
-                                <CircularProgress color="inherit" size={20} />
-                              ) : (
-                                <InputAdornment position="end">
-                                  <SearchIcon />
-                                </InputAdornment>
-                              )}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
-                        }}
-                      />
+                      <TextField {...params} label="발주 선택" />
                     )}
                   />
                 </Grid>
