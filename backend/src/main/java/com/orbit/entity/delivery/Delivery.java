@@ -120,27 +120,70 @@ public class Delivery extends BaseTimeEntity {
      * BiddingOrder와 PurchaseRequestItem 정보로부터 입고 정보 설정
      */
     public void setFromBiddingOrder(BiddingOrder order, PurchaseRequestItem item) {
-        // 발주 정보 설정
-        this.biddingOrder = order;
-        this.orderNumber = order.getOrderNumber();
-        this.supplierId = order.getSupplierId();
-        this.supplierName = order.getSupplierName();
-        this.totalAmount = order.getTotalAmount();
+        try {
+            // 발주 정보 설정
+            this.biddingOrder = order;
+            this.orderNumber = order.getOrderNumber();
+            this.supplierId = order.getSupplierId();
+            this.supplierName = order.getSupplierName();
+            this.totalAmount = order.getTotalAmount();
 
-        // 품목 정보 설정
-        if (item != null) {
-            this.purchaseRequestItem = item;
-            this.deliveryItemId = item.getId();
-            this.itemId = item.getItem().getId();
-            this.itemName = item.getItem().getName();
-            this.itemSpecification = item.getSpecification();
-            this.itemQuantity = item.getQuantity();
-            this.itemUnitPrice = item.getUnitPrice();
+            // 품목 정보 설정
+            if (item != null) {
+                this.purchaseRequestItem = item;
+                this.deliveryItemId = item.getId();  // 구매요청품목 ID를 deliveryItemId로 설정
 
-            // 단위 정보가 있는 경우 설정
-            if (item.getUnitChildCode() != null) {
-                this.itemUnit = item.getUnitChildCode().getCodeName();
+                // item의 Item이 null이 아닌 경우에만 참조
+                if (item.getItem() != null) {
+                    this.itemId = item.getItem().getId();
+                    this.itemName = item.getItem().getName();
+                }
+
+                this.itemSpecification = item.getSpecification();
+                this.itemQuantity = item.getQuantity();
+                this.itemUnitPrice = item.getUnitPrice();
+
+                // 단위 정보가 있는 경우 설정
+                if (item.getUnitChildCode() != null) {
+                    this.itemUnit = item.getUnitChildCode().getCodeName();
+                }
+            } else if (order.getPurchaseRequestItem() != null) {
+                // 발주에 연결된 구매요청품목 정보가 있는 경우 사용
+                PurchaseRequestItem orderItem = order.getPurchaseRequestItem();
+                this.purchaseRequestItem = orderItem;
+                this.deliveryItemId = orderItem.getId();  // 구매요청품목 ID를 deliveryItemId로 설정
+
+                if (orderItem.getItem() != null) {
+                    this.itemId = orderItem.getItem().getId();
+                    this.itemName = orderItem.getItem().getName();
+                }
+
+                this.itemSpecification = orderItem.getSpecification();
+                this.itemQuantity = orderItem.getQuantity();
+                this.itemUnitPrice = orderItem.getUnitPrice();
+
+                if (orderItem.getUnitChildCode() != null) {
+                    this.itemUnit = orderItem.getUnitChildCode().getCodeName();
+                }
+            } else {
+                // item과 order.purchaseRequestItem 모두 null인 경우 기본값 설정
+                // order로부터 가져올 수 있는 최대한의 정보를 설정
+                this.deliveryItemId = order.getPurchaseRequestItemId(); // 발주의 구매요청품목 ID 사용
+
+                if (order.getItemName() != null) {
+                    this.itemName = order.getItemName();
+                }
+
+                // BiddingOrder에는 specification 필드가 없으므로 기본값으로 설정
+                this.itemSpecification = "기본 규격";
+
+                this.itemQuantity = order.getQuantity() != null ? order.getQuantity() : 0;
+                this.itemUnitPrice = order.getUnitPrice();
             }
+        } catch (Exception e) {
+            // 오류가 발생해도 최대한 진행
+            System.err.println("발주 정보 설정 중 오류 발생: " + e.getMessage());
+            e.printStackTrace();  // 스택 트레이스도 출력하여 디버깅에 도움
         }
     }
 }
