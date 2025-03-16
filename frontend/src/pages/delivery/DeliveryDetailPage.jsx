@@ -3,12 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Button, Grid,
-    CircularProgress, Card, CardContent, Divider, Chip
+    CircularProgress, Card, CardContent, Divider, Chip,
+    Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
 } from '@mui/material';
 import moment from 'moment';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
-import { ArrowBack as ArrowBackIcon, Edit as EditIcon } from '@mui/icons-material';
+import {
+    ArrowBack as ArrowBackIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon
+} from '@mui/icons-material';
 
 function DeliveryDetailPage() {
     const { id } = useParams();
@@ -16,6 +21,8 @@ function DeliveryDetailPage() {
     const [delivery, setDelivery] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     // 입고 상세 정보 조회
     useEffect(() => {
@@ -52,6 +59,39 @@ function DeliveryDetailPage() {
     // 수정 페이지로 이동
     const handleEdit = () => {
         navigate(`/deliveries/edit/${id}`);
+    };
+
+    // 삭제 다이얼로그 열기
+    const handleOpenDeleteDialog = () => {
+        setOpenDeleteDialog(true);
+    };
+
+    // 삭제 다이얼로그 닫기
+    const handleCloseDeleteDialog = () => {
+        setOpenDeleteDialog(false);
+    };
+
+    // 삭제 실행
+    const handleDelete = async () => {
+        try {
+            setDeleting(true);
+            const response = await fetchWithAuth(`${API_URL}deliveries/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('입고 정보가 성공적으로 삭제되었습니다.');
+                navigate('/deliveries');
+            } else {
+                const errorData = await response.text();
+                throw new Error(`입고 삭제 실패: ${errorData}`);
+            }
+        } catch (error) {
+            alert(`오류 발생: ${error.message}`);
+            setOpenDeleteDialog(false);
+        } finally {
+            setDeleting(false);
+        }
     };
 
     if (loading) {
@@ -94,7 +134,6 @@ function DeliveryDetailPage() {
         : [{
             id: delivery.id,
             itemName: delivery.itemName,
-            specification: delivery.itemSpecification,
             orderQuantity: delivery.itemQuantity,
             deliveryQuantity: delivery.itemQuantity,
             unitPrice: delivery.itemUnitPrice,
@@ -111,6 +150,15 @@ function DeliveryDetailPage() {
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Button
                         variant="outlined"
+                        color="error"
+                        startIcon={<DeleteIcon />}
+                        onClick={handleOpenDeleteDialog}
+                    >
+                        삭제
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        color="primary"
                         startIcon={<EditIcon />}
                         onClick={handleEdit}
                     >
@@ -180,7 +228,6 @@ function DeliveryDetailPage() {
                                 {delivery.supplierName || '-'}
                             </Typography>
                         </Grid>
-                        {/* 공급업체 담당자와 연락처는 API에서 제공하지 않을 수 있음 */}
                         <Grid item xs={12} sm={6} md={6}>
                             <Typography variant="subtitle2" color="text.secondary">
                                 공급업체 ID
@@ -283,6 +330,38 @@ function DeliveryDetailPage() {
                     </Grid>
                 </CardContent>
             </Card>
+
+            {/* 삭제 확인 다이얼로그 */}
+            <Dialog
+                open={openDeleteDialog}
+                onClose={handleCloseDeleteDialog}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+            >
+                <DialogTitle id="alert-dialog-title">
+                    {"입고 정보 삭제"}
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                        입고번호 <strong>{delivery.deliveryNumber}</strong>의 정보를 삭제하시겠습니까?
+                        <br />
+                        이 작업은 되돌릴 수 없습니다.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseDeleteDialog} color="primary">
+                        취소
+                    </Button>
+                    <Button
+                        onClick={handleDelete}
+                        color="error"
+                        disabled={deleting}
+                        autoFocus
+                    >
+                        {deleting ? <CircularProgress size={24} /> : "삭제"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
