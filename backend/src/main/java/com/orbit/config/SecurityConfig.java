@@ -173,6 +173,7 @@ public class SecurityConfig {
 
                 .requestMatchers("/api/supplier/biddings/**","/api/supplier/contracts/**").hasAnyRole("SUPPLIER")
 
+                .requestMatchers("/api/orders/**").hasRole("ADMIN")
                 
 
                 // 정적 리소스는 모두 허용
