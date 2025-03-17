@@ -372,8 +372,10 @@ function AppContent() {
               />
               {/* 공통 코드 관리 */}
               <Route path="/common-codes" element={<CommonCodeManagement />} />
+
               {/* 사용자 관리 */}
               <Route path="/members" element={<AdminMemberPage />} />
+
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>
