@@ -88,6 +88,11 @@ import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
 import ChartDashboard from '@/pages/statistics/ChartDashboard';
 
+import CategoryListPage from "@/pages/item/CategoryListPage";
+import CategoryFormPage from "@/pages/item/CategoryFormPage";
+import ItemListPage from "@/pages/item/ItemListPage";
+import ItemFormPage from "@/pages/item/ItemFormPage";
+import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -324,6 +329,51 @@ function AppContent() {
                   <Route path="/notifications" element={<NotificationPage />} />
                 </>
               )}
+              <Route path="/payments" element={<PaymentListPage />} />
+              <Route
+                path="/payments/:invoiceId"
+                element={<PaymentProcessPage />}
+              />
+              {/* 협력사 관리 */}
+              <Route path="/supplier" element={<SupplierListPage />} />
+              <Route
+                path="/supplier/registrations"
+                element={<SupplierRegistrationPage />}
+              />
+              <Route
+                path="/supplier/review/:id"
+                element={<SupplierReviewPage />}
+              />
+              <Route
+                path="/supplier/approval"
+                element={<SupplierApprovalListPage />}
+              />
+              <Route
+                path="/supplier/edit/:id"
+                element={<SupplierRegistrationPage />}
+              />
+              <Route path="/categories" element={<CategoryListPage />} />
+              <Route
+                path="/categories/new"
+                element={<CategoryFormPage mode="create" />}
+              />
+              <Route
+                path="/categories/edit/:id"
+                element={<CategoryFormPage mode="edit" />}
+              />
+              <Route path="/items" element={<ItemListPage />} />
+              <Route
+                path="/items/new"
+                element={<ItemFormPage mode="create" />}
+              />
+              <Route
+                path="/items/edit/:id"
+                element={<ItemFormPage mode="edit" />}
+              />
+              {/* 공통 코드 관리 */}
+              <Route path="/common-codes" element={<CommonCodeManagement />} />
+              {/* 사용자 관리 */}
+              <Route path="/members" element={<AdminMemberPage />} />
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>
