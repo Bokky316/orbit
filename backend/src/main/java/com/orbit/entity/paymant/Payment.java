@@ -88,6 +88,16 @@ public class Payment {
     }
 
     /**
+     * 인보이스로부터 결제 정보 생성
+     */
+    public void setFromInvoice(Invoice invoice) {
+        this.invoice = invoice;
+        this.totalAmount = invoice.getTotalAmount();
+        this.paymentDate = LocalDate.now();
+        // 다른 필드는 서비스에서 설정
+    }
+
+    /**
      * 💳 결제 방법 Enum
      */
     public enum PaymentMethod {
