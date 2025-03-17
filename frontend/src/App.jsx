@@ -46,11 +46,15 @@ import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
-import CommonCodeManagement from "@/pages/commonCode/CommonCodeManagement";
-import CategoryListPage from "@/pages/item/CategoryListPage";
-import CategoryFormPage from "@/pages/item/CategoryFormPage";
-import ItemListPage from "@/pages/item/ItemListPage";
-import ItemFormPage from "@/pages/item/ItemFormPage";
+import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
+import CategoryListPage from "@pages/item/CategoryListPage";
+import CategoryFormPage from "@pages/item/CategoryFormPage";
+import ItemListPage from "@pages/item/ItemListPage";
+import ItemFormPage from "@pages/item/ItemFormPage";
+import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
+import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
+import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage"
+import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage"
 import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 /**
@@ -173,8 +177,10 @@ function AppContent() {
               />
               {/* 공통 코드 관리 */}
               <Route path="/common-codes" element={<CommonCodeManagement />} />
+
               {/* 사용자 관리 */}
               <Route path="/members" element={<AdminMemberPage />} />
+
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>
