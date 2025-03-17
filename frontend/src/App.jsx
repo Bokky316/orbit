@@ -46,24 +46,12 @@ import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
-import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
-import CategoryListPage from "@pages/item/CategoryListPage";
-import CategoryFormPage from "@pages/item/CategoryFormPage";
-import ItemListPage from "@pages/item/ItemListPage";
-import ItemFormPage from "@pages/item/ItemFormPage";
-import DeliveryListPage from "@/pages/delivery/DeliveryListPage";
-import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage";
-import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage";
-import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage";
-import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
-import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
-import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
- import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
-import PaymentListPage from '@/pages/payment/PaymentListPage';
-import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
-import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
-import ChartDashboard from '@/pages/statistics/ChartDashboard';
-
+import CommonCodeManagement from "@/pages/commonCode/CommonCodeManagement";
+import CategoryListPage from "@/pages/item/CategoryListPage";
+import CategoryFormPage from "@/pages/item/CategoryFormPage";
+import ItemListPage from "@/pages/item/ItemListPage";
+import ItemFormPage from "@/pages/item/ItemFormPage";
+import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -142,73 +130,51 @@ function AppContent() {
               <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="/invoices/edit/:id" element={<InvoiceEditPage />} />
               <Route path="/invoices/create" element={<InvoiceCreatePage />} />
-              {/* <Route path="/payments" element={<PaymentListPage />} />
-              <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} /> */}
-
-                  {/* 송장 관리 */}
-                  <Route path="/invoices" element={<InvoicesListPage />} />
-                  <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-                  <Route
-                    path="/invoices/edit/:id"
-                    element={<InvoiceEditPage />}
-                  />
-                  <Route
-                    path="/invoices/create"
-                    element={<InvoiceCreatePage />}
-                  />
-
-                  {/* 지불 관리 */}
-                  <Route path="/payments" element={<PaymentListPage />} />
-                  <Route path="/payments/:id" element={<PaymentDetailPage />} />
-                  <Route path="/payments/create" element={<PaymentCreatePage />} />
-
-                  {/* 협력사 관리 */}
-                  <Route path="/supplier" element={<SupplierListPage />} />
-                  <Route
-                    path="/supplier/registrations"
-                    element={<SupplierRegistrationPage />}
-                  />
-                  <Route
-                    path="/supplier/review/:id"
-                    element={<SupplierReviewPage />}
-                  />
-                  <Route
-                    path="/supplier/approval"
-                    element={<SupplierApprovalListPage />}
-                  />
-                  <Route
-                    path="/supplier/edit/:id"
-                    element={<SupplierRegistrationPage />}
-                  />
-
-                {/* 입고 관리 */}
-                <Route path="/deliveries" element={<DeliveryListPage />} />
-                <Route path="/deliveries/new" element={<DeliveryCreatePage />} />
-
-                {/* 송장 관리 */}
-                <Route path="/invoices" element={<InvoicesListPage />} />
-                <Route path="/invoices/create" element={<InvoiceCreatePage />} />
-
-                {/* 지불 관리 */}
-                <Route path="/payments" element={<PaymentListPage />} />
-                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
-
-                  {/* 통계 관리 */}
-                  <Route path="/chart" element={<ChartDashboard />} />
-
-                  {/* 통계 관리 */}
-                  <Route path="/chart" element={<ChartDashboard />} />
-
-                  {/* 공통 코드 관리 */}
-                  <Route
-                    path="/common-codes"
-                    element={<CommonCodeManagement />}
-                  />
-
-                  {/* 사용자 관리 */}
-                  <Route path="/members" element={<AdminMemberPage />} />
-                </>
-              )}
+              <Route path="/payments" element={<PaymentListPage />} />
+              <Route
+                path="/payments/:invoiceId"
+                element={<PaymentProcessPage />}
+              />
+              {/* 협력사 관리 */}
+              <Route path="/supplier" element={<SupplierListPage />} />
+              <Route
+                path="/supplier/registrations"
+                element={<SupplierRegistrationPage />}
+              />
+              <Route
+                path="/supplier/review/:id"
+                element={<SupplierReviewPage />}
+              />
+              <Route
+                path="/supplier/approval"
+                element={<SupplierApprovalListPage />}
+              />
+              <Route
+                path="/supplier/edit/:id"
+                element={<SupplierRegistrationPage />}
+              />
+              <Route path="/categories" element={<CategoryListPage />} />
+              <Route
+                path="/categories/new"
+                element={<CategoryFormPage mode="create" />}
+              />
+              <Route
+                path="/categories/edit/:id"
+                element={<CategoryFormPage mode="edit" />}
+              />
+              <Route path="/items" element={<ItemListPage />} />
+              <Route
+                path="/items/new"
+                element={<ItemFormPage mode="create" />}
+              />
+              <Route
+                path="/items/edit/:id"
+                element={<ItemFormPage mode="edit" />}
+              />
+              {/* 공통 코드 관리 */}
+              <Route path="/common-codes" element={<CommonCodeManagement />} />
+              {/* 사용자 관리 */}
+              <Route path="/members" element={<AdminMemberPage />} />
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>
