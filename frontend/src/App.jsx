@@ -46,6 +46,7 @@ import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
 import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
 import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage"
 import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage"
+import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -167,6 +168,8 @@ function AppContent() {
               {/* 공통 코드 관리 */}
               <Route path="/common-codes" element={<CommonCodeManagement />} />
 
+              {/* 사용자 관리 */}
+              <Route path="/members" element={<AdminMemberPage />} />
 
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
