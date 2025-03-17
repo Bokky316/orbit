@@ -11,8 +11,6 @@ function TopBar() {
   // Redux에서 사용자 정보 가져오기
   const auth = useSelector((state) => state.auth);
   const { user } = auth;
-
-  // 사용자 역할 확인
   const userRoles = auth.roles || user?.roles || [];
   const normalizedRoles = Array.isArray(userRoles)
     ? userRoles
@@ -22,10 +20,16 @@ function TopBar() {
   const isSupplier = normalizedRoles.some(
     (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
   );
-
-  // 구매자/관리자용 소카테고리 메뉴 데이터
-  const buyerAdminSubCategories = {
-    "/members": [{ label: "사용자목록", path: "/members" }],
+  
+  // 소카테고리 메뉴 데이터 - URL 경로에 따라 정의
+  const subCategories = {
+    "/members": [
+      { label: "회원 목록", path: "/members" },
+      { label: "직원관리", path: "/employee" },
+      { label: "부서관리", path: "/department" },
+      /* { label: "합의사관리", path: "/approver" }, */
+      /* { label: "시스템설정", path: "/settings" } */
+    ],
     "/supplier": [
       { label: "협력업체리스트", path: "/supplier" },
       { label: "가입승인대기리스트", path: "/supplier/approval" }
