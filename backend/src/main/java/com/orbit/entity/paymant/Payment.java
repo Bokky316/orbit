@@ -110,6 +110,16 @@ public class Payment {
         this.invoice = invoice;
         this.totalAmount = invoice.getTotalAmount();
         this.paymentDate = LocalDate.now();
+        // 다른 필드는 서비스에서 설정
+    }
+
+    /**
+     * 💳 결제 방법 Enum
+     */
+    public void setFromInvoice(Invoice invoice) {
+        this.invoice = invoice;
+        this.totalAmount = invoice.getTotalAmount();
+        this.paymentDate = LocalDate.now();
         this.status = new SystemStatus("PAYMENT", "COMPLETED"); // 기본 상태: 완료
         this.method = new SystemStatus("PAYMENT", "TRANSFER"); // 기본 결제 방법: 계좌이체
         // 다른 필드는 서비스에서 설정

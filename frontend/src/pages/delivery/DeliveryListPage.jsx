@@ -4,7 +4,8 @@ import { useSelector } from 'react-redux';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, Button,
-    Grid, CircularProgress, IconButton, InputAdornment, TablePagination
+    Grid, CircularProgress, IconButton, InputAdornment, TablePagination,
+    Snackbar, Alert
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -49,16 +50,9 @@ function DeliveryListPage() {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
-
-    // 통계 정보
-    const [statistics, setStatistics] = useState({
-      totalCount: 0,
-      invoicedCount: 0,
-      notInvoicedCount: 0,
-      totalAmount: 0,
-      invoicedAmount: 0,
-      notInvoicedAmount: 0,
-    });
+    const [error, setError] = useState('');
+    const [showError, setShowError] = useState(false);
+    const [companyName, setCompanyName] = useState('');
 
     // 디버깅용 - 사용자 정보 출력
     useEffect(() => {
@@ -80,9 +74,10 @@ function DeliveryListPage() {
         return currentUser?.roles?.includes('ROLE_SUPPLIER') || currentUser?.role === 'SUPPLIER';
     };
 
-    // username이 001로 시작하는지 확인 (구매관리팀)
+    // username이 001로 시작하는지 확인
     const isPurchaseDept = () => {
         if (!currentUser?.username) return false;
+
         return currentUser.username.startsWith('001');
     };
 
@@ -239,32 +234,45 @@ function DeliveryListPage() {
             params.append('page', page);
             params.append('size', rowsPerPage);
 
-            // 기존 API 엔드포인트를 유지합니다
-            const response = await fetchWithAuth(`${API_URL}deliveries?${params.toString()}`);
+            // 원래 API 엔드포인트 사용
+            const apiEndpoint = `${API_URL}deliveries`;
+
+            console.log('API 호출:', apiEndpoint, '역할:', currentUser?.roles || currentUser?.role);
+
+            const response = await fetchWithAuth(`${apiEndpoint}?${params.toString()}`);
 
             if (!response.ok) {
                 throw new Error(`입고 목록 조회 실패: ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('API 응답 데이터:', data); // 디버깅용 로그
+            console.log('API 응답 데이터:', data);
 
             if (data) {
-                // Spring Data의 Page 응답 처리
                 if (data.content) {
-                    // Page 객체가 반환된 경우
-                    setDeliveries(data.content);
-                    setTotalPages(data.totalPages);
-                    setTotalElements(data.totalElements);
+                    // 역할 기반 필터링 적용
+                    const allDeliveries = data.content;
+                    setDeliveries(allDeliveries);
+
+                    const filtered = filterDeliveriesByRole(allDeliveries);
+                    setFilteredDeliveries(filtered);
+
+                    // 페이지네이션 정보 설정 (필터링된 데이터 기준)
+                    setTotalElements(filtered.length);
+                    setTotalPages(Math.ceil(filtered.length / rowsPerPage));
                 } else if (Array.isArray(data)) {
-                    // 배열이 바로 반환된 경우
-                    setDeliveries(data);
-                    setTotalElements(data.length);
-                    setTotalPages(Math.ceil(data.length / rowsPerPage));
+                    const allDeliveries = data;
+                    setDeliveries(allDeliveries);
+
+                    const filtered = filterDeliveriesByRole(allDeliveries);
+                    setFilteredDeliveries(filtered);
+
+                    setTotalElements(filtered.length);
+                    setTotalPages(Math.ceil(filtered.length / rowsPerPage));
                 } else {
-                    // 다른 형태로 반환된 경우
                     console.error('예상치 못한 응답 형식:', data);
                     setDeliveries([]);
+                    setFilteredDeliveries([]);
                     setTotalElements(0);
                     setTotalPages(0);
                 }
@@ -274,8 +282,11 @@ function DeliveryListPage() {
         } catch (error) {
             console.error('입고 목록을 불러오는 중 오류 발생:', error);
             setDeliveries([]);
+            setFilteredDeliveries([]);
             setTotalElements(0);
             setTotalPages(0);
+            setError('데이터를 불러오는 중 오류가 발생했습니다.');
+            setShowError(true);
         } finally {
             setLoading(false);
         }
@@ -283,8 +294,12 @@ function DeliveryListPage() {
 
     // 컴포넌트 마운트 시 데이터 로드
     useEffect(() => {
-        fetchDeliveries();
-    }, [page, rowsPerPage]); // 페이지와 페이지 크기가 변경될 때만 자동 조회
+        if (isLoggedIn && currentUser) {
+            fetchDeliveries();
+        } else {
+            setLoading(false);
+        }
+    }, [isLoggedIn, currentUser, page, rowsPerPage]);
 
     // 필터링 변경 시 데이터 재필터링
     useEffect(() => {
@@ -293,10 +308,6 @@ function DeliveryListPage() {
             setFilteredDeliveries(filtered);
             setTotalElements(filtered.length);
             setTotalPages(Math.ceil(filtered.length / rowsPerPage));
-
-            // 통계 재계산
-            const calculatedStats = calculateStatistics(filtered);
-            setStatistics(calculatedStats);
         }
     }, [currentUser, companyName]);
 
@@ -317,37 +328,51 @@ function DeliveryListPage() {
 
     // 이벤트 핸들러
     const handleSearch = () => {
-        setPage(0); // 검색 시 첫 페이지로 이동
-        fetchDeliveries(); // 검색 버튼 클릭 시 명시적으로 데이터 조회
+        setPage(0);
+        fetchDeliveries();
     };
 
     const handleCreateDelivery = () => {
         navigate('/deliveries/new');
     };
 
-    // 페이지 변경 핸들러
+    const handleRefresh = () => {
+        fetchDeliveries();
+    };
+
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
     };
 
-    // 페이지당 행 수 변경 핸들러
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
     };
 
-    // 필터링 로직은 기존대로 유지
-    const filteredDeliveries = Array.isArray(deliveries) ? deliveries.filter(delivery => {
-        const searchMatch = searchTerm
-            ? (delivery.deliveryNumber && delivery.deliveryNumber.includes(searchTerm)) ||
-              (delivery.orderNumber && delivery.orderNumber.includes(searchTerm))
-            : true;
-        const dateMatch = !deliveryDate ||
-            (delivery.deliveryDate && moment(delivery.deliveryDate).isSame(deliveryDate, 'day'));
-        const supplierMatch = !supplier ||
-            (delivery.supplierName && delivery.supplierName.includes(supplier));
-        return searchMatch && dateMatch && supplierMatch;
-    }) : [];
+    const handleCloseError = () => {
+        setShowError(false);
+    };
+
+    // 행 클릭 핸들러
+    const handleRowClick = (deliveryId) => {
+        const delivery = deliveries.find(d => d.id === deliveryId);
+
+        // 접근 권한 확인
+        if (!canAccessDelivery(delivery)) {
+            setError('접근 권한이 없습니다. 담당자만 접근할 수 있습니다.');
+            setShowError(true);
+            return;
+        }
+
+        navigate(`/deliveries/${deliveryId}`);
+    };
+
+    // 페이지네이션된 데이터 계산
+    const getCurrentPageData = () => {
+        const startIndex = page * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        return filteredDeliveries.slice(startIndex, endIndex);
+    };
 
     return (
         <Box sx={{ p: 3 }}>
@@ -369,6 +394,13 @@ function DeliveryListPage() {
                     입고 목록
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton
+                        color="primary"
+                        onClick={handleRefresh}
+                        title="새로고침"
+                    >
+                        <RefreshIcon />
+                    </IconButton>
                     {/* 입고 등록 버튼은 ADMIN 또는 username이 001로 시작하는 BUYER만 표시 */}
                     {canCreateDelivery() && (
                         <Button
@@ -381,41 +413,6 @@ function DeliveryListPage() {
                         </Button>
                     )}
                 </Box>
-            </Box>
-
-            {/* 요약 카드 섹션 */}
-            <Box sx={{ mb: 3, overflowX: 'auto' }}>
-                <Grid container spacing={1}>
-                    <Grid item xs={4} sm={4}>
-                        <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
-                            <Typography variant="body2" color="text.secondary">총 입고</Typography>
-                            <Typography variant="h6" sx={{ my: 1 }}>{statistics.totalCount}</Typography>
-                            <Typography variant="caption" display="block">
-                                {formatCurrency(statistics.totalAmount)}
-                            </Typography>
-                        </Box>
-                    </Grid>
-
-                    <Grid item xs={4} sm={4}>
-                        <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
-                            <Typography variant="body2" color="text.secondary">송장 발행</Typography>
-                            <Typography variant="h6" color="success.main" sx={{ my: 1 }}>{statistics.invoicedCount}</Typography>
-                            <Typography variant="caption" display="block">
-                                {formatCurrency(statistics.invoicedAmount)}
-                            </Typography>
-                        </Box>
-                    </Grid>
-
-                    <Grid item xs={4} sm={4}>
-                        <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
-                            <Typography variant="body2" color="text.secondary">송장 미발행</Typography>
-                            <Typography variant="h6" color="warning.main" sx={{ my: 1 }}>{statistics.notInvoicedCount}</Typography>
-                            <Typography variant="caption" display="block">
-                                {formatCurrency(statistics.notInvoicedAmount)}
-                            </Typography>
-                        </Box>
-                    </Grid>
-                </Grid>
             </Box>
 
             {/* 검색 필터 영역 */}
@@ -484,7 +481,20 @@ function DeliveryListPage() {
                 </Grid>
             </Paper>
 
+            {/* 테이블 영역 */}
             <Paper variant="outlined">
+                {/* 디버깅 정보 (개발 환경에서만 표시) */}
+                {process.env.NODE_ENV === 'development' && currentUser && (
+                    <Box sx={{ p: 1, bgcolor: '#f5f5f5', fontSize: '0.75rem' }}>
+                        <div>사용자: {currentUser.username} ({currentUser.roles?.join(', ') || currentUser.role})</div>
+                        <div>이름: {currentUser.name}</div>
+                        <div>001 구매관리팀: {isPurchaseDept() ? 'Yes' : 'No'}</div>
+                        <div>회사: {companyName || '-'}</div>
+                        <div>권한: {canCreateDelivery() ? '입고 등록 가능' : '입고 등록 불가'}</div>
+                        <div>필터링된 데이터: {filteredDeliveries.length} / 전체 데이터: {deliveries.length}</div>
+                    </Box>
+                )}
+
                 <TableContainer sx={{ maxHeight: 440 }}>
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -503,13 +513,16 @@ function DeliveryListPage() {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredDeliveries.length > 0 ? (
-                                    filteredDeliveries.map(delivery => (
+                                {getCurrentPageData().length > 0 ? (
+                                    getCurrentPageData().map(delivery => (
                                         <StyledTableRow
                                             key={delivery.id}
                                             hover
-                                            onClick={() => navigate(`/deliveries/${delivery.id}`)}
-                                            sx={{ cursor: 'pointer' }}
+                                            onClick={() => handleRowClick(delivery.id)}
+                                            sx={{
+                                                cursor: canAccessDelivery(delivery) ? 'pointer' : 'not-allowed',
+                                                opacity: canAccessDelivery(delivery) ? 1 : 0.5
+                                            }}
                                         >
                                             <TableCell>{delivery.deliveryNumber}</TableCell>
                                             <TableCell>{delivery.orderNumber}</TableCell>
