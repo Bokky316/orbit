@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.orbit.repository.delivery.DeliveryRepository;
+import com.orbit.service.delivery.DeliveryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +37,8 @@ public class BiddingOrderService {
     private final NotificationRepository notificationRepository;
     private final ParentCodeRepository parentCodeRepository; // 사용되지 않지만 주입 필요
     private final ChildCodeRepository childCodeRepository; // 사용되지 않지만 주입 필요
-
+    private final BiddingOrderRepository biddingOrderRepository;
+    private final DeliveryRepository deliveryRepository;
     /**
      * 발주 목록 조회
      */
@@ -418,6 +421,34 @@ public class BiddingOrderService {
             log.error("발주 취소 알림 발송 실패", e);
         }
         
+        return BiddingOrderDto.fromEntity(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BiddingOrderDto> getAvailableBiddingOrderIds() {
+        // 승인된 발주 목록 조회
+        List<BiddingOrder> approvedOrders = biddingOrderRepository.findByApprovedAtIsNotNull();
+
+        // 입고된 발주 ID 목록 조회
+        List<Long> receivedOrderIds = deliveryRepository.findAll().stream()
+                .map(delivery -> delivery.getBiddingOrder().getId())
+                .collect(Collectors.toList());
+
+        // 승인되었지만 입고되지 않은 발주 필터링
+        List<BiddingOrderDto> availableOrders = approvedOrders.stream()
+                .filter(order -> !receivedOrderIds.contains(order.getId()))
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
+
+        return availableOrders;
+    }
+
+
+    @Transactional(readOnly = true)
+    public BiddingOrderDto getBiddingOrderDetail(Long biddingOrderId) {
+        BiddingOrder order = biddingOrderRepository.findById(biddingOrderId)
+                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + biddingOrderId));
+
         return BiddingOrderDto.fromEntity(order);
     }
 }
