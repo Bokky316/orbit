@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Button, Grid,
@@ -24,13 +25,184 @@ function DeliveryDetailPage() {
     const [error, setError] = useState(null);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
+    const [companyName, setCompanyName] = useState('');
 
-    // 입고 상세 정보 조회
+    // Redux 상태에서 인증 정보 가져오기
+    const auth = useSelector((state) => state.auth);
+    const currentUser = auth?.user;
+
+    // 사용자 정보 및 권한 조회
+    useEffect(() => {
+        // 먼저 Redux 스토어에서 사용자 정보 사용
+        if (currentUser) {
+            console.log('Redux에서 사용자 정보 로드:', currentUser);
+            setUserInfo(currentUser);
+            return;
+        }
+
+        // Redux에 사용자 정보가 없는 경우 API 호출
+        const fetchUserInfo = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}users/me`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('API에서 사용자 정보 로드:', data);
+                    setUserInfo(data);
+                } else {
+                    throw new Error('사용자 정보를 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('사용자 정보 조회 중 오류 발생:', error);
+                // 임시 해결책: 로컬 스토리지에서 사용자 정보 가져오기
+                try {
+                    const authData = JSON.parse(localStorage.getItem('auth'));
+                    if (authData && authData.user) {
+                        console.log('로컬 스토리지에서 사용자 정보 로드:', authData.user);
+                        setUserInfo(authData.user);
+                    }
+                } catch (e) {
+                    console.error('로컬 스토리지에서 사용자 정보 로드 실패:', e);
+                }
+            }
+        };
+
+        fetchUserInfo();
+    }, [currentUser]);
+
+    // 역할 확인 유틸리티 함수
+    const isAdmin = () => {
+        const user = userInfo || currentUser;
+        if (!user) return false;
+        return user.roles?.includes('ROLE_ADMIN') || user.role === 'ADMIN';
+    };
+
+    const isBuyer = () => {
+        const user = userInfo || currentUser;
+        if (!user) return false;
+        return user.roles?.includes('ROLE_BUYER') || user.role === 'BUYER';
+    };
+
+    const isSupplier = () => {
+        const user = userInfo || currentUser;
+        if (!user) return false;
+        return user.roles?.includes('ROLE_SUPPLIER') || user.role === 'SUPPLIER';
+    };
+
+    // username이 001로 시작하는지 확인 (구매부서)
+    const isPurchaseDept = () => {
+        const user = userInfo || currentUser;
+        if (!user?.username) return false;
+        return user.username.startsWith('001');
+    };
+
+    // 회사명 찾기 함수
+    const findCompanyName = () => {
+        const user = userInfo || currentUser;
+        if (!user) return '';
+
+        // 공급업체 역할인 경우 회사명 추출
+        if (isSupplier()) {
+            // 공급업체명을 찾을 수 있는 가능한 속성 확인
+            const company = user.companyName ||
+                            user.company ||
+                            user.supplierName;
+
+            // 회사명이 이미 있으면 사용
+            if (company) {
+                console.log('회사명 찾음 (속성):', company);
+                return company;
+            }
+
+            // 이름에서 추출 (예: '공급사 1 담당자' -> '공급사 1')
+            if (user.name) {
+                // 이름에서 '공급사 N' 패턴 추출
+                const nameMatch = user.name.match(/(공급사\s*\d+)/);
+                if (nameMatch) {
+                    console.log('회사명 찾음 (이름 패턴):', nameMatch[1]);
+                    return nameMatch[1];
+                }
+
+                // 이름이 공급사명인 경우 (예: '공급사 1')
+                if (user.name.trim().startsWith('공급사')) {
+                    console.log('회사명 찾음 (이름):', user.name);
+                    return user.name.trim();
+                }
+            }
+
+            // 그래도 못 찾았다면, 이름 자체를 그대로 사용
+            if (user.name) {
+                console.log('회사명으로 이름 사용:', user.name);
+                return user.name;
+            }
+        }
+
+        return '';
+    };
+
+    // 회사명 설정
+    useEffect(() => {
+        if ((userInfo || currentUser) && isSupplier()) {
+            const company = findCompanyName();
+            setCompanyName(company);
+            console.log('공급업체명 설정:', company);
+        }
+    }, [userInfo, currentUser]);
+
+    // 접근 권한 확인 함수 - 수정된 버전
+    const canAccessDelivery = () => {
+        if (!delivery) return false;
+
+        const user = userInfo || currentUser;
+        if (!user) return false;
+
+        // ADMIN은 모든 데이터 접근 가능
+        if (isAdmin()) return true;
+
+        // BUYER(username이 001로 시작하거나 구매관리팀)는 자신이 담당자인 데이터만 접근 가능
+        if (isBuyer() && isPurchaseDept()) {
+            return delivery.receiverName === user.name;
+        }
+
+        // BUYER(일반)는 자신이 담당자로 지정된 데이터만 접근 가능
+        if (isBuyer() && !isPurchaseDept()) {
+            return delivery.receiverName === user.name;
+        }
+
+        // SUPPLIER는 자사 관련 데이터만 접근 가능
+        if (isSupplier()) {
+            // 목록에서 클릭해서 들어온 경우라면, 이미 필터링된 데이터일 가능성이 높음
+            // 목록에서 자신의 데이터만 보여주므로 상세에서는 권한 체크를 완화
+            return true; // 공급업체의 경우 일단 모든 데이터 접근 허용 (목록에서 이미 필터링됨)
+        }
+
+        return false;
+    };
+
+    // 입고 상세 정보 조회 - 수정된 버전
     useEffect(() => {
         const fetchDeliveryDetail = async () => {
             try {
                 setLoading(true);
+
+                // API 호출 전 디버깅 정보
+                console.log('API 호출 전:', {
+                    id,
+                    isAdmin: isAdmin(),
+                    isBuyer: isBuyer(),
+                    isSupplier: isSupplier(),
+                    companyName: companyName,
+                    user: (userInfo || currentUser)?.username
+                });
+
                 const response = await fetchWithAuth(`${API_URL}deliveries/${id}`);
+
+                // API 응답 상태 로깅
+                console.log('API 응답 상태:', {
+                    status: response.status,
+                    ok: response.ok,
+                    statusText: response.statusText
+                });
 
                 if (!response.ok) {
                     throw new Error(`입고 상세 조회 실패: ${response.status}`);
@@ -39,6 +211,8 @@ function DeliveryDetailPage() {
                 const data = await response.json();
                 console.log('입고 상세 데이터:', data);
                 setDelivery(data);
+
+                // 권한 체크 로직 제거 - 목록에서 이미 필터링되어 들어왔으므로 중복 체크 불필요
             } catch (error) {
                 console.error('입고 상세를 불러오는 중 오류 발생:', error);
                 setError(error.message);
@@ -93,6 +267,53 @@ function DeliveryDetailPage() {
         } finally {
             setDeleting(false);
         }
+    };
+
+    // 디버깅용 - 사용자 정보 및 권한 상태 출력
+    useEffect(() => {
+        console.log('권한 상태:', {
+            userInfo,
+            currentUser,
+            companyName,
+            isAdmin: isAdmin(),
+            isBuyer: isBuyer(),
+            isSupplier: isSupplier(),
+            isPurchaseDept: isPurchaseDept(),
+            canAccessDelivery: delivery ? canAccessDelivery() : false
+        });
+    }, [userInfo, currentUser, delivery, companyName]);
+
+    // 수정 버튼 표시 여부 확인
+    const canEdit = () => {
+        const user = userInfo || currentUser;
+        if (!user || !delivery) {
+            console.log('사용자 정보 없음 또는 데이터 없음 - 수정 권한 없음');
+            return false;
+        }
+
+        // ADMIN은 모든 입고 데이터 수정 가능
+        if (isAdmin()) {
+            console.log('ADMIN 권한 - 수정 가능');
+            return true;
+        }
+
+        // BUYER(dept_id=1 또는 username이 001로 시작)는 자신이 담당하는 입고 데이터만 수정 가능
+        if (isBuyer() && (user.departmentId === 1 || isPurchaseDept())) {
+            const hasAccess = delivery && user.name === delivery.receiverName;
+            console.log('BUYER 권한 - 수정 가능 여부:', hasAccess);
+            return hasAccess;
+        }
+
+        console.log('수정 권한 없음');
+        // SUPPLIER는 수정 불가
+        return false;
+    };
+
+    // 삭제 버튼 표시 여부 확인 (ADMIN만 가능)
+    const canDelete = () => {
+        const isAdminUser = isAdmin();
+        console.log('삭제 권한 여부:', isAdminUser);
+        return isAdminUser;
     };
 
     if (loading) {
@@ -273,23 +494,44 @@ function DeliveryDetailPage() {
                             {/* 버튼 영역 */}
                             <Grid item xs={12}>
                                 <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
+                                    {/* 개발 환경에서만 표시되는 디버깅 정보 */}
+                                    {process.env.NODE_ENV === 'development' && (
+                                        <Box sx={{ width: '100%', mb: 2, p: 1, bgcolor: '#f5f5f5', fontSize: '0.75rem' }}>
+                                            <div>사용자: {(userInfo || currentUser)?.username}</div>
+                                            <div>역할: {(userInfo || currentUser)?.role || (userInfo || currentUser)?.roles?.join(', ')}</div>
+                                            <div>ADMIN: {isAdmin() ? 'Yes' : 'No'}</div>
+                                            <div>BUYER: {isBuyer() ? 'Yes' : 'No'}</div>
+                                            <div>구매부서(001): {isPurchaseDept() ? 'Yes' : 'No'}</div>
+                                            <div>공급업체: {isSupplier() ? 'Yes' : 'No'}</div>
+                                            <div>회사명: {companyName || '-'}</div>
+                                            <div>접근 권한: {canAccessDelivery() ? 'Yes' : 'No'}</div>
+                                            <div>수정 권한: {canEdit() ? 'Yes' : 'No'}</div>
+                                            <div>삭제 권한: {canDelete() ? 'Yes' : 'No'}</div>
+                                        </Box>
+                                    )}
+
+                                    {/* 조건부 수정 버튼 표시 */}
                                     <Button
                                         variant="outlined"
                                         color="primary"
                                         startIcon={<EditIcon />}
                                         onClick={handleEdit}
                                         sx={{ minWidth: 120 }}
+                                        disabled={!canEdit()}
                                     >
-                                        수정
+                                        수정 {!canEdit() && '(권한 없음)'}
                                     </Button>
+
+                                    {/* 조건부 삭제 버튼 표시 */}
                                     <Button
                                         variant="outlined"
                                         color="error"
                                         startIcon={<DeleteIcon />}
                                         onClick={handleOpenDeleteDialog}
                                         sx={{ minWidth: 120 }}
+                                        disabled={!canDelete()}
                                     >
-                                        삭제
+                                        삭제 {!canDelete() && '(권한 없음)'}
                                     </Button>
                                 </Box>
                             </Grid>
