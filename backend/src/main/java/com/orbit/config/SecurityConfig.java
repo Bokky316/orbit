@@ -129,6 +129,7 @@ public class SecurityConfig {
 
                 // 사용자 관리 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/members").hasRole("ADMIN")
+                .requestMatchers("/api/members/**").hasRole("ADMIN")
                 .requestMatchers("/api/members/{id}").hasRole("ADMIN")
                 .requestMatchers("/api/members/search").hasRole("ADMIN")
                 .requestMatchers("/api/members/deactivate/{id}").hasRole("ADMIN")

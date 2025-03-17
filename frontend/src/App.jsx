@@ -47,6 +47,7 @@ import CategoryListPage from "@/pages/item/CategoryListPage";
 import CategoryFormPage from "@/pages/item/CategoryFormPage";
 import ItemListPage from "@/pages/item/ItemListPage";
 import ItemFormPage from "@/pages/item/ItemFormPage";
+import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -198,6 +199,8 @@ function AppContent() {
               />
               {/* 공통 코드 관리 */}
               <Route path="/common-codes" element={<CommonCodeManagement />} />
+              {/* 사용자 관리 */}
+              <Route path="/members" element={<AdminMemberPage />} />
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>

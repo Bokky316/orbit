@@ -7,7 +7,7 @@ import "/public/css/layout/Layout.css";
 // 구매자(BUYER) 및 관리자(ADMIN) 메뉴
 const buyerAdminMenuItems = [
   { label: "대시보드", path: "/dashboard" },
-  { label: "사용자관리", path: "/members", roles: ["ADMIN"] },
+  { label: "사용자관리", path: "/members", roles: ["ROLE_ADMIN"] },
   { label: "협력사관리", path: "/supplier" },
   { label: "품목관리", path: "/items" },
   { label: "프로젝트관리", path: "/projects" },
@@ -20,7 +20,7 @@ const buyerAdminMenuItems = [
   { label: "송장 관리", path: "/invoices" },
   { label: "자금 관리", path: "/funds" },
   { label: "보고서생성/관리", path: "/reports" },
-  { label: "시스템 설정", path: "/system", roles: ["ADMIN"] }
+  { label: "시스템 설정", path: "/system", roles: ["ROLE_ADMIN"] }
 ];
 
 // 공급업체(SUPPLIER) 메뉴
