@@ -1,6 +1,6 @@
 package com.orbit.entity.invoice;
 
-import com.orbit.entity.bidding.BiddingContract;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.delivery.Delivery;
 import com.orbit.entity.member.Member;
 import jakarta.persistence.*;
@@ -26,19 +26,20 @@ public class Invoice {
     @Column(name = "invoice_number", nullable = false, unique = true)
     private String invoiceNumber;
 
-    // 소스 타입 - 계약 또는 입고
-    @Enumerated(EnumType.STRING)
-    @Column(name = "source_type", nullable = false)
-    private SourceType sourceType;
+    // 송장 엔티티에 계약 번호와 거래 번호 필드 추가
+    @Column(name = "contract_number")
+    private String contractNumber;
 
-    // 계약 (선택적)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "contract_id")
-    private BiddingContract contract;
+    @Column(name = "transaction_number")
+    private String transactionNumber;
 
-    // 입고 (선택적)
+    // 결제일 정보 추가
+    @Column(name = "payment_date")
+    private LocalDate paymentDate;
+
+    // 입고 연결
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "delivery_id")
+    @JoinColumn(name = "delivery_id", nullable = false)
     private Delivery delivery;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -78,10 +79,9 @@ public class Invoice {
     @Column(name = "unit")
     private String unit;
 
-    // 상태 정보
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private InvoiceStatus status = InvoiceStatus.대기;
+    // 상태 정보 (SystemStatus 사용)
+    @Embedded
+    private SystemStatus status;
 
     // 비고
     @Column(name = "notes", columnDefinition = "TEXT")
@@ -113,6 +113,11 @@ public class Invoice {
         if (this.dueDate == null) {
             this.dueDate = this.issueDate.plusDays(30); // 기본 30일 지급 기한
         }
+
+        // 기본 상태 설정
+        if (this.status == null) {
+            this.status = new SystemStatus("INVOICE", "WAITING");
+        }
     }
 
     @PreUpdate
@@ -121,25 +126,10 @@ public class Invoice {
     }
 
     /**
-     * 송장 상태 정의
-     */
-    public enum InvoiceStatus {
-        대기, 지불완료, 연체, 취소
-    }
-
-    /**
-     * 송장 소스 타입
-     */
-    public enum SourceType {
-        CONTRACT, DELIVERY
-    }
-
-    /**
      * 입고 기반으로 인보이스 데이터 설정
      */
     public void setFromDelivery(Delivery delivery, Member supplier) {
         this.delivery = delivery;
-        this.sourceType = SourceType.DELIVERY;
         this.supplier = supplier; // 레포지토리에서 조회한 Member 객체 사용
 
         // 품목 정보 복사
@@ -157,31 +147,8 @@ public class Invoice {
         // 날짜 정보 설정
         this.issueDate = LocalDate.now();
         this.dueDate = this.issueDate.plusDays(30); // 기본 30일 지급 기한
-    }
 
-    /**
-     * 계약 기반으로 인보이스 데이터 설정
-     */
-    public void setFromContract(BiddingContract contract) {
-        this.contract = contract;
-        this.sourceType = SourceType.CONTRACT;
-        this.supplier = contract.getSupplier();
-
-        // 금액 정보 복사
-        this.supplyPrice = contract.getSupplyPrice();
-        this.vat = contract.getVat();
-        this.totalAmount = contract.getTotalAmount();
-
-        // 계약 품목 정보 복사
-        if (contract.getBidding() != null && contract.getBidding().getPurchaseRequestItem() != null) {
-            this.itemName = contract.getBidding().getPurchaseRequestItem().getItem() != null ?
-                    contract.getBidding().getPurchaseRequestItem().getItem().getName() : null;
-            this.itemSpecification = contract.getBidding().getPurchaseRequestItem().getSpecification();
-            this.unit = contract.getBidding().getPurchaseRequestItem().getUnitChildCode() != null ?
-                    contract.getBidding().getPurchaseRequestItem().getUnitChildCode().getCodeName() : null;
-        }
-
-        this.quantity = contract.getQuantity();
-        this.unitPrice = contract.getUnitPrice();
+        // 상태 설정
+        this.status = new SystemStatus("INVOICE", "WAITING");
     }
 }
