@@ -1,5 +1,14 @@
 package com.orbit.service.invoice;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.commonCode.SystemStatus;
@@ -7,15 +16,8 @@ import com.orbit.entity.invoice.Invoice;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.invoice.InvoiceRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -114,8 +116,6 @@ public class InvoiceService {
 
         // 상태별 분류
         List<Invoice> waitingInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "WAITING");
-        List<Invoice> approvedInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "APPROVED");
-        List<Invoice> rejectedInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "REJECTED");
         List<Invoice> paidInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "PAID");
         List<Invoice> overdueInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "OVERDUE");
 
@@ -125,14 +125,6 @@ public class InvoiceService {
                 .sum();
 
         long waitingAmount = waitingInvoices.stream()
-                .mapToLong(i -> i.getTotalAmount().longValue())
-                .sum();
-
-        long approvedAmount = approvedInvoices.stream()
-                .mapToLong(i -> i.getTotalAmount().longValue())
-                .sum();
-
-        long rejectedAmount = rejectedInvoices.stream()
                 .mapToLong(i -> i.getTotalAmount().longValue())
                 .sum();
 
@@ -148,14 +140,10 @@ public class InvoiceService {
         return InvoiceStatistics.builder()
                 .totalCount(allInvoices.size())
                 .waitingCount(waitingInvoices.size())
-                .approvedCount(approvedInvoices.size())
-                .rejectedCount(rejectedInvoices.size())
                 .paidCount(paidInvoices.size())
                 .overdueCount(overdueInvoices.size())
                 .totalAmount(totalAmount)
                 .waitingAmount(waitingAmount)
-                .approvedAmount(approvedAmount)
-                .rejectedAmount(rejectedAmount)
                 .paidAmount(paidAmount)
                 .overdueAmount(overdueAmount)
                 .build();
@@ -167,14 +155,10 @@ public class InvoiceService {
     public static class InvoiceStatistics {
         private int totalCount;
         private int waitingCount;
-        private int approvedCount;
-        private int rejectedCount;
         private int paidCount;
         private int overdueCount;
         private long totalAmount;
         private long waitingAmount;
-        private long approvedAmount;
-        private long rejectedAmount;
         private long paidAmount;
         private long overdueAmount;
     }
