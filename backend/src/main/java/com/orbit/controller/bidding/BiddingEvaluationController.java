@@ -1,7 +1,6 @@
 package com.orbit.controller.bidding;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,15 +15,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.orbit.dto.bidding.BiddingEvaluationDto;
+import com.orbit.entity.member.Member;
+import com.orbit.repository.member.MemberRepository;
 import com.orbit.service.bidding.BiddingEvaluationService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
-@RequestMapping("/api/biddings/evaluations")
+@RequestMapping("/api/evaluations")
 @RequiredArgsConstructor
 public class BiddingEvaluationController {
-
     private final BiddingEvaluationService evaluationService;
     private final MemberRepository memberRepository;
     
@@ -255,17 +258,4 @@ public class BiddingEvaluationController {
         return memberRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
-
-    /**
-     * 공급자별 평가 히스토리 조회
-     */
-    @GetMapping("/supplier/{supplierName}")
-    public ResponseEntity<List<BiddingEvaluationDto>> getSupplierEvaluationHistory(@PathVariable String supplierName) {
-        log.info("공급자 평가 히스토리 조회 요청 - 공급자명: {}", supplierName);
-        
-        List<BiddingEvaluationDto> supplierEvaluations = evaluationService.getEvaluationsBySupplierName(supplierName);
-        return ResponseEntity.ok(supplierEvaluations);
-    }
-    
-    
 }

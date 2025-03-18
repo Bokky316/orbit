@@ -20,6 +20,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "@utils/constants";
+import "/public/css/member/member.css";
 
 export default function Login() {
   const [credentials, setCredentials] = useState({
@@ -102,17 +103,28 @@ export default function Login() {
       console.log("파싱된 데이터:", parsedData);
 
       if (response.ok && parsedData.status === "success") {
-        // 사용자 정보 Redux 스토어에 저장
-        dispatch(
-          setUser({
-            id: parsedData.id,
-            username: parsedData.username,
-            name: parsedData.name,
-            roles: parsedData.roles,
-            isLoggedIn: true,
-            isSocialLogin: false
-          })
-        );
+        // 역할 정보 처리
+        const roles = Array.isArray(parsedData.roles)
+          ? parsedData.roles
+          : (typeof parsedData.roles === "string"
+              ? [parsedData.roles]
+              : []
+            ).filter(Boolean);
+
+        const userData = {
+          id: parsedData.id,
+          username: parsedData.username,
+          name: parsedData.name,
+          roles: roles, // 배열 형태로 저장
+          isLoggedIn: true,
+          isSocialLogin: false
+        };
+
+        // 로컬 스토리지에 저장
+        localStorage.setItem("loggedInUser", JSON.stringify(userData));
+
+        // Redux 스토어에 저장
+        dispatch(setUser(userData));
 
         // 성공 메시지 표시
         setOpenSnackbar(true);
@@ -154,29 +166,19 @@ export default function Login() {
     navigate("/signup");
   };
 
-  const handleSignupNavigation = () => {
-    navigate("/signup");
-  };
-
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        backgroundColor: "#f9f9f9",
-        p: 2
-      }}>
-      <img src="/public/images/logo.png" alt="logo" />
+    <div className="login_container">
+      <div></div>
+      <div className="logo">
+        <img src="/public/images/logo.png" alt="logo" />
+      </div>
 
       <Box
         component="form"
         sx={{
           display: "flex",
           flexDirection: "column",
-          gap: 2,
+          gap: "8px",
           width: "100%",
           maxWidth: "400px"
         }}
@@ -190,14 +192,6 @@ export default function Login() {
           onChange={handleChange}
           fullWidth
           required
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              "&:hover fieldset": {
-                borderColor: "#4FC787", // success 컬러
-                borderWidth: "1px"
-              }
-            }
-          }}
         />
 
         <Box sx={{ width: "100%" }}>
@@ -209,14 +203,6 @@ export default function Login() {
             onChange={handleChange}
             fullWidth
             required
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                "&:hover fieldset": {
-                  borderColor: "#4FC787", // success 컬러
-                  borderWidth: "1px"
-                }
-              }
-            }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -281,50 +267,24 @@ export default function Login() {
           onClick={handleLogin}
           disabled={!isLoginEnabled}
           sx={{
-            mt: 2,
-            backgroundColor: isLoginEnabled ? "#5d0000" : "#BDBDBD"
+            backgroundColor: isLoginEnabled ? "#FF7F3E" : "#BDBDBD"
           }}>
           로그인
         </Button>
       </Box>
 
-      <Box sx={{ mt: 3, textAlign: "center", width: "100%" }}>
-        <Typography variant="body2">
-          지금 바로 협력사 가입하고, <br />
-          새로운 성장의 길을 열어보세요!{" "}
-          <Link
-            component="button"
-            onClick={handleSignupNavigation}
-            sx={{
-              color: "primary.main",
-              textDecoration: "underline",
-              "&:hover": {
-                color: "primary.dark"
-              }
-            }}>
+      <div className="registration_section">
+        <h4>Join Our Network</h4>
+        <div>
+          <span>
+            지금 바로 협력사 가입하고, <br />
+            새로운 성장의 길을 열어보세요!
+          </span>
+          <Link component="button" onClick={handleSignupNavigation}>
             회원가입
           </Link>
-        </Typography>
-      </Box>
-
-      <Box sx={{ mt: 2, textAlign: 'center', width: '100%' }}>
-        <Typography variant="body2">
-          아직 회원이 아니신가요?{" "}
-          <Link
-            component="button"
-            onClick={handleSignupNavigation}
-            sx={{
-              color: 'primary.main',
-              textDecoration: 'underline',
-              '&:hover': {
-                color: 'primary.dark'
-              }
-            }}
-          >
-            회원가입
-          </Link>
-        </Typography>
-      </Box>
+        </div>
+      </div>
 
       <Snackbar
         open={openSnackbar}
@@ -333,6 +293,6 @@ export default function Login() {
         message={errorMessage}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       />
-    </Box>
+    </div>
   );
 }

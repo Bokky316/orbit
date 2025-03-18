@@ -1,38 +1,35 @@
 package com.orbit.controller.procurement;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.orbit.dto.procurement.ApprovalDTO;
-import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.Project;
-import com.orbit.repository.member.MemberRepository;
-import com.orbit.service.RedisService;
-import com.orbit.service.procurement.ApprovalLineService;
-import com.orbit.config.jwt.TokenProvider;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.Collection;
 
-import com.orbit.repository.procurement.PurchaseRequestRepository;
-import com.orbit.repository.procurement.ProjectRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockCookie;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.mock.web.MockCookie;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbit.config.jwt.TokenProvider;
 import com.orbit.dto.approval.ApprovalDTO;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.Project;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ProjectRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
@@ -126,19 +123,19 @@ public class ApprovalControllerTest {
         redisService.cacheUserAuthorities(TEST_USERNAME);
 
         // 테스트 프로젝트 생성 및 저장
-        String projectId = UUID.randomUUID().toString();
-        Project project =
-                Project.builder()
-//                        .projectId(projectId)
-//                        .projectName("Test Project")
-//                        .managerName("Test Manager")
-//                        .startDate(LocalDate.now())
-//                        .endDate(LocalDate.now().plusDays(7))
-//                        .status(Project.ProjectStatus.IN_PROGRESS)
-//                        .description("Test Project Description")
-//                        .supplierStatus(SupplierStatus.PENDING)
-                        .build();
-        projectRepository.save(project);
+        // String projectId = UUID.randomUUID().toString();
+        // Project project =
+        //         Project.builder()
+        //                .projectId(projectId)
+        //                .projectName("Test Project")
+        //                .managerName("Test Manager")
+        //                .startDate(LocalDate.now())
+        //                .endDate(LocalDate.now().plusDays(7))
+        //                .status(Project.ProjectStatus.IN_PROGRESS)
+        //                .description("Test Project Description")
+        //                .supplierStatus(SupplierStatus.PENDING)
+        //                 .build();
+        // projectRepository.save(project);
 
         // 테스트 구매 요청 생성 및 저장
 ////        PurchaseRequest purchaseRequest = new PurchaseRequest();

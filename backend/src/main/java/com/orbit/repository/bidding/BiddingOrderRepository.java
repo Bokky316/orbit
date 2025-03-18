@@ -4,10 +4,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import com.orbit.entity.bidding.BiddingOrder;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import com.orbit.entity.bidding.BiddingOrder;
 
 public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long> {
 
@@ -16,10 +16,9 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
      */
     List<BiddingOrder> findByBiddingId(Long biddingId);
     
-    boolean existsByBiddingId(Long biddingId);
-    
-    boolean existsByBiddingParticipationId(Long participationId);
-    
+    /**
+     * 특정 공급사의 발주 목록 조회
+     */
     List<BiddingOrder> findBySupplierId(Long supplierId);
     
     /**
@@ -34,7 +33,10 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
      */
     List<BiddingOrder> findByApprovedAtIsNotNull();
     
-    List<BiddingOrder> findByStatus(OrderStatus status);
+    /**
+     * 승인되지 않은 발주 목록 조회
+     */
+    List<BiddingOrder> findByApprovedAtIsNull();
     
     /**
      * 특정 승인자의 발주 목록 조회

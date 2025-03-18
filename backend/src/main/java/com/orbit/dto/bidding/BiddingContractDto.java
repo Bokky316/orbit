@@ -11,7 +11,6 @@ import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
 
-import com.orbit.entity.commonCode.SystemStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

@@ -54,6 +54,7 @@ public class ApprovalLineService {
     public ApprovalLineResponseDTO createApprovalLine(ApprovalLineCreateDTO dto) {
         // 구매 요청 조회
         PurchaseRequest request = purchaseRequestRepo.findById(dto.getPurchaseRequestId())
+                .orElseThrow(() -> new ResourceNotFoundException("구매요청을 찾을 수 없습니다. ID: " + dto.getPurchaseRequestId()));
 
         // 상위 상태 코드 조회
         ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
@@ -342,6 +343,40 @@ public class ApprovalLineService {
             ChildCode lineStatus = step == 1
                     ? findChildCode(parentCode, "IN_REVIEW")
                     : findChildCode(parentCode, "PENDING");
+
+            ApprovalLine line = ApprovalLine.builder()
+                    .purchaseRequest(request)
+                    .approver(approver)
+                    .step(step++)
+                    .status(lineStatus)
+                    .build();
+
+            lines.add(line);
+        }
+
+        return lines;
+    }
+
+    // 헬퍼 메서드들
+    private ParentCode findParentCode(String entityType, String codeGroup) {
+        return parentCodeRepo.findByEntityTypeAndCodeGroup(entityType, codeGroup)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "ParentCode를 찾을 수 없습니다: " + entityType + "-" + codeGroup));
+    }
+
+    private ChildCode findChildCode(ParentCode parentCode, String codeValue) {
+        return childCodeRepo.findByParentCodeAndCodeValue(parentCode, codeValue)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "ChildCode를 찾을 수 없습니다: " + codeValue));
+    }
+
+    private Member findMember(Long approverId) {
+        return memberRepo.findById(approverId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "결재자를 찾을 수 없습니다. ID: " + approverId));
+    }
+
+    // 실시간 업데이트 및 DTO 변환 메서드
     private void sendRealTimeUpdate(Long requestId) {
         List<ApprovalLineResponseDTO> lines = getApprovalLines(requestId);
         messagingTemplate.convertAndSend("/topic/approvals/" + requestId, lines);
@@ -530,89 +565,5 @@ public class ApprovalLineService {
         } catch (Exception e) {
             log.error("구매요청 접수 알림 전송 중 오류 발생: {}", e.getMessage());
         }
-    }
-
-    @Transactional(readOnly = true)
-    public List<ApprovalLineResponseDTO> findEligibleApprovalMembers() {
-        List<Member> eligibleMembers = memberRepo.findEligibleApprovalMembers(); // 기존 쿼리 메서드 사용
-
-        return eligibleMembers.stream()
-                .map(member -> ApprovalLineResponseDTO.builder()
-                        .id(member.getId())
-                        .approverName(member.getName())
-                        .department(member.getDepartment().getName())
-                        .statusCode("ELIGIBLE") // 결재 가능 상태를 나타내는 임시 상태 코드
-                        .statusName("결재 가능")
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    // 사용자의 결재 대기 목록 조회
-    @Transactional(readOnly = true)
-    public List<ApprovalLineResponseDTO> getPendingApprovals() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUsername = authentication.getName();
-
-        return approvalLineRepo.findPendingApprovalsByUsername(currentUsername)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    // 사용자의 완료된 결재 목록 조회
-    @Transactional(readOnly = true)
-    public List<ApprovalLineResponseDTO> getCompletedApprovals() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUsername = authentication.getName();
-
-        return approvalLineRepo.findCompletedApprovalsByUsername(currentUsername)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    // 알림 전송 메서드 개선
-    private void sendApprovalNotification(ApprovalLine line) {
-        // 실제 알림 로직 (다양한 채널 지원)
-        log.info("결재 알림 전송: 요청 ID {}, 결재자 {}",
-                line.getPurchaseRequest().getId(),
-                line.getApprover().getName());
-
-        // 이메일 알림
-        sendEmailNotification(line);
-
-        // SMS 알림
-        sendSMSNotification(line);
-
-        // 웹소켓 실시간 알림
-        sendWebSocketNotification(line);
-    }
-
-    private void sendEmailNotification(ApprovalLine line) {
-        try {
-            // 이메일 전송 로직 (JavaMail 또는 외부 서비스 활용)
-            // 결재 대기 알림 이메일 발송
-        } catch (Exception e) {
-            log.error("이메일 알림 전송 중 오류 발생: {}", e.getMessage());
-        }
-    }
-
-    private void sendSMSNotification(ApprovalLine line) {
-        try {
-            // SMS 전송 로직 (외부 SMS 서비스 활용)
-            // 결재 대기 알림 SMS 발송
-        } catch (Exception e) {
-            log.error("SMS 알림 전송 중 오류 발생: {}", e.getMessage());
-        }
-    }
-
-    private void sendWebSocketNotification(ApprovalLine line) {
-        // 실시간 웹소켓 알림
-        ApprovalLineResponseDTO notificationDto = convertToDTO(line);
-        messagingTemplate.convertAndSendToUser(
-                line.getApprover().getUsername(),
-                "/queue/approvals",
-                notificationDto
-        );
     }
 }

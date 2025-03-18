@@ -15,7 +15,8 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.core.annotation.Order;
+@Slf4j
+@Component
 @RequiredArgsConstructor
 @Order(1)
 public class CommonCodeDataInitializer {

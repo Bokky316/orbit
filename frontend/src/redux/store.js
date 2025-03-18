@@ -1,8 +1,16 @@
-
 import { configureStore } from "@reduxjs/toolkit";
-import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from "redux-persist";
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER
+} from "redux-persist";
 import storage from "redux-persist/lib/storage";
-import { combineReducers } from 'redux';
+import { combineReducers } from "redux";
 import projectReducer from "./projectSlice";
 import purchaseRequestReducer from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
@@ -11,7 +19,6 @@ import authReducer from "./authSlice";
 import commonCodeReducer from "./commonCodeSlice";
 import itemCategoryReducer from "./itemCategorySlice";
 
-
 /**
  * Redux Persist의 설정을 정의합니다.
  * - key : localStorage에 저장될 키 이름을 지정합니다.
@@ -19,17 +26,17 @@ import itemCategoryReducer from "./itemCategorySlice";
  * - whitelist: Redux의 어떤 리듀서를 저장할지 결정합니다.
  */
 const persistConfig = {
-    key: "root",
-    storage,
-    whitelist: [
-        "project",
-        "purchaseRequest",
-        "approval",
-        "approvalAdmin",
-        "auth",
-        "commonCode",
-        "itemCategory"
-    ],
+  key: "root",
+  storage,
+  whitelist: [
+    "project",
+    "purchaseRequest",
+    "approval",
+    "approvalAdmin",
+    "auth",
+    "commonCode",
+    "itemCategory"
+  ]
 };
 
 /**
@@ -38,13 +45,13 @@ const persistConfig = {
  * - approvalAdmin 리듀서를 추가하여 결재선 관리 관련 상태 관리
  */
 const rootReducer = combineReducers({
-    project: projectReducer,
-    purchaseRequest: purchaseRequestReducer,
-    approval: approvalReducer,
-    approvalAdmin: approvalAdminReducer,
-    auth: authReducer,
-    commonCode: commonCodeReducer,
-    itemCategory: itemCategoryReducer,
+  project: projectReducer,
+  purchaseRequest: purchaseRequestReducer,
+  approval: approvalReducer,
+  approvalAdmin: approvalAdminReducer,
+  auth: authReducer,
+  commonCode: commonCodeReducer,
+  itemCategory: itemCategoryReducer
 });
 
 /**
@@ -61,14 +68,23 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
  * - approvalAdmin 리듀서가 포함된 persistedReducer를 사용하여 스토어 구성
  */
 export const store = configureStore({
-    reducer: persistedReducer,
-    middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({
-            serializableCheck: {
-                ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER, "persist/PERSIST", "persist/REHYDRATE"],
-                ignoredActionPaths: ['payload.error', 'meta.arg'],
-            },
-        }),
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: [
+          FLUSH,
+          REHYDRATE,
+          PAUSE,
+          PERSIST,
+          PURGE,
+          REGISTER,
+          "persist/PERSIST",
+          "persist/REHYDRATE"
+        ],
+        ignoredActionPaths: ["payload.error", "meta.arg"]
+      }
+    })
 });
 
 /**

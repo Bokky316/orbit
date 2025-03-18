@@ -10,8 +10,9 @@ import com.orbit.repository.supplier.SupplierRegistrationRepository;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * 입찰 공고의 공급사 연결 정보 DTO
@@ -20,6 +21,7 @@ import lombok.NoArgsConstructor;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class BiddingSupplierDto {
     private Long id;
     private Long biddingId;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -9,10 +9,10 @@ import {
   CircularProgress,
   Typography,
   IconButton
-} from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
-import { fetchWithAuth } from '@/utils/fetchWithAuth';
-import { API_URL } from '@/utils/constants';
+} from "@mui/material";
+import { Close as CloseIcon } from "@mui/icons-material";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { API_URL } from "@/utils/constants";
 
 /**
  * 결재 처리 대화상자 컴포넌트
@@ -24,15 +24,22 @@ import { API_URL } from '@/utils/constants';
  * @param {Function} props.onComplete - 처리 완료 후 콜백 함수
  * @returns {JSX.Element}
  */
-function ApprovalProcessDialog({ open, onClose, action, lineId, onComplete }) {
-  const [comment, setComment] = useState('');
+function ApprovalProcessDialog({
+  open,
+  onClose,
+  action,
+  lineId,
+  purchaseRequestId, // 구매 요청 ID 추가 제안
+  onComplete
+}) {
+  const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // 다이얼로그 제목 및 버튼 텍스트
-  const dialogTitle = action === 'APPROVE' ? '결재 승인' : '결재 반려';
-  const buttonText = action === 'APPROVE' ? '승인' : '반려';
-  const buttonColor = action === 'APPROVE' ? 'success' : 'error';
+  const dialogTitle = action === "APPROVE" ? "결재 승인" : "결재 반려";
+  const buttonText = action === "APPROVE" ? "승인" : "반려";
+  const buttonColor = action === "APPROVE" ? "success" : "error";
 
   // 코멘트 변경 핸들러
   const handleCommentChange = (e) => {
@@ -45,69 +52,60 @@ function ApprovalProcessDialog({ open, onClose, action, lineId, onComplete }) {
       setLoading(true);
       setError(null);
 
-      // 상태 코드 결정
-      const nextStatusCode = action === 'APPROVE'
-        ? 'APPROVAL-STATUS-APPROVED'
-        : 'APPROVAL-STATUS-REJECTED';
+      // 상태 코드 결정 (백엔드 기준에 맞게 수정)
+      const nextStatusCode =
+        action === "APPROVE"
+          ? "APPROVED" // 상태 코드 수정
+          : "REJECTED";
 
       // 결재 처리 API 호출
-      const response = await fetchWithAuth(`${API_URL}approvals/${lineId}/process`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: action,
-          comment: comment,
-          nextStatusCode: nextStatusCode
-        })
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}approvals/${lineId}/process`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: action,
+            comment: comment,
+            nextStatusCode: nextStatusCode
+          })
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`결재 처리 실패: ${response.status}`);
       }
 
-      // 처리 완료 콜백 호출
+      // 처리 완료 콜백 호출 (액션 전달)
       if (onComplete) {
-        onComplete();
+        onComplete(action);
       }
 
       // 대화상자 닫기
       onClose();
     } catch (err) {
-      setError(err.message || '결재 처리 중 오류가 발생했습니다.');
+      setError(err.message || "결재 처리 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 댓글 변경 핸들러
-  const handleCommentChange = (e) => {
-    setComment(e.target.value);
-  };
-
-  // 초기화 함수
-  const resetForm = () => {
-    setComment('');
-    setError(null);
-  };
-
-  // 대화상자 닫기 핸들러
-  const handleClose = () => {
-    resetForm();
-    onClose();
-  };
-
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
         {dialogTitle}
-        <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">
+        <IconButton
+          edge="end"
+          color="inherit"
+          onClick={onClose}
+          aria-label="close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -139,8 +137,7 @@ function ApprovalProcessDialog({ open, onClose, action, lineId, onComplete }) {
           onClick={handleProcess}
           variant="contained"
           color={buttonColor}
-          disabled={loading}
-        >
+          disabled={loading}>
           {loading ? <CircularProgress size={24} /> : buttonText}
         </Button>
       </DialogActions>

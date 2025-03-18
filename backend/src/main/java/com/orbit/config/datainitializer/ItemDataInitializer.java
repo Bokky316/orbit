@@ -1,5 +1,15 @@
 package com.orbit.config.datainitializer;
 
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.item.Category;
@@ -8,19 +18,10 @@ import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.item.CategoryRepository;
 import com.orbit.repository.item.ItemRepository;
+
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
-import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Slf4j
 @Component

@@ -227,7 +227,7 @@ export const {
   setTokenFromLocalStorage,
   clearUser,
   setLoading,
-  setUser,
+  setUser
 } = authSlice.actions;
 
 // 선택자 (Selector) 함수
@@ -235,8 +235,10 @@ export const selectUser = (state) => state.auth.user;
 export const selectIsLoggedIn = (state) => state.auth.isLoggedIn;
 export const selectAuthStatus = (state) => state.auth.status;
 export const selectAuthError = (state) => state.auth.error;
-export const selectRegistrationStatus = (state) => state.auth.registrationStatus;
+export const selectRegistrationStatus = (state) =>
+  state.auth.registrationStatus;
 export const selectRegistrationError = (state) => state.auth.registrationError;
-export const selectEmailVerificationStatus = (state) => state.auth.emailVerification;
+export const selectEmailVerificationStatus = (state) =>
+  state.auth.emailVerification;
 
 export default authSlice.reducer;

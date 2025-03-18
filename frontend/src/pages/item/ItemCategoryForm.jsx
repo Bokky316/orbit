@@ -1,6 +1,6 @@
 // src/components/ItemCategoryForm.jsx
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   Card,
@@ -22,7 +22,7 @@ import {
   MenuItem,
   InputLabel,
   Checkbox
-} from '@mui/material';
+} from "@mui/material";
 
 import {
   createCategory,
@@ -31,7 +31,7 @@ import {
   updateItem,
   selectCategories,
   selectItemCategoryLoading
-} from '@redux/itemCategorySlice';
+} from "@redux/itemCategorySlice";
 
 /**
  * 아이템/카테고리 등록/수정 폼 컴포넌트
@@ -40,7 +40,7 @@ import {
  * @param {string} props.formMode - 폼 모드 ('create' 또는 'edit')
  * @param {Function} props.onClose - 폼 닫기 함수
  */
-const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
+const ItemCategoryForm = ({ initialData, formMode = "create", onClose }) => {
   const dispatch = useDispatch();
   const [isCategory, setIsCategory] = useState(true);
   const [error, setError] = useState(null);
@@ -52,32 +52,34 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
 
   // 카테고리 폼 상태
   const [categoryForm, setCategoryForm] = useState({
-    id: '',
-    name: '',
-    description: '',
-    useYn: 'Y'
+    id: "",
+    name: "",
+    description: "",
+    useYn: "Y"
   });
 
   // 아이템 폼 상태
   const [itemForm, setItemForm] = useState({
-    id: '',
-    categoryId: '',
-    name: '',
-    code: '',
-    specification: '',
+    id: "",
+    categoryId: "",
+    name: "",
+    code: "",
+    specification: "",
     standardPrice: 0,
-    description: '',
-    useYn: 'Y'
+    description: "",
+    useYn: "Y"
   });
 
   // 컴포넌트 마운트 시 초기 데이터 설정
   useEffect(() => {
     // 수정 모드인 경우 초기 데이터 설정
-    if (formMode === 'edit' && initialData) {
-      if (initialData.name && !initialData.code) { // 카테고리 수정
+    if (formMode === "edit" && initialData) {
+      if (initialData.name && !initialData.code) {
+        // 카테고리 수정
         setIsCategory(true);
         setCategoryForm(initialData);
-      } else { // 아이템 수정
+      } else {
+        // 아이템 수정
         setIsCategory(false);
         setItemForm(initialData);
       }
@@ -86,7 +88,7 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
 
   // 폼 유형 변경 핸들러
   const handleFormTypeChange = (e) => {
-    setIsCategory(e.target.value === 'category');
+    setIsCategory(e.target.value === "category");
     setError(null);
     setSuccess(false);
   };
@@ -105,7 +107,7 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
     const { name, value, type } = e.target;
     setItemForm({
       ...itemForm,
-      [name]: type === 'number' ? parseFloat(value) : value
+      [name]: type === "number" ? parseFloat(value) : value
     });
   };
 
@@ -120,23 +122,27 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
 
       if (isCategory) {
         // 카테고리 등록/수정
-        if (formMode === 'create') {
+        if (formMode === "create") {
           result = await dispatch(createCategory(categoryForm)).unwrap();
         } else {
-          result = await dispatch(updateCategory({
-            categoryId: categoryForm.id,
-            categoryData: categoryForm
-          })).unwrap();
+          result = await dispatch(
+            updateCategory({
+              categoryId: categoryForm.id,
+              categoryData: categoryForm
+            })
+          ).unwrap();
         }
       } else {
         // 아이템 등록/수정
-        if (formMode === 'create') {
+        if (formMode === "create") {
           result = await dispatch(createItem(itemForm)).unwrap();
         } else {
-          result = await dispatch(updateItem({
-            itemId: itemForm.id,
-            itemData: itemForm
-          })).unwrap();
+          result = await dispatch(
+            updateItem({
+              itemId: itemForm.id,
+              itemData: itemForm
+            })
+          ).unwrap();
         }
       }
 
@@ -147,29 +153,27 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
       setTimeout(() => {
         if (onClose) onClose();
       }, 3000);
-
     } catch (err) {
-      setError(err.message || '저장 중 오류가 발생했습니다.');
+      setError(err.message || "저장 중 오류가 발생했습니다.");
     }
   };
 
   return (
     <Card>
       <CardHeader
-        title={formMode === 'create' ? '새 항목 등록' : '항목 수정'}
+        title={formMode === "create" ? "새 항목 등록" : "항목 수정"}
       />
       <CardContent>
         {/* 폼 유형 선택 (등록 시에만) */}
-        {formMode === 'create' && (
+        {formMode === "create" && (
           <Box mb={3}>
             <FormControl component="fieldset">
               <FormLabel component="legend">항목 유형</FormLabel>
               <RadioGroup
                 row
                 name="formType"
-                value={isCategory ? 'category' : 'item'}
-                onChange={handleFormTypeChange}
-              >
+                value={isCategory ? "category" : "item"}
+                onChange={handleFormTypeChange}>
                 <FormControlLabel
                   value="category"
                   control={<Radio />}
@@ -187,13 +191,16 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
 
         {/* 에러 메시지 */}
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
 
         {/* 성공 메시지 */}
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            {isCategory ? '카테고리가' : '아이템이'} 성공적으로 {formMode === 'create' ? '등록' : '수정'}되었습니다.
+            {isCategory ? "카테고리가" : "아이템이"} 성공적으로{" "}
+            {formMode === "create" ? "등록" : "수정"}되었습니다.
           </Alert>
         )}
 
@@ -223,7 +230,7 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
                   name="description"
                   id="categoryDescription"
                   placeholder="카테고리에 대한 상세 설명"
-                  value={categoryForm.description || ''}
+                  value={categoryForm.description || ""}
                   onChange={handleCategoryInputChange}
                   margin="normal"
                 />
@@ -232,11 +239,11 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={categoryForm.useYn === 'Y'}
+                      checked={categoryForm.useYn === "Y"}
                       onChange={(e) => {
                         setCategoryForm({
                           ...categoryForm,
-                          useYn: e.target.checked ? 'Y' : 'N'
+                          useYn: e.target.checked ? "Y" : "N"
                         });
                       }}
                       name="useYn"
@@ -260,10 +267,9 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
                     value={itemForm.categoryId}
                     onChange={handleItemInputChange}
                     required
-                    label="카테고리 *"
-                  >
+                    label="카테고리 *">
                     <MenuItem value="">카테고리를 선택하세요</MenuItem>
-                    {categoriesFromStore.map(category => (
+                    {categoriesFromStore.map((category) => (
                       <MenuItem key={category.id} value={category.id}>
                         {category.name}
                       </MenuItem>
@@ -304,7 +310,7 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
                   name="specification"
                   id="itemSpecification"
                   placeholder="예: 15인치, HB"
-                  value={itemForm.specification || ''}
+                  value={itemForm.specification || ""}
                   onChange={handleItemInputChange}
                   margin="normal"
                 />
@@ -331,7 +337,7 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
                   name="description"
                   id="itemDescription"
                   placeholder="아이템에 대한 상세 설명"
-                  value={itemForm.description || ''}
+                  value={itemForm.description || ""}
                   onChange={handleItemInputChange}
                   margin="normal"
                 />
@@ -340,11 +346,11 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={itemForm.useYn === 'Y'}
+                      checked={itemForm.useYn === "Y"}
                       onChange={(e) => {
                         setItemForm({
                           ...itemForm,
-                          useYn: e.target.checked ? 'Y' : 'N'
+                          useYn: e.target.checked ? "Y" : "N"
                         });
                       }}
                       name="useYn"
@@ -359,12 +365,8 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
         </form>
       </CardContent>
       <Divider />
-      <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          sx={{ mr: 1 }}
-        >
+      <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
+        <Button variant="outlined" onClick={onClose} sx={{ mr: 1 }}>
           취소
         </Button>
         <Button
@@ -372,9 +374,8 @@ const ItemCategoryForm = ({ initialData, formMode = 'create', onClose }) => {
           color="primary"
           onClick={handleSubmit}
           disabled={isLoading}
-          startIcon={isLoading ? <CircularProgress size={20} /> : null}
-        >
-          {formMode === 'create' ? '등록' : '수정'}
+          startIcon={isLoading ? <CircularProgress size={20} /> : null}>
+          {formMode === "create" ? "등록" : "수정"}
         </Button>
       </CardActions>
     </Card>

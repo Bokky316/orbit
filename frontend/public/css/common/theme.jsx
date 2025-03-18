@@ -1,6 +1,12 @@
 import { createTheme } from "@mui/material/styles";
 
+// common 폰트 패밀리
+const fontFamily = `"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif`;
+
 const theme = createTheme({
+  typography: {
+    fontFamily: fontFamily // 공통 폰트 패밀리 적용
+  },
   palette: {
     primary: {
       light: "#FFB998",
@@ -57,37 +63,41 @@ const theme = createTheme({
       disabledBackground: "rgba(0, 0, 0, 0.12)"
     }
   },
-  typography: {
-    fontFamily: ["Noto Sans KR", "Roboto", "Arial", "sans-serif"].join(","),
-    fontWeightLight: 300,
-    fontWeightRegular: 400,
-    fontWeightMedium: 500,
-    fontWeightBold: 700
-  },
   shape: {
     borderRadius: 4
   },
   components: {
+    // 공통으로 폰트 패밀리 적용
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          fontFamily: fontFamily,
+          fontSize: 14,
+          lineHeight: 1.5,
+          color: "#333"
+        }
+      }
+    },
     // 버튼 스타일 커스터마이징
     MuiButton: {
       styleOverrides: {
         root: {
+          fontFamily: fontFamily,
           textTransform: "none",
           borderRadius: 4,
-          padding: "8px 16px",
+          minHeight: "42px",
+          padding: "7px 16px",
           fontWeight: 500,
           boxShadow: "none",
+          lineHeight: 1.2,
           "&:hover": {
             boxShadow: "none"
           }
         },
         // 기본 버튼 스타일 (basics button)
         contained: {
-          backgroundColor: "#6F6F6F", // 기본 회색
+          backgroundColor: "#FF7F3E",
           color: "#FFFFFF",
-          "&:hover": {
-            backgroundColor: "#AA3800"
-          },
           "&.Mui-disabled": {
             backgroundColor: "#BDBDBD", // Disabled 상태 색상
             color: "rgba(255, 255, 255, 0.7)"
@@ -95,26 +105,43 @@ const theme = createTheme({
         },
         // 아웃라인 버튼 스타일 (outline button)
         outlined: {
-          borderColor: "#FC8D4D", // primary.main
-          color: "#FC8D4D",
-          backgroundColor: "transparent",
+          border: "1px solid #FF7F3E",
+          color: "#FF7F3E",
+          backgroundColor: "#fff",
           "&:hover": {
-            backgroundColor: "rgba(252, 141, 77, 0.08)",
-            borderColor: "#FC8D4D"
+            backgroundColor: "#F6C3A9",
+            border: "1px solid #FF7F3E"
           },
           "&.Mui-disabled": {
-            borderColor: "rgba(0, 0, 0, 0.12)",
+            border: "1px solid rgba(0, 0, 0, 0.12)",
             color: "rgba(0, 0, 0, 0.38)"
           }
         },
         text: {
-          color: "#FC8D4D",
+          color: "#FF7F3E",
           "&:hover": {
             backgroundColor: "rgba(252, 141, 77, 0.08)"
           }
         }
       },
       variants: [
+        {
+          props: { variant: "outlinedThick" },
+          style: {
+            border: "1px solid #D9D9D9",
+            color: "#333",
+            backgroundColor: "transparent",
+            borderRadius: 4,
+            padding: "7px 16px",
+            minHeight: "42px",
+            fontWeight: 400,
+            boxShadow: "none",
+            "&:hover": {
+              boxShadow: "none",
+              fontWeight: 500
+            }
+          }
+        },
         {
           props: { color: "success" },
           style: {
@@ -125,7 +152,7 @@ const theme = createTheme({
               }
             },
             "&.MuiButton-outlined": {
-              borderColor: "#4FC787",
+              border: "1px solid #4FC787",
               color: "#4FC787",
               "&:hover": {
                 backgroundColor: "rgba(79, 199, 135, 0.08)"
@@ -145,7 +172,7 @@ const theme = createTheme({
               }
             },
             "&.MuiButton-outlined": {
-              borderColor: "#F9D682",
+              border: "1px solid #F9D682",
               color: "#121212",
               "&:hover": {
                 backgroundColor: "rgba(249, 214, 130, 0.08)"
@@ -163,7 +190,7 @@ const theme = createTheme({
               }
             },
             "&.MuiButton-outlined": {
-              borderColor: "#FA6B6B",
+              border: "1px solid #FA6B6B",
               color: "#FA6B6B",
               "&:hover": {
                 backgroundColor: "rgba(250, 107, 107, 0.08)"
@@ -177,35 +204,189 @@ const theme = createTheme({
     MuiTextField: {
       styleOverrides: {
         root: {
+          fontFamily: fontFamily,
           "& .MuiOutlinedInput-root": {
+            height: "42px",
+            fontSize: "14px",
+            boxSizing: "border-box",
+            overflow: "hidden",
             "& fieldset": {
-              borderColor: "#E5E7EB",
-              borderWidth: "1px"
+              border: "1px solid #E5E7EB",
+              borderRadius: 4,
+              top: 0, // fieldset 위치 조정
+              backgroundColor: "transparent"
             },
             "&:hover fieldset": {
               borderColor: "#FC8D4D"
             },
             "&.Mui-focused fieldset": {
-              borderColor: "#4FC787",
-              borderWidth: "2px"
+              borderColor: "#FF7F3E",
+              border: "1px solid #FF7F3E"
             },
             "&.Mui-error fieldset": {
               borderColor: "#FA6B6B"
             }
           },
           "& .MuiInputLabel-root": {
-            color: "#6C3A3F",
+            fontFamily: fontFamily,
+            transform: "translate(12px, 12px) scale(1)",
+            fontSize: "14px",
+            backgroundColor: "transparent",
+            padding: "0 4px",
+            top: "4px",
+            "&.MuiInputLabel-shrink": {
+              transform: "translate(12px, -6px) scale(0.75)"
+            },
+            color: "#9CA3AF",
             "&.Mui-focused": {
-              color: "#4FC787"
+              color: "#FF7F3E"
             },
             "&.Mui-error": {
               color: "#FA6B6B"
             }
           },
           "& .MuiInputBase-input": {
+            fontFamily: fontFamily,
+            height: "24px",
+            padding: "9px 12px",
+            fontSize: "14px",
             color: "#333",
+            boxSizing: "border-box",
             "&::placeholder": {
-              color: "#9CA3AF"
+              color: "#9CA3AF",
+              opacity: 1,
+              position: "relative",
+              top: "0"
+            }
+          }
+        }
+      }
+    },
+    // MuiOutlinedInput 스타일 커스터마이징
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          height: "42px",
+          fontSize: "14px",
+          boxSizing: "border-box",
+          backgroundColor: "transparent",
+          overflow: "hidden",
+          "& .MuiOutlinedInput-notchedOutline": {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: "transparent",
+            borderWidth: "1px",
+            borderRadius: 4
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#FC8D4D" // 호버 시 테두리 색상
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#FF7F3E", // 포커스 시 테두리 색상
+            borderWidth: "1px" // 포커스 시 테두리 두께 유지
+          },
+          backgroundColor: "#fff",
+          overflow: "hidden"
+        },
+        input: {
+          height: "24px",
+          padding: "9px 12px",
+          fontSize: "14px",
+          boxSizing: "border-box",
+          "&::placeholder": {
+            opacity: 1, // 플레이스홀더 투명도
+            position: "relative",
+            top: "0", // 플레이스홀더 위치 조정
+            color: "#9CA3AF"
+          }
+        },
+        // notchedOutline 전체 보더 제거 (두번째 보더 해결)
+        notchedOutline: {
+          border: "1px solid #E5E7EB",
+          boxSizing: "border-box",
+          zIndex: 0
+        }
+      }
+    },
+    // 셀렉트 박스 스타일 커스터마이징
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          height: "42px",
+          boxSizing: "border-box"
+        },
+        select: {
+          padding: "9px 12px",
+          minHeight: "unset !important",
+          display: "flex",
+          alignItems: "center",
+          boxSizing: "border-box",
+          "&:focus": {
+            backgroundColor: "transparent"
+          },
+          "&.MuiInputBase-input": {
+            // 셀렉트 박스 텍스트 위치 조정
+            display: "flex",
+            alignItems: "center"
+          },
+          ".MuiSelect-nativeInput::placeholder": {
+            opacity: 1,
+            color: "#9CA3AF"
+          }
+        },
+        outlined: {
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#FC8D4D"
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#FF7F3E",
+            borderWidth: "1px"
+          }
+        },
+
+        // 텍스트 위치 추가 조정
+        outlined: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          textAlign: "left",
+          paddingLeft: "12px"
+        },
+        icon: {
+          right: "12px",
+          top: "calc(50% - 0.5em)",
+          color: "#666"
+        }
+      }
+    },
+    // FormHelperText 스타일 추가
+    MuiFormHelperText: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          fontSize: "12px",
+          marginTop: "4px"
+        }
+      }
+    },
+    // InputLabel 스타일 조정
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          fontSize: "14px",
+          "&.MuiInputLabel-outlined": {
+            transform: "translate(12px, 12px) scale(1)",
+            backgroundColor: "#fff",
+            overflow: "hidden",
+            "&.MuiInputLabel-shrink": {
+              transform: "translate(12px, -6px) scale(0.75)",
+              backgroundColor: "#fff",
+              padding: "0 4px",
+              zIndex: 1
             }
           }
         }
@@ -215,6 +396,7 @@ const theme = createTheme({
     MuiInputBase: {
       styleOverrides: {
         root: {
+          fontFamily: fontFamily,
           fontWeight: "normal",
           "&.Mui-disabled": {
             backgroundColor: "#F5F5F5"
@@ -222,40 +404,157 @@ const theme = createTheme({
         }
       }
     },
-    // 카드 스타일 커스터마이징
+    // DatePicker 관련 스타일 수정
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          // DatePicker 아이콘 버튼 위치 조정
+          "&.MuiPickersArrowSwitcher-button": {
+            padding: 0
+          }
+        }
+      }
+    },
+    // DatePicker 아이콘 위치 조정
+    MuiInputAdornment: {
+      styleOverrides: {
+        root: {
+          // 입력 필드 끝에 붙는 아이콘(달력 등) 위치 조정
+          height: "42px",
+          maxHeight: "none",
+          marginTop: 0,
+          marginBottom: 0,
+          boxSizing: "border-box",
+          "& .MuiIconButton-root": {
+            marginTop: 0,
+            marginBottom: 0,
+            height: "32px",
+            width: "32px",
+            boxSizing: "border-box"
+          },
+          "& .MuiSvgIcon-root": {
+            fontSize: "18px"
+          }
+        },
+        positionEnd: {
+          marginTop: "4px",
+          marginRight: "2px"
+        }
+      }
+    },
+    // 메뉴아이템 스타일 커스터마이징
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          minHeight: 48,
+          "&:hover": {
+            backgroundColor: "rgba(252, 141, 77, 0.08)"
+          },
+          "&.Mui-selected": {
+            backgroundColor: "rgba(252, 141, 77, 0.16)",
+            "&:hover": {
+              backgroundColor: "rgba(252, 141, 77, 0.24)"
+            }
+          }
+        }
+      }
+    },
+    // FormControl 스타일 커스터마이징
+    MuiFormControl: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          "& .MuiInputLabel-root": {
+            // 셀렉트 박스용 레이블 위치 조정
+            "&.MuiInputLabel-formControl": {
+              transform: "translate(14px, 50%) scale(1)",
+              backgroundColor: "transparent",
+              "&.MuiInputLabel-shrink": {
+                transform: "translate(14px, -6px) scale(0.75)"
+              }
+            }
+          }
+        }
+      }
+    },
+    // 카드 스타일 커스터마이징 - 그림자 제거
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.05)",
+          boxShadow: "none",
           borderRadius: 8
         }
       }
     },
-    // 탭 스타일 커스터마이징
-    MuiTab: {
+    // 페이퍼 스타일 커스터마이징 - 그림자 제거
+    MuiPaper: {
       styleOverrides: {
         root: {
-          textTransform: "none",
-          fontWeight: 500,
-          "&.Mui-selected": {
-            color: "#FC8D4D"
+          boxShadow: "none",
+          "&.MuiMenu-paper": {
+            boxShadow: "0px 2px 10px rgba(0, 0, 0, 0.1)" // 메뉴는 그림자 유지
           }
+        },
+        elevation1: {
+          boxShadow: "none",
+          border: "1px solid #e5e7eb"
         }
       }
     },
-    // 표 스타일 커스터마이징
+    // 그리드 스타일 커스터마이징
+    MuiGrid: {
+      styleOverrides: {
+        root: {
+          // 그리드에 특별한 스타일링 필요 없음
+        }
+      }
+    },
+    // 박스 스타일 커스터마이징
+    MuiBox: {
+      styleOverrides: {
+        root: {
+          // 박스에 특별한 스타일링 필요 없음
+        }
+      }
+    },
+    // 테이블 스타일 커스터마이징
+    MuiTable: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          borderRadius: 8,
+          boxShadow: "none",
+          fontSize: 14
+        }
+      }
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          fontSize: 14,
+          padding: "16px", // 테이블 셀 패딩 조정
+          borderBottom: "1px solid #F7F8FA"
+        },
+        head: {
+          fontWeight: 600,
+          backgroundColor: "#F7F8FA"
+        }
+      }
+    },
+    // 테이블 행 스타일 커스터마이징
     MuiTableRow: {
       styleOverrides: {
         root: {
-          "&:nth-of-type(odd)": {
-            backgroundColor: "rgba(0, 0, 0, 0.02)"
-          },
+          fontSize: 14,
+          padding: "16px", // 테이블 셀 패딩 조정
           "&:hover": {
-            backgroundColor: "rgba(252, 141, 77, 0.08)"
+            backgroundColor: "#F7F8FA"
           }
         },
         head: {
-          backgroundColor: "rgba(0, 0, 0, 0.04) !important"
+          backgroundColor: "#F7F8FA !important"
         }
       }
     },
@@ -265,7 +564,7 @@ const theme = createTheme({
         root: {
           color: "#BDBDBD",
           "&.Mui-checked": {
-            color: "#FC8D4D"
+            color: "#4FC787"
           }
         }
       }
@@ -276,6 +575,19 @@ const theme = createTheme({
         root: {
           color: "#BDBDBD",
           "&.Mui-checked": {
+            color: "#4FC787"
+          }
+        }
+      }
+    },
+    // 탭 스타일 커스터마이징
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          textTransform: "none",
+          fontWeight: 500,
+          "&.Mui-selected": {
             color: "#FC8D4D"
           }
         }
@@ -296,7 +608,7 @@ const theme = createTheme({
             transform: "translateX(16px)",
             color: "#fff",
             "& + .MuiSwitch-track": {
-              backgroundColor: "#FC8D4D",
+              backgroundColor: "#4FC787",
               opacity: 1
             }
           }
@@ -315,6 +627,7 @@ const theme = createTheme({
     MuiTooltip: {
       styleOverrides: {
         tooltip: {
+          fontFamily: fontFamily,
           backgroundColor: "rgba(18, 18, 18, 0.9)",
           fontSize: "0.75rem",
           padding: "8px 12px"
@@ -325,16 +638,8 @@ const theme = createTheme({
     MuiSnackbarContent: {
       styleOverrides: {
         root: {
+          fontFamily: fontFamily,
           backgroundColor: "#323232"
-        }
-      }
-    },
-    // 딜로그 스타일 커스터마이징
-    MuiDialog: {
-      styleOverrides: {
-        paper: {
-          borderRadius: 8,
-          boxShadow: "0px 8px 30px rgba(0, 0, 0, 0.12)"
         }
       }
     },
@@ -342,6 +647,8 @@ const theme = createTheme({
     MuiPaginationItem: {
       styleOverrides: {
         root: {
+          fontFamily: fontFamily,
+          boxShadow: "none",
           "&.Mui-selected": {
             backgroundColor: "rgba(252, 141, 77, 0.16)",
             color: "#FC8D4D",
@@ -351,16 +658,33 @@ const theme = createTheme({
           }
         }
       }
+    },
+    // 데이트피커 스타일 커스터마이징
+    MuiPickersDay: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily
+        },
+        today: {
+          borderColor: "#FC8D4D !important"
+        },
+        daySelected: {
+          backgroundColor: "#FC8D4D !important",
+          "&:hover": {
+            backgroundColor: "#AA3800 !important"
+          }
+        }
+      }
     }
   },
   // 추가적인 사용자 정의 테마 속성
   customStyles: {
     inputBorder: {
       color: "#4FC787",
-      width: "2px"
+      width: "1px" // 테두리 두께 1px로 변경
     },
-    placeholderColor: "#6C3A3F",
-    disabledBackground: "#BDBDBD",
+    placeholderColor: "#9CA3AF", // 플레이스홀더 색상 변경
+    disabledBackground: "#F5F5F5",
     iconSizes: {
       small: 16,
       medium: 24,

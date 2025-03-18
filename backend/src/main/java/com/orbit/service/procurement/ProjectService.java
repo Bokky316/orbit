@@ -2,7 +2,6 @@ package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.ProjectAttachmentDTO;
 import com.orbit.dto.procurement.ProjectDTO;
-import com.orbit.dto.procurement.ProjectDTO;
 import com.orbit.entity.approval.Department;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
@@ -215,21 +214,19 @@ public class ProjectService {
         return convertToDto(updatedProject);
     }
 
-        // 5. 저장 후 DTO 반환
-        Project updatedProject = projectRepository.save(project);
-        return convertToDto(updatedProject);
-    }
-
     /**
      * 프로젝트 삭제
      */
     @Transactional
-    public void deleteProject(Long id) {
-        // 1. 프로젝트 조회 (존재 확인)
+    public void deleteProject(Long id, String username) {
+        // 1. 프로젝트 조회
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
 
-        // 2. 삭제
+        // 2. 삭제 가능 여부 검증
+        validateProjectDeletable(project, username);
+
+        // 3. 삭제 (물리적 삭제 대신 삭제 상태로 변경하는 로직으로 대체 가능)
         projectRepository.delete(project);
     }
 
@@ -379,24 +376,8 @@ public class ProjectService {
         projectPeriod.setEndDate(dto.getProjectPeriod().getEndDate());
     }
 
-    private void logStatusChange(Project project, Member member) {
-        StatusHistory history = stateService.changeState(
-                project.getId(),
-                StatusHistory.EntityType.PROJECT,
-                project.getBasicStatus(),
-                project.getProcurementStatus(),
-                member
-        );
-        project.addStatusHistory(history);
-    }
-
-    private SystemStatus parseStatus(String statusCode) {
-        String[] parts = statusCode.split("-");
-        return new SystemStatus(parts[0], parts[1]);
-    }
-
     /**
-     * DTO를 엔티티로 변환
+     * DTO -> 엔티티 변환
      */
     private Project convertToEntity(ProjectDTO dto) {
         Project project = Project.builder()
@@ -428,7 +409,7 @@ public class ProjectService {
     }
 
     /**
-     * 엔티티를 DTO로 변환
+     * 엔티티 -> DTO 변환
      */
     private ProjectDTO convertToDto(Project project) {
         ProjectDTO dto = new ProjectDTO();
@@ -483,15 +464,6 @@ public class ProjectService {
                             project.getBasicStatusChild().getCodeValue()
             );
         }
-
-        // 조달 상태 코드 설정
-        if (project.getProcurementStatusParent() != null && project.getProcurementStatusChild() != null) {
-            dto.setProcurementStatus(
-                    project.getProcurementStatusParent().getEntityType() + "-" +
-                            project.getProcurementStatusParent().getCodeGroup() + "-" +
-                            project.getProcurementStatusChild().getCodeValue()
-            );
-        }
     }
 
     /**
@@ -508,4 +480,67 @@ public class ProjectService {
                 .description(attachment.getDescription())
                 .build();
     }
+
+    /**
+     * 프로젝트 수정 가능 여부 검증
+     */
+    private void validateProjectModifiable(Project project, String username) {
+        // 1. 상태 기반 검증 - 등록, 정정등록 상태에서만 수정 가능
+        if (project.getBasicStatusChild() != null) {
+            String statusCode = project.getBasicStatusChild().getCodeValue();
+            if (!("REGISTERED".equals(statusCode) || "REREGISTERED".equals(statusCode))) {
+                throw new IllegalStateException("현재 프로젝트 상태(" + statusCode + ")에서는 수정할 수 없습니다. 등록 또는 정정등록 상태에서만 수정 가능합니다.");
+            }
+        }
+
+        // 2. 권한 기반 검증 - 프로젝트 담당자 또는 관리자만 수정 가능
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = project.getRequester() != null && project.getRequester().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("프로젝트 수정 권한이 없습니다. 프로젝트 요청자 또는 관리자만 수정할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 프로젝트 삭제 가능 여부 검증
+     */
+    private void validateProjectDeletable(Project project, String username) {
+        // 1. 상태 기반 검증 - 등록, 정정등록 상태에서만 삭제 가능
+        if (project.getBasicStatusChild() != null) {
+            String statusCode = project.getBasicStatusChild().getCodeValue();
+            if (!("REGISTERED".equals(statusCode) || "REREGISTERED".equals(statusCode))) {
+                throw new IllegalStateException("현재 프로젝트 상태(" + statusCode + ")에서는 삭제할 수 없습니다. 등록 또는 정정등록 상태에서만 삭제 가능합니다.");
+            }
+        }
+
+        // 2. 권한 기반 검증 - 프로젝트 담당자 또는 관리자만 삭제 가능
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = project.getRequester() != null && project.getRequester().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("프로젝트 삭제 권한이 없습니다. 프로젝트 요청자 또는 관리자만 삭제할 수 있습니다.");
+        }
+
+        // 3. 연관관계 기반 검증 - 진행 중인 구매요청이 없어야 삭제 가능
+        List<PurchaseRequest> activeRequests = project.getPurchaseRequests().stream()
+                .filter(pr -> {
+                    if (pr.getStatus() == null) return false;
+                    String requestStatus = pr.getStatus().getChildCode();
+                    // 구매요청 접수 이후 상태인 경우 진행 중으로 간주
+                    return !("REQUESTED".equals(requestStatus));
+                })
+                .collect(Collectors.toList());
+
+        if (!activeRequests.isEmpty()) {
+            throw new IllegalStateException("이 프로젝트와 연결된 진행 중인 구매요청이 " + activeRequests.size() + "개 있어 삭제할 수 없습니다.");
+        }
+    }
+
 }

@@ -1,13 +1,18 @@
 package com.orbit.controller.organization;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.orbit.dto.approval.DepartmentDTO;
 import com.orbit.dto.member.MemberDTO;
 import com.orbit.service.organization.OrganizationService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 조직 관련 API 컨트롤러 (부서 및 멤버 정보 조회)

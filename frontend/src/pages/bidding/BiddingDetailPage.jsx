@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import PropTypes from "prop-types";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -16,13 +15,17 @@ import {
   TableHead,
   TableRow,
   CircularProgress,
+  Link,
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
-  Link,
-  Alert
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/GetApp";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
@@ -31,6 +34,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import BiddingEvaluationDialog from "./BiddingEvaluationDialog";
 import { API_URL } from "@/utils/constants";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { saveAs } from "file-saver";
 
 import {
   NotificationPanel,
@@ -227,65 +231,27 @@ function BiddingDetailPage() {
     if (confirmDelete) {
       try {
         setIsLoading(true);
-        setError(null);
 
-        // 1. 입찰 공고 상세 정보 가져오기
-        const biddingResponse = await fetchWithAuth(`${API_URL}biddings/${id}`);
+        const response = await fetchWithAuth(`${API_URL}biddings/${id}`, {
+          method: "DELETE"
+        });
 
-        if (!biddingResponse.ok) {
+        if (!response.ok) {
           throw new Error(
-            `입찰 공고 정보를 불러오는데 실패했습니다. (${biddingResponse.status})`
+            `입찰 공고 삭제에 실패했습니다. (${response.status})`
           );
         }
 
-        const biddingData = await biddingResponse.json();
-        //console.log("API 응답 데이터:", biddingData);
-
-        // API 응답 데이터 형식에 맞게 필드 매핑
-        const mappedBidding = {
-          id: biddingData.id,
-          bidNumber: biddingData.bidNumber || `BID-${biddingData.id}`,
-          title: biddingData.title,
-          description: biddingData.description,
-          bidMethod: biddingData.bidMethod,
-          status: biddingData.status,
-          startDate: biddingData.startDate,
-          endDate: biddingData.endDate,
-          conditions: biddingData.conditions || biddingData.biddingConditions,
-          internalNote: biddingData.internalNote,
-          quantity: biddingData.quantity || 0,
-          unitPrice: biddingData.unitPrice || 0,
-          supplyPrice: biddingData.supplyPrice || 0,
-          vat: biddingData.vat || 0,
-          totalAmount: biddingData.totalAmount || 0,
-          createdBy: biddingData.createdBy,
-          createdAt: biddingData.createdAt,
-          updatedAt: biddingData.updatedAt
-        };
-
-        setBidding(mappedBidding);
-
-        // 2. 입찰 참여 목록 가져오기
-        const participationsResponse = await fetchWithAuth(
-          `${API_URL}biddings/${id}/participations`
-        );
-
-        if (!participationsResponse.ok) {
-          console.warn(
-            `입찰 참여 정보를 불러오는데 실패했습니다. (${participationsResponse.status})`
-          );
-          setParticipations([]);
-        } else {
-          const participationsData = await participationsResponse.json();
-          setParticipations(participationsData);
-        }
+        alert("입찰 공고가 성공적으로 삭제되었습니다.");
+        navigate("/biddings");
       } catch (error) {
-        console.error("데이터 로딩 중 오류:", error);
-        setError(error.message);
+        console.error("입찰 공고 삭제 중 오류:", error);
+        alert(`오류가 발생했습니다: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
     }
+  };
 
   // 상태 변경 다이얼로그 열기
   const handleOpenStatusChange = () => {
@@ -296,8 +262,16 @@ function BiddingDetailPage() {
     });
   };
 
-  // 입찰 공고 삭제
-  async function handleDelete() {
+  // 상태 변경 다이얼로그 닫기
+  const handleCloseStatusChange = () => {
+    setStatusChangeDialog({
+      ...statusChangeDialog,
+      open: false
+    });
+  };
+
+  // 상태 변경 제출
+  const handleStatusChangeSubmit = async () => {
     try {
       setIsLoading(true);
 
@@ -324,28 +298,29 @@ function BiddingDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`입찰 공고 삭제에 실패했습니다. (${response.status})`);
+        throw new Error(`상태 변경에 실패했습니다. (${response.status})`);
       }
 
-      alert("입찰 공고가 성공적으로 삭제되었습니다.");
+      const updatedBidding = await response.json();
+      setBidding(updatedBidding);
 
-      // 목록 페이지로 이동
-      if (onBack) {
-        onBack();
-      }
+      // 상태 이력 다시 가져오기
+      fetchStatusHistories(id);
+
+      alert("상태가 성공적으로 변경되었습니다.");
+      handleCloseStatusChange();
     } catch (error) {
-      console.error("입찰 공고 삭제 중 오류:", error);
+      console.error("상태 변경 중 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
-      setIsDeleteDialogOpen(false);
     }
-  }
+  };
 
   // 공급자 평가 제출 핸들러
   const handleEvaluationSubmit = async (evaluationData) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}bidding-evaluations`, {
+      const response = await fetchWithAuth(`${API_URL}biddings/evaluations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -357,8 +332,7 @@ function BiddingDetailPage() {
         throw new Error("평가 제출에 실패했습니다.");
       }
 
-      const savedEvaluation = await response.json();
-      return savedEvaluation;
+      return await response.json();
     } catch (error) {
       console.error("평가 제출 중 오류:", error);
       throw error;
@@ -578,9 +552,7 @@ function BiddingDetailPage() {
   const formatNumber = (value) => {
     if (value === null || value === undefined) return "0";
     if (typeof value === "string") {
-      // 문자열에 콤마가 포함되어 있으면 그대로 반환
       if (value.includes(",")) return value;
-      // 숫자로 변환 시도
       const num = parseFloat(value);
       return isNaN(num) ? "0" : num.toLocaleString();
     }
@@ -612,7 +584,7 @@ function BiddingDetailPage() {
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-        <Button variant="contained" onClick={onBack}>
+        <Button variant="contained" onClick={handleBack}>
           돌아가기
         </Button>
       </Box>
@@ -626,7 +598,7 @@ function BiddingDetailPage() {
         <Alert severity="warning" sx={{ mb: 2 }}>
           입찰 공고를 찾을 수 없습니다
         </Alert>
-        <Button variant="contained" onClick={onBack}>
+        <Button variant="contained" onClick={handleBack}>
           돌아가기
         </Button>
       </Box>
@@ -708,7 +680,9 @@ function BiddingDetailPage() {
             <Typography variant="subtitle2" color="text.secondary">
               입찰 방식
             </Typography>
-            <Typography variant="body1">{bidding.bidMethod}</Typography>
+            <Typography variant="body1">
+              {getBidMethodText(bidding.bidMethod)}
+            </Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="subtitle2" color="text.secondary">
@@ -815,27 +789,6 @@ function BiddingDetailPage() {
           {bidding.conditions || "입찰 조건이 없습니다."}
         </Typography>
       </Paper>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
-          첨부 파일
-        </Typography>
-        {bidding.filePath ? (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography variant="body1">{bidding.filePath}</Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => handleFileDownload(bidding.filePath)}
-              startIcon={<DownloadIcon />}>
-              다운로드
-            </Button>
-          </Box>
-        ) : (
-          <Typography variant="body2" color="text.secondary">
-            첨부된 파일이 없습니다.
-          </Typography>
-        )}
-      </Paper>
 
       {/* 첨부 파일 */}
       <Paper sx={{ p: 3, mb: 3 }}>
@@ -937,49 +890,6 @@ function BiddingDetailPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 4
-                  }}>
-                  <Typography variant="h4">입찰 공고 상세</Typography>
-                  <Box>
-                    <Button
-                      variant="outlined"
-                      onClick={handleOpenStatusChange}
-                      sx={{ mr: 1 }}>
-                      상태 변경
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={handleVendorSelection}
-                      sx={{ mr: 1 }}>
-                      공급자 선정
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={handleBack}
-                      sx={{ mr: 1 }}>
-                      목록으로
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleEdit}
-                      sx={{ mr: 1 }}>
-                      수정
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      onClick={handleDelete}>
-                      삭제
-                    </Button>
-                  </Box>
-                </Box>
                 {participations.map((participation) => (
                   <TableRow key={participation.id}>
                     <TableCell>
@@ -1038,15 +948,54 @@ function BiddingDetailPage() {
             </Table>
           </TableContainer>
         ) : (
-          <Typography variant="body1">아직 입찰 참여가 없습니다.</Typography>
+          <Typography variant="body1">
+            아직 입찰 참여 공급자가 없습니다.
+          </Typography>
         )}
       </Paper>
 
-      {/* 삭제 확인 다이얼로그 */}
-      <Dialog
-        open={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}>
-        <DialogTitle>입찰 공고 삭제</DialogTitle>
+      {/* 상태 변경 이력 */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          상태 변경 이력
+        </Typography>
+        {statusHistories.length > 0 ? (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>이전 상태</TableCell>
+                  <TableCell>현재 상태</TableCell>
+                  <TableCell>변경 사유</TableCell>
+                  <TableCell>변경자</TableCell>
+                  <TableCell>변경일시</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {statusHistories.map((history) => (
+                  <TableRow key={history.id}>
+                    <TableCell>{getStatusText(history.fromStatus)}</TableCell>
+                    <TableCell>{getStatusText(history.toStatus)}</TableCell>
+                    <TableCell>{history.reason || "-"}</TableCell>
+                    <TableCell>{history.changedBy?.username || "-"}</TableCell>
+                    <TableCell>
+                      {history.changedAt
+                        ? new Date(history.changedAt).toLocaleString()
+                        : "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Typography variant="body1">상태 변경 이력이 없습니다.</Typography>
+        )}
+      </Paper>
+
+      {/* 상태 변경 다이얼로그 */}
+      <Dialog open={statusChangeDialog.open} onClose={handleCloseStatusChange}>
+        <DialogTitle>입찰 공고 상태 변경</DialogTitle>
         <DialogContent>
           <FormControl fullWidth margin="normal">
             <InputLabel id="new-status-label">새 상태</InputLabel>
@@ -1082,11 +1031,12 @@ function BiddingDetailPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsDeleteDialogOpen(false)} color="primary">
-            취소
-          </Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
-            삭제
+          <Button onClick={handleCloseStatusChange}>취소</Button>
+          <Button
+            onClick={handleStatusChangeSubmit}
+            variant="contained"
+            color="primary">
+            변경
           </Button>
         </DialogActions>
       </Dialog>
@@ -1212,10 +1162,5 @@ function BiddingDetailPage() {
     </Box>
   );
 }
-
-BiddingDetailPage.propTypes = {
-  onEdit: PropTypes.func,
-  onBack: PropTypes.func
-};
 
 export default BiddingDetailPage;

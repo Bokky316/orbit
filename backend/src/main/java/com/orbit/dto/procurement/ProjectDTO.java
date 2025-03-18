@@ -1,5 +1,13 @@
-// ProjectRequestDTO.java
 package com.orbit.dto.procurement;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,7 +28,8 @@ public class ProjectDTO {
     private Long id;
     private String projectIdentifier;
 
-    @NotBlank @Size(max = 200)
+    // 기본 정보
+    @NotBlank(message = "프로젝트명은 필수입니다")
     private String projectName;
     private String businessCategory;
     private Long totalBudget;
@@ -36,14 +45,16 @@ public class ProjectDTO {
     // 상태 정보
     private String basicStatus;
 
-    @Pattern(regexp = "^[A-Z]+-[A-Z_]+$")
-    private String procurementStatus;
+    // 프로젝트 기간
+    @NotNull(message = "프로젝트 기간은 필수입니다")
+    @Valid
+    private PeriodInfo projectPeriod;
 
-    @Valid @NotNull
-    private ManagerDTO projectManager;
+    // 업데이트 요청자 (업데이트 시 사용)
+    private String updatedBy;
 
-    @Valid @NotNull
-    private PeriodDTO projectPeriod;
+    // 첨부파일 (Multipart 요청 시 사용)
+    private MultipartFile[] files;
 
     // 첨부파일 목록 (응답에만 사용)
     private List<ProjectAttachmentDTO> attachments = new ArrayList<>();

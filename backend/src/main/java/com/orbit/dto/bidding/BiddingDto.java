@@ -6,14 +6,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.orbit.entity.bidding.Bidding;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.PurchaseRequestItem;
 
-import com.orbit.entity.commonCode.SystemStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 입찰 공고 응답용 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,31 +28,46 @@ import lombok.Setter;
 public class BiddingDto {
     private Long id;
     private String bidNumber;
+    
+    // 구매 요청 관련 정보
+    private PurchaseRequest purchaseRequest;
     private Long purchaseRequestId;
+    private PurchaseRequestItem purchaseRequestItem;
     private Long purchaseRequestItemId;
-    private Integer quantity;  // BiddingService의 calculateBiddingPrices 메서드 관련
+    
+    // 입찰 기본 정보
     private String title;
     private String description;
-    private Bidding.BidMethod bidMethod;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String conditions;
     private String internalNote;
+    
+    // 수량 및 가격 정보
+    private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal supplyPrice;
     private BigDecimal vat;
     private BigDecimal totalAmount;
-    private List<Long> supplierIds;  // 다중 공급자 정보를 저장할 필드 추가
-    private Bidding.BiddingStatus status;
+    
+    // 상태 정보
+    private ParentCode statusParent;
+    private ChildCode statusChild;
+    private String statusText;
+    
+    // 입찰 방식
+    private ParentCode methodParent;
+    private ChildCode methodChild;
+    
+    // 파일 및 기타 정보
     private String filePath;
     private List<String> attachmentPaths;
     
     // 시간 및 생성자 정보
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Long createdBy;
-    private Long updatedBy;
-  
+    private String createdBy;
+    private String modifiedBy;
     
     // 공급자 및 참여 정보
     private List<BiddingSupplierDto> suppliers;
@@ -84,6 +105,10 @@ public class BiddingDto {
     
     // Entity -> DTO 변환
     public static BiddingDto fromEntity(Bidding entity) {
+        if (entity == null) {
+            return null;
+        }
+        
         return BiddingDto.builder()
                 .id(entity.getId())
                 .bidNumber(entity.getBidNumber())
@@ -93,11 +118,11 @@ public class BiddingDto {
                 .purchaseRequestItemId(entity.getPurchaseRequestItemId())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
-                .bidMethod(entity.getBidMethod())
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
                 .conditions(entity.getConditions())
                 .internalNote(entity.getInternalNote())
+                .quantity(entity.getQuantity())
                 .unitPrice(entity.getUnitPrice())
                 .supplyPrice(entity.getSupplyPrice())
                 .vat(entity.getVat())

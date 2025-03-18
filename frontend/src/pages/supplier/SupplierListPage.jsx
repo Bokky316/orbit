@@ -1,8 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
-import { fetchSuppliers, updateSupplierStatus, initializeCategoriesFromSuppliers } from '../../redux/supplier/supplierSlice';
-import { fetchWithAuth } from '../../utils/fetchWithAuth';
+import React, { useEffect, useState, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  fetchSuppliers,
+  updateSupplierStatus,
+  initializeCategoriesFromSuppliers
+} from "../../redux/supplier/supplierSlice";
+import { fetchWithAuth } from "../../utils/fetchWithAuth";
 import {
   Box,
   Typography,
@@ -32,7 +36,7 @@ import {
   IconButton,
   Divider,
   Alert
-} from '@mui/material';
+} from "@mui/material";
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -40,7 +44,7 @@ import {
   Block as BlockIcon,
   CheckCircle as CheckCircleIcon,
   ErrorOutline as ErrorOutlineIcon
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 const SupplierListPage = () => {
   const dispatch = useDispatch();
@@ -72,22 +76,24 @@ const SupplierListPage = () => {
 
   // 필터 상태
   const [filters, setFilters] = useState({
-    status: '',
-    sourcingCategory: '',
-    sourcingSubCategory: '',
-    sourcingDetailCategory: '',
-    supplierName: ''
+    status: "",
+    sourcingCategory: "",
+    sourcingSubCategory: "",
+    sourcingDetailCategory: "",
+    supplierName: ""
   });
 
   // 모달 상태
   const [openModal, setOpenModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionReason, setRejectionReason] = useState("");
   const [selectedSupplierId, setSelectedSupplierId] = useState(null);
-  const [selectedSupplierName, setSelectedSupplierName] = useState('');
+  const [selectedSupplierName, setSelectedSupplierName] = useState("");
 
   // 사용 가능한 소싱 중분류 및 소분류 옵션
   const [availableSubCategories, setAvailableSubCategories] = useState([]);
-  const [availableDetailCategories, setAvailableDetailCategories] = useState([]);
+  const [availableDetailCategories, setAvailableDetailCategories] = useState(
+    []
+  );
 
   // 페이징 관련 상태 추가
   const [page, setPage] = useState(0); // TablePagination은 0부터 시작
@@ -96,11 +102,11 @@ const SupplierListPage = () => {
   // 컴포넌트 마운트 시 초기 데이터 로드 - 이 부분이 추가됨
   useEffect(() => {
     try {
-      console.log('초기 데이터 로드 시작');
+      console.log("초기 데이터 로드 시작");
       dispatch(fetchSuppliers({})); // 빈 필터로 초기 데이터 로드
       initialLoadComplete.current = true; // 초기 로드 완료 표시
     } catch (err) {
-      console.error('Error fetching initial suppliers:', err);
+      console.error("Error fetching initial suppliers:", err);
     }
   }, [dispatch]); // 의존성 배열에 dispatch만 포함하여 마운트 시 한 번만 실행
 
@@ -108,14 +114,14 @@ const SupplierListPage = () => {
   useEffect(() => {
     // 초기 로드 이후에는 항상 API 호출
     if (initialLoadComplete.current) {
-      console.log('필터 변경으로 API 호출:', JSON.stringify(filters));
+      console.log("필터 변경으로 API 호출:", JSON.stringify(filters));
 
       try {
-        dispatch(fetchSuppliers({...filters}));
+        dispatch(fetchSuppliers({ ...filters }));
         // 필터 변경 시 페이지를 0으로 리셋 (TablePagination은 0부터 시작)
         setPage(0);
       } catch (err) {
-        console.error('Error fetching filtered suppliers:', err);
+        console.error("Error fetching filtered suppliers:", err);
       }
     }
   }, [dispatch, filters]); // 필터 변경 시 실행
@@ -130,7 +136,9 @@ const SupplierListPage = () => {
   // 대분류 변경 시 중분류 옵션 업데이트
   useEffect(() => {
     if (filters.sourcingCategory) {
-      setAvailableSubCategories(sourcingSubCategories[filters.sourcingCategory] || []);
+      setAvailableSubCategories(
+        sourcingSubCategories[filters.sourcingCategory] || []
+      );
       setAvailableDetailCategories([]);
     } else {
       setAvailableSubCategories([]);
@@ -140,7 +148,9 @@ const SupplierListPage = () => {
   // 중분류 변경 시 소분류 옵션 업데이트
   useEffect(() => {
     if (filters.sourcingSubCategory) {
-      setAvailableDetailCategories(sourcingDetailCategories[filters.sourcingSubCategory] || []);
+      setAvailableDetailCategories(
+        sourcingDetailCategories[filters.sourcingSubCategory] || []
+      );
     } else {
       setAvailableDetailCategories([]);
     }
@@ -174,18 +184,18 @@ const SupplierListPage = () => {
     console.log(`필터 변경 후: ${name} = ${value}`);
 
     // 상태 업데이트 방식 변경
-    if (name === 'sourcingCategory') {
+    if (name === "sourcingCategory") {
       setFilters({
         ...filters,
         sourcingCategory: value,
-        sourcingSubCategory: '',
-        sourcingDetailCategory: ''
+        sourcingSubCategory: "",
+        sourcingDetailCategory: ""
       });
-    } else if (name === 'sourcingSubCategory') {
+    } else if (name === "sourcingSubCategory") {
       setFilters({
         ...filters,
         sourcingSubCategory: value,
-        sourcingDetailCategory: ''
+        sourcingDetailCategory: ""
       });
     } else {
       setFilters({
@@ -198,11 +208,11 @@ const SupplierListPage = () => {
   // 필터 초기화 핸들러
   const handleClearFilters = () => {
     setFilters({
-      status: '',
-      sourcingCategory: '',
-      sourcingSubCategory: '',
-      sourcingDetailCategory: '',
-      supplierName: ''
+      status: "",
+      sourcingCategory: "",
+      sourcingSubCategory: "",
+      sourcingDetailCategory: "",
+      supplierName: ""
     });
   };
 
@@ -213,27 +223,27 @@ const SupplierListPage = () => {
   };
 
   // 사용자의 역할에 따른 권한 확인
-  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
-  const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
+  const isAdmin = user && user.roles && user.roles.includes("ROLE_ADMIN");
+  const isSupplier = user && user.roles && user.roles.includes("ROLE_SUPPLIER");
 
   // 상태에 따른 Chip 색상 설정
   const getStatusChip = (status) => {
     // status가 객체인 경우 childCode를 사용
     const statusCode = status?.childCode || status;
 
-    switch(statusCode) {
-      case 'APPROVED':
-      case 'ACTIVE':
+    switch (statusCode) {
+      case "APPROVED":
+      case "ACTIVE":
         return <Chip label="승인" color="success" size="small" />;
-      case 'PENDING':
+      case "PENDING":
         return <Chip label="심사대기" color="warning" size="small" />;
-      case 'REJECTED':
+      case "REJECTED":
         return <Chip label="반려" color="error" size="small" />;
-      case 'SUSPENDED':
+      case "SUSPENDED":
         return <Chip label="일시정지" color="default" size="small" />;
-      case 'BLACKLIST':
+      case "BLACKLIST":
         return <Chip label="블랙리스트" color="error" size="small" />;
-      case 'INACTIVE':
+      case "INACTIVE":
         return <Chip label="비활성" color="default" size="small" />;
       default:
         return <Chip label="미확인" size="small" />;
@@ -242,22 +252,22 @@ const SupplierListPage = () => {
 
   // 에러 표시
   if (error) {
-    console.error('Error in supplier list:', error);
+    console.error("Error in supplier list:", error);
   }
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-       <div>
-         <Typography variant="h4" component="div" gutterBottom>
-           협력업체 목록
-         </Typography>
-         {!isAdmin && (
-           <Typography variant="subtitle1" color="text.secondary">
-             (본인이 등록한 업체만 표시됩니다)
-           </Typography>
-         )}
-       </div>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+        <div>
+          <Typography variant="h4" component="div" gutterBottom>
+            협력업체 목록
+          </Typography>
+          {!isAdmin && (
+            <Typography variant="subtitle1" color="text.secondary">
+              (본인이 등록한 업체만 표시됩니다)
+            </Typography>
+          )}
+        </div>
       </Box>
 
       {/* 필터 섹션 - ADMIN과 SUPPLIER 모두 사용 가능 */}
@@ -271,10 +281,9 @@ const SupplierListPage = () => {
                 name="sourcingCategory"
                 value={filters.sourcingCategory}
                 onChange={handleFilterChange}
-                label="소싱대분류"
-              >
+                label="소싱대분류">
                 <MenuItem value="">전체</MenuItem>
-                {sourcingCategories.map(category => (
+                {sourcingCategories.map((category) => (
                   <MenuItem key={category.value} value={category.value}>
                     {category.label}
                   </MenuItem>
@@ -283,24 +292,26 @@ const SupplierListPage = () => {
             </FormControl>
           </Grid>
           <Grid item xs={12} md={4}>
-            <FormControl fullWidth size="small" disabled={!filters.sourcingCategory}>
+            <FormControl
+              fullWidth
+              size="small"
+              disabled={!filters.sourcingCategory}>
               <InputLabel>소싱중분류</InputLabel>
               <Select
                 name="sourcingSubCategory"
                 value={filters.sourcingSubCategory}
                 onChange={(e) => {
                   const value = e.target.value;
-                  console.log('소싱중분류 직접 선택:', value);
+                  console.log("소싱중분류 직접 선택:", value);
                   setFilters({
                     ...filters,
                     sourcingSubCategory: value,
-                    sourcingDetailCategory: ''
+                    sourcingDetailCategory: ""
                   });
                 }}
-                label="소싱중분류"
-              >
+                label="소싱중분류">
                 <MenuItem value="">전체</MenuItem>
-                {availableSubCategories.map(category => (
+                {availableSubCategories.map((category) => (
                   <MenuItem key={category.value} value={category.value}>
                     {category.label}
                   </MenuItem>
@@ -309,16 +320,18 @@ const SupplierListPage = () => {
             </FormControl>
           </Grid>
           <Grid item xs={12} md={4}>
-            <FormControl fullWidth size="small" disabled={!filters.sourcingSubCategory}>
+            <FormControl
+              fullWidth
+              size="small"
+              disabled={!filters.sourcingSubCategory}>
               <InputLabel>소싱소분류</InputLabel>
               <Select
                 name="sourcingDetailCategory"
                 value={filters.sourcingDetailCategory}
                 onChange={handleFilterChange}
-                label="소싱소분류"
-              >
+                label="소싱소분류">
                 <MenuItem value="">전체</MenuItem>
-                {availableDetailCategories.map(category => (
+                {availableDetailCategories.map((category) => (
                   <MenuItem key={category.value} value={category.value}>
                     {category.label}
                   </MenuItem>
@@ -340,8 +353,9 @@ const SupplierListPage = () => {
                 endAdornment: filters.supplierName ? (
                   <IconButton
                     size="small"
-                    onClick={() => setFilters(prev => ({ ...prev, supplierName: '' }))}
-                  >
+                    onClick={() =>
+                      setFilters((prev) => ({ ...prev, supplierName: "" }))
+                    }>
                     <ClearIcon fontSize="small" />
                   </IconButton>
                 ) : (
@@ -357,28 +371,38 @@ const SupplierListPage = () => {
                 name="status"
                 value={filters.status}
                 onChange={handleFilterChange}
-                label="상태"
-              >
+                label="상태">
                 <MenuItem value="">전체</MenuItem>
                 <MenuItem value="APPROVED">승인</MenuItem>
                 <MenuItem value="PENDING">심사대기</MenuItem>
                 <MenuItem value="REJECTED">반려</MenuItem>
                 {/* ADMIN만 일시정지 및 블랙리스트 필터 표시 */}
-                {isAdmin ? [
-                  <MenuItem key="suspended" value="SUSPENDED">일시정지</MenuItem>,
-                  <MenuItem key="blacklist" value="BLACKLIST">블랙리스트</MenuItem>,
-                  <MenuItem key="inactive" value="INACTIVE">비활성</MenuItem>
-                ] : null}
+                {isAdmin
+                  ? [
+                      <MenuItem key="suspended" value="SUSPENDED">
+                        일시정지
+                      </MenuItem>,
+                      <MenuItem key="blacklist" value="BLACKLIST">
+                        블랙리스트
+                      </MenuItem>,
+                      <MenuItem key="inactive" value="INACTIVE">
+                        비활성
+                      </MenuItem>
+                    ]
+                  : null}
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={2} sx={{ display: 'flex', alignItems: 'center' }}>
+          <Grid
+            item
+            xs={12}
+            md={2}
+            sx={{ display: "flex", alignItems: "center" }}>
             <Button
               fullWidth
               variant="outlined"
               onClick={handleClearFilters}
-              startIcon={<ClearIcon />}
-            >
+              startIcon={<ClearIcon />}>
               필터 초기화
             </Button>
           </Grid>
@@ -386,29 +410,32 @@ const SupplierListPage = () => {
       </Paper>
 
       {error && (
-        <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff9c4' }}>
-          <Typography color="error">데이터를 불러오는 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.</Typography>
+        <Paper sx={{ p: 2, mb: 3, bgcolor: "#fff9c4" }}>
+          <Typography color="error">
+            데이터를 불러오는 중 오류가 발생했습니다. 나중에 다시 시도해 주세요.
+          </Typography>
         </Paper>
       )}
 
       <TableContainer component={Paper}>
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
             <CircularProgress />
           </Box>
         ) : !Array.isArray(suppliers) || suppliers.length === 0 ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Box sx={{ p: 3, textAlign: "center" }}>
             <Typography variant="subtitle1">
-              {isAdmin ? '등록된 협력업체가 없습니다.' : '등록한 협력업체가 없습니다.'}
+              {isAdmin
+                ? "등록된 협력업체가 없습니다."
+                : "등록한 협력업체가 없습니다."}
             </Typography>
             {isSupplier && (
               <Button
                 variant="contained"
                 color="primary"
                 startIcon={<AddIcon />}
-                onClick={() => navigate('/supplier/registrations')}
-                sx={{ mt: 2 }}
-              >
+                onClick={() => navigate("/supplier/registrations")}
+                sx={{ mt: 2 }}>
                 협력업체 등록하기
               </Button>
             )}
@@ -436,20 +463,25 @@ const SupplierListPage = () => {
                     <TableCell>
                       <Link
                         to={`/supplier/review/${supplier.id}`}
-                        style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 'bold' }}
-                      >
-                        {supplier.supplierName || '이름 없음'}
+                        style={{
+                          textDecoration: "none",
+                          color: "#1976d2",
+                          fontWeight: "bold"
+                        }}>
+                        {supplier.supplierName || "이름 없음"}
                       </Link>
                     </TableCell>
-                    <TableCell>{supplier.businessNo || '-'}</TableCell>
-                    <TableCell>{supplier.ceoName || '-'}</TableCell>
+                    <TableCell>{supplier.businessNo || "-"}</TableCell>
+                    <TableCell>{supplier.ceoName || "-"}</TableCell>
                     <TableCell>
                       {supplier.sourcingCategory && (
                         <Box>
                           <Typography variant="caption" component="div">
                             {supplier.sourcingCategory}
-                            {supplier.sourcingSubCategory && ` > ${supplier.sourcingSubCategory}`}
-                            {supplier.sourcingDetailCategory && ` > ${supplier.sourcingDetailCategory}`}
+                            {supplier.sourcingSubCategory &&
+                              ` > ${supplier.sourcingSubCategory}`}
+                            {supplier.sourcingDetailCategory &&
+                              ` > ${supplier.sourcingDetailCategory}`}
                           </Typography>
                         </Box>
                       )}
@@ -457,27 +489,31 @@ const SupplierListPage = () => {
                     <TableCell>
                       {supplier.contactPerson && (
                         <Box>
-                          <Typography variant="body2">{supplier.contactPerson}</Typography>
+                          <Typography variant="body2">
+                            {supplier.contactPerson}
+                          </Typography>
                         </Box>
                       )}
                     </TableCell>
-                    <TableCell>{supplier.registrationDate || '-'}</TableCell>
+                    <TableCell>{supplier.registrationDate || "-"}</TableCell>
                     <TableCell>{getStatusChip(supplier.status)}</TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: "flex", gap: 1 }}>
                         {/* 상세 버튼은 ADMIN과 SUPPLIER 모두 사용 가능 */}
                         <Button
                           size="small"
                           variant="outlined"
-                          onClick={() => navigate(`/supplier/review/${supplier.id}`)}
-                        >
+                          onClick={() =>
+                            navigate(`/supplier/review/${supplier.id}`)
+                          }>
                           상세
                         </Button>
 
                         {/* ADMIN에게만 활성화 상태 표시 */}
                         {isAdmin && (
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {(supplier.status === 'INACTIVE' || supplier.status?.childCode === 'INACTIVE') ? (
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            {supplier.status === "INACTIVE" ||
+                            supplier.status?.childCode === "INACTIVE" ? (
                               <Chip
                                 label="비활성"
                                 icon={<BlockIcon />}
@@ -498,68 +534,85 @@ const SupplierListPage = () => {
                         )}
 
                         {/* 반려 상태일 때는 반려사유 버튼과 재승인 요청 버튼 표시 */}
-                        {(supplier.status === 'REJECTED' || supplier.status?.childCode === 'REJECTED') &&
+                        {(supplier.status === "REJECTED" ||
+                          supplier.status?.childCode === "REJECTED") &&
                           supplier.rejectionReason && (
-                          <>
+                            <>
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                onClick={() =>
+                                  handleShowRejectionReason(
+                                    supplier.rejectionReason
+                                  )
+                                }>
+                                반려사유
+                              </Button>
+                              {isSupplier && (
+                                <Button
+                                  size="small"
+                                  color="warning"
+                                  variant="contained"
+                                  onClick={() =>
+                                    navigate(`/supplier/edit/${supplier.id}`)
+                                  }>
+                                  재승인 요청
+                                </Button>
+                              )}
+                            </>
+                          )}
+
+                        {/* 일시정지 상태일 때 정지사유 버튼 표시 */}
+                        {(supplier.status === "SUSPENDED" ||
+                          supplier.status?.childCode === "SUSPENDED") &&
+                          supplier.rejectionReason && (
+                            <Button
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              onClick={() =>
+                                handleShowRejectionReason(
+                                  supplier.rejectionReason
+                                )
+                              }>
+                              정지사유
+                            </Button>
+                          )}
+
+                        {/* 블랙리스트 상태일 때 블랙리스트 사유 버튼 표시 */}
+                        {(supplier.status === "BLACKLIST" ||
+                          supplier.status?.childCode === "BLACKLIST") &&
+                          supplier.rejectionReason && (
                             <Button
                               size="small"
                               color="error"
                               variant="outlined"
-                              onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
-                            >
-                              반려사유
+                              onClick={() =>
+                                handleShowRejectionReason(
+                                  supplier.rejectionReason
+                                )
+                              }>
+                              블랙리스트 사유
                             </Button>
-                            {isSupplier && (
-                              <Button
-                                size="small"
-                                color="warning"
-                                variant="contained"
-                                onClick={() => navigate(`/supplier/edit/${supplier.id}`)}
-                              >
-                                재승인 요청
-                              </Button>
-                            )}
-                          </>
-                        )}
-
-                        {/* 일시정지 상태일 때 정지사유 버튼 표시 */}
-                        {(supplier.status === 'SUSPENDED' || supplier.status?.childCode === 'SUSPENDED') &&
-                          supplier.rejectionReason && (
-                          <Button
-                            size="small"
-                            color="warning"
-                            variant="outlined"
-                            onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
-                          >
-                            정지사유
-                          </Button>
-                        )}
-
-                        {/* 블랙리스트 상태일 때 블랙리스트 사유 버튼 표시 */}
-                        {(supplier.status === 'BLACKLIST' || supplier.status?.childCode === 'BLACKLIST') &&
-                          supplier.rejectionReason && (
-                          <Button
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                            onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
-                          >
-                            블랙리스트 사유
-                          </Button>
-                        )}
+                          )}
 
                         {/* 비활성 상태일 때 비활성 사유 버튼 표시 */}
-                        {(supplier.status === 'INACTIVE' || supplier.status?.childCode === 'INACTIVE') &&
+                        {(supplier.status === "INACTIVE" ||
+                          supplier.status?.childCode === "INACTIVE") &&
                           supplier.rejectionReason && (
-                          <Button
-                            size="small"
-                            color="default"
-                            variant="outlined"
-                            onClick={() => handleShowRejectionReason(supplier.rejectionReason)}
-                          >
-                            비활성 사유
-                          </Button>
-                        )}
+                            <Button
+                              size="small"
+                              color="default"
+                              variant="outlined"
+                              onClick={() =>
+                                handleShowRejectionReason(
+                                  supplier.rejectionReason
+                                )
+                              }>
+                              비활성 사유
+                            </Button>
+                          )}
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -578,7 +631,10 @@ const SupplierListPage = () => {
               onRowsPerPageChange={handleChangeRowsPerPage}
               labelRowsPerPage="페이지당 행 수"
               labelDisplayedRows={({ page, count, rowsPerPage }) => {
-                const totalPages = rowsPerPage > 0 ? Math.max(1, Math.ceil(count / rowsPerPage)) : 1;
+                const totalPages =
+                  rowsPerPage > 0
+                    ? Math.max(1, Math.ceil(count / rowsPerPage))
+                    : 1;
                 return `${Math.max(1, page + 1)} / ${totalPages}`;
               }}
             />
@@ -590,11 +646,12 @@ const SupplierListPage = () => {
       <Dialog
         open={openModal}
         onClose={() => setOpenModal(false)}
-        aria-labelledby="rejection-dialog-title"
-      >
+        aria-labelledby="rejection-dialog-title">
         <DialogTitle id="rejection-dialog-title">사유 확인</DialogTitle>
         <DialogContent>
-          <DialogContentText>{rejectionReason || '사유가 입력되지 않았습니다.'}</DialogContentText>
+          <DialogContentText>
+            {rejectionReason || "사유가 입력되지 않았습니다."}
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenModal(false)} color="primary">

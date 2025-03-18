@@ -2,6 +2,8 @@ package com.orbit.entity.bidding;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.orbit.entity.BaseEntity;
 import com.orbit.entity.Notification;
@@ -28,8 +30,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
-import jakarta.validation.constraints.AssertTrue;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,8 +38,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "biddings")
-@Getter
-@Setter
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -69,23 +68,23 @@ public class Bidding extends BaseEntity {
    @Column(name = "title", nullable = false, length = 255)
    private String title; // 입찰 제목
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description; //입찰 설명'
+   @Column(name = "description", columnDefinition = "TEXT")
+   private String description; // 입찰 설명
 
    @Column(name = "start_date", nullable = false)
    private LocalDateTime startDate; // 입찰 시작일
 
-    @Column(name = "end_date", nullable = false)
-    private LocalDateTime endDate; //입찰 마감일
+   @Column(name = "end_date", nullable = false)
+   private LocalDateTime endDate; // 입찰 마감일
 
-    @Column(name = "conditions", columnDefinition = "TEXT")
-    private String conditions; //입찰조건
+   @Column(name = "conditions", columnDefinition = "TEXT")
+   private String conditions; // 입찰조건
 
-    @Column(name = "internal_note", columnDefinition = "TEXT")
-    private String internalNote; //비고(내부용)
+   @Column(name = "internal_note", columnDefinition = "TEXT")
+   private String internalNote; // 비고(내부용)
 
-    @Column(name = "quantity", nullable = false)
-    private Integer quantity; //수량
+   @Column(name = "quantity", nullable = false)
+   private Integer quantity; // 수량
 
    // 금액 정보
    @Column(name = "unit_price", precision = 19, scale = 2)
@@ -100,8 +99,8 @@ public class Bidding extends BaseEntity {
    @Column(name = "total_amount", precision = 19, scale = 2)
    private BigDecimal totalAmount;
 
-    @Column(name = "supply_price")
-    private BigDecimal supplyPrice; //입찰 공급가액
+   @Column(name = "file_path", length = 500)
+   private String filePath; // 공고 파일
 
    // 상태 관리 시스템 - CommonCodeDataInitializer와 연동
    // 1. 입찰 상태

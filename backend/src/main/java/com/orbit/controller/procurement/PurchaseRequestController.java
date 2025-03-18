@@ -1,13 +1,11 @@
 package com.orbit.controller.procurement;
 
-import com.orbit.dto.approval.DepartmentDTO;
-import com.orbit.dto.item.CategoryDTO;
-import com.orbit.dto.item.ItemDTO;
-import com.orbit.dto.member.MemberDTO;
-import com.orbit.dto.procurement.PurchaseRequestDTO;
-import com.orbit.service.procurement.PurchaseRequestService;
-import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -15,15 +13,28 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
+import com.orbit.dto.item.CategoryDTO;
+import com.orbit.dto.item.ItemDTO;
+import com.orbit.dto.procurement.PurchaseRequestDTO;
+import com.orbit.service.procurement.PurchaseRequestService;
+
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
@@ -36,12 +47,11 @@ public class PurchaseRequestController {
         this.purchaseRequestService = purchaseRequestService;
     }
 
-
-    /**
-     * ID로 구매 요청 조회
-     * @param id 구매 요청 ID
-     * @return 구매 요청 (Optional)
-     */
+    @GetMapping
+    public ResponseEntity<List<PurchaseRequestDTO>> getAllPurchaseRequests() {
+        List<PurchaseRequestDTO> purchaseRequests = purchaseRequestService.getAllPurchaseRequests();
+        return new ResponseEntity<>(purchaseRequests, HttpStatus.OK);
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseRequestDTO> getPurchaseRequestById(@PathVariable Long id) {

@@ -1,14 +1,15 @@
 package com.orbit.dto.delivery;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import com.orbit.entity.delivery.Delivery;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 public class DeliveryDto {
 
@@ -77,7 +78,6 @@ public class DeliveryDto {
                     .itemQuantity(entity.getItemQuantity())
                     .itemUnitPrice(entity.getItemUnitPrice())
                     .itemUnit(entity.getItemUnit())
-                    .createdAt(entity.getRegTime())
                     .build();
 
             // 품목 ID 설정 (purchaseRequestItem이 있으면 그 ID 사용, 없으면 deliveryItemId 사용)

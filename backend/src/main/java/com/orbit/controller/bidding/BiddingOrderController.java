@@ -3,6 +3,7 @@ package com.orbit.controller.bidding;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,9 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.orbit.dto.bidding.BiddingEvaluationDto;
 import com.orbit.dto.bidding.BiddingOrderDto;
 import com.orbit.entity.member.Member;
 import com.orbit.repository.member.MemberRepository;
@@ -25,10 +26,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-@Slf4j
 public class BiddingOrderController {
     private final BiddingOrderService orderService;
     private final MemberRepository memberRepository;
@@ -36,12 +37,6 @@ public class BiddingOrderController {
     /**
      * 발주 목록 조회
      */
-    @PostMapping
-    public ResponseEntity<BiddingOrderDto> createOrder(@Valid @RequestBody BiddingOrderDto orderDto) {
-        log.info("발주 생성 요청");
-        BiddingOrderDto createdOrder = biddingOrderService.createOrder(orderDto);
-        return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
-    }
     @GetMapping
     public ResponseEntity<List<BiddingOrderDto>> getAllOrders() {
         log.info("발주 목록 조회 요청");
@@ -86,7 +81,10 @@ public class BiddingOrderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
+    
+    /**
+     * 발주 상세 조회
+     */
     @GetMapping("/{id}")
     public ResponseEntity<BiddingOrderDto> getOrderById(@PathVariable Long id) {
         log.info("발주 상세 조회 요청 - ID: {}", id);
@@ -99,9 +97,7 @@ public class BiddingOrderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-   
-
+    
     /**
      * 발주 번호로 발주 조회
      */
@@ -117,7 +113,7 @@ public class BiddingOrderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
+    
     /**
      * 기간 내 납품 예정 발주 목록 조회
      */
@@ -136,8 +132,7 @@ public class BiddingOrderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-   
+    
     /**
      * 승인된 발주 목록 조회
      */

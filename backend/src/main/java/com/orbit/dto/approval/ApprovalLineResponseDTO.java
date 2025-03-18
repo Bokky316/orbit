@@ -1,12 +1,14 @@
 package com.orbit.dto.approval;
 
-import com.orbit.entity.approval.ApprovalLine;
-import lombok.Builder;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 
-@Data
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

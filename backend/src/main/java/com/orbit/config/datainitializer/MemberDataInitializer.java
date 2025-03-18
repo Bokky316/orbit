@@ -1,21 +1,23 @@
 package com.orbit.config.datainitializer;
 
-import com.orbit.entity.approval.Department;
-import com.orbit.entity.approval.Position;
-import com.orbit.entity.member.Member;
-import com.orbit.repository.approval.DepartmentRepository;
-import com.orbit.repository.approval.PositionRepository;
-import com.orbit.repository.member.MemberRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.orbit.entity.approval.Department;
+import com.orbit.entity.approval.Position;
+import com.orbit.entity.member.Member;
+import com.orbit.repository.approval.DepartmentRepository;
+import com.orbit.repository.approval.PositionRepository;
+import com.orbit.repository.member.MemberRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component

@@ -4,20 +4,20 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import com.orbit.entity.commonCode.SystemStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.StatusHistory;
 
-
-@Repository
 public interface BiddingRepository extends JpaRepository<Bidding, Long> {
-    
+
+    /**
+     * 상태와 날짜 범위로 입찰 공고 필터링
+     */
     @Query("SELECT b FROM Bidding b WHERE " +
            "(:statusChild IS NULL OR b.statusChild = :statusChild) AND " +
            "(:startDate IS NULL OR b.startDate >= :startDate) AND " +

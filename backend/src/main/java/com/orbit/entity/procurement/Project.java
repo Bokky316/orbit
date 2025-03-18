@@ -1,18 +1,38 @@
 package com.orbit.entity.procurement;
 
-import com.orbit.entity.BaseEntity;
-import com.orbit.entity.approval.Department;
-import com.orbit.entity.commonCode.ChildCode;
-import com.orbit.entity.commonCode.ParentCode;
-import com.orbit.entity.member.Member;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.AssertTrue;
-import lombok.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import com.orbit.entity.BaseEntity;
+import com.orbit.entity.approval.Department;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.member.Member;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.AssertTrue;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * 프로젝트 마스터 엔티티
@@ -81,9 +101,11 @@ public class Project extends BaseEntity {
     private ChildCode procurementStatusChild;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<PurchaseRequest> purchaseRequests = new ArrayList<>();
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ProjectAttachment> attachments = new ArrayList<>();
 
     /**

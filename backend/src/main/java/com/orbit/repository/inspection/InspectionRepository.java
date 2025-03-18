@@ -1,12 +1,13 @@
 package com.orbit.repository.inspection;
 
-import com.orbit.entity.bidding.SimplifiedContract;
+import com.orbit.entity.bidding.BiddingContract;
 import com.orbit.entity.inspection.Inspection;
 import org.springframework.data.jpa.repository.Query; // JPA Query 어노테이션으로 변경
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.orbit.entity.inspection.Inspection;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface InspectionRepository extends JpaRepository<Inspection, Long> {

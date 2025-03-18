@@ -1,7 +1,7 @@
 // src/utils/approvalUtils.js
 
-import { fetchWithAuth } from './fetchWithAuth';
-import { API_URL } from './constants';
+import { fetchWithAuth } from "./fetchWithAuth";
+import { API_URL } from "./constants";
 
 /**
  * 결재선 조회 유틸리티 함수
@@ -10,7 +10,9 @@ import { API_URL } from './constants';
  */
 export const fetchApprovalLines = async (purchaseRequestId) => {
   try {
-    const response = await fetchWithAuth(`${API_URL}approvals/${purchaseRequestId}`);
+    const response = await fetchWithAuth(
+      `${API_URL}approvals/${purchaseRequestId}`
+    );
 
     if (!response.ok) {
       throw new Error(`결재선 조회 실패: ${response.status}`);
@@ -18,7 +20,7 @@ export const fetchApprovalLines = async (purchaseRequestId) => {
 
     return await response.json();
   } catch (error) {
-    console.error('결재선 조회 중 오류 발생:', error);
+    console.error("결재선 조회 중 오류 발생:", error);
     throw error;
   }
 };
@@ -34,9 +36,9 @@ export const fetchApprovalLines = async (purchaseRequestId) => {
 export const createApprovalLine = async (approvalLineData) => {
   try {
     const response = await fetchWithAuth(`${API_URL}approvals`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       },
       body: JSON.stringify(approvalLineData)
     });
@@ -45,7 +47,7 @@ export const createApprovalLine = async (approvalLineData) => {
       throw new Error(`결재선 생성 실패: ${response.status}`);
     }
   } catch (error) {
-    console.error('결재선 생성 중 오류 발생:', error);
+    console.error("결재선 생성 중 오류 발생:", error);
     throw error;
   }
 };
@@ -58,25 +60,33 @@ export const createApprovalLine = async (approvalLineData) => {
  * @param {string} nextStatusCode - 다음 상태 코드
  * @returns {Promise<void>}
  */
-export const processApproval = async (lineId, action, comment, nextStatusCode) => {
+export const processApproval = async (
+  lineId,
+  action,
+  comment,
+  nextStatusCode
+) => {
   try {
-    const response = await fetchWithAuth(`${API_URL}approvals/${lineId}/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        action,
-        comment,
-        nextStatusCode
-      })
-    });
+    const response = await fetchWithAuth(
+      `${API_URL}approvals/${lineId}/process`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action,
+          comment,
+          nextStatusCode
+        })
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`결재 처리 실패: ${response.status}`);
     }
   } catch (error) {
-    console.error('결재 처리 중 오류 발생:', error);
+    console.error("결재 처리 중 오류 발생:", error);
     throw error;
   }
 };
@@ -87,13 +97,19 @@ export const processApproval = async (lineId, action, comment, nextStatusCode) =
  * @returns {string} - 한글 상태명
  */
 export const getStatusName = (statusCode) => {
-  switch(statusCode) {
-    case 'APPROVED': return '승인완료';
-    case 'REJECTED': return '반려';
-    case 'IN_REVIEW': return '검토중';
-    case 'PENDING': return '대기중';
-    case 'REQUESTED': return '요청됨';
-    default: return statusCode;
+  switch (statusCode) {
+    case "APPROVED":
+      return "승인완료";
+    case "REJECTED":
+      return "반려";
+    case "IN_REVIEW":
+      return "검토중";
+    case "PENDING":
+      return "대기중";
+    case "REQUESTED":
+      return "요청됨";
+    default:
+      return statusCode;
   }
 };
 
@@ -110,7 +126,7 @@ export const canSetupApprovalLine = (approvalLines) => {
 
   // 이미 승인 또는 반려된 항목이 있는 경우 설정 불가
   const hasProcessedLine = approvalLines.some(
-    line => line.statusCode === 'APPROVED' || line.statusCode === 'REJECTED'
+    (line) => line.statusCode === "APPROVED" || line.statusCode === "REJECTED"
   );
 
   return !hasProcessedLine;
@@ -129,12 +145,53 @@ export const getUserApprovalAuthority = (approvalLines, currentUserId) => {
 
   // 상태가 IN_REVIEW, PENDING, REQUESTED이고 현재 사용자가 결재자인 항목 찾기
   const currentUserApprovalLine = approvalLines.find(
-    line => (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
-    (line.approverId === currentUserId || line.approver_id === currentUserId)
+    (line) =>
+      (line.statusCode === "IN_REVIEW" ||
+        line.statusCode === "PENDING" ||
+        line.statusCode === "REQUESTED") &&
+      (line.approverId === currentUserId || line.approver_id === currentUserId)
   );
 
   return {
     canApprove: !!currentUserApprovalLine,
     lineId: currentUserApprovalLine?.id || null
   };
+};
+
+/**
+ * 사용자의 결재 대기 목록 조회 유틸리티 함수
+ * @returns {Promise<Array>} - 결재 대기 목록
+ */
+export const fetchPendingApprovals = async () => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}approvals/pending`);
+
+    if (!response.ok) {
+      throw new Error(`결재 대기 목록 조회 실패: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("결재 대기 목록 조회 중 오류 발생:", error);
+    throw error;
+  }
+};
+
+/**
+ * 사용자의 결재 완료 목록 조회 유틸리티 함수
+ * @returns {Promise<Array>} - 결재 완료 목록
+ */
+export const fetchCompletedApprovals = async () => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}approvals/completed`);
+
+    if (!response.ok) {
+      throw new Error(`결재 완료 목록 조회 실패: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("결재 완료 목록 조회 중 오류 발생:", error);
+    throw error;
+  }
 };
