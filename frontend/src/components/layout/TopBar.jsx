@@ -16,7 +16,7 @@ function TopBar() {
     "/members": [
       { label: "회원 목록", path: "/members" },
       { label: "직원관리", path: "/employee" },
-      { label: "부서관리", path: "/department" },
+      /* { label: "부서관리", path: "/department" }, */
       /* { label: "합의사관리", path: "/approver" }, */
       /* { label: "시스템설정", path: "/settings" } */
     ],

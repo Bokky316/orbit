@@ -13,7 +13,8 @@ import {
   Edit as EditIcon,
   Block as BlockIcon,
   CheckCircle as CheckCircleIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Clear
 } from '@mui/icons-material';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -73,10 +74,25 @@ export default function AdminMemberPage() {
 
   // 검색 실행
   const handleSearch = () => {
-    setPageRequest({
-      ...pageRequest,
-      page: 1 // 검색 시 첫 페이지로 이동
+    console.log('검색 실행:', {
+      keyword: pageRequest.keyword,
+      searchType: pageRequest.searchType
     });
+
+    // 검색어가 있는데 검색 조건이 없는 경우
+    if (pageRequest.keyword && !pageRequest.searchType) {
+      setPageRequest(prev => ({
+        ...prev,
+        page: 1,
+        searchType: 'name'  // 기본 검색 타입 설정
+      }));
+    } else {
+      setPageRequest({
+        ...pageRequest,
+        page: 1 // 검색 시 첫 페이지로 이동
+      });
+    }
+
     fetchMembers();
   };
 
@@ -257,6 +273,8 @@ export default function AdminMemberPage() {
   };
 
   // 회원 상세 정보 조회
+  // 회원 상세 정보 조회
+  // 회원 상세 정보 조회
   const fetchMemberDetail = async (id) => {
     try {
       setLoading(true);
@@ -265,24 +283,132 @@ export default function AdminMemberPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log("회원 상세 정보:", data);
+        try {
+          // 텍스트로 먼저 받아옴
+          const responseText = await response.text();
 
-        if (data.status === "success" && data.data) {
-          setMemberDetail(data.data);
-          // 수정용 데이터도 같이 설정
-          setEditMemberData({
-            name: data.data.name,
-            email: data.data.email,
-            companyName: data.data.companyName || '',
-            contactNumber: data.data.contactNumber || '',
-            postalCode: data.data.postalCode || '',
-            roadAddress: data.data.roadAddress || '',
-            detailAddress: data.data.detailAddress || ''
-          });
-          setOpenDetailDialog(true);
-        } else {
-          showAlert('회원 정보를 불러올 수 없습니다.', 'error');
+          // 응답 텍스트 일부를 로깅
+          console.log("응답 텍스트 일부:", responseText.substring(0, 150));
+
+          // 응답 텍스트가 유효한 JSON인지 확인하고 정리
+          let cleanedText = responseText;
+          try {
+            // 유효한 부분까지만 파싱하기 위한 작업
+            // 응답의 시작 부분이 { 인지 확인
+            if (cleanedText.trim().startsWith('{')) {
+              // 다양한 회사명 패턴 확인
+              const companyNamePatterns = [
+                /"companyName":"([^"]+)"/,  // 기본 패턴
+                /"companyName":[ ]*"([^"]+)"/,  // 공백 포함 패턴
+                /"company_name":"([^"]+)"/,  // 스네이크 케이스 패턴
+              ];
+
+              let companyName = '';
+              for (const pattern of companyNamePatterns) {
+                const match = pattern.exec(cleanedText);
+                if (match) {
+                  companyName = match[1];
+                  console.log("찾은 회사명 패턴:", pattern, "회사명:", companyName);
+                  break;
+                }
+              }
+
+              // 기존 정규식 추출
+              const idMatch = /"id":(\d+)/.exec(cleanedText);
+              const usernameMatch = /"username":"([^"]+)"/.exec(cleanedText);
+              const nameMatch = /"name":"([^"]+)"/.exec(cleanedText);
+              const emailMatch = /"email":"([^"]+)"/.exec(cleanedText);
+              const contactNumberMatch = /"contactNumber":"([^"]+)"/.exec(cleanedText);
+              const postalCodeMatch = /"postalCode":"([^"]+)"/.exec(cleanedText);
+              const roadAddressMatch = /"roadAddress":"([^"]+)"/.exec(cleanedText);
+              const detailAddressMatch = /"detailAddress":"([^"]+)"/.exec(cleanedText);
+              const roleMatch = /"role":"([^"]+)"/.exec(cleanedText);
+              const enabledMatch = /"enabled":(true|false)/.exec(cleanedText);
+
+              // 추출한 정보로 회원 객체 구성
+              const extractedMember = {
+                id: idMatch ? parseInt(idMatch[1]) : id,
+                username: usernameMatch ? usernameMatch[1] : '',
+                name: nameMatch ? nameMatch[1] : '',
+                email: emailMatch ? emailMatch[1] : '',
+                companyName: companyName,  // 수정된 회사명 사용
+                contactNumber: contactNumberMatch ? contactNumberMatch[1] : '',
+                postalCode: postalCodeMatch ? postalCodeMatch[1] : '',
+                roadAddress: roadAddressMatch ? roadAddressMatch[1] : '',
+                detailAddress: detailAddressMatch ? detailAddressMatch[1] : '',
+                role: roleMatch ? roleMatch[1] : '',
+                enabled: enabledMatch ? enabledMatch[1] === 'true' : true
+              };
+
+              // 회원 목록에서 회사명 보완
+              if (!companyName) {
+                const memberFromList = members.find(m => m.id === id);
+                if (memberFromList && memberFromList.companyName) {
+                  extractedMember.companyName = memberFromList.companyName;
+                  console.log("목록에서 가져온 회사명:", extractedMember.companyName);
+                }
+              }
+
+              console.log("추출된 회원 정보:", extractedMember);
+
+              // 회원 정보 설정
+              setMemberDetail(extractedMember);
+              setEditMemberData({
+                name: extractedMember.name,
+                email: extractedMember.email,
+                companyName: extractedMember.companyName,
+                contactNumber: extractedMember.contactNumber,
+                postalCode: extractedMember.postalCode,
+                roadAddress: extractedMember.roadAddress,
+                detailAddress: extractedMember.detailAddress
+              });
+
+              // 디버깅을 위해 로깅
+              console.log("설정된 수정 데이터:", {
+                ...editMemberData,
+                companyName: extractedMember.companyName
+              });
+
+              setOpenDetailDialog(true);
+            } else {
+              throw new Error("응답이 올바른 JSON 형식이 아닙니다.");
+            }
+          } catch (extractError) {
+            console.error("데이터 추출 오류:", extractError);
+
+            // 회원 목록에서 기본 정보 사용
+            const member = members.find(m => m.id === id);
+            if (member) {
+              const simpleMember = {
+                id: member.id,
+                username: member.username,
+                name: member.name,
+                email: member.email,
+                companyName: member.companyName || '',
+                contactNumber: member.contactNumber || '',
+                role: member.role,
+                enabled: member.enabled
+              };
+
+              setMemberDetail(simpleMember);
+              setEditMemberData({
+                name: member.name,
+                email: member.email,
+                companyName: member.companyName || '',
+                contactNumber: member.contactNumber || '',
+                postalCode: '',
+                roadAddress: '',
+                detailAddress: ''
+              });
+              setOpenDetailDialog(true);
+              showAlert('일부 회원 정보만 표시됩니다.', 'warning');
+            } else {
+              showAlert('회원 정보를 불러올 수 없습니다.', 'error');
+            }
+          }
+        } catch (error) {
+          console.error('응답 처리 오류:', error);
+          showAlert('회원 정보 처리 중 오류가 발생했습니다.', 'error');
         }
       } else {
         showAlert('회원 정보 조회에 실패했습니다.', 'error');
@@ -301,22 +427,65 @@ export default function AdminMemberPage() {
 
     try {
       setLoading(true);
+
+      // 백엔드 오류를 방지하기 위해 불필요한 속성 제거
+      const cleanedData = {
+        name: editMemberData.name,
+        email: editMemberData.email,
+        companyName: editMemberData.companyName || '',
+        contactNumber: editMemberData.contactNumber || '',
+        postalCode: editMemberData.postalCode || '',
+        roadAddress: editMemberData.roadAddress || '',
+        detailAddress: editMemberData.detailAddress || ''
+      };
+
+      console.log("전송할 데이터:", cleanedData);
+
       const response = await fetchWithAuth(`${API_URL}members/${memberDetail.id}`, {
         method: 'PUT',
-        body: JSON.stringify(editMemberData)
+        body: JSON.stringify(cleanedData)
       });
 
       if (response.ok) {
-        const result = await response.json();
-        if (result.status === "success") {
-          showAlert('회원 정보가 성공적으로 수정되었습니다.', 'success');
+        try {
+          const result = await response.json();
+          if (result.status === "success") {
+            showAlert('회원 정보가 성공적으로 수정되었습니다.', 'success');
+            setOpenDetailDialog(false);
+            fetchMembers(); // 목록 새로고침
+          } else {
+            showAlert(result.message || '회원 정보 수정에 실패했습니다.', 'error');
+          }
+        } catch (parseError) {
+          console.error('응답 파싱 오류:', parseError);
+          // 응답은 성공했지만 파싱에 실패한 경우
+          showAlert('회원 정보가 수정되었으나 서버 응답을 처리할 수 없습니다.', 'warning');
           setOpenDetailDialog(false);
           fetchMembers(); // 목록 새로고침
-        } else {
-          showAlert(result.message || '회원 정보 수정에 실패했습니다.', 'error');
         }
       } else {
-        showAlert('회원 정보 수정에 실패했습니다.', 'error');
+        // 서버 오류 처리
+        console.error('서버 오류 상태:', response.status);
+
+        try {
+          const errorText = await response.text();
+          console.error('오류 응답:', errorText);
+
+          // 구체적인 에러 메시지가 있는지 확인
+          if (errorText && errorText.includes('message')) {
+            try {
+              const errorJson = JSON.parse(errorText);
+              showAlert(errorJson.message || '회원 정보 수정에 실패했습니다.', 'error');
+            } catch (e) {
+              showAlert('회원 정보 수정에 실패했습니다.', 'error');
+            }
+          } else {
+            // 임시 방편으로 데이터베이스 업데이트가 문제일 수 있다고 알림
+            showAlert('회원 정보 수정에 실패했습니다. 서버 오류가 발생했습니다.', 'error');
+          }
+        } catch (error) {
+          showAlert('회원 정보 수정에 실패했습니다.', 'error');
+        }
       }
     } catch (error) {
       console.error('회원 정보 수정 오류:', error);
@@ -376,11 +545,26 @@ export default function AdminMemberPage() {
 
   // 키워드 변경
   const handleKeywordChange = (event) => {
-    const newKeyword = event.target.value;
-    setPageRequest(prev => ({
-      ...prev,
-      keyword: newKeyword
-    }));
+    const { value } = event.target;
+
+    // 콘솔 로그 추가
+    console.log(`검색어 변경 전: ${pageRequest.keyword}`);
+    console.log(`검색어 변경 후: ${value}`);
+
+    // 검색어가 변경되면 searchType도 설정
+    // 검색어가 있고 searchType이 없으면 기본값 'name'으로 설정
+    if (value && !pageRequest.searchType) {
+      setPageRequest(prev => ({
+        ...prev,
+        keyword: value,
+        searchType: 'name'  // 기본 검색 타입 설정
+      }));
+    } else {
+      setPageRequest(prev => ({
+        ...prev,
+        keyword: value
+      }));
+    }
   };
 
   // 상태 필터 변경
@@ -489,45 +673,44 @@ export default function AdminMemberPage() {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              variant="outlined"
               size="small"
-              placeholder="검색어 입력"
+              label="검색어 입력 (자동 검색)"
+              name="keyword"
               value={pageRequest.keyword || ''}
               onChange={handleKeywordChange}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(0, 0, 0, 0.23)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'rgba(0, 0, 0, 0.5)',
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'primary.main',
-                  }
-                }
+              InputProps={{
+                endAdornment: pageRequest.keyword ? (
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setPageRequest(prev => ({
+                        ...prev,
+                        keyword: '',
+                        // 검색어를 지울 때 검색 조건도 초기화할지 여부 (필요에 따라 주석 해제)
+                        // searchType: ''
+                      }));
+
+                      // 상태 업데이트 후 즉시 검색 실행
+                      fetchMembers();
+                    }}
+                  >
+                    <Clear fontSize="small" />
+                  </IconButton>
+                ) : (
+                  <SearchIcon color="action" fontSize="small" />
+                )
               }}
             />
           </Grid>
-          <Grid item xs={12} md={1.5}>
+          <Grid item xs={12} md={2}>
             <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              onClick={handleSearch}
-            >
-              검색
-            </Button>
-          </Grid>
-          <Grid item xs={12} md={1.5}>
-            <Button
-              fullWidth
               variant="outlined"
               color="secondary"
               onClick={resetFilters}
+              sx={{ minWidth: '120px' }}  // 적절한 최소 너비 지정
             >
-              초기화
+              필터 초기화
             </Button>
           </Grid>
         </Grid>
@@ -654,10 +837,10 @@ export default function AdminMemberPage() {
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenEditDialog(false)}>취소</Button>
           <Button onClick={updateMemberRole} color="primary">
             저장
           </Button>
+          <Button onClick={() => setOpenEditDialog(false)}>취소</Button>
         </DialogActions>
       </Dialog>
 
@@ -673,7 +856,6 @@ export default function AdminMemberPage() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStatusDialogOpen(false)}>취소</Button>
           <Button
             onClick={() => {
               toggleMemberStatus(statusMemberId);
@@ -683,6 +865,7 @@ export default function AdminMemberPage() {
           >
             확인
           </Button>
+          <Button onClick={() => setStatusDialogOpen(false)}>취소</Button>
         </DialogActions>
       </Dialog>
 
@@ -825,7 +1008,6 @@ export default function AdminMemberPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDetailDialog(false)}>닫기</Button>
           <Button
             onClick={updateMemberDetail}
             color="primary"
@@ -833,6 +1015,7 @@ export default function AdminMemberPage() {
           >
             {loading ? <CircularProgress size={24} /> : "변경사항 저장"}
           </Button>
+          <Button onClick={() => setOpenDetailDialog(false)}>닫기</Button>
         </DialogActions>
       </Dialog>
     </PageContainer>
