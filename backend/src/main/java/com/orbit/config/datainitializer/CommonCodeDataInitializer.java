@@ -32,6 +32,7 @@ public class CommonCodeDataInitializer {
         initApprovalCodes();
         initBiddingCodes(); // 입찰 관련
         initUnitCodes();
+        initInvoiceCodes();
     }
 
     //▶▶▶ 프로젝트 상태 코드
@@ -124,6 +125,16 @@ public class CommonCodeDataInitializer {
         initChildCodes(unit,
                 List.of("EA", "BOX", "BAG", "SET", "KG", "M"),
                 List.of("개", "박스", "봉지", "세트", "킬로그램", "미터")
+        );
+    }
+
+    //▶▶▶ 송장 상태 코드
+    private void initInvoiceCodes() {
+        // 송장 상태 코드
+        ParentCode invoiceStatus = initParentCode("INVOICE", "STATUS", "송장 상태");
+        initChildCodes(invoiceStatus,
+                List.of("WAITING", "PAID", "OVERDUE", "CANCELED"),
+                List.of("대기", "지불완료", "연체", "취소")
         );
     }
 

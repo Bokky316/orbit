@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -201,5 +202,9 @@ public class DeliveryService {
     @Transactional
     public void deleteDelivery(Long id) {
         deliveryRepository.deleteById(id);
+    }
+
+    public Optional<Delivery> getDeliveryById(Long id) {
+        return deliveryRepository.findById(id);
     }
 }
