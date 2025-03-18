@@ -125,9 +125,6 @@ function TopBar() {
           </div>
         </div>
 
-        {/* 알림 아이콘 */}
-        <NotificationBadgeIcon />
-
         {/* 로그인 정보 */}
         <div className="login_info">
           <span className="login_name">

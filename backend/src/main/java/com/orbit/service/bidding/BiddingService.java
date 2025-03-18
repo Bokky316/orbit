@@ -1,37 +1,22 @@
 package com.orbit.service.bidding;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.orbit.dto.bidding.BiddingDto;
 import com.orbit.dto.bidding.BiddingEvaluationDto;
-import com.orbit.dto.bidding.BiddingFormDto;
 import com.orbit.dto.bidding.BiddingParticipationDto;
 import com.orbit.dto.bidding.BiddingSupplierDto;
 import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.BiddingContract;
 import com.orbit.entity.bidding.BiddingEvaluation;
-import com.orbit.entity.bidding.BiddingOrder;
 import com.orbit.entity.bidding.BiddingParticipation;
 import com.orbit.entity.bidding.BiddingSupplier;
 import com.orbit.entity.commonCode.ChildCode;
@@ -41,7 +26,6 @@ import com.orbit.entity.member.Member;
 import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.bidding.BiddingContractRepository;
 import com.orbit.repository.bidding.BiddingEvaluationRepository;
-import com.orbit.repository.bidding.BiddingOrderRepository;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
 import com.orbit.repository.bidding.BiddingRepository;
 import com.orbit.repository.bidding.BiddingSupplierRepository;
@@ -57,6 +41,9 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 입찰 관련 비즈니스 로직을 처리하는 서비스
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -231,14 +218,17 @@ public class BiddingService {
 
     /**
      * 입찰 공고 목록 조회
+     * 
+     * @param params 필터링 파라미터 (status, startDate, endDate)
+     * @return 입찰 공고 DTO 목록
      */
     @Transactional(readOnly = true)
     public List<BiddingDto> getBiddingList(Map<String, Object> params) {
-        String statusCode = params.get("status") != null ? (String) params.get("status") : null;
+        BiddingStatus status = params.get("status") != null ? (BiddingStatus) params.get("status") : null;
         LocalDateTime startDate = params.get("startDate") != null ? (LocalDateTime) params.get("startDate") : null;
         LocalDateTime endDate = params.get("endDate") != null ? (LocalDateTime) params.get("endDate") : null;
         
-        List<Bidding> biddings;
+        List<Bidding> biddings = biddingRepository.findBiddingsByFilter(status, startDate, endDate);
         
         if (statusCode != null) {
             // 상태 코드로 필터링
@@ -377,6 +367,10 @@ public class BiddingService {
     
     /**
      * 입찰 공고 상세 조회
+     * 
+     * @param id 입찰 공고 ID
+     * @return 입찰 공고 DTO
+     * @throws EntityNotFoundException 입찰 공고를 찾을 수 없는 경우
      */
     @Transactional(readOnly = true)
     public BiddingDto getBiddingById(Long id) {
@@ -554,7 +548,48 @@ public class BiddingService {
      * 입찰 공고 수정
      */
     @Transactional
-    public BiddingDto updateBidding(Long id, BiddingFormDto formDto) {
+public BiddingDto createBidding(BiddingDto biddingDto) {
+    // 입찰 번호 생성 (예: BID-년도-일련번호)
+    String bidNumber = "BID-" + LocalDateTime.now().getYear() + "-" 
+                     + String.format("%04d", biddingRepository.count() + 1);
+    biddingDto.setBidNumber(bidNumber);
+    
+    // 필드명 매핑 처리
+    if (biddingDto.getBiddingConditions() != null) {
+        biddingDto.setConditions(biddingDto.getBiddingConditions());
+    }
+    
+    // 가격제안 방식일 경우 금액 계산
+    if (biddingDto.getBidMethod() == BidMethod.PRICE_SUGGESTION) {
+        calculateBiddingPrices(biddingDto);
+    }
+    
+    // 다중 공급자 정보 처리
+    if (biddingDto.getSupplierIds() != null && !biddingDto.getSupplierIds().isEmpty()) {
+        // description 필드에 공급자 정보 저장 (임시 방법)
+        // 실제로는 별도 테이블을 생성하는 것이 좋음
+        biddingDto.setDescription("공급자 ID: " + String.join(", ", 
+            biddingDto.getSupplierIds().stream()
+                .map(Object::toString)
+                .collect(Collectors.toList())));
+    }
+    
+    Bidding bidding = biddingDto.toEntity();
+    bidding = biddingRepository.save(bidding);
+    
+    return BiddingDto.fromEntity(bidding);
+}
+
+    /**
+     * 입찰 공고 수정
+     * 
+     * @param id 입찰 공고 ID
+     * @param biddingDto 수정할 입찰 공고 정보
+     * @return 수정된 입찰 공고 DTO
+     * @throws EntityNotFoundException 입찰 공고를 찾을 수 없는 경우
+     */
+    @Transactional
+    public BiddingDto updateBidding(Long id, BiddingDto biddingDto) {
         Bidding bidding = biddingRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + id));
         
@@ -627,6 +662,9 @@ public class BiddingService {
 
     /**
      * 입찰 공고 삭제
+     * 
+     * @param id 입찰 공고 ID
+     * @throws EntityNotFoundException 입찰 공고를 찾을 수 없는 경우
      */
     @Transactional
     public void deleteBidding(Long id) {
@@ -679,6 +717,9 @@ public class BiddingService {
 
     /**
      * 입찰 참여
+     * 
+     * @param participationDto 입찰 참여 DTO
+     * @return 생성된 입찰 참여 DTO
      */
     @Transactional
     public BiddingParticipationDto participateInBidding(BiddingParticipationDto participationDto) {
@@ -689,7 +730,6 @@ public class BiddingService {
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + participationDto.getBiddingId()));
         
         BiddingParticipation participation = participationDto.toEntity();
-        participation.setBidding(bidding);
         
         // 참여 정보 설정
         participation.setSubmittedAt(LocalDateTime.now());
@@ -711,14 +751,14 @@ public class BiddingService {
         
         participation = participationRepository.save(participation);
         
-        // 입찰 공고에 참여 추가
-        bidding.getParticipations().add(participation);
-        
         return BiddingParticipationDto.fromEntity(participation);
     }
     
     /**
      * 입찰 참여 목록 조회
+     * 
+     * @param biddingId 입찰 공고 ID
+     * @return 입찰 참여 DTO 목록
      */
     @Transactional(readOnly = true)
     public List<BiddingParticipationDto> getBiddingParticipations(Long biddingId) {
@@ -731,6 +771,10 @@ public class BiddingService {
     
     /**
      * 입찰 참여 상세 조회
+     * 
+     * @param id 입찰 참여 ID
+     * @return 입찰 참여 DTO
+     * @throws EntityNotFoundException 입찰 참여 정보를 찾을 수 없는 경우
      */
     @Transactional(readOnly = true)
     public BiddingParticipationDto getParticipationById(Long id) {
@@ -780,6 +824,10 @@ public class BiddingService {
 
     /**
      * 입찰 참여 검증
+     * 
+     * @param participation 입찰 참여 DTO
+     * @throws EntityNotFoundException 입찰 공고를 찾을 수 없는 경우
+     * @throws IllegalStateException 입찰 참여가 유효하지 않은 경우
      */
     private void validateBiddingParticipation(BiddingParticipationDto participation) {
         Bidding bidding = biddingRepository.findById(participation.getBiddingId())
@@ -807,20 +855,25 @@ public class BiddingService {
         }
     }
 
+   
+    
+   
+   
     /**
-     * 입찰 참여 금액 계산
+     * 낙찰자 선정
+     * 
+     * @param biddingId 입찰 공고 ID
+     * @return 선정된 낙찰자의 평가 DTO (없으면 null)
      */
-    private void calculateParticipationPrices(BiddingParticipation participation, Integer quantity) {
-        BigDecimal unitPrice = participation.getUnitPrice();
-        Integer actualQuantity = quantity != null ? quantity : 1;
+    @Transactional(readOnly = true)
+    public BiddingEvaluationDto selectWinningBid(Long biddingId) {
+        List<BiddingEvaluation> evaluations = evaluationRepository.findTopByBiddingIdOrderByTotalScoreDesc(biddingId);
         
-        if (unitPrice != null) {
-            PriceResult result = PriceCalculator.calculateAll(unitPrice, actualQuantity);
-            
-            participation.setSupplyPrice(result.getSupplyPrice());
-            participation.setVat(result.getVat());
-            participation.setTotalAmount(result.getTotalAmount());
+        if (evaluations.isEmpty()) {
+            return null;
         }
+        
+        return BiddingEvaluationDto.fromEntity(evaluations.get(0));
     }
 
     /**
@@ -841,9 +894,13 @@ public class BiddingService {
      * 낙찰자 선정 (최고 점수 기준)
      */
     @Transactional
-    public BiddingEvaluationDto selectWinningBidder(Long biddingId) {
-        // 해당 입찰의 모든 평가 중 최고 점수 평가 조회
-        List<BiddingEvaluation> evaluations = evaluationRepository.findByBiddingId(biddingId);
+    public SimplifiedContractDto createContract(SimplifiedContractDto contractDto) {
+        // 낙찰자 선정
+        BiddingEvaluationDto winningBid = selectWinningBid(contractDto.getBiddingId());
+
+        if (winningBid == null) {
+            throw new IllegalStateException("낙찰자가 선정되지 않았습니다.");
+        }
         
         if (evaluations.isEmpty()) {
             throw new IllegalStateException("해당 입찰의 평가 정보가 없습니다.");
@@ -859,10 +916,8 @@ public class BiddingService {
                 })
                 .orElseThrow(() -> new EntityNotFoundException("해당 입찰의 평가 정보를 찾을 수 없습니다. ID: " + biddingId));
         
-        // 기존 낙찰자 초기화
-        List<BiddingEvaluation> previousWinners = evaluationRepository.findByBiddingIdAndIsSelectedBidderTrue(biddingId);
-        previousWinners.forEach(BiddingEvaluation::cancelSelectedBidder);
-        evaluationRepository.saveAll(previousWinners);
+        BiddingParticipation participation = participationRepository.findById(winningBid.getBiddingParticipationId())
+                .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + winningBid.getBiddingParticipationId()));
         
         // 새 낙찰자 선정
         highestScoringEvaluation.selectAsBidder(notificationRepository, memberRepository);
@@ -894,7 +949,7 @@ public class BiddingService {
         
         return BiddingEvaluationDto.fromEntity(savedEvaluation);
     }
-
+    
     /**
      * 수동으로 낙찰자 선정
      */
@@ -941,14 +996,29 @@ public class BiddingService {
      * 입찰 공고별 낙찰자 목록 조회
      */
     @Transactional(readOnly = true)
-    public List<BiddingEvaluationDto> getWinningBidders(Long biddingId) {
-        List<BiddingEvaluation> winningBidders = evaluationRepository.findByBiddingIdAndIsSelectedBidderTrue(biddingId);
+    public List<SimplifiedContractDto> getContractList(Map<String, Object> params) {
+        List<SimplifiedContract> contracts;
         
-        return winningBidders.stream()
-                .map(BiddingEvaluationDto::fromEntity)
+        // 입찰 ID로 필터링
+        if (params.containsKey("biddingId")) {
+            Long biddingId = (Long) params.get("biddingId");
+            contracts = contractRepository.findByBiddingId(biddingId);
+        } 
+        // 상태로 필터링
+        else if (params.containsKey("status")) {
+            ContractStatus status = (ContractStatus) params.get("status");
+            contracts = contractRepository.findByStatus(status);
+        } 
+        // 전체 조회
+        else {
+            contracts = contractRepository.findAll();
+        }
+        
+        return contracts.stream()
+                .map(SimplifiedContractDto::fromEntity)
                 .collect(Collectors.toList());
     }
-
+    
     /**
      * 특정 입찰에 초대된 공급사 목록 조회
      */
@@ -1115,5 +1185,93 @@ public class BiddingService {
         }
         
         return dto;
+    }
+    
+    /**
+     * 외부에서 총금액을 직접 설정할 경우 (예: DB에서 가져온 데이터)
+     * 
+     * @param participationId 입찰 참여 ID
+     * @param totalAmount 설정할 총금액
+     * @throws EntityNotFoundException 입찰 참여 정보를 찾을 수 없는 경우
+     */
+    @Transactional
+    public void updateParticipationTotalAmount(Long participationId, BigDecimal totalAmount) {
+        BiddingParticipation participation = participationRepository.findById(participationId)
+                .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + participationId));
+        
+        participation.setTotalAmount(totalAmount);
+        participationRepository.save(participation);
+    }
+    
+    /**
+     * 테이블 간 금액 복사 (예: 입찰 참여 → 계약)
+     * 
+     * @param participationId 입찰 참여 ID
+     * @param contract 계약 엔티티
+     * @throws EntityNotFoundException 입찰 참여 정보를 찾을 수 없는 경우
+     */
+    @Transactional
+    public void copyPricesFromParticipationToContract(Long participationId, SimplifiedContract contract) {
+        BiddingParticipation participation = participationRepository.findById(participationId)
+                .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + participationId));
+        
+        // 금액 관련 필드 복사
+        contract.setQuantity(participation.getQuantity());
+        contract.setUnitPrice(participation.getUnitPrice());
+        contract.setSupplyPrice(participation.getSupplyPrice());
+        contract.setVat(participation.getVat());
+        contract.setTotalAmount(participation.getTotalAmount());
+    }
+    
+    /**
+     * 다양한 소스에서 금액 정보 가져오기 (통합 조회 메서드)
+     * 
+     * @param biddingId 입찰 공고 ID
+     * @return 모든 금액 정보를 담은 맵
+     * @throws EntityNotFoundException 입찰 공고를 찾을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    public Map<String, BigDecimal> getAllPriceInfo(Long biddingId) {
+        Map<String, BigDecimal> priceInfo = new HashMap<>();
+        
+        // 입찰 정보
+        Bidding bidding = biddingRepository.findById(biddingId)
+                .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
+        
+        priceInfo.put("biddingUnitPrice", bidding.getUnitPrice());
+        priceInfo.put("biddingSupplyPrice", bidding.getSupplyPrice());
+        priceInfo.put("biddingVat", bidding.getVat());
+        priceInfo.put("biddingTotalAmount", bidding.getTotalAmount());
+        
+        // 참여 정보 (낙찰자)
+        List<BiddingParticipation> participations = participationRepository.findByBiddingId(biddingId);
+        if (!participations.isEmpty()) {
+            BiddingParticipation winner = participations.stream()
+                    .max(Comparator.comparing(p -> evaluationRepository.findByBiddingParticipationId(p.getId())
+                            .stream()
+                            .mapToInt(BiddingEvaluation::getTotalScore)
+                            .max()
+                            .orElse(0)))
+                    .orElse(null);
+            
+            if (winner != null) {
+                priceInfo.put("participationUnitPrice", winner.getUnitPrice());
+                priceInfo.put("participationSupplyPrice", winner.getSupplyPrice());
+                priceInfo.put("participationVat", winner.getVat());
+                priceInfo.put("participationTotalAmount", winner.getTotalAmount());
+            }
+        }
+        
+        // 계약 정보
+        List<SimplifiedContract> contracts = contractRepository.findByBiddingId(biddingId);
+        if (!contracts.isEmpty()) {
+            SimplifiedContract contract = contracts.get(0);
+            priceInfo.put("contractUnitPrice", contract.getUnitPrice());
+            priceInfo.put("contractSupplyPrice", contract.getSupplyPrice());
+            priceInfo.put("contractVat", contract.getVat());
+            priceInfo.put("contractTotalAmount", contract.getTotalAmount());
+        }
+        
+        return priceInfo;
     }
 }

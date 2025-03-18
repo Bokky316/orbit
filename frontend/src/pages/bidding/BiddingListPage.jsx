@@ -49,14 +49,14 @@ function BiddingListPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [status, setStatus] = useState("");
   const [dateRange, setDateRange] = useState({
     start: null,
     end: null
   });
   const [paginationModel, setPaginationModel] = useState({
     page: 1,
-    pageSize: 10
+    pageSize: 10 // 페이지당 항목 수
   });
 
   const navigate = useNavigate();
@@ -74,8 +74,8 @@ function BiddingListPage() {
       });
 
       // 상태 필터 추가
-      if (statusFilter) {
-        queryParams.append("statusCode", statusFilter);
+      if (status) {
+        queryParams.append("status", status);
       }
 
       // 날짜 필터 추가
@@ -97,7 +97,7 @@ function BiddingListPage() {
         queryParams.append("keyword", searchTerm);
       }
 
-      // API 호출
+      // fetchWithAuth 함수 사용
       const response = await fetchWithAuth(
         `${API_URL}biddings?${queryParams.toString()}`
       );
@@ -110,7 +110,7 @@ function BiddingListPage() {
       }
 
       const data = await response.json();
-      console.log("API 응답 데이터:", data);
+      //console.log("API 응답 데이터:", data);
 
       // 데이터 구조 처리
       const biddingList = Array.isArray(data) ? data : data.content || [];
@@ -132,6 +132,7 @@ function BiddingListPage() {
         "입찰 공고 목록을 불러오는 중 오류가 발생했습니다. " + error.message
       );
 
+      // 에러 발생 시 빈 배열로 설정
       setBiddings([]);
       setFilteredBiddings([]);
       setTotalRows(0);
@@ -144,10 +145,11 @@ function BiddingListPage() {
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     fetchBiddings();
-  }, [paginationModel.page, paginationModel.pageSize]);
+  }, [paginationModel.page, paginationModel.pageSize]); // 페이지 변경 시 데이터 다시 가져오기
 
   // 필터 적용 시 데이터 다시 가져오기
   const handleSearch = () => {
+    // 페이지를 1로 리셋하고 데이터 다시 가져오기
     setPaginationModel((prev) => ({ ...prev, page: 1 }));
     fetchBiddings();
   };
@@ -170,7 +172,7 @@ function BiddingListPage() {
 
   // 상태 변경 핸들러
   function handleStatusChange(event) {
-    setStatusFilter(event.target.value);
+    setStatus(event.target.value);
   }
 
   // 날짜 변경 핸들러
@@ -366,6 +368,7 @@ function BiddingListPage() {
                   <TableCell>금액</TableCell>
                   <TableCell>공고상태</TableCell>
                   <TableCell>마감</TableCell>
+                  <TableCell>작업</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -392,18 +395,10 @@ function BiddingListPage() {
                           {item.title}
                         </Typography>
                       </TableCell>
-                      <TableCell>
-                        {item.startDate
-                          ? new Date(item.startDate).toLocaleDateString()
-                          : "-"}{" "}
-                        ~
-                        {item.endDate
-                          ? new Date(item.endDate).toLocaleDateString()
-                          : "-"}
-                      </TableCell>
-                      <TableCell>{item.itemName || "-"}</TableCell>
+                      <TableCell>{`${item.startDate} ~ ${item.endDate}`}</TableCell>
+                      <TableCell>{item.itemName}</TableCell>
                       <TableCell align="right">
-                        {Number(item.totalAmount).toLocaleString()}원
+                        {item.totalAmount?.toLocaleString()}원
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -422,10 +417,22 @@ function BiddingListPage() {
                           size="small"
                         />
                       </TableCell>
+                      <TableCell>{item.endDate}</TableCell>
                       <TableCell>
-                        {item.endDate
-                          ? new Date(item.endDate).toLocaleDateString()
-                          : "-"}
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleViewDetail(item.id)}
+                          sx={{ mr: 1 }}>
+                          상세보기
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleEditItem(item.id)}>
+                          편집
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

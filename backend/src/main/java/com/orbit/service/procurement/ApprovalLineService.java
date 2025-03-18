@@ -4,32 +4,55 @@ import com.orbit.dto.approval.ApprovalLineCreateDTO;
 import com.orbit.dto.approval.ApprovalLineResponseDTO;
 import com.orbit.dto.approval.ApprovalProcessDTO;
 import com.orbit.entity.approval.ApprovalLine;
+import com.orbit.entity.approval.Department;
+import com.orbit.entity.approval.Position;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.exception.ApprovalException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.ApprovalLineRepository;
+import com.orbit.repository.approval.DepartmentRepository;
+import com.orbit.repository.commonCode.ChildCodeRepository;
+import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ApprovalLineService {
 
+    private static final String ENTITY_TYPE = "APPROVAL_LINE";
+    private static final String CODE_GROUP = "STATUS";
+
     private final ApprovalLineRepository approvalLineRepo;
     private final PurchaseRequestRepository purchaseRequestRepo;
     private final MemberRepository memberRepo;
+    private final ParentCodeRepository parentCodeRepo;
+    private final ChildCodeRepository childCodeRepo;
+    private final DepartmentRepository departmentRepo; // 추가된 Repository
     private final SimpMessagingTemplate messagingTemplate;
+    private static final int MAX_APPROVAL_STEPS = 3;
 
-    // 결재선 생성
-    public void createApprovalLine(ApprovalLineCreateDTO dto) {
+    // 결재선 생성 메서드
+    public ApprovalLineResponseDTO createApprovalLine(ApprovalLineCreateDTO dto) {
+        // 구매 요청 조회
         PurchaseRequest request = purchaseRequestRepo.findById(dto.getPurchaseRequestId())
 
         // 상위 상태 코드 조회
@@ -288,7 +311,7 @@ public class ApprovalLineService {
                 .filter(l -> l.getStep() > currentLine.getStep())
                 .findFirst()
                 .ifPresent(nextLine -> {
-                    nextLine.setStatus(ApprovalStatus.IN_REVIEW);
+                    nextLine.setStatus(inReviewStatus);
                     approvalLineRepo.save(nextLine);
                     sendApprovalNotification(nextLine);
                 });
@@ -302,7 +325,7 @@ public class ApprovalLineService {
                 .stream()
                 .filter(l -> l.getStep() > rejectedLine.getStep())
                 .forEach(l -> {
-                    l.setStatus(ApprovalStatus.REJECTED);
+                    l.setStatus(rejectedStatus);
                     approvalLineRepo.save(l);
                 });
     }
@@ -324,23 +347,27 @@ public class ApprovalLineService {
         messagingTemplate.convertAndSend("/topic/approvals/" + requestId, lines);
     }
 
-    // 결재선 조회
+    // 특정 구매 요청의 현재 결재선 조회
     @Transactional(readOnly = true)
     public List<ApprovalLineResponseDTO> getApprovalLines(Long requestId) {
-        return approvalLineRepo.findByPurchaseRequestIdOrderByStepAsc(requestId)
+        // findAllByRequestId를 사용하여 모든 결재선을 단계 순서대로 조회
+        return approvalLineRepo.findAllByRequestId(requestId)
                 .stream()
                 .map(this::convertToDTO)
-                .toList();
+                .collect(Collectors.toList());
     }
 
-    // DTO 변환
+    // 결재선을 ResponseDTO로 변환
     private ApprovalLineResponseDTO convertToDTO(ApprovalLine line) {
         return ApprovalLineResponseDTO.builder()
                 .id(line.getId())
+                .purchaseRequestId(line.getPurchaseRequest().getId())
+                .approverId(line.getApprover().getId()) // 이 부분 추가
                 .approverName(line.getApprover().getName())
                 .department(line.getApprover().getDepartment().getName())
                 .step(line.getStep())
-                .status(line.getStatus())
+                .statusCode(line.getStatus().getCodeValue())
+                .statusName(line.getStatus().getCodeName())
                 .approvedAt(line.getApprovedAt())
                 .comment(line.getComment())
                 .build();

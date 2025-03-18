@@ -25,9 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 구매 요청 관련 RESTful API 컨트롤러 (파일 업로드 기능 포함)
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/purchase-requests")
@@ -35,11 +32,6 @@ public class PurchaseRequestController {
 
     private final PurchaseRequestService purchaseRequestService;
 
-    /**
-     * 생성자를 통한 의존성 주입
-     *
-     * @param purchaseRequestService 구매 요청 서비스
-     */
     public PurchaseRequestController(PurchaseRequestService purchaseRequestService) {
         this.purchaseRequestService = purchaseRequestService;
     }
@@ -51,64 +43,47 @@ public class PurchaseRequestController {
      * @return 구매 요청 (Optional)
      */
 
-    /**
-     * 구매 요청 ID로 구매 요청을 조회합니다.
-     *
-     * @param id 구매 요청 ID
-     * @return 조회된 구매 요청 (존재하지 않으면 404 상태 코드 반환)
-     */
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseRequestDTO> getPurchaseRequestById(@PathVariable Long id) {
         PurchaseRequestDTO purchaseRequest = purchaseRequestService.getPurchaseRequestById(id);
         return new ResponseEntity<>(purchaseRequest, HttpStatus.OK);
     }
 
-    /**
-     * 구매 요청 생성 (JSON 요청)
-     * @param purchaseRequestDTO 요청 정보
-     * @return 생성된 구매 요청
-     */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<PurchaseRequestResponseDTO> createPurchaseRequest(
+    public ResponseEntity<PurchaseRequestDTO> createPurchaseRequest(
             @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestResponseDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, null); // 파일은 null로 전달
+        PurchaseRequestDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, null);
         return new ResponseEntity<>(createdPurchaseRequest, HttpStatus.CREATED);
     }
 
-    /**
-     * 새로운 구매 요청을 생성합니다.
-     *
-     * @param purchaseRequestDTO 생성할 구매 요청 정보
-     * @return 생성된 구매 요청 (201 상태 코드 반환)
-     */
-    @PostMapping
-    public ResponseEntity<PurchaseRequestResponseDTO> createPurchaseRequest(@Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestResponseDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PurchaseRequestDTO> createPurchaseRequestWithFiles(
+            @Valid @RequestPart("purchaseRequestDTO") PurchaseRequestDTO purchaseRequestDTO,
+            @RequestPart(value = "files", required = false) MultipartFile[] files) {
+        PurchaseRequestDTO createdPurchaseRequest = purchaseRequestService.createPurchaseRequest(purchaseRequestDTO, files);
         return new ResponseEntity<>(createdPurchaseRequest, HttpStatus.CREATED);
     }
 
-    /**
-     * 구매 요청 정보를 업데이트합니다.
-     *
-     * @param id               업데이트할 구매 요청 ID
-     * @param purchaseRequestDTO 업데이트할 구매 요청 정보
-     * @return 업데이트된 구매 요청
-     */
     @PutMapping("/{id}")
-    public ResponseEntity<PurchaseRequestResponseDTO> updatePurchaseRequest(@PathVariable Long id, @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
-        PurchaseRequestResponseDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO);
+    public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequest(
+            @PathVariable Long id,
+            @Valid @RequestBody PurchaseRequestDTO purchaseRequestDTO) {
+
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        PurchaseRequestDTO updatedPurchaseRequest = purchaseRequestService.updatePurchaseRequest(id, purchaseRequestDTO, currentUserName);
         return new ResponseEntity<>(updatedPurchaseRequest, HttpStatus.OK);
     }
 
-    /**
-     * 구매 요청을 삭제합니다.
-     *
-     * @param id 삭제할 구매 요청 ID
-     * @return 삭제 성공 여부 (성공 시 204, 실패 시 404)
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePurchaseRequest(@PathVariable Long id) {
-        boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id);
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        boolean isDeleted = purchaseRequestService.deletePurchaseRequest(id, currentUserName);
         return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 

@@ -7,18 +7,22 @@ import com.orbit.entity.approval.Department;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.project.Project;
-import com.orbit.entity.state.StatusHistory;
-import com.orbit.entity.state.SystemStatus;
+import com.orbit.entity.procurement.Project;
+import com.orbit.entity.procurement.ProjectAttachment;
+import com.orbit.entity.procurement.PurchaseRequest;
 import com.orbit.exception.ProjectNotFoundException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.DepartmentRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
+import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.procurement.ProjectAttachmentRepository;
 import com.orbit.repository.procurement.ProjectRepository;
-
-import com.orbit.service.StateService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -32,6 +36,11 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
@@ -53,16 +62,22 @@ public class ProjectService {
     public List<ProjectDTO> getAllProjects() {
         return projectRepository.findAll().stream()
                 .map(this::convertToDto)
-                .toList();
+                .collect(Collectors.toList());
     }
 
+    /**
+     * 단일 프로젝트 조회
+     */
     @Transactional(readOnly = true)
     public ProjectDTO getProjectById(Long id) {
         return projectRepository.findById(id)
                 .map(this::convertToDto)
-                .orElseThrow(() -> new ProjectNotFoundException("Project not found: " + id));
+                .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
     }
 
+    /**
+     * 프로젝트 생성
+     */
     @Transactional
     public ProjectDTO createProject(ProjectDTO projectDTO, String requesterUsername) {
         // 1. 요청자 정보 조회
@@ -93,15 +108,111 @@ public class ProjectService {
         return convertToDto(savedProject);
     }
 
+    /**
+     * 프로젝트 상태 초기화
+     */
+    private void setInitialProjectStatus(Project project) {
+        // 기본 상태 코드 조회 - 등록(REGISTERED)
+        ParentCode basicStatusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("PROJECT", "BASIC_STATUS")
+                .orElseThrow(() -> new ResourceNotFoundException("ParentCode(PROJECT, BASIC_STATUS)를 찾을 수 없습니다."));
+
+        ChildCode registeredStatus = childCodeRepository.findByParentCodeAndCodeValue(basicStatusParent, "REGISTERED")
+                .orElseThrow(() -> new ResourceNotFoundException("ChildCode(REGISTERED)를 찾을 수 없습니다."));
+
+        // 상태 설정
+        project.setBasicStatusParent(basicStatusParent);
+        project.setBasicStatusChild(registeredStatus);
+    }
+
+    /**
+     * 프로젝트 기간 유효성 검사
+     */
+    private void validateProjectPeriod(Project.ProjectPeriod period) {
+        if (period.getStartDate() == null || period.getEndDate() == null) {
+            throw new IllegalArgumentException("프로젝트 시작일과 종료일은 필수 입력 항목입니다.");
+        }
+
+        if (period.getStartDate().isAfter(period.getEndDate())) {
+            throw new IllegalArgumentException("프로젝트 종료일은 시작일 이후여야 합니다.");
+        }
+
+        // 추가적인 비즈니스 규칙에 따른 검증 로직 구현 가능
+        // 예: 최소 프로젝트 기간 검증, 미래 날짜 검증 등
+    }
+
+    /**
+     * 프로젝트 첨부 파일 처리
+     */
+    private void processProjectAttachments(Project project, MultipartFile[] files, Member uploader) {
+        try {
+            Path baseDir = Paths.get(uploadPath).toAbsolutePath();
+            String subDir = "project_" + project.getId();
+            Path targetDir = baseDir.resolve(subDir);
+            Files.createDirectories(targetDir);
+
+            for (MultipartFile file : files) {
+                String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+                String storedFilename = UUID.randomUUID().toString() + "_" + originalFilename;
+                String fileExtension = getFileExtension(originalFilename);
+
+                Path targetPath = targetDir.resolve(storedFilename);
+                Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+                ProjectAttachment attachment = ProjectAttachment.builder()
+                        .originalFilename(originalFilename)
+                        .storedFilename(storedFilename)
+                        .filePath(Paths.get(subDir, storedFilename).toString().replace("\\", "/"))
+                        .fileSize(file.getSize())
+                        .fileExtension(fileExtension)
+                        .project(project)
+                        .uploadedBy(uploader)
+                        .build();
+
+                project.addAttachment(attachment);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("첨부 파일 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 파일 확장자 추출
+     */
+    private String getFileExtension(String filename) {
+        return Optional.ofNullable(filename)
+                .filter(f -> f.contains("."))
+                .map(f -> f.substring(filename.lastIndexOf(".") + 1))
+                .orElse("");
+    }
+
+    /**
+     * 프로젝트 업데이트
+     */
     @Transactional
     public ProjectDTO updateProject(Long id, ProjectDTO dto) {
         // 1. 프로젝트 조회
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new ProjectNotFoundException("Project not found: " + id));
+                .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
 
-        updateFields(project, dto);
-        logStatusChange(project, updater);
-        return convertToDto(projectRepository.save(project));
+        // 2. 수정 가능 여부 검증
+        validateProjectModifiable(project, dto.getUpdatedBy());
+
+        // 3. 프로젝트 업데이트
+        updateProjectDetails(project, dto);
+
+        // 4. 프로젝트 기간 유효성 검사
+        validateProjectPeriod(project.getProjectPeriod());
+
+        // 5. 첨부파일 처리
+        if (dto.getFiles() != null && dto.getFiles().length > 0) {
+            Member updater = memberRepository.findByUsername(dto.getUpdatedBy())
+                    .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
+            processAttachments(project, dto.getFiles(), updater);
+        }
+
+        // 6. 저장 후 DTO 반환
+        Project updatedProject = projectRepository.save(project);
+        return convertToDto(updatedProject);
     }
 
         // 5. 저장 후 DTO 반환
@@ -254,19 +365,18 @@ public class ProjectService {
         project.setProjectName(dto.getProjectName());
         project.setBusinessCategory(dto.getBusinessCategory());
         project.setTotalBudget(dto.getTotalBudget());
-        project.setClientCompany(dto.getClientCompany());
-        project.setContractType(dto.getContractType());
+        project.setRequestDepartment(dto.getRequestDepartment());
+        project.setBudgetCode(dto.getBudgetCode());
+        project.setRemarks(dto.getRemarks());
 
-        if (dto.getProjectManager() != null) {
-            project.getProjectManager().setName(dto.getProjectManager().getName());
-            project.getProjectManager().setContact(dto.getProjectManager().getContact());
-            project.getProjectManager().setEmail(dto.getProjectManager().getEmail());
+        // 프로젝트 기간 업데이트
+        Project.ProjectPeriod projectPeriod = project.getProjectPeriod();
+        if (projectPeriod == null) {
+            projectPeriod = new Project.ProjectPeriod();
+            project.setProjectPeriod(projectPeriod);
         }
-
-        if (dto.getProjectPeriod() != null) {
-            project.getProjectPeriod().setStartDate(dto.getProjectPeriod().getStartDate());
-            project.getProjectPeriod().setEndDate(dto.getProjectPeriod().getEndDate());
-        }
+        projectPeriod.setStartDate(dto.getProjectPeriod().getStartDate());
+        projectPeriod.setEndDate(dto.getProjectPeriod().getEndDate());
     }
 
     private void logStatusChange(Project project, Member member) {
@@ -298,6 +408,23 @@ public class ProjectService {
                 .remarks(dto.getRemarks())
                 .attachments(new ArrayList<>()) // 빈 리스트로 초기화 추가
                 .build();
+
+        // 부서 설정 (ID가 있는 경우)
+        if (dto.getRequestDepartmentId() != null) {
+            Department department = departmentRepository.findById(dto.getRequestDepartmentId())
+                    .orElse(null);
+            if (department != null) {
+                project.setDepartment(department);
+            }
+        }
+
+        // ProjectPeriod 설정
+        Project.ProjectPeriod period = new Project.ProjectPeriod();
+        period.setStartDate(dto.getProjectPeriod().getStartDate());
+        period.setEndDate(dto.getProjectPeriod().getEndDate());
+        project.setProjectPeriod(period);
+
+        return project;
     }
 
     /**
@@ -311,18 +438,18 @@ public class ProjectService {
         dto.setProjectIdentifier(project.getProjectIdentifier());
         dto.setProjectName(project.getProjectName());
         dto.setBusinessCategory(project.getBusinessCategory());
-        dto.setBasicStatus(project.getBasicStatus().getFullCode());
-        dto.setProcurementStatus(project.getProcurementStatus().getFullCode());
         dto.setTotalBudget(project.getTotalBudget());
-        dto.setClientCompany(project.getClientCompany());
-        dto.setContractType(project.getContractType());
+        dto.setRequestDepartment(project.getRequestDepartment());
+        dto.setBudgetCode(project.getBudgetCode());
+        dto.setRemarks(project.getRemarks());
 
+        // 요청자 설정
+        if (project.getRequester() != null) {
+            dto.setRequesterName(project.getRequester().getUsername());
+        }
 
-        ProjectResponseDTO.ManagerInfo managerInfo = new ProjectResponseDTO.ManagerInfo();
-        managerInfo.setName(project.getProjectManager().getName());
-        managerInfo.setContact(project.getProjectManager().getContact());
-        managerInfo.setEmail(project.getProjectManager().getEmail());
-        dto.setProjectManager(managerInfo);
+        // 상태 코드 설정
+        setDtoStatusCodes(project, dto);
 
         // 프로젝트 기간 설정
         ProjectDTO.PeriodInfo periodInfo = new ProjectDTO.PeriodInfo();
@@ -331,6 +458,15 @@ public class ProjectService {
             periodInfo.setEndDate(project.getProjectPeriod().getEndDate());
         }
         dto.setProjectPeriod(periodInfo);
+
+        // 첨부파일 설정 - 항상 설정
+        List<ProjectAttachmentDTO> attachmentDTOs = new ArrayList<>();
+        if (project.getAttachments() != null) {
+            attachmentDTOs = project.getAttachments().stream()
+                    .map(this::convertAttachmentToDto)
+                    .collect(Collectors.toList());
+        }
+        dto.setAttachments(attachmentDTOs);
 
         return dto;
     }

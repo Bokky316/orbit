@@ -1,7 +1,8 @@
 package com.orbit.controller.approval;
 
-import com.orbit.dto.procurement.ApprovalDTO;
-import com.orbit.dto.procurement.ApprovalResponseDTO;
+import com.orbit.dto.approval.ApprovalLineCreateDTO;
+import com.orbit.dto.approval.ApprovalLineResponseDTO;
+import com.orbit.dto.approval.ApprovalProcessDTO;
 import com.orbit.service.procurement.ApprovalLineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

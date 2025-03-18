@@ -1,6 +1,7 @@
 package com.orbit.entity.bidding;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,12 +20,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+//입찰 참여 
 
 @Entity
 @Table(name = "bidding_participations")
@@ -33,47 +37,50 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BiddingParticipation extends BaseEntity {
+public class BiddingParticipation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bidding_id", nullable = false)
+    @JoinColumn(name = "bidding_id", insertable = false, updatable = false)
     private Bidding bidding;
 
-    @Column(name = "bidding_id", insertable = false, updatable = false)
-    private Long biddingId;
+    @Column(name = "bidding_id", nullable = false)
+    private Long biddingId; //입찰 ID
+
+    @Column(name = "bidding_item_id", nullable = false)
+    private Long biddingItemId; //입찰 품목 ID
 
     @Column(name = "supplier_id", nullable = false)
-    private Long supplierId;
+    private Long supplierId; //공급자 ID
 
-    @Column(name = "company_name")
-    private String companyName;
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity; //수량
 
-    @Column(name = "unit_price", precision = 19, scale = 2)
-    private BigDecimal unitPrice;
+    @Column(name = "unit_price")
+    private BigDecimal unitPrice; //입찰 단가
 
-    @Column(name = "supply_price", precision = 19, scale = 2)
-    private BigDecimal supplyPrice;
+    @Column(name = "supply_price")
+    private BigDecimal supplyPrice; //입찰 공급가액
 
-    @Column(name = "vat", precision = 19, scale = 2)
-    private BigDecimal vat;
+    @Column(name = "vat")
+    private BigDecimal vat;//입찰 부가세
 
-    @Column(name = "total_amount", precision = 19, scale = 2)
-    private BigDecimal totalAmount;
+    @Column(name = "total_amount")
+    private BigDecimal totalAmount; //총금액
 
-    @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
+    @Column(name = "delivery_date")
+    private LocalDate deliveryDate; //예상 납기일
 
-    @Column(name = "is_confirmed", columnDefinition = "boolean default false")
-    private boolean isConfirmed;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description; //제안 설명
 
-    @Column(name = "confirmed_at")
-    private LocalDateTime confirmedAt;
+    @Column(name = "proposal_file_path", length = 500)
+    private String proposalFilePath; //제안서 파일
 
-    @Column(name = "is_evaluated", columnDefinition = "boolean default false")
-    private boolean isEvaluated;
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt; //참여일시
 
     @Column(name = "evaluation_score")
     private Integer evaluationScore;
@@ -161,6 +168,12 @@ public class BiddingParticipation extends BaseEntity {
 
     @PrePersist
     protected void onCreate() {
-        this.submittedAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

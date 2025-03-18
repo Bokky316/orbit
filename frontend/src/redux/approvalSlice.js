@@ -27,48 +27,11 @@ export const fetchApprovals = createAsyncThunk(
       return rejectWithValue(error.message);
     }
   }
-  'approval/fetchApprovals',
-  async (_, { rejectWithValue }) => {
-    try {
-      // 내 결재 대기 목록 조회 (현재 사용자가 결재해야 할 항목)
-      const response = await fetchWithAuth(`${API_URL}approvals/my-approvals`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`결재 목록 조회 실패: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('결재 목록 조회 중 오류 발생:', error);
-      return rejectWithValue(error.message);
-    }
-  }
 );
 
 /**
  * 특정 구매요청에 대한 결재선 목록 조회
- * 특정 구매요청에 대한 결재선 목록 조회
  */
-export const fetchApprovalLines = createAsyncThunk(
-  'approval/fetchApprovalLines',
-  async (requestId, { rejectWithValue }) => {
-    try {
-      const response = await fetchWithAuth(`${API_URL}approvals/${requestId}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`결재선 조회 실패: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      return { requestId, lines: data };
-    } catch (error) {
-      console.error('결재선 조회 중 오류 발생:', error);
-      return rejectWithValue(error.message);
-    }
-  }
 export const fetchApprovalLines = createAsyncThunk(
   'approval/fetchApprovalLines',
   async (requestId, { rejectWithValue }) => {
@@ -91,31 +54,7 @@ export const fetchApprovalLines = createAsyncThunk(
 
 /**
  * 결재선 생성
- * 결재선 생성
  */
-export const createApprovalLine = createAsyncThunk(
-  'approval/createApprovalLine',
-  async (approvalLineData, { rejectWithValue }) => {
-    try {
-      const response = await fetchWithAuth(`${API_URL}approvals`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(approvalLineData)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`결재선 생성 실패: ${response.status} - ${errorText}`);
-      }
-
-      return approvalLineData.purchaseRequestId;
-    } catch (error) {
-      console.error('결재선 생성 중 오류 발생:', error);
-      return rejectWithValue(error.message);
-    }
-  }
 export const createApprovalLine = createAsyncThunk(
   'approval/createApprovalLine',
   async (approvalLineData, { rejectWithValue }) => {
@@ -272,11 +211,6 @@ const approvalSlice = createSlice({
 });
 
 export const {
-  setApprovals,
-  setSearchTerm,
-  setRequestDate,
-  setBusinessType,
-  clearError
   setApprovals,
   setSearchTerm,
   setRequestDate,

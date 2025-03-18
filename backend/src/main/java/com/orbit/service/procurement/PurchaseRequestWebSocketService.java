@@ -1,4 +1,4 @@
-package com.orbit.service.event;
+package com.orbit.service.procurement;
 
 import com.orbit.event.dto.PurchaseRequestStatusEventDTO;
 import lombok.RequiredArgsConstructor;

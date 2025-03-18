@@ -60,10 +60,6 @@ import ItemFormPage from "@pages/item/ItemFormPage";
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
  * @returns {JSX.Element} - 전체 앱 콘텐츠
  */
-/**
- * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
- * @returns {JSX.Element} - 전체 앱 콘텐츠
- */
 function AppContent() {
   const { isLoggedIn } = useSelector((state) => state.auth);
 
@@ -90,10 +86,9 @@ function AppContent() {
                 element={<BiddingFormPage mode="create" />}
               />
               <Route
-                path="/biddings/:id/edit"
+                path="/biddings/edit/:id"
                 element={<BiddingFormPage mode="edit" />}
               />
-              {/* 평가 페이지 */}
               <Route
                 path="/biddings/evaluations"
                 element={<BiddingEvaluationListPage />}

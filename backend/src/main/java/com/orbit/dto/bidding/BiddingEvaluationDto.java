@@ -4,51 +4,47 @@ import java.time.LocalDateTime;
 
 import com.orbit.entity.bidding.BiddingEvaluation;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BiddingEvaluationDto {
     private Long id;
     private Long biddingParticipationId;
-    private Long biddingId;
     private Long evaluatorId;
-    private String supplierName;
-    
-    // 점수 항목별 상세 정보
-    private Integer priceScore;       // 가격 (30%)
-    private Integer qualityScore;     // 품질 (40%)
-    private Integer deliveryScore;    // 납품 (20%)
-    private Integer reliabilityScore; // 신뢰도 (10%)
-    
-    // 가중치 적용된 점수
-    private Double weightedTotalScore;
+    private Integer priceScore;
+    private Integer qualityScore;
+    private Integer deliveryScore;
+    private Integer reliabilityScore;
     private Integer totalScore;
-    
     private String comments;
-    private LocalDateTime evaluatedAt;
-    private boolean isSelectedBidder;
-    private boolean selectedForOrder;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
 
-    // 가중치 상수
-    private static final double PRICE_WEIGHT = 0.3;
-    private static final double QUALITY_WEIGHT = 0.4;
-    private static final double DELIVERY_WEIGHT = 0.2;
-    private static final double RELIABILITY_WEIGHT = 0.1;
-
-    // 가중치 점수 계산 메서드
-    public double calculateWeightedScore() {
-        if (priceScore == null || qualityScore == null || 
-            deliveryScore == null || reliabilityScore == null) {
-            return 0.0;
-        }
-
-        return (priceScore * PRICE_WEIGHT) +
-               (qualityScore * QUALITY_WEIGHT) +
-               (deliveryScore * DELIVERY_WEIGHT) +
-               (reliabilityScore * RELIABILITY_WEIGHT);
-    }
-
-    // 엔티티 변환 메서드
+     // Entity -> DTO 변환 (수정 버전)
+public static BiddingEvaluationDto fromEntity(BiddingEvaluation entity) {
+    return BiddingEvaluationDto.builder()
+            .id(entity.getId())
+            .biddingParticipationId(entity.getBiddingParticipationId())
+            .evaluatorId(entity.getEvaluatorId())
+            .priceScore(entity.getPriceScore())
+            .qualityScore(entity.getQualityScore())
+            .deliveryScore(entity.getDeliveryScore())
+            .reliabilityScore(entity.getReliabilityScore())
+            .totalScore(entity.getTotalScore())
+            .comments(entity.getComments())
+            .createdAt(entity.getCreatedAt())
+            .updatedAt(entity.getUpdatedAt())
+            .build();
+}
+    
+    // DTO -> Entity 변환 (부분적으로, participation 객체는 서비스에서 설정)
     public BiddingEvaluation toEntity() {
         BiddingEvaluation evaluation = new BiddingEvaluation();
         evaluation.setId(this.id);

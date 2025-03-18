@@ -9,8 +9,9 @@ import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ApprovalLineCreateDTO {
-    @NotNull
     private Long purchaseRequestId;
     private List<Long> approverIds;
     private String initialStatusCode;

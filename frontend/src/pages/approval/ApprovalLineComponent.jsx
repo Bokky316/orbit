@@ -6,14 +6,16 @@ import { styled } from '@mui/material/styles';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
 
-// 상태에 따른 스타일 지정
+// 상태에 따른 스타일 지정 - 대기중 상태 회색으로 수정
 const StatusChip = styled(Chip)(({ theme, status }) => {
   const getStatusColor = () => {
     switch(status) {
       case 'APPROVED': return theme.palette.success.main;
       case 'REJECTED': return theme.palette.error.main;
       case 'IN_REVIEW': return theme.palette.warning.main;
-      case 'PENDING': return theme.palette.info.main;
+      case 'PENDING': return theme.palette.grey[500]; // 대기중 상태 회색으로 변경
+      case 'REQUESTED': return theme.palette.primary.main;
+      case 'WAITING': return theme.palette.grey[500]; // 대기중 상태 회색으로 변경
       default: return theme.palette.grey[500];
     }
   };
@@ -57,7 +59,12 @@ function ApprovalLineComponent({ purchaseRequestId, currentUserId, onApprovalCom
         const data = await response.json();
         setApprovalLines(data);
 
-        // 현재 사용자의 결재 항목 찾기
+        // 현재 진행 중인 결재 단계 찾기
+        const currentStepIndex = data.findIndex(line =>
+          line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING'
+        );
+
+        // 현재 사용자의 결재 항목 찾기 (모든 상태 포함)
         if (currentUserId) {
           const userApprovalLine = data.find(line =>
             line.statusCode === 'IN_REVIEW' &&
@@ -86,7 +93,7 @@ function ApprovalLineComponent({ purchaseRequestId, currentUserId, onApprovalCom
     };
 
     fetchApprovalLines();
-  }, [purchaseRequestId, currentUserId]);
+  }, [purchaseRequestId, currentUserId, user]);
 
   // 결재 처리 함수
   const handleProcessApproval = async (action) => {

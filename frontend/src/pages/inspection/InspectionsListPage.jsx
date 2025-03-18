@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container, Paper, Typography, Grid, TextField, Select, MenuItem, Button,
   Table, TableHead, TableBody, TableRow, TableCell, FormControl, InputLabel, Box
@@ -152,14 +152,35 @@ const InspectionsListPage = () => {
                     color={insp.result ? "secondary" : "primary"}
                     onClick={() => navigate(`/inspections/${insp.id}/edit`)}
                   >
-                    {insp.result ? "검수 수정" : "검수"}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>«</Box>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 0}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>‹</Box>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page >= Math.ceil(filteredInspections.length / rowsPerPage) - 1}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>›</Box>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPage(Math.ceil(filteredInspections.length / rowsPerPage) - 1)}
+                    disabled={page >= Math.ceil(filteredInspections.length / rowsPerPage) - 1}
+                  >
+                    <Box component="span" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>»</Box>
+                  </IconButton>
+                </Box>
+              </Box>
+            </Box>
+          </>
+        )}
+      </Card>
     </Container>
   );
 };

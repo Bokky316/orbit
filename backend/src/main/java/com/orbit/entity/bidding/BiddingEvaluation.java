@@ -2,10 +2,6 @@ package com.orbit.entity.bidding;
 
 import java.time.LocalDateTime;
 
-import com.orbit.entity.BaseEntity;
-import com.orbit.repository.NotificationRepository;
-import com.orbit.repository.member.MemberRepository;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -23,6 +19,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+
+// 입찰 참여 공급자 평가
+
 @Entity
 @Table(name = "bidding_evaluations")
 @Getter
@@ -30,7 +29,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BiddingEvaluation extends BaseEntity {
+public class BiddingEvaluation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -46,31 +45,31 @@ public class BiddingEvaluation extends BaseEntity {
     private Long biddingId;
 
     @Column(name = "evaluator_id", nullable = false)
-    private Long evaluatorId;
+    private Long evaluatorId; //평가자 ID
 
     @Column(name = "supplier_name")
-    private String supplierName;
+    private String supplierName; // 공급자 이름
 
     @Column(name = "price_score", nullable = false)
-    private Integer priceScore;
+    private Integer priceScore; //가격 점수 (5점 만점)
 
     @Column(name = "quality_score", nullable = false)
-    private Integer qualityScore;
+    private Integer qualityScore; //품질 점수 (5점 만점)
 
     @Column(name = "delivery_score", nullable = false)
-    private Integer deliveryScore;
+    private Integer deliveryScore; //납기 점수 (5점 만점)'
 
     @Column(name = "reliability_score", nullable = false)
-    private Integer reliabilityScore;
+    private Integer reliabilityScore; //신뢰도 점수 (5점 만점)
 
-    @Column(name = "total_score")
-    private Integer totalScore;
+    @Column(name = "total_score", insertable = false, updatable = false)
+    private Integer totalScore; //평균 점수
 
     @Column(name = "comments", columnDefinition = "TEXT")
-    private String comments;
+    private String comments; //평가 의견
 
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt; //평가일시
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -85,7 +84,24 @@ public class BiddingEvaluation extends BaseEntity {
     private LocalDateTime bidderSelectedAt;
 
     @Column(name = "selected_for_order", columnDefinition = "boolean default false")
-    private boolean selectedForOrder;
+    private boolean selectedForOrder; // 발주 선정 여부
+
+    @Column(name = "is_selected_bidder", columnDefinition = "boolean default false")
+    private boolean isSelectedBidder; // 낙찰자 선정 여부
+        
+    @Column(name = "bidder_selected_at")
+    private LocalDateTime bidderSelectedAt; // 낙찰자 선정 일시
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
 
     // 헬퍼 메서드를 추가하여 호환성 유지
@@ -104,18 +120,10 @@ public class BiddingEvaluation extends BaseEntity {
      * 낙찰자로 선정
      * 수정버전: 레포지토리 파라미터를 받도록 수정
      */
-    public void selectAsBidder(NotificationRepository notificationRepo, MemberRepository memberRepo) {
+    public void selectAsBidder() {
         this.isSelectedBidder = true;
         this.bidderSelectedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        
-        // 참여 정보도 낙찰자로 업데이트
-        if (this.participation != null) {
-            this.participation.setSelectedBidder(true);
-            this.participation.setSelectedAt(LocalDateTime.now());
-        }
-        
-        // 알림 발송은 Bidding.selectBidder 메서드에서 처리됨
     }
 
     /**

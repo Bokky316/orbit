@@ -2,20 +2,11 @@ package com.orbit.entity.bidding;
 
 import java.time.LocalDateTime;
 
-import com.orbit.entity.BaseEntity;
-import com.orbit.entity.Notification;
-import com.orbit.entity.member.Member;
-import com.orbit.repository.NotificationRepository;
-import com.orbit.repository.member.MemberRepository;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -24,10 +15,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 입찰공고-공급자 연결 엔티티
- * - 입찰 공고에 초대된 공급자 관리
- */
+
+//입찰공고-공급자 연결
+
 @Entity
 @Table(name = "bidding_suppliers")
 @Getter
@@ -35,7 +25,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BiddingSupplier extends BaseEntity {
+public class BiddingSupplier {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -53,7 +43,7 @@ public class BiddingSupplier extends BaseEntity {
     private String companyName; // 공급자명 (캐싱용)
 
     @Column(name = "notification_sent")
-    private Boolean notificationSent; // 알림 발송 여부
+    private Boolean notificationSent; //알림 발송 여부
 
     @Column(name = "notification_date")
     private LocalDateTime notificationDate; // 알림 발송 일시
@@ -200,7 +190,5 @@ public class BiddingSupplier extends BaseEntity {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.notificationSent = false;
-        this.isParticipating = false;
-        this.isRejected = false;
     }
 }

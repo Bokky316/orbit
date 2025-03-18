@@ -13,20 +13,27 @@ import java.util.Optional;
 
 public interface ItemRepository extends JpaRepository<Item, String> {
 
+    // 기존 메서드 정리
     @Query("SELECT i FROM Item i WHERE i.useYn = 'Y'")
     List<Item> findAllActive();
 
     @Query("SELECT i FROM Item i WHERE i.category.id = :categoryId AND i.useYn = 'Y'")
     List<Item> findActiveByCategoryId(@Param("categoryId") String categoryId);
 
+    // 카테고리만 조회
     @Query("SELECT i FROM Item i JOIN FETCH i.category WHERE i.id = :id")
     Optional<Item> findByIdWithCategory(@Param("id") String id);
 
-    @Query("SELECT i FROM Item i JOIN FETCH i.unit WHERE i.id = :id")
-    Optional<Item> findByIdWithUnit(@Param("id") String id);
+    // 단위 부모 코드 조회 (필요 시)
+    @Query("SELECT i FROM Item i JOIN FETCH i.unitParentCode WHERE i.id = :id")
+    Optional<Item> findByIdWithUnitParent(@Param("id") String id);
 
-    @Query("SELECT i FROM Item i JOIN FETCH i.category JOIN FETCH i.unit WHERE i.id = :id")
-    Optional<Item> findByIdWithCategoryAndUnit(@Param("id") String id);
+    // 카테고리 + 단위 부모 코드 조회 (필요 시)
+    @Query("SELECT i FROM Item i " +
+            "JOIN FETCH i.category " +
+            "JOIN FETCH i.unitParentCode " +
+            "WHERE i.id = :id")
+    Optional<Item> findByIdWithCategoryAndUnitParent(@Param("id") String id);
 
     Optional<Item> findByCode(String code);
 

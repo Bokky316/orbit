@@ -34,6 +34,11 @@ function ApprovalProcessDialog({ open, onClose, action, lineId, onComplete }) {
   const buttonText = action === 'APPROVE' ? '승인' : '반려';
   const buttonColor = action === 'APPROVE' ? 'success' : 'error';
 
+  // 코멘트 변경 핸들러
+  const handleCommentChange = (e) => {
+    setComment(e.target.value);
+  };
+
   // 결재 처리 핸들러
   const handleProcess = async () => {
     try {
@@ -96,13 +101,13 @@ function ApprovalProcessDialog({ open, onClose, action, lineId, onComplete }) {
   return (
     <Dialog
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
       maxWidth="sm"
       fullWidth
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {dialogTitle}
-        <IconButton edge="end" color="inherit" onClick={handleClose} aria-label="close">
+        <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -127,7 +132,7 @@ function ApprovalProcessDialog({ open, onClose, action, lineId, onComplete }) {
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>
+        <Button onClick={onClose} disabled={loading}>
           취소
         </Button>
         <Button

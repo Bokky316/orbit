@@ -92,6 +92,7 @@ export const getStatusName = (statusCode) => {
     case 'REJECTED': return '반려';
     case 'IN_REVIEW': return '검토중';
     case 'PENDING': return '대기중';
+    case 'REQUESTED': return '요청됨';
     default: return statusCode;
   }
 };
@@ -126,9 +127,10 @@ export const getUserApprovalAuthority = (approvalLines, currentUserId) => {
     return { canApprove: false, lineId: null };
   }
 
-  // 상태가 IN_REVIEW이고 현재 사용자가 결재자인 항목 찾기
+  // 상태가 IN_REVIEW, PENDING, REQUESTED이고 현재 사용자가 결재자인 항목 찾기
   const currentUserApprovalLine = approvalLines.find(
-    line => line.statusCode === 'IN_REVIEW' && line.approverId === currentUserId
+    line => (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
+    (line.approverId === currentUserId || line.approver_id === currentUserId)
   );
 
   return {

@@ -16,9 +16,10 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
      */
     List<BiddingOrder> findByBiddingId(Long biddingId);
     
-    /**
-     * 특정 공급사의 발주 목록 조회
-     */
+    boolean existsByBiddingId(Long biddingId);
+    
+    boolean existsByBiddingParticipationId(Long participationId);
+    
     List<BiddingOrder> findBySupplierId(Long supplierId);
     
     /**
@@ -33,10 +34,7 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
      */
     List<BiddingOrder> findByApprovedAtIsNotNull();
     
-    /**
-     * 승인되지 않은 발주 목록 조회
-     */
-    List<BiddingOrder> findByApprovedAtIsNull();
+    List<BiddingOrder> findByStatus(OrderStatus status);
     
     /**
      * 특정 승인자의 발주 목록 조회
