@@ -101,13 +101,6 @@ public class CommonCodeDataInitializer {
                List.of("DRAFT", "IN_PROGRESS", "CLOSED", "CANCELED"),
                List.of("초안", "진행중", "완료", "취소")
        );
-
-       // 발주 상태 코드 (단일 상태)
-        ParentCode biddingOrderStatus = initParentCode("ORDER", "STATUS", "발주 상태");
-        initChildCodes(biddingOrderStatus,
-                List.of("COMPLETED"),
-                List.of("발주완료")
-        );
    }
 
     //▶▶▶ 결재 코드
@@ -136,7 +129,15 @@ public class CommonCodeDataInitializer {
         );
     }
 
-    
+    //▶▶▶ 송장 상태 코드
+    private void initInvoiceCodes() {
+        // 송장 상태 코드
+        ParentCode invoiceStatus = initParentCode("INVOICE", "STATUS", "송장 상태");
+        initChildCodes(invoiceStatus,
+                List.of("WAITING", "PAID", "OVERDUE", "CANCELED"),
+                List.of("대기", "지불완료", "연체", "취소")
+        );
+    }
 
     //━━━━ 공통 메서드 ━━━━━━
     private ParentCode initParentCode(String entityType, String codeGroup, String codeName) {
