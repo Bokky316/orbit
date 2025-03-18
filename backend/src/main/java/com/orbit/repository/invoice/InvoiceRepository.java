@@ -1,14 +1,13 @@
 package com.orbit.repository.invoice;
 
-import java.util.List;
-
+import com.orbit.entity.invoice.Invoice;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.orbit.entity.invoice.Invoice;
+import java.util.List;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 

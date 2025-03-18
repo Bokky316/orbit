@@ -33,7 +33,6 @@ public class CommonCodeDataInitializer {
         initBiddingCodes(); // 입찰 관련
         initUnitCodes();
         initInvoiceCodes();
-        initInvoiceCodes();
     }
 
     //▶▶▶ 프로젝트 상태 코드
@@ -141,25 +140,8 @@ public class CommonCodeDataInitializer {
         // 송장 상태 코드
         ParentCode invoiceStatus = initParentCode("INVOICE", "STATUS", "송장 상태");
         initChildCodes(invoiceStatus,
-                List.of("WAITING", "APPROVED", "REJECTED", "PAID", "OVERDUE"),
-                List.of("대기", "승인됨", "거부됨", "지불완료", "연체")
-        );
-    }
-
-    //▶▶▶ 지불 관련 코드
-    private void initPaymentCodes() {
-        // 결제 상태 코드
-        ParentCode paymentStatus = initParentCode("PAYMENT", "STATUS", "결제 상태");
-        initChildCodes(paymentStatus,
-                List.of("COMPLETED", "FAILED", "CANCELED"),
-                List.of("완료", "실패", "취소")
-        );
-
-        // 결제 방법 코드
-        ParentCode paymentMethod = initParentCode("PAYMENT", "METHOD", "결제 방법");
-        initChildCodes(paymentMethod,
-                List.of("TRANSFER", "CARD", "CHECK"),
-                List.of("계좌이체", "카드", "수표")
+                List.of("WAITING", "PAID", "OVERDUE", "CANCELED"),
+                List.of("대기", "지불완료", "연체", "취소")
         );
     }
 

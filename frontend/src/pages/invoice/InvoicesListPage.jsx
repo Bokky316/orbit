@@ -57,10 +57,6 @@ const getStatusProps = (status) => {
   switch(status) {
     case 'WAITING':
       return { color: 'warning', label: '대기' };
-    case 'APPROVED':
-      return { color: 'success', label: '승인됨' };
-    case 'REJECTED':
-      return { color: 'error', label: '거부됨' };
     case 'PAID':
       return { color: 'success', label: '지불완료' };
     case 'OVERDUE':
@@ -74,54 +70,6 @@ const getStatusProps = (status) => {
 const formatCurrency = (amount) => {
   if (!amount) return '0원';
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
-};
-
-// 필터링된 송장 데이터로 통계 계산하는 함수
-const calculateStatistics = (invoices) => {
-  const stats = {
-    totalCount: invoices.length,
-    waitingCount: 0,
-    approvedCount: 0,
-    rejectedCount: 0,
-    paidCount: 0,
-    overdueCount: 0,
-    totalAmount: 0,
-    waitingAmount: 0,
-    approvedAmount: 0,
-    rejectedAmount: 0,
-    paidAmount: 0,
-    overdueAmount: 0
-  };
-
-  invoices.forEach(invoice => {
-    const amount = invoice.totalAmount || 0;
-    stats.totalAmount += amount;
-
-    switch(invoice.status) {
-      case 'WAITING':
-        stats.waitingCount++;
-        stats.waitingAmount += amount;
-        break;
-      case 'APPROVED':
-        stats.approvedCount++;
-        stats.approvedAmount += amount;
-        break;
-      case 'REJECTED':
-        stats.rejectedCount++;
-        stats.rejectedAmount += amount;
-        break;
-      case 'PAID':
-        stats.paidCount++;
-        stats.paidAmount += amount;
-        break;
-      case 'OVERDUE':
-        stats.overdueCount++;
-        stats.overdueAmount += amount;
-        break;
-    }
-  });
-
-  return stats;
 };
 
 const InvoicesListPage = () => {
@@ -146,20 +94,15 @@ const InvoicesListPage = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [error, setError] = useState('');
   const [showError, setShowError] = useState(false);
-  const [companyName, setCompanyName] = useState('');
 
   // 통계 정보
   const [statistics, setStatistics] = useState({
     totalCount: 0,
     waitingCount: 0,
-    approvedCount: 0,
-    rejectedCount: 0,
     paidCount: 0,
     overdueCount: 0,
     totalAmount: 0,
     waitingAmount: 0,
-    approvedAmount: 0,
-    rejectedAmount: 0,
     paidAmount: 0,
     overdueAmount: 0
   });
@@ -183,58 +126,6 @@ const InvoicesListPage = () => {
     return currentUser.username.startsWith('001');
   };
 
-  // 회사명 찾기
-  const findCompanyName = () => {
-    if (!currentUser) return '';
-
-    // 공급업체 역할인 경우 회사명 추출
-    if (isSupplier()) {
-      // 공급업체명을 찾을 수 있는 가능한 속성 확인
-      const company = currentUser.companyName ||
-                     currentUser.company ||
-                     currentUser.supplierName;
-
-      // 회사명이 이미 있으면 사용
-      if (company) {
-        console.log('회사명 찾음 (속성):', company);
-        return company;
-      }
-
-      // 이름에서 추출 (예: '공급사 1 담당자' -> '공급사 1')
-      if (currentUser.name) {
-        // 이름에서 '공급사 N' 패턴 추출
-        const nameMatch = currentUser.name.match(/(공급사\s*\d+)/);
-        if (nameMatch) {
-          console.log('회사명 찾음 (이름 패턴):', nameMatch[1]);
-          return nameMatch[1];
-        }
-
-        // 이름이 공급사명인 경우 (예: '공급사 1')
-        if (currentUser.name.trim().startsWith('공급사')) {
-          console.log('회사명 찾음 (이름):', currentUser.name);
-          return currentUser.name.trim();
-        }
-      }
-
-      // 그래도 못 찾았다면, 이름 자체를 그대로 사용
-      if (currentUser.name) {
-        console.log('회사명으로 이름 사용:', currentUser.name);
-        return currentUser.name;
-      }
-    }
-
-    return '';
-  };
-
-  // 회사명 설정
-  useEffect(() => {
-    if (currentUser && isSupplier()) {
-      const company = findCompanyName();
-      setCompanyName(company);
-      console.log('공급업체명 설정:', company);
-    }
-  }, [currentUser]);
-
   // 송장에 대한 접근 권한 확인
   const canAccessInvoice = (invoice) => {
     if (!currentUser) return false;
@@ -247,22 +138,8 @@ const InvoicesListPage = () => {
 
     // SUPPLIER는 자사 관련 데이터만 접근 가능
     if (isSupplier()) {
-      // 회사명 정규화 (공백 제거 후 소문자 변환)
-      const normalizeText = (text) => text?.replace(/\s+/g, '').toLowerCase();
-      const normalizedCompanyName = normalizeText(companyName || currentUser.name || currentUser.companyName);
-      const normalizedSupplierName = normalizeText(invoice.supplierName);
-
-      // 정규화된 이름으로 비교
-      if (normalizedCompanyName && normalizedSupplierName) {
-        // 이름이 포함 관계인지 확인 (더 유연한 비교)
-        return normalizedSupplierName.includes(normalizedCompanyName) ||
-               normalizedCompanyName.includes(normalizedSupplierName);
-      }
-    }
-
-    // 그 외 BUYER는 관련 데이터만 접근
-    if (isBuyer()) {
-      return true; // 일반적으로 BUYER는 모든 송장 접근 가능
+      return invoice.supplierName === currentUser.companyName ||
+             invoice.supplierName.includes(currentUser.name);
     }
 
     // 그 외 BUYER는 관련 데이터만 접근
@@ -273,47 +150,16 @@ const InvoicesListPage = () => {
     return false;
   };
 
-  // 역할 기반 데이터 필터링
-  const filterInvoicesByRole = (data) => {
-    if (!currentUser || !data || data.length === 0) return [];
-
-    // ADMIN은 모든 데이터 접근 가능
-    if (isAdmin()) return data;
-
-    // BUYER(구매관리팀)은 모든 데이터 접근 가능
-    if (isBuyer() && isPurchaseDept()) return data;
-
-    // 일반 BUYER는 모든 데이터 접근 가능
-    if (isBuyer() && !isPurchaseDept()) return data;
-
-    // SUPPLIER는 자사 관련 데이터만 접근 가능
-    if (isSupplier()) {
-      // 회사명 정규화 (공백 제거 후 소문자 변환)
-      const normalizeText = (text) => text?.replace(/\s+/g, '').toLowerCase();
-
-      return data.filter(invoice => {
-        const normalizedCompanyName = normalizeText(companyName || currentUser.name || currentUser.companyName);
-        const normalizedSupplierName = normalizeText(invoice.supplierName);
-
-        if (normalizedCompanyName && normalizedSupplierName) {
-          return normalizedSupplierName.includes(normalizedCompanyName) ||
-                 normalizedCompanyName.includes(normalizedSupplierName);
-        }
-        return false;
-      });
-    }
-
-    return data;
-  };
-
   // 송장 등록 권한 확인
   const canCreateInvoice = () => {
     if (!isLoggedIn || !currentUser) return false;
 
-    // 오직 SUPPLIER(공급업체)만 송장 발행 가능
-    if (isSupplier()) return true;
+    // ADMIN은 항상 가능
+    if (isAdmin()) return true;
 
-    // 다른 역할은 불가능
+    // BUYER(구매관리팀)도 가능
+    if (isBuyer() && isPurchaseDept()) return true;
+
     return false;
   };
 
@@ -330,11 +176,6 @@ const InvoicesListPage = () => {
       params.append('sortBy', sortBy);
       params.append('sortDir', sortDir);
 
-      // SUPPLIER인 경우 자사 데이터만 조회하도록 필터 추가
-      if (isSupplier() && companyName) {
-        params.append('supplierName', companyName);
-      }
-
       const response = await fetchWithAuth(`${API_URL}invoices/list?${params.toString()}`);
 
       if (!response.ok) {
@@ -347,25 +188,19 @@ const InvoicesListPage = () => {
       if (data) {
         // 송장 데이터 설정
         if (data.invoices) {
-          const allInvoices = data.invoices;
-          setInvoices(allInvoices);
-
-          // 역할 기반 필터링 적용
-          const filtered = filterInvoicesByRole(allInvoices);
-          setFilteredInvoices(filtered);
-
-          // 필터링된 데이터 기준으로 총 항목 수 설정
-          setTotalElements(filtered.length);
-
-          // 필터링된 데이터로 통계 계산 (프론트엔드에서 직접 계산)
-          const calculatedStats = calculateStatistics(filtered);
-          setStatistics(calculatedStats);
+          setInvoices(data.invoices);
+          setFilteredInvoices(data.invoices);
         }
 
         // 페이지네이션 정보 설정
         if (data.totalPages) setTotalPages(data.totalPages);
         if (data.currentPage !== undefined) setPage(data.currentPage);
-        if (data.totalItems && !isSupplier()) setTotalElements(data.totalItems);
+        if (data.totalItems) setTotalElements(data.totalItems);
+
+        // 통계 정보 설정
+        if (data.statistics) {
+          setStatistics(data.statistics);
+        }
       } else {
         throw new Error('송장 목록 조회 실패');
       }
@@ -380,27 +215,31 @@ const InvoicesListPage = () => {
     }
   };
 
+  // 통계 정보 별도 로드 함수
+  const fetchStatistics = async () => {
+    try {
+      const response = await fetchWithAuth(`${API_URL}invoices/statistics`);
+
+      if (!response.ok) {
+        throw new Error(`통계 조회 실패: ${response.status}`);
+      }
+
+      const stats = await response.json();
+      setStatistics(stats);
+    } catch (error) {
+      console.error('통계를 불러오는 중 오류 발생:', error);
+    }
+  };
+
   // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
     if (isLoggedIn && currentUser) {
       fetchInvoices();
+      fetchStatistics();
     } else {
       setLoading(false);
     }
   }, [isLoggedIn, currentUser, page, rowsPerPage, sortBy, sortDir]);
-
-  // 필터링 변경 시 데이터 재필터링
-  useEffect(() => {
-    if (invoices.length > 0) {
-      const filtered = filterInvoicesByRole(invoices);
-      setFilteredInvoices(filtered);
-      setTotalElements(filtered.length);
-
-      // 필터링된 데이터로 통계 재계산
-      const calculatedStats = calculateStatistics(filtered);
-      setStatistics(calculatedStats);
-    }
-  }, [currentUser, companyName]);
 
   // 이벤트 핸들러
   const handleSearch = () => {
@@ -410,6 +249,7 @@ const InvoicesListPage = () => {
 
   const handleRefresh = () => {
     fetchInvoices();
+    fetchStatistics();
   };
 
   const handleCreateInvoice = () => {
@@ -449,13 +289,6 @@ const InvoicesListPage = () => {
     }
 
     navigate(`/invoices/${invoice.id}`);
-  };
-
-  // 페이지네이션된 데이터 계산
-  const getCurrentPageData = () => {
-    const startIndex = page * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    return filteredInvoices.slice(startIndex, endIndex);
   };
 
   return (
@@ -501,15 +334,9 @@ const InvoicesListPage = () => {
               <Typography variant="caption" display="block">
                 {formatCurrency(statistics.totalAmount)}
               </Typography>
-            </Box>
-          </Grid>
-
-          <Grid item xs={4} sm={2}>
-            <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
-              <Typography variant="body2" color="text.secondary">대기</Typography>
-              <Typography variant="h6" color="warning.main" sx={{ my: 1 }}>{statistics.waitingCount}</Typography>
-              <Typography variant="caption" display="block">
-                {formatCurrency(statistics.waitingAmount)}
+              <Typography variant="h4">{statistics.totalCount}건</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                총액: {formatCurrency(statistics.totalAmount)}
               </Typography>
             </Box>
           </Grid>
@@ -554,7 +381,46 @@ const InvoicesListPage = () => {
             </Box>
           </Grid>
         </Grid>
-      </Box>
+        <Grid item xs={12} sm={6} md={3}>
+          <StyledCard>
+            <CardContent>
+              <Typography variant="h6" color="textSecondary" gutterBottom>
+                대기 중
+              </Typography>
+              <Typography variant="h4" color="warning.main">{statistics.waitingCount}건</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                총액: {formatCurrency(statistics.waitingAmount)}
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StyledCard>
+            <CardContent>
+              <Typography variant="h6" color="textSecondary" gutterBottom>
+                지불 완료
+              </Typography>
+              <Typography variant="h4" color="success.main">{statistics.paidCount}건</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                총액: {formatCurrency(statistics.paidAmount)}
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StyledCard>
+            <CardContent>
+              <Typography variant="h6" color="textSecondary" gutterBottom>
+                연체
+              </Typography>
+              <Typography variant="h4" color="error.main">{statistics.overdueCount}건</Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                총액: {formatCurrency(statistics.overdueAmount)}
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+      </Grid>
 
       {/* 검색 및 필터 섹션 */}
       <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -586,8 +452,6 @@ const InvoicesListPage = () => {
               >
                 <MenuItem value="">전체</MenuItem>
                 <MenuItem value="WAITING">대기</MenuItem>
-                <MenuItem value="APPROVED">승인됨</MenuItem>
-                <MenuItem value="REJECTED">거부됨</MenuItem>
                 <MenuItem value="PAID">지불완료</MenuItem>
                 <MenuItem value="OVERDUE">연체</MenuItem>
               </Select>
@@ -637,18 +501,19 @@ const InvoicesListPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell align="center">송장 번호</TableCell>
-                  <TableCell align="center">발주 번호</TableCell>
+                  <TableCell align="center">입고 번호</TableCell>
                   <TableCell align="center">발행일</TableCell>
                   <TableCell align="center">마감일</TableCell>
                   <TableCell align="center">공급업체</TableCell>
-                  <TableCell align="center">담당자</TableCell>
+                  <TableCell align="center">공급가액</TableCell>
+                  <TableCell align="center">부가세</TableCell>
                   <TableCell align="center">총액</TableCell>
                   <TableCell align="center">상태</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {getCurrentPageData().length > 0 ? (
-                  getCurrentPageData().map((invoice) => (
+                {filteredInvoices.length > 0 ? (
+                  filteredInvoices.map((invoice) => (
                     <StyledTableRow
                       key={invoice.id}
                       hover
@@ -658,13 +523,14 @@ const InvoicesListPage = () => {
                         opacity: canAccessInvoice(invoice) ? 1 : 0.5
                       }}
                     >
-                      <TableCell align="center">{invoice.invoiceNumber}</TableCell>
-                      <TableCell align="center">{invoice.orderNumber || '-'}</TableCell>
-                      <TableCell align="center">{invoice.issueDate}</TableCell>
-                      <TableCell align="center">{invoice.dueDate}</TableCell>
-                      <TableCell align="center">{invoice.supplierName}</TableCell>
-                      <TableCell align="center">{invoice.approverName || '-'}</TableCell>
-                      <TableCell align="center">{formatCurrency(invoice.totalAmount)}</TableCell>
+                      <TableCell>{invoice.invoiceNumber}</TableCell>
+                      <TableCell>{invoice.deliveryNumber || '-'}</TableCell>
+                      <TableCell>{invoice.issueDate}</TableCell>
+                      <TableCell>{invoice.dueDate}</TableCell>
+                      <TableCell>{invoice.supplierName}</TableCell>
+                      <TableCell align="right">{formatCurrency(invoice.supplyPrice)}</TableCell>
+                      <TableCell align="right">{formatCurrency(invoice.vat)}</TableCell>
+                      <TableCell align="right">{formatCurrency(invoice.totalAmount)}</TableCell>
                       <TableCell align="center">
                         <Chip
                           label={getStatusProps(invoice.status).label}
@@ -676,7 +542,7 @@ const InvoicesListPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={9} align="center">
                       표시할 송장이 없습니다.
                     </TableCell>
                   </TableRow>
@@ -696,6 +562,21 @@ const InvoicesListPage = () => {
           labelRowsPerPage="페이지당 행 수"
         />
       </Paper>
+
+      {/* 디버깅 정보 (개발 환경에서만 표시) */}
+      {process.env.NODE_ENV === 'development' && currentUser && (
+        <Paper sx={{ p: 2, mt: 2, bgcolor: '#f5f5f5', fontSize: '0.75rem' }}>
+          <Typography variant="h6" gutterBottom>디버깅 정보</Typography>
+          <div>사용자: {currentUser.username} ({currentUser.roles?.join(', ') || currentUser.role})</div>
+          <div>이름: {currentUser.name}</div>
+          <div>회사명: {currentUser.companyName || '-'}</div>
+          <div>구매관리팀: {isPurchaseDept() ? 'Yes' : 'No'}</div>
+          <div>송장 발행 권한: {canCreateInvoice() ? 'Yes' : 'No'}</div>
+          <div>검색어: {searchTerm || '-'}, 상태필터: {statusFilter || '-'}</div>
+          <div>정렬: {sortBy} {sortDir}</div>
+          <div>페이지: {page}, 행 수: {rowsPerPage}, 총 항목: {totalElements}</div>
+        </Paper>
+      )}
     </Container>
   );
 };

@@ -23,8 +23,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 @RestController
@@ -55,13 +53,13 @@ public class InvoiceController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 입고 ID로 송장 생성
     @PostMapping("/from-delivery/{deliveryId}")
     public ResponseEntity<InvoiceDto> createInvoiceFromDelivery(@PathVariable Long deliveryId) {
         try {
             Delivery delivery = deliveryService.getDeliveryById(deliveryId)
                     .orElseThrow(() -> new RuntimeException("입고 정보를 찾을 수 없습니다."));
 
+            // 이미 송장이 발행된 입고인지 확인
             if (delivery.getInvoiceIssued()) {
                 return ResponseEntity.badRequest().body(null);
             }
@@ -71,33 +69,36 @@ public class InvoiceController {
             Invoice invoice = new Invoice();
             invoice.setFromDelivery(delivery, supplier);
 
-            // 재무회계팀(username이 004로 시작하는) 담당자 랜덤 배정
-            List<Member> financeTeamMembers = memberService.findByUsernameStartingWith("004");
-
-            if (!financeTeamMembers.isEmpty()) {
-                // 랜덤으로 한 명 선택하여 담당자로 지정
-                int randomIndex = new Random().nextInt(financeTeamMembers.size());
-                Member assignedApprover = financeTeamMembers.get(randomIndex);
-
-                // 송장에 담당자 정보 설정
-                invoice.setApprover(assignedApprover);
-
-                System.out.println("송장 담당자 자동 배정: " + assignedApprover.getName() + " (ID: " + assignedApprover.getId() + ")");
-            } else {
-                System.out.println("경고: 재무회계팀 담당자가 없어 담당자 자동 배정 실패");
-            }
-
             Invoice savedInvoice = invoiceService.createInvoice(invoice);
 
+            // 입고 상태 업데이트 (송장 발행 여부)
             delivery.setInvoiceIssued(true);
             DeliveryDto.Request request = new DeliveryDto.Request();
+            // 필수 필드만 설정 (최소한으로 필요한 필드들)
             request.setDeliveryDate(delivery.getDeliveryDate());
             request.setItemQuantity(delivery.getItemQuantity());
             deliveryService.updateDelivery(delivery.getId(), request);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(InvoiceDto.fromEntity(savedInvoice));
         } catch (Exception e) {
-            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<InvoiceDto> updateInvoiceStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> statusUpdate) {
+
+        try {
+            String newStatus = statusUpdate.get("status");
+            if (newStatus == null) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Invoice updatedInvoice = invoiceService.updateInvoiceStatus(id, newStatus);
+            return ResponseEntity.ok(InvoiceDto.fromEntity(updatedInvoice));
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -153,7 +154,9 @@ public class InvoiceController {
         }
     }
 
-    // 송장 목록 페이징/검색/정렬 조회
+    /**
+     * 필터링 및 페이징된 송장 목록 조회
+     */
     @GetMapping("/list")
     public ResponseEntity<Map<String, Object>> getFilteredInvoices(
             @RequestParam(required = false) String status,
@@ -163,14 +166,22 @@ public class InvoiceController {
             @RequestParam(defaultValue = "issueDate") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
 
+        // 정렬 방향 설정
         Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+
+        // 페이지 요청 객체 생성
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
+        // 필터링된 송장 목록 조회
         Page<Invoice> invoicesPage = invoiceService.getFilteredInvoices(status, searchTerm, pageable);
+
+        // DTO로 변환
         Page<InvoiceDto> invoiceDtos = invoicesPage.map(InvoiceDto::fromEntity);
 
+        // 통계 정보 조회
         InvoiceService.InvoiceStatistics statistics = invoiceService.getInvoiceStatistics();
 
+        // 응답 데이터 구성
         Map<String, Object> response = Map.of(
                 "invoices", invoiceDtos.getContent(),
                 "currentPage", invoiceDtos.getNumber(),
@@ -182,81 +193,31 @@ public class InvoiceController {
         return ResponseEntity.ok(response);
     }
 
-    // 송장 상태별 통계 조회
+    /**
+     * 송장 통계 정보 조회
+     */
     @GetMapping("/statistics")
     public ResponseEntity<InvoiceService.InvoiceStatistics> getInvoiceStatistics() {
         InvoiceService.InvoiceStatistics statistics = invoiceService.getInvoiceStatistics();
         return ResponseEntity.ok(statistics);
     }
 
-    // 송장 결제 완료 처리
+    /**
+     * 결제 완료 처리
+     */
     @PutMapping("/{id}/payment-complete")
     public ResponseEntity<InvoiceDto> markAsPaid(@PathVariable Long id) {
         try {
+            // 송장 조회
             Invoice invoice = invoiceService.getInvoiceById(id)
                     .orElseThrow(() -> new RuntimeException("송장을 찾을 수 없습니다."));
 
+            // 지불완료로 상태 변경
             invoice.setStatus(new SystemStatus("INVOICE", "PAID"));
+            // 결제일 설정
             invoice.setPaymentDate(java.time.LocalDate.now());
 
-            Invoice updatedInvoice = invoiceService.createInvoice(invoice);
-
-            return ResponseEntity.ok(InvoiceDto.fromEntity(updatedInvoice));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    // 송장 승인 처리
-    @PutMapping("/{id}/approve")
-    public ResponseEntity<InvoiceDto> approveInvoice(
-            @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> approverInfo) {
-        try {
-            Invoice invoice = invoiceService.getInvoiceById(id)
-                    .orElseThrow(() -> new RuntimeException("송장을 찾을 수 없습니다."));
-
-            invoice.setStatus(new SystemStatus("INVOICE", "APPROVED"));
-
-            // 승인자 정보 설정
-            if (approverInfo != null && approverInfo.containsKey("approverId")) {
-                Long approverId = Long.valueOf(approverInfo.get("approverId").toString());
-                Member approver = memberService.findById(approverId);
-                if (approver != null) {
-                    invoice.setApprover(approver);
-                    invoice.setApprovedAt(LocalDateTime.now());
-                }
-            }
-
-            Invoice updatedInvoice = invoiceService.createInvoice(invoice);
-
-            return ResponseEntity.ok(InvoiceDto.fromEntity(updatedInvoice));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    // 송장 거부 처리
-    @PutMapping("/{id}/reject")
-    public ResponseEntity<InvoiceDto> rejectInvoice(
-            @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> approverInfo) {
-        try {
-            Invoice invoice = invoiceService.getInvoiceById(id)
-                    .orElseThrow(() -> new RuntimeException("송장을 찾을 수 없습니다."));
-
-            invoice.setStatus(new SystemStatus("INVOICE", "REJECTED"));
-
-            // 거절자 정보 설정 (승인자와 동일한 필드 사용)
-            if (approverInfo != null && approverInfo.containsKey("approverId")) {
-                Long approverId = Long.valueOf(approverInfo.get("approverId").toString());
-                Member approver = memberService.findById(approverId);
-                if (approver != null) {
-                    invoice.setApprover(approver);
-                    invoice.setApprovedAt(LocalDateTime.now());
-                }
-            }
-
+            // 저장
             Invoice updatedInvoice = invoiceService.createInvoice(invoice);
 
             return ResponseEntity.ok(InvoiceDto.fromEntity(updatedInvoice));

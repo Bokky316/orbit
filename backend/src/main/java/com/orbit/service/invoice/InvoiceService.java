@@ -114,8 +114,6 @@ public class InvoiceService {
 
         // 상태별 분류
         List<Invoice> waitingInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "WAITING");
-        List<Invoice> approvedInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "APPROVED");
-        List<Invoice> rejectedInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "REJECTED");
         List<Invoice> paidInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "PAID");
         List<Invoice> overdueInvoices = invoiceRepository.findByStatusParentCodeAndStatusChildCode("INVOICE", "OVERDUE");
 
@@ -125,14 +123,6 @@ public class InvoiceService {
                 .sum();
 
         long waitingAmount = waitingInvoices.stream()
-                .mapToLong(i -> i.getTotalAmount().longValue())
-                .sum();
-
-        long approvedAmount = approvedInvoices.stream()
-                .mapToLong(i -> i.getTotalAmount().longValue())
-                .sum();
-
-        long rejectedAmount = rejectedInvoices.stream()
                 .mapToLong(i -> i.getTotalAmount().longValue())
                 .sum();
 
@@ -148,14 +138,10 @@ public class InvoiceService {
         return InvoiceStatistics.builder()
                 .totalCount(allInvoices.size())
                 .waitingCount(waitingInvoices.size())
-                .approvedCount(approvedInvoices.size())
-                .rejectedCount(rejectedInvoices.size())
                 .paidCount(paidInvoices.size())
                 .overdueCount(overdueInvoices.size())
                 .totalAmount(totalAmount)
                 .waitingAmount(waitingAmount)
-                .approvedAmount(approvedAmount)
-                .rejectedAmount(rejectedAmount)
                 .paidAmount(paidAmount)
                 .overdueAmount(overdueAmount)
                 .build();
@@ -167,14 +153,10 @@ public class InvoiceService {
     public static class InvoiceStatistics {
         private int totalCount;
         private int waitingCount;
-        private int approvedCount;
-        private int rejectedCount;
         private int paidCount;
         private int overdueCount;
         private long totalAmount;
         private long waitingAmount;
-        private long approvedAmount;
-        private long rejectedAmount;
         private long paidAmount;
         private long overdueAmount;
     }
