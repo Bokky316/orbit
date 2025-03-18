@@ -21,9 +21,9 @@ public class InvoiceDto {
     private String paymentDate;
     private Long deliveryId;
     private String deliveryNumber;
-    private String userName;  // 공급자 username
-    private String supplierName;  // 공급업체명
-    private String supplierContactPerson;  // 담당자명
+    private Long supplierId;
+    private String supplierName;
+    private String supplierContactPerson;
     private String supplierEmail;
     private String supplierPhone;
     private String supplierAddress;
@@ -37,22 +37,10 @@ public class InvoiceDto {
     private Integer quantity;
     private BigDecimal unitPrice;
     private String unit;
-    private String status; // 상태 코드 (WAITING, PAID, OVERDUE)
+    private String status; // childCode만 사용
     private String notes;
-    private String orderNumber;
 
-    // 송장 수정 시 사용되는 DTO
-    @Data
-    public static class InvoiceUpdateDto {
-        private String contractNumber;
-        private String transactionNumber;
-        private String issueDate;
-        private String dueDate;
-        private String notes;
-        private String status;
-    }
-
-    // Entity -> DTO 변환 메서드
+    // Entity -> DTO 변환
     public static InvoiceDto fromEntity(Invoice invoice) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy. MM. dd.");
 
@@ -61,7 +49,6 @@ public class InvoiceDto {
                 .invoiceNumber(invoice.getInvoiceNumber())
                 .contractNumber(invoice.getContractNumber())
                 .transactionNumber(invoice.getTransactionNumber())
-                .orderNumber(invoice.getDelivery() != null ? invoice.getDelivery().getOrderNumber() : null)
                 .supplyPrice(invoice.getSupplyPrice())
                 .vat(invoice.getVat())
                 .totalAmount(invoice.getTotalAmount())
@@ -76,22 +63,28 @@ public class InvoiceDto {
                 .notes(invoice.getNotes())
                 .build();
 
+        // 결제일 추가
         if (invoice.getPaymentDate() != null) {
             dto.setPaymentDate(invoice.getPaymentDate().format(formatter));
         }
 
+        // 입고 정보 추가
         if (invoice.getDelivery() != null) {
             dto.setDeliveryId(invoice.getDelivery().getId());
             dto.setDeliveryNumber(invoice.getDelivery().getDeliveryNumber());
         }
 
+        // 공급업체 정보 추가
         if (invoice.getSupplier() != null) {
-            dto.setUserName(invoice.getSupplier().getUsername());
-            dto.setSupplierName(invoice.getSupplier().getCompanyName());
+            dto.setSupplierId(invoice.getSupplier().getId());
+            dto.setSupplierName(invoice.getSupplier().getName());
+
+            // Member 엔티티 구조에 따라 필드명 조정 필요
             dto.setSupplierContactPerson(invoice.getSupplier().getName());
             dto.setSupplierEmail(invoice.getSupplier().getEmail());
             dto.setSupplierPhone(invoice.getSupplier().getContactNumber());
 
+            // 주소 조합 (Member 엔티티 구조에 따라 조정)
             String fullAddress = "";
             if (invoice.getSupplier().getRoadAddress() != null) {
                 fullAddress = invoice.getSupplier().getRoadAddress();

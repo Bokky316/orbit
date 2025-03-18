@@ -26,14 +26,6 @@ public class Invoice {
     @Column(name = "invoice_number", nullable = false, unique = true)
     private String invoiceNumber;
 
-    // 승인 담당자 정보
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approver_id")
-    private Member approver;  // 지정된 승인자
-
-    @Column(name = "approved_at")
-    private LocalDateTime approvedAt;  // 승인 일시
-
     // 송장 엔티티에 계약 번호와 거래 번호 필드 추가
     @Column(name = "contract_number")
     private String contractNumber;
