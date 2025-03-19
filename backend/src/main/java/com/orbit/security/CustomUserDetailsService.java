@@ -43,6 +43,12 @@ public class CustomUserDetailsService implements UserDetailsService {
             return new UsernameNotFoundException("사용자를 찾을 수 없습니다. 사용자명: " + username);
         });
 
+        // 계정 활성화 상태 확인
+        if (!member.isEnabled()) {
+            log.warn("비활성화된 계정으로 로그인 시도: {}", username);
+            throw new UsernameNotFoundException("비활성화된 계정입니다. 관리자에게 문의하세요.");
+        }
+
         // Member 엔티티를 기반으로 MemberSecurityDto 생성 및 반환
         return createMemberSecurityDto(member);
     }

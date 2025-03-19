@@ -14,11 +14,8 @@ function TopBar() {
   // 소카테고리 메뉴 데이터 - URL 경로에 따라 정의
   const subCategories = {
     "/members": [
-      { label: "회원 목록", path: "/members" },
-      { label: "직원관리", path: "/employee" },
-      /* { label: "부서관리", path: "/department" }, */
-      /* { label: "합의사관리", path: "/approver" }, */
-      /* { label: "시스템설정", path: "/settings" } */
+      { label: "사용자목록", path: "/members" },
+      /* { label: "직원관리", path: "/employee" }, */
     ],
     "/supplier": [
       { label: "협력업체리스트", path: "/supplier" },

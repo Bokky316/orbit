@@ -136,7 +136,12 @@ export default function Login() {
         }, 1000);
       } else {
         // 로그인 실패
-        setErrorMessage(parsedData.message || "로그인에 실패했습니다.");
+        // 비활성화된 계정 체크
+        if (response.status === 401) {
+          setErrorMessage("비활성화된 계정입니다. 관리자에게 문의하세요.");
+        } else {
+          setErrorMessage(parsedData.message || "로그인에 실패했습니다.");
+        }
         setOpenSnackbar(true);
       }
     } catch (error) {
