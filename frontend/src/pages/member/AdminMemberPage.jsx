@@ -54,6 +54,10 @@ export default function AdminMemberPage() {
   const queryParams = new URLSearchParams(location.search);
   const statusFromQuery = queryParams.get('status');
 
+  // 이미 마운트된 상태인지 확인하는 플래그 추가 (컴포넌트 최상위 레벨에서 선언)
+  const initialLoadDone = React.useRef(false);
+  const didInitialRender = React.useRef(false);
+
   // 상태
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState([]);
@@ -108,24 +112,40 @@ export default function AdminMemberPage() {
 
   // URL 쿼리 파라미터가 변경되면 페이지 요청 상태 업데이트
   useEffect(() => {
-    setPageRequest(prev => ({
-      ...prev,
-      status: statusFromQuery || ''
-    }));
+      setPageRequest(prev => ({
+        ...prev,
+        status: statusFromQuery || ''
+      }));
   }, [location.search, statusFromQuery]);
 
-  // 검색 조건이나 키워드가 변경될 때 목록 조회
+  // 통합된 useEffect와 함께 마운트 플래그 사용
+  // 단일 통합 useEffect - 모든 데이터 로딩 관련 로직 처리
   useEffect(() => {
-    if (user && user.roles && user.roles.includes('ROLE_ADMIN')) {
-      // 검색어 입력 시 디바운스 적용
-      const timer = setTimeout(() => {
-        // 검색 실행
-        fetchMembers();
-      }, 500); // 500ms 디바운스 적용
-
-      return () => clearTimeout(timer);
+    // 권한 확인
+    if (!user || !user.roles || !user.roles.includes('ROLE_ADMIN')) {
+      navigate('/unauthorized');
+      return;
     }
-  }, [pageRequest.searchType, pageRequest.keyword]);
+
+    // StrictMode에서 이중 호출 문제 해결
+    if (!didInitialRender.current) {
+      didInitialRender.current = true;
+      return; // 첫 번째 렌더링 시 아무것도 하지 않음
+    }
+
+    // 검색어 입력 시에만 디바운스 적용
+    if ((pageRequest.searchType || pageRequest.keyword) && initialLoadDone.current) {
+      const timer = setTimeout(() => {
+        fetchMembers();
+    }, 500); // 500ms 디바운스 적용
+
+        return () => clearTimeout(timer);
+    } else {
+      // 첫 로딩 또는 페이지네이션/상태 필터 변경 시 즉시 실행
+      fetchMembers();
+      initialLoadDone.current = true;
+    }
+  }, [pageRequest.page, pageRequest.size, pageRequest.status, pageRequest.searchType, pageRequest.keyword, user]);
 
   // 페이지, 사이즈, 상태 변경 시 목록 조회
   useEffect(() => {
@@ -265,8 +285,6 @@ export default function AdminMemberPage() {
     }
   };
 
-  // 회원 상세 정보 조회
-  // 회원 상세 정보 조회
   // 회원 상세 정보 조회
   const fetchMemberDetail = async (id) => {
     try {
@@ -638,7 +656,7 @@ export default function AdminMemberPage() {
   return (
     <PageContainer>
       <PageTitle variant="h4">
-        회원 관리
+        사용자 목록
       </PageTitle>
 
       {/* 검색 및 필터 */}

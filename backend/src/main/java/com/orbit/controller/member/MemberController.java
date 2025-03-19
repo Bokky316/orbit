@@ -119,6 +119,19 @@ public class MemberController {
             @RequestBody LoginFormDto loginForm, HttpServletResponse response) {
         Map<String, Object> responseMap = new HashMap<>();
 
+        // 사용자 존재 여부 및 활성화 상태 확인
+        try {
+            Member checkMember = memberService.findByUsername(loginForm.getUsername());
+            if (!checkMember.isEnabled()) {
+                responseMap.put("status", "failed");
+                responseMap.put("message", "비활성화된 계정입니다. 관리자에게 문의하세요.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseMap);
+            }
+        } catch (IllegalArgumentException e) {
+            // 사용자가 존재하지 않는 경우는 여기서 처리하지 않고 그대로 진행
+            // 구체적인 오류 메시지는 원래 flow에서 처리하도록 함
+        }
+
         if (memberService.login(loginForm)) {
             Member member = memberService.findByUsername(loginForm.getUsername());
 

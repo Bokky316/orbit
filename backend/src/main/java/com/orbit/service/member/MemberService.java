@@ -83,10 +83,19 @@ public class MemberService {
         Optional<Member> optionalMember = memberRepository.findByUsername(loginForm.getUsername());
         Member member = optionalMember.orElse(null);
 
+        // 회원이 존재하고, 비밀번호가 일치하고, 계정이 활성화 상태인 경우에만 로그인 허용
         if (member != null && passwordEncoder.matches(loginForm.getPassword(), member.getPassword())) {
-            member.setLastLoginAt(LocalDateTime.now());
-            memberRepository.save(member);
-            return true;
+            // 활성화 상태 확인 - 직접 로그 추가
+            System.out.println("Account status check - username: " + member.getUsername() + ", enabled: " + member.isEnabled());
+
+            if (member.isEnabled()) {
+                member.setLastLoginAt(LocalDateTime.now());
+                memberRepository.save(member);
+                return true;
+            }
+            // 비활성화된 계정은 로그인 실패 처리
+            System.out.println("Login denied - account is disabled");
+            return false;
         }
         return false;
     }
