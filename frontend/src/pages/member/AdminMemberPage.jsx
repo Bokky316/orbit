@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Paper, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Button, TextField, MenuItem, Select, FormControl, InputLabel, Box, Grid, Pagination,
+  Button, TextField, MenuItem, Select, FormControl, InputLabel, Box, Grid, TablePagination,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
   IconButton, Chip, Stack, CircularProgress, Alert, Container,
   styled, FormHelperText
@@ -41,12 +41,6 @@ const TablePaper = styled(Paper)(({ theme }) => ({
   marginBottom: theme.spacing(3)
 }));
 
-const PaginationBox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  justifyContent: 'center',
-  padding: theme.spacing(2, 0)
-}));
-
 const AlertStyled = styled(Alert)(({ theme }) => ({
   marginBottom: theme.spacing(3)
 }));
@@ -63,10 +57,10 @@ export default function AdminMemberPage() {
   // 상태
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState([]);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [pageRequest, setPageRequest] = useState({
-    page: 1,
-    size: 10,
+    page: 0, // TablePagination은 0부터 시작
+    size: 15,
     searchType: '',
     keyword: '',
     status: statusFromQuery || ''
@@ -83,17 +77,15 @@ export default function AdminMemberPage() {
     if (pageRequest.keyword && !pageRequest.searchType) {
       setPageRequest(prev => ({
         ...prev,
-        page: 1,
+        page: 0, // 첫 페이지로 이동 (0부터 시작)
         searchType: 'name'  // 기본 검색 타입 설정
       }));
     } else {
       setPageRequest({
         ...pageRequest,
-        page: 1 // 검색 시 첫 페이지로 이동
+        page: 0 // 검색 시 첫 페이지로 이동
       });
     }
-
-    fetchMembers();
   };
 
   // 회원 상세 편집 관련 상태
@@ -150,7 +142,7 @@ export default function AdminMemberPage() {
     try {
       // 쿼리 파라미터 생성
       const queryParams = new URLSearchParams();
-      queryParams.append('page', pageRequest.page);
+      queryParams.append('page', pageRequest.page + 1); // 백엔드는 1부터 시작하므로 +1
       queryParams.append('size', pageRequest.size);
 
       // 검색 조건이 있을 때만 추가
@@ -196,8 +188,9 @@ export default function AdminMemberPage() {
             filteredMembers = membersList.filter(member => !member.enabled);
           }
 
+          // totalPages 계산 대신 totalItems 저장
           setMembers(filteredMembers);
-          setTotalPages(Math.ceil((data.total || 0) / pageRequest.size));
+          setTotalItems(data.total || 0);
 
           // 비활성화 상태에서 결과가 없을 때 알림
           if (pageRequest.status === 'inactive' && filteredMembers.length === 0) {
@@ -516,8 +509,8 @@ export default function AdminMemberPage() {
   // 필터 초기화
   const resetFilters = () => {
     setPageRequest({
-      page: 1,
-      size: 10,
+      page: 0, // TablePagination은 0부터 시작
+      size: 15,
       searchType: '',
       keyword: '',
       status: ''
@@ -527,11 +520,21 @@ export default function AdminMemberPage() {
     navigate('/members');
   };
 
+
   // 페이지 변경
-  const handlePageChange = (event, value) => {
+  const handlePageChange = (event, newPage) => {
     setPageRequest({
       ...pageRequest,
-      page: value
+      page: newPage
+    });
+  };
+
+  // 페이지당 행 수 변경 핸들러
+  const handleChangeRowsPerPage = (event) => {
+    setPageRequest({
+      ...pageRequest,
+      size: parseInt(event.target.value, 15),
+      page: 0 // 페이지당 행 수 변경 시 첫 페이지로 이동
     });
   };
 
@@ -573,7 +576,7 @@ export default function AdminMemberPage() {
     setPageRequest({
       ...pageRequest,
       status: newStatus,
-      page: 1 // 필터 변경 시 첫 페이지로 이동
+      page: 0 // 필터 변경 시 첫 페이지로 이동, TablePagination은 0부터 시작
     });
 
     // URL 쿼리 파라미터 업데이트
@@ -805,15 +808,21 @@ export default function AdminMemberPage() {
           </Table>
         </TableContainer>
 
-        {/* 페이지네이션 */}
-        <PaginationBox>
-          <Pagination
-            count={totalPages}
-            page={pageRequest.page}
-            onChange={handlePageChange}
-            color="primary"
-          />
-        </PaginationBox>
+        {/* 테이블 페이지네이션 */}
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 15, 30]}
+          component="div"
+          count={totalItems}
+          rowsPerPage={pageRequest.size}
+          page={pageRequest.page}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage="페이지당 행 수"
+          labelDisplayedRows={({ from, to, count, page }) => {
+            const totalPages = Math.ceil(count / pageRequest.size);
+            return `${page + 1} / ${totalPages}`;
+          }}
+        />
       </TablePaper>
 
       {/* 역할 편집 다이얼로그 */}
