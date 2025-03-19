@@ -38,7 +38,9 @@ import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage"; //
 import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
 import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
 import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
-import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
+import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
+/* import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
 import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
@@ -48,6 +50,14 @@ import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
 import ApprovalLineAdministration from "@/pages/approval/ApprovalLineAdministration";
+import InspectionsListPage from "@/pages/inspection/InspectionsListPage";
+import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage";
+import InspectionFormPage from "@/pages/inspection/InspectionFormPage";
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage";
+import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage";
+import PaymentListPage from "@/pages/payment/PaymentListPage";
+import PaymentProcessPage from "@/pages/payment/PaymentProcessPage";
+import PaymentProcessPage from '@/pages/payment/PaymentProcessPage'; */
 import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
@@ -164,6 +174,13 @@ function AppContent() {
                     path="/approval-lines"
                     element={<ApprovalLineAdministration />}
                   />
+              {/* 송장 관리 */}
+              <Route path="/invoices" element={<InvoicesListPage />} />
+              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+              <Route path="/invoices/edit/:id" element={<InvoiceEditPage />} />
+              {/* <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+              <Route path="/payments" element={<PaymentListPage />} />
+              <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} /> */}
 
                 {/* 입고 관리 */}
                 <Route path="/deliveries" element={<DeliveryListPage />} />
