@@ -39,8 +39,8 @@ import ApprovalLineAdministration from '@/pages/approval/ApprovalLineAdministrat
 import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
 import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
-/* import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
-import PaymentListPage from '@/pages/payment/PaymentListPage';
+ import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+/*import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentProcessPage from '@/pages/payment/PaymentProcessPage'; */
 import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
@@ -151,8 +151,8 @@ function AppContent() {
               <Route path="/invoices" element={<InvoicesListPage />} />
               <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
               <Route path="/invoices/edit/:id" element={<InvoiceEditPage />} />
-              {/* <Route path="/invoices/create" element={<InvoiceCreatePage />} />
-              <Route path="/payments" element={<PaymentListPage />} />
+              <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+              {/* <Route path="/payments" element={<PaymentListPage />} />
               <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} /> */}
 
                   {/* 송장 관리 */}

@@ -634,9 +634,41 @@ const InvoiceCreatePage = () => {
                 />
               </Box>
               <Alert severity="info" sx={{ mt: 2 }}>
-                송장은 입고된 발주 정보를 기반으로 생성됩니다. 아래에서 발주 정보를 선택해주세요.
+                송장은 발주 정보를 기반으로 생성됩니다. 아래에서 발주 정보를 선택해주세요.
+              </Alert>
+              {/* 경고 메시지 추가 */}
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                주의: 시스템 구조상 송장은 입고 데이터에 등록된 공급자 정보로 저장됩니다.
               </Alert>
             </Paper>
+
+            {/* 디버깅 정보 (개발 환경에서만 표시) */}
+            {process.env.NODE_ENV === 'development' && currentUser && (
+              <Paper sx={{ p: 2, mb: 3, bgcolor: '#f5f5f5', fontSize: '0.75rem' }}>
+                <Typography variant="h6" gutterBottom>디버깅 정보</Typography>
+                <div>사용자: {currentUser.username} ({currentUser.roles?.join(', ') || currentUser.role})</div>
+                <div>이름: {currentUser.name}</div>
+                <div>회사명: {companyName || currentUser.companyName || '-'}</div>
+                <div>송장 발행 권한: {canCreateInvoice() ? 'Yes' : 'No'}</div>
+                <div>입고데이터 개수: {deliveries.length}</div>
+                <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>상세 정보:</Typography>
+                <pre>{JSON.stringify(userDetail, null, 2)}</pre>
+                {selectedDelivery && (
+                  <>
+                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>선택된 입고 정보:</Typography>
+                    <div>입고 ID: {selectedDelivery.id}</div>
+                    <div>입고 공급자 ID: {selectedDelivery.supplierId}</div>
+                    <div>입고 공급자명: {selectedDelivery.supplierName}</div>
+                  </>
+                )}
+                {supplierDetail && (
+                  <>
+                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>공급자 상세 정보:</Typography>
+                    <pre>{JSON.stringify(supplierDetail, null, 2)}</pre>
+                  </>
+                )}
+              </Paper>
+            )}
 
             {/* 발주 정보 선택 */}
             <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
@@ -871,22 +903,38 @@ const InvoiceCreatePage = () => {
               <SectionTitle variant="h6">결제 정보</SectionTitle>
               <Divider sx={{ mb: 2 }} />
 
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                borderRadius: 1,
-              }}>
-                <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
-                  공급가액: <span style={{ fontWeight: 'normal' }}>{formatCurrency(selectedDelivery ? calculateSupplyPrice(selectedDelivery.totalAmount) : 0)}</span>
-                </Typography>
-                <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
-                  부가세: <span style={{ fontWeight: 'normal' }}>{formatCurrency(selectedDelivery ? calculateVAT(selectedDelivery.totalAmount) : 0)}</span>
-                </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 500, color: '#ff7043' }}>
-                  총액: <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{formatCurrency(selectedDelivery ? selectedDelivery.totalAmount : 0)}</span>
-                </Typography>
-              </Box>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" color="textSecondary" gutterBottom>
+                        공급가액
+                      </Typography>
+                      <Typography variant="h5">{formatCurrency(selectedDelivery ? calculateSupplyPrice(selectedDelivery.totalAmount) : 0)}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" color="textSecondary" gutterBottom>
+                        부가세
+                      </Typography>
+                      <Typography variant="h5">{formatCurrency(selectedDelivery ? calculateVAT(selectedDelivery.totalAmount) : 0)}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Card variant="outlined" sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        총액
+                      </Typography>
+                      <Typography variant="h4">{formatCurrency(selectedDelivery ? selectedDelivery.totalAmount : 0)}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
             </Paper>
 
             {/* 비고 */}
@@ -899,11 +947,8 @@ const InvoiceCreatePage = () => {
                 value={formData.notes}
                 onChange={handleInputChange}
                 multiline
-                variant="filled"
-                minRows={4}
-                maxRows={8}
+                rows={4}
                 placeholder="추가 정보가 있으면 입력하세요"
-                margin="normal"
               />
             </Paper>
 
