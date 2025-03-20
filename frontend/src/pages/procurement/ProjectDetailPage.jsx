@@ -44,8 +44,6 @@ function ProjectDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // src/pages/procurement/ProjectDetailPage.jsx의 useEffect 부분 수정
-
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -88,23 +86,42 @@ function ProjectDetailPage() {
         fetchData();
     }, [id]);
 
+    // 프로젝트가 수정 가능한지 확인하는 함수
+    const canEditProject = () => {
+        if (!project || !project.basicStatus) return false;
+
+        // 상태 코드 추출
+        const statusCode = project.basicStatus.split('-')[2];
+
+        // '등록' 또는 '정정등록' 상태일 때만 수정 가능
+        return statusCode === 'REGISTERED' || statusCode === 'REREGISTERED';
+    };
+
+    // 프로젝트가 삭제 가능한지 확인하는 함수
+    const canDeleteProject = () => {
+        if (!project || !project.basicStatus) return false;
+
+        // 상태 코드 추출
+        const statusCode = project.basicStatus.split('-')[2];
+
+        // '등록' 또는 '정정등록' 상태이고, 연결된 구매요청이 없을 때만 삭제 가능
+        return (statusCode === 'REGISTERED' || statusCode === 'REREGISTERED') &&
+               (!purchaseRequests || purchaseRequests.length === 0);
+    };
+
     const handleDelete = async () => {
         if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
         try {
-            const res = await fetchWithAuth(`${API_URL}projects/${id}`, {
-                method: 'DELETE'
-            });
-            if (!res.ok) throw new Error('삭제 실패');
-            dispatch(deleteProject(id));
+            await dispatch(deleteProject(id)).unwrap();
+            alert('프로젝트가 삭제되었습니다.');
             navigate('/projects');
         } catch (err) {
-            alert(`삭제 오류: ${err.message}`);
+            alert(`삭제 오류: ${err}`);
         }
     };
 
     // 첨부파일 다운로드 함수
-    // downloadFile 함수 부분만 수정
     const downloadFile = async (attachmentId) => {
         try {
             console.log("첨부파일 다운로드 시작, attachmentId:", attachmentId);
@@ -118,7 +135,6 @@ function ProjectDetailPage() {
             );
 
             if (response.ok) {
-                // Blob으로 응답 변환
                 const blob = await response.blob();
 
                 // 파일명 추출 시도
@@ -162,40 +178,6 @@ function ProjectDetailPage() {
         }
     };
 
-//     // 첨부파일 업로드 함수
-//     // uploadFiles 함수 부분만 수정
-//     const uploadFiles = async (files) => {
-//         if (!files || files.length === 0) return;
-//
-//         const formData = new FormData();
-//         for (let i = 0; i < files.length; i++) {
-//             formData.append('files', files[i]);
-//         }
-//
-//         try {
-//             // Content-Type 헤더를 명시적으로 지정하지 않음 (브라우저가 자동으로 설정)
-//             const response = await fetchWithAuth(`${API_URL}projects/${id}/attachments`, {
-//                 method: 'POST',
-//                 body: formData,
-//             });
-//
-//             if (response.ok) {
-//                 // 프로젝트 정보 다시 불러오기
-//                 const projectRes = await fetchWithAuth(`${API_URL}projects/${id}`);
-//                 if (projectRes.ok) {
-//                     setProject(await projectRes.json());
-//                     alert('첨부파일이 성공적으로 업로드되었습니다.');
-//                 }
-//             } else {
-//                 const errorData = await response.text();
-//                 alert(`첨부파일 업로드에 실패했습니다: ${errorData}`);
-//             }
-//         } catch (error) {
-//             console.error('업로드 오류:', error);
-//             alert(`첨부파일 업로드 중 오류가 발생했습니다: ${error.message}`);
-//         }
-//     };
-
     if (loading) return <Typography>로딩 중...</Typography>;
     if (error) return <Typography color="error">{error}</Typography>;
 
@@ -220,11 +202,6 @@ function ProjectDetailPage() {
                         <Chip
                             label={project.basicStatus ? project.basicStatus.split('-')[2] : '미설정'}
                             sx={{...statusChipStyle, backgroundColor: '#e3f2fd'}}
-                        />
-                        <Typography sx={{ mt: 1 }}><strong>조달 상태:</strong></Typography>
-                        <Chip
-                            label={project.procurementStatus ? project.procurementStatus.split('-')[2] : '미설정'}
-                            sx={{...statusChipStyle, backgroundColor: '#f0f4c3'}}
                         />
                     </Grid>
                 </Grid>
@@ -252,19 +229,6 @@ function ProjectDetailPage() {
             <Paper sx={{ p: 3, mb: 3 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                     <Typography variant="h6">첨부 파일</Typography>
-{/*                     <Button */}
-{/*                         variant="outlined" */}
-{/*                         component="label" */}
-{/*                         startIcon={<AttachFileIcon />} */}
-{/*                     > */}
-{/*                         파일 추가 */}
-{/*                         <input */}
-{/*                             type="file" */}
-{/*                             multiple */}
-{/*                             hidden */}
-{/*                             onChange={(e) => uploadFiles(e.target.files)} */}
-{/*                         /> */}
-{/*                     </Button> */}
                 </Box>
 
                 {project.attachments && project.attachments.length > 0 ? (
@@ -342,19 +306,23 @@ function ProjectDetailPage() {
 
             {/* 액션 버튼 그룹 */}
             <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                <Button
-                    variant="contained"
-                    onClick={() => navigate(`/projects/edit/${id}`)}
-                >
-                    수정
-                </Button>
-                <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={handleDelete}
-                >
-                    삭제
-                </Button>
+                {canEditProject() && (
+                    <Button
+                        variant="contained"
+                        onClick={() => navigate(`/projects/edit/${id}`)}
+                    >
+                        수정
+                    </Button>
+                )}
+                {canDeleteProject() && (
+                    <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleDelete}
+                    >
+                        삭제
+                    </Button>
+                )}
                 <Button
                     variant="outlined"
                     onClick={() => navigate('/projects')}

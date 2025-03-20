@@ -2,7 +2,6 @@ package com.orbit.service.procurement;
 
 import com.orbit.dto.procurement.ProjectAttachmentDTO;
 import com.orbit.dto.procurement.ProjectDTO;
-import com.orbit.dto.procurement.ProjectDTO;
 import com.orbit.entity.approval.Department;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;

@@ -2,15 +2,10 @@ package com.orbit.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import static io.lettuce.core.KillArgs.Builder.maxAge;
 
 /**
  * WebConfig : 환경설정 파일
@@ -61,9 +56,10 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/static-images/**")
                 .addResourceLocations("classpath:/static/images/");  // 정적 리소스
 
-        registry.addResourceHandler("/favicon.ico")
-                .addResourceLocations("classpath:/static/")
-                .setCachePeriod(0);
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations(uploadPath);
+
+
         // [스웨거] Swagger UI 설정
         // /swagger-ui/**로 시작하는 URL 요청은 서버의 /META-INF/resources/webjars/swagger-ui/ 디렉토리에서 파일을 찾습니다.
         // 이 경로는 Swagger UI의 HTML, CSS, JavaScript 파일들을 포함하고 있습니다.
@@ -92,6 +88,6 @@ public class WebConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         // React의 index.html을 기본 뷰로 매핑
         registry.addViewController("/{spring:[^\\.]*}")
-                .setViewName("forward:/frontend/public/index.html");
+                .setViewName("forward:/student_frontend/public/index.html");
     }
 }

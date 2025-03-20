@@ -9,10 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.orbit.dto.bidding.BiddingSupplierDto;
 import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.BiddingSupplier;
+import com.orbit.entity.member.Member;
 import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.bidding.BiddingRepository;
 import com.orbit.repository.bidding.BiddingSupplierRepository;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.supplier.SupplierRegistrationRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -26,15 +28,15 @@ public class BiddingSupplierService {
     private final BiddingRepository biddingRepository;
     private final MemberRepository memberRepository;
     private final NotificationRepository notificationRepository;
+    private final SupplierRegistrationRepository supplierRegistrationRepository;
 
     /**
-     * 초대된 공급사 목록 조회
+     * 모든 공급사 조회
      */
     @Transactional(readOnly = true)
     public List<BiddingSupplierDto> getAllSuppliers() {
-        List<BiddingSupplier> suppliers = supplierRepository.findAll();
-        return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+        return supplierRepository.findAll().stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -43,9 +45,8 @@ public class BiddingSupplierService {
      */
     @Transactional(readOnly = true)
     public List<BiddingSupplierDto> getSuppliersByBiddingId(Long biddingId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findByBiddingId(biddingId);
-        return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+        return supplierRepository.findByBiddingId(biddingId).stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -54,9 +55,11 @@ public class BiddingSupplierService {
      */
     @Transactional(readOnly = true)
     public List<BiddingSupplierDto> getSuppliersBySupplierId(Long supplierId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findBySupplierId(supplierId);
-        return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+        Member supplier = memberRepository.findById(supplierId)
+                .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+                
+        return supplierRepository.findBySupplier(supplier).stream()
+                .map(bs -> BiddingSupplierDto.fromEntityWithBusinessNo(bs, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -69,16 +72,34 @@ public class BiddingSupplierService {
         Bidding bidding = biddingRepository.findById(biddingId)
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
         
+        // 공급사 조회
+        Member supplier = memberRepository.findById(supplierId)
+                .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+        
         // 이미 초대된 공급사인지 확인
         if (supplierRepository.existsByBiddingIdAndSupplierId(biddingId, supplierId)) {
             throw new IllegalStateException("이미 초대된 공급사입니다.");
         }
         
-        // 공급사 초대
-        BiddingSupplier supplier = bidding.inviteSupplier(supplierId, memberRepository, notificationRepository);
-        supplier = supplierRepository.save(supplier);
+        // 공급사 초대 생성
+        BiddingSupplier biddingSupplier = new BiddingSupplier();
+        biddingSupplier.setBidding(bidding);
+        biddingSupplier.setSupplier(supplier);
+        biddingSupplier.setCompanyName(supplier.getCompanyName());
+        biddingSupplier.setNotificationSent(false);
         
-        return BiddingSupplierDto.fromEntity(supplier);
+        // 초대 저장
+        biddingSupplier = supplierRepository.save(biddingSupplier);
+        
+        // 알림 발송
+        biddingSupplier.sendNotification(
+            notificationRepository,
+            memberRepository,
+            "새로운 입찰 공고 초대",
+            "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
+        );
+        
+        return BiddingSupplierDto.fromEntityWithBusinessNo(biddingSupplier, supplierRegistrationRepository);
     }
     
     /**
@@ -91,7 +112,7 @@ public class BiddingSupplierService {
         supplier.participate(notificationRepository, memberRepository);
         supplier = supplierRepository.save(supplier);
         
-        return BiddingSupplierDto.fromEntity(supplier);
+        return BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository);
     }
     
     /**
@@ -104,7 +125,7 @@ public class BiddingSupplierService {
         supplier.reject(reason, notificationRepository, memberRepository);
         supplier = supplierRepository.save(supplier);
         
-        return BiddingSupplierDto.fromEntity(supplier);
+        return BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository);
     }
     
     /**
@@ -112,9 +133,8 @@ public class BiddingSupplierService {
      */
     @Transactional(readOnly = true)
     public List<BiddingSupplierDto> getNonNotifiedSuppliers(Long biddingId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findNonNotifiedSuppliers(biddingId);
-        return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+        return supplierRepository.findByBiddingIdAndNotificationSentFalse(biddingId).stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -123,9 +143,8 @@ public class BiddingSupplierService {
      */
     @Transactional(readOnly = true)
     public List<BiddingSupplierDto> getParticipatingSuppliers(Long biddingId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findParticipatingSuppliers(biddingId);
-        return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+        return supplierRepository.findByBiddingIdAndIsParticipatingTrue(biddingId).stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -134,9 +153,8 @@ public class BiddingSupplierService {
      */
     @Transactional(readOnly = true)
     public List<BiddingSupplierDto> getRejectedSuppliers(Long biddingId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findRejectedSuppliers(biddingId);
-        return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+        return supplierRepository.findByBiddingIdAndIsRejectedTrue(biddingId).stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -145,9 +163,8 @@ public class BiddingSupplierService {
      */
     @Transactional(readOnly = true)
     public List<BiddingSupplierDto> getNonRespondedSuppliers(Long biddingId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findNonRespondedSuppliers(biddingId);
-        return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+        return supplierRepository.findByBiddingIdAndIsParticipatingNullAndIsRejectedNull(biddingId).stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -156,19 +173,22 @@ public class BiddingSupplierService {
      */
     @Transactional
     public BiddingSupplierDto updateSupplierName(Long supplierId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findBySupplierId(supplierId);
+        Member supplier = memberRepository.findById(supplierId)
+                .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+                
+        List<BiddingSupplier> suppliers = supplierRepository.findBySupplier(supplier);
         
         if (suppliers.isEmpty()) {
             throw new EntityNotFoundException("해당 공급사의 초대 정보가 없습니다. ID: " + supplierId);
         }
         
-        for (BiddingSupplier supplier : suppliers) {
-            supplier.updateSupplierName(memberRepository);
+        for (BiddingSupplier bs : suppliers) {
+            bs.setCompanyName(supplier.getCompanyName());
         }
         
         List<BiddingSupplier> updatedSuppliers = supplierRepository.saveAll(suppliers);
         
-        return BiddingSupplierDto.fromEntity(updatedSuppliers.get(0));
+        return BiddingSupplierDto.fromEntityWithBusinessNo(updatedSuppliers.get(0), supplierRegistrationRepository);
     }
     
     /**
@@ -190,14 +210,15 @@ public class BiddingSupplierService {
         
         supplier = supplierRepository.save(supplier);
         
-        return BiddingSupplierDto.fromEntity(supplier);
+        return BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository);
     }
     
     /**
-     * 특정 입찰 공고와 공급사로 초대 정보 조회
+     * 특정 입찰에 초대된 특정 공급사 정보 조회
      */
     private BiddingSupplier getSupplierByBiddingIdAndSupplierId(Long biddingId, Long supplierId) {
         return supplierRepository.findByBiddingIdAndSupplierId(biddingId, supplierId)
-                .orElseThrow(() -> new EntityNotFoundException("초대 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new EntityNotFoundException(
+                    "해당 입찰에 초대된 공급사 정보를 찾을 수 없습니다. 입찰 ID: " + biddingId + ", 공급사 ID: " + supplierId));
     }
 }

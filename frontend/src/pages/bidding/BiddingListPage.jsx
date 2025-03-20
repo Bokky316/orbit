@@ -13,15 +13,29 @@ import {
   Button,
   FormControl,
   InputLabel,
+  InputAdornment,
   Select,
   MenuItem,
   Box,
   Typography,
   Grid,
   CircularProgress,
-  Chip
+  Chip,
+  IconButton,
+  Tooltip,
+  Card,
+  CardContent
 } from "@mui/material";
+import Pagination from "@mui/material/Pagination";
 import { styled } from "@mui/material/styles";
+import moment from "moment";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterMoment } from "@mui/x-date-pickers/AdapterMoment";
+import SearchIcon from "@mui/icons-material/Search";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import ClearIcon from "@mui/icons-material/Clear";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 // 헬퍼 함수 import
 import { getStatusText } from "./helpers/commonBiddingHelpers";
@@ -32,12 +46,13 @@ function BiddingListPage() {
   const [filteredBiddings, setFilteredBiddings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [totalPages, setTotalPages] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [dateRange, setDateRange] = useState({
-    start: "",
-    end: ""
+    start: null,
+    end: null
   });
   const [paginationModel, setPaginationModel] = useState({
     page: 1,
@@ -65,10 +80,16 @@ function BiddingListPage() {
 
       // 날짜 필터 추가
       if (dateRange.start) {
-        queryParams.append("startDate", dateRange.start);
+        queryParams.append(
+          "startDate",
+          moment(dateRange.start).format("YYYY-MM-DD")
+        );
       }
       if (dateRange.end) {
-        queryParams.append("endDate", dateRange.end);
+        queryParams.append(
+          "endDate",
+          moment(dateRange.end).format("YYYY-MM-DD")
+        );
       }
 
       // 검색어 추가
@@ -96,10 +117,15 @@ function BiddingListPage() {
       const totalElements = Array.isArray(data)
         ? biddingList.length
         : data.totalElements || biddingList.length;
+      const totalPages = Array.isArray(data)
+        ? Math.ceil(biddingList.length / paginationModel.pageSize)
+        : data.totalPages ||
+          Math.ceil(totalElements / paginationModel.pageSize);
 
       setBiddings(biddingList);
       setFilteredBiddings(biddingList);
       setTotalRows(totalElements);
+      setTotalPages(totalPages);
     } catch (error) {
       console.error("입찰 공고 목록 가져오기 실패:", error.message);
       setError(
@@ -109,6 +135,7 @@ function BiddingListPage() {
       setBiddings([]);
       setFilteredBiddings([]);
       setTotalRows(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
@@ -125,27 +152,47 @@ function BiddingListPage() {
     fetchBiddings();
   };
 
+  // 필터 초기화
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("");
+    setDateRange({
+      start: null,
+      end: null
+    });
+    setPaginationModel({
+      page: 1,
+      pageSize: 10
+    });
+    // 초기화 후 데이터 다시 가져오기
+    setTimeout(fetchBiddings, 0);
+  };
+
   // 상태 변경 핸들러
   function handleStatusChange(event) {
     setStatusFilter(event.target.value);
   }
 
   // 날짜 변경 핸들러
-  function handleDateChange(field, event) {
-    const { value } = event.target;
+  function handleDateChange(field, date) {
     setDateRange((prev) => ({
       ...prev,
-      [field]: value
+      [field]: date
     }));
   }
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (event, value) => {
+    setPaginationModel((prev) => ({
+      ...prev,
+      page: value
+    }));
+  };
 
   // 상세보기 핸들러
   function handleViewDetail(id) {
     try {
       console.log(`입찰 공고 상세 페이지로 이동 - ID: ${id}`);
-
-      // 상세 페이지에서 응답 처리를 담당하므로
-      // 여기서는 단순히 페이지 이동만 수행
       navigate(`/biddings/${id}`);
     } catch (error) {
       console.error("상세 페이지 이동 중 오류:", error);
@@ -159,7 +206,7 @@ function BiddingListPage() {
 
   // 스티키 헤더를 위한 스타일링된 TableContainer
   const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
-    maxHeight: 440,
+    maxHeight: 600,
     "& .MuiTableHead-root": {
       position: "sticky",
       top: 0,
@@ -175,84 +222,122 @@ function BiddingListPage() {
       </Typography>
 
       {/* 필터 영역 */}
-      <Paper elevation={2} sx={{ padding: 2, marginBottom: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="검색어 입력"
-              variant="outlined"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </Grid>
+      <Card elevation={2} sx={{ marginBottom: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="검색어를 입력하세요"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => setSearchTerm("")}
+                        aria-label="검색어 지우기">
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Grid>
 
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth>
-              <InputLabel id="status-select-label">상태 선택</InputLabel>
-              <Select
-                labelId="status-select-label"
-                value={statusFilter}
-                label="상태 선택"
-                onChange={handleStatusChange}>
-                <MenuItem value="">전체</MenuItem>
-                {/* 상태 코드 시스템 사용 */}
-                <MenuItem value="PENDING">대기중</MenuItem>
-                <MenuItem value="ONGOING">진행중</MenuItem>
-                <MenuItem value="CLOSED">마감</MenuItem>
-                <MenuItem value="CANCELED">취소</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth>
+                <InputLabel id="status-select-label">상태</InputLabel>
+                <Select
+                  labelId="status-select-label"
+                  value={statusFilter}
+                  label="상태"
+                  onChange={handleStatusChange}>
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="PENDING">대기중</MenuItem>
+                  <MenuItem value="ONGOING">진행중</MenuItem>
+                  <MenuItem value="CLOSED">마감</MenuItem>
+                  <MenuItem value="CANCELED">취소</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
 
-          <Grid item xs={12} md={2}>
-            <TextField
-              fullWidth
-              label="시작일"
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => handleDateChange("start", e)}
-              InputLabelProps={{
-                shrink: true
-              }}
-            />
-          </Grid>
+            <Grid item xs={12} md={2}>
+              <LocalizationProvider dateAdapter={AdapterMoment}>
+                <DatePicker
+                  label="시작일"
+                  value={dateRange.start}
+                  onChange={(newDate) => handleDateChange("start", newDate)}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      error: false,
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarMonthIcon color="action" />
+                          </InputAdornment>
+                        )
+                      }
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
 
-          <Grid item xs={12} md={2}>
-            <TextField
-              fullWidth
-              label="종료일"
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => handleDateChange("end", e)}
-              InputLabelProps={{
-                shrink: true
-              }}
-            />
-          </Grid>
+            <Grid item xs={12} md={2}>
+              <LocalizationProvider dateAdapter={AdapterMoment}>
+                <DatePicker
+                  label="종료일"
+                  value={dateRange.end}
+                  onChange={(newDate) => handleDateChange("end", newDate)}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      error: false,
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarMonthIcon color="action" />
+                          </InputAdornment>
+                        )
+                      }
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
 
-          <Grid
-            item
-            xs={12}
-            md={3}
-            sx={{ display: "flex", alignItems: "center" }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSearch}
-              sx={{ height: "56px", marginRight: 1 }}>
-              검색
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleCreateBidding}
-              sx={{ height: "56px" }}>
-              신규
-            </Button>
+            <Grid
+              item
+              xs={12}
+              md={3}
+              sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+              <Tooltip title="필터 초기화">
+                <span
+                  onClick={handleResetFilters}
+                  sx={{ border: "1px solid #e0e0e0", borderRadius: 2 }}>
+                  <RestartAltIcon />
+                </span>
+              </Tooltip>
+
+              <Button
+                variant="outlinedThick"
+                color="primary"
+                onClick={handleSearch}>
+                검색
+              </Button>
+            </Grid>
           </Grid>
-        </Grid>
-      </Paper>
+        </CardContent>
+      </Card>
 
       {/* 에러 메시지 */}
       {error && (
@@ -268,7 +353,7 @@ function BiddingListPage() {
         </Box>
       ) : (
         /* 테이블 영역 */
-        <Paper>
+        <Paper sx={{ borderRadius: 2, overflow: "hidden" }}>
           <StyledTableContainer>
             <Table stickyHeader aria-label="입찰 공고 목록 테이블">
               <TableHead>
@@ -334,6 +419,7 @@ function BiddingListPage() {
                               ? "error"
                               : "default"
                           }
+                          size="small"
                         />
                       </TableCell>
                       <TableCell>
@@ -353,45 +439,40 @@ function BiddingListPage() {
               </TableBody>
             </Table>
           </StyledTableContainer>
+
+          {/* 하단 버튼 및 페이지네이션 */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              p: 2
+            }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleCreateBidding}>
+              신규등록
+            </Button>
+
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                총 {totalRows}개 항목
+              </Typography>
+
+              <Pagination
+                count={totalPages}
+                page={paginationModel.page}
+                onChange={handlePageChange}
+                color="primary"
+                size="medium"
+                showFirstButton
+                showLastButton
+              />
+            </Box>
+          </Box>
         </Paper>
       )}
-
-      {/* 페이징 정보 */}
-      <Box
-        sx={{
-          mt: 2,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}>
-        <Typography>
-          총 {totalRows}개 항목 중{" "}
-          {totalRows > 0
-            ? (paginationModel.page - 1) * paginationModel.pageSize + 1
-            : 0}{" "}
-          -
-          {Math.min(paginationModel.page * paginationModel.pageSize, totalRows)}
-        </Typography>
-
-        <Box>
-          <Button
-            disabled={paginationModel.page === 1}
-            onClick={() =>
-              setPaginationModel((prev) => ({ ...prev, page: prev.page - 1 }))
-            }>
-            이전
-          </Button>
-          <Button
-            disabled={
-              paginationModel.page * paginationModel.pageSize >= totalRows
-            }
-            onClick={() =>
-              setPaginationModel((prev) => ({ ...prev, page: prev.page + 1 }))
-            }>
-            다음
-          </Button>
-        </Box>
-      </Box>
     </Box>
   );
 }

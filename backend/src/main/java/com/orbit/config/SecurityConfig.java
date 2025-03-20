@@ -119,8 +119,7 @@ public class SecurityConfig {
                         "/members/login",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
-                        "/swagger-ui.html",
-                        "/api/contracts/**"
+                        "/swagger-ui.html"
                 ).permitAll()
 
 
@@ -150,7 +149,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/invoices/**").hasAnyRole("SUPPLIER", "ADMIN")
 
                 // 입고 관리 (ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/deliveries", "/api/deliveries/**").hasAnyRole("BUYER","SUPPLIER", "ADMIN")
+                .requestMatchers("/api/deliveries", "/api/deliveries/**").hasAnyRole("BUYER", "ADMIN")
 
                 // 지불 관리 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/payments/**").hasRole("ADMIN")
@@ -171,9 +170,11 @@ public class SecurityConfig {
                 // 입찰 공고 관리 (BUYER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/biddings/**").hasAnyRole("BUYER", "ADMIN")
 
-                .requestMatchers("/api/supplier/biddings/**","/api/supplier/contracts/**").hasAnyRole("SUPPLIER")
+                 // 구매요청 목록 조회 엔드포인트
+                 .requestMatchers("/api/biddings/purchase-requests/active").hasAnyRole("BUYER", "ADMIN", "SUPPLIER")
 
-                .requestMatchers("/api/orders/**").hasRole("ADMIN")
+                // 공급사 목록 조회 엔드포인트
+                .requestMatchers("/api/biddings/suppliers/active").hasAnyRole("BUYER", "ADMIN", "SUPPLIER")
                 
 
                 // 정적 리소스는 모두 허용

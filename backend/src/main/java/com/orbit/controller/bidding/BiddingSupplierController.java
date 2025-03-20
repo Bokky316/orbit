@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/suppliers")
+@RequestMapping("/api/suppliers/biddings")
 @RequiredArgsConstructor
 public class BiddingSupplierController {
     private final BiddingSupplierService supplierService;
@@ -50,7 +50,7 @@ public class BiddingSupplierController {
     /**
      * 특정 입찰 공고에 초대된 공급사 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}")
+    @GetMapping("/{biddingId}")
     public ResponseEntity<List<BiddingSupplierDto>> getSuppliersByBiddingId(@PathVariable Long biddingId) {
         log.info("특정 입찰 공고에 초대된 공급사 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -66,7 +66,7 @@ public class BiddingSupplierController {
     /**
      * 특정 공급사가 초대된 입찰 공고 목록 조회
      */
-    @GetMapping("/supplier/{supplierId}")
+    @GetMapping("/{supplierId}")
     public ResponseEntity<List<BiddingSupplierDto>> getSuppliersBySupplierId(@PathVariable Long supplierId) {
         log.info("특정 공급사가 초대된 입찰 공고 목록 조회 요청 - 공급사 ID: {}", supplierId);
         
@@ -82,7 +82,7 @@ public class BiddingSupplierController {
     /**
      * 특정 입찰 공고에 공급사 초대
      */
-    @PostMapping("/bidding/{biddingId}/invite/{supplierId}")
+    @PostMapping("/{biddingId}/invite/{supplierId}")
     public ResponseEntity<BiddingSupplierDto> inviteSupplier(
             @PathVariable Long biddingId,
             @PathVariable Long supplierId,
@@ -110,7 +110,7 @@ public class BiddingSupplierController {
     /**
      * 초대 응답 - 참여
      */
-    @PutMapping("/bidding/{biddingId}/supplier/{supplierId}/participate")
+    @PutMapping("/{biddingId}/{supplierId}/participate")
     public ResponseEntity<BiddingSupplierDto> respondWithParticipation(
             @PathVariable Long biddingId,
             @PathVariable Long supplierId,
@@ -138,7 +138,7 @@ public class BiddingSupplierController {
     /**
      * 초대 응답 - 거부
      */
-    @PutMapping("/bidding/{biddingId}/supplier/{supplierId}/reject")
+    @PutMapping("/{biddingId}/{supplierId}/reject")
     public ResponseEntity<BiddingSupplierDto> respondWithRejection(
             @PathVariable Long biddingId,
             @PathVariable Long supplierId,
@@ -168,7 +168,7 @@ public class BiddingSupplierController {
     /**
      * 알림 발송되지 않은 공급사 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}/non-notified")
+    @GetMapping("/{biddingId}/non-notified")
     public ResponseEntity<List<BiddingSupplierDto>> getNonNotifiedSuppliers(@PathVariable Long biddingId) {
         log.info("알림 발송되지 않은 공급사 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -184,7 +184,7 @@ public class BiddingSupplierController {
     /**
      * 참여 의사를 밝힌 공급사 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}/participating")
+    @GetMapping("/{biddingId}/participating")
     public ResponseEntity<List<BiddingSupplierDto>> getParticipatingSuppliers(@PathVariable Long biddingId) {
         log.info("참여 의사를 밝힌 공급사 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -200,7 +200,7 @@ public class BiddingSupplierController {
     /**
      * 참여를 거부한 공급사 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}/rejected")
+    @GetMapping("/{biddingId}/rejected")
     public ResponseEntity<List<BiddingSupplierDto>> getRejectedSuppliers(@PathVariable Long biddingId) {
         log.info("참여를 거부한 공급사 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -216,7 +216,7 @@ public class BiddingSupplierController {
     /**
      * 응답하지 않은 공급사 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}/non-responded")
+    @GetMapping("/{biddingId}/non-responded")
     public ResponseEntity<List<BiddingSupplierDto>> getNonRespondedSuppliers(@PathVariable Long biddingId) {
         log.info("응답하지 않은 공급사 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -232,7 +232,7 @@ public class BiddingSupplierController {
     /**
      * 공급사 이름 업데이트
      */
-    @PutMapping("/supplier/{supplierId}/update-name")
+    @PutMapping("/{supplierId}/update-name")
     public ResponseEntity<BiddingSupplierDto> updateSupplierName(
             @PathVariable Long supplierId,
             @AuthenticationPrincipal UserDetails userDetails
@@ -257,7 +257,7 @@ public class BiddingSupplierController {
     /**
      * 알림 재전송
      */
-    @PostMapping("/bidding/{biddingId}/supplier/{supplierId}/resend-notification")
+    @PostMapping("/{biddingId}/{supplierId}/resend-notification")
     public ResponseEntity<BiddingSupplierDto> resendNotification(
             @PathVariable Long biddingId,
             @PathVariable Long supplierId,

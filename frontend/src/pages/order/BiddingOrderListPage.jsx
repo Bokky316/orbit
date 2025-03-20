@@ -29,19 +29,9 @@ import {
 import { API_URL } from "@/utils/constants";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 // 헬퍼 함수 import
-import { getStatusText } from "./helpers/commonBiddingHelpers";
+import { getStatusText } from "../bidding/helpers/commonBiddingHelpers";
 
-// 발주 진행 상태 단계
-const orderSteps = [
-  "낙찰 선정",
-  "발주 확정",
-  "계약 생성",
-  "납품 예정",
-  "검수 완료",
-  "결제 완료"
-];
-
-function BiddingOrderPage() {
+function BiddingOrderListPage() {
   const { id: biddingId, evaluationId } = useParams();
   const navigate = useNavigate();
 
@@ -117,43 +107,6 @@ function BiddingOrderPage() {
 
     fetchData();
   }, [biddingId, evaluationId]);
-
-  // 계약 생성 핸들러
-  const handleCreateContract = async () => {
-    try {
-      setIsLoading(true);
-
-      //  계약 생성 API 호출
-      // const response = await fetchWithAuth(`${API_URL}contracts/create-from-bidding`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     biddingId,
-      //     evaluationId,
-      //     notes
-      //   })
-      // });
-
-      // if (!response.ok) {
-      //   throw new Error(`계약 생성에 실패했습니다. (${response.status})`);
-      // }
-
-      // const contractData = await response.json();
-      // console.log("생성된 계약:", contractData);
-
-      // 성공시 다음 단계로 이동 (시뮬레이션)
-      setCurrentStep(2);
-      alert("계약이 성공적으로 생성되었습니다.");
-
-      // 계약 페이지로 이동
-      // navigate(`/contracts/${contractData.id}`);
-    } catch (error) {
-      console.error("계약 생성 중 오류:", error);
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // 돌아가기 핸들러
   const handleBack = () => {
@@ -413,4 +366,4 @@ function BiddingOrderPage() {
   );
 }
 
-export default BiddingOrderPage;
+export default BiddingOrderListPage;

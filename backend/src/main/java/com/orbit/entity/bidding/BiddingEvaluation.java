@@ -36,10 +36,10 @@ public class BiddingEvaluation extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bidding_participation_id", insertable = false, updatable = false)
+    @JoinColumn(name = "bidding_participation_id")
     private BiddingParticipation participation;
 
-    @Column(name = "bidding_participation_id", nullable = false)
+    @Column(name = "bidding_participation_id", insertable = false, updatable = false)
     private Long biddingParticipationId;
 
     @Column(name = "bidding_id", nullable = false)
@@ -86,6 +86,19 @@ public class BiddingEvaluation extends BaseEntity {
 
     @Column(name = "selected_for_order", columnDefinition = "boolean default false")
     private boolean selectedForOrder;
+
+
+    // 헬퍼 메서드를 추가하여 호환성 유지
+    // public Long getBiddingParticipationId() {
+    //     return participation != null ? participation.getId() : null;
+    // }
+
+    public void setParticipation(BiddingParticipation participation) {
+        this.participation = participation;
+        if (participation != null) {
+            this.biddingParticipationId = participation.getId();
+        }
+    }
 
     /**
      * 낙찰자로 선정

@@ -8,9 +8,11 @@
   padding: 10px;
   background: #f9f9f9;
   border-bottom: 1px solid #e5e7eb;
+  box-sizing: border-box;
   .logo {
+    margin-right: 20px;
     img {
-      width: 120px;
+      width: 90px;
     }
   }
   .top_toolbar {
@@ -25,19 +27,40 @@
     justify-content: flex-start;
     justify-items: center;
     align-items: center;
-    .search_container {
-      position: relative;
-      .search_icon {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        transform: translateY(-50%);
+    gap: 20px;
+    .login_info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      .login_name {
+        font-weight: 600;
+        color: #333;
+      }
+      .login_position {
+        font-size: 0.85rem;
+        color: #666;
       }
     }
   }
   .sub_categories {
     display: flex;
     gap: 40px;
+    position: relative;
+    .sub_category_tab {
+      text-decoration: none;
+      color: #666;
+      font-weight: 400;
+      padding: 10px 0;
+      position: relative;
+      transition: color 0.3s ease;
+      &:hover {
+        color: #ff7f3e;
+      }
+      &.active {
+        color: #333;
+        font-weight: 600;
+      }
+    }
   }
 }
 
@@ -49,19 +72,63 @@
   justify-items: start;
   align-items: start;
   border-right: 1px solid #ffd7c2;
-  padding: 20px;
   background: #f9f9f9;
-  width: 200px;
   .sidebar_menu {
+    width: 200px;
+    padding: 0;
+    margin: 0;
     .sidebar_menu_item {
-      padding: 14px 0;
+      padding: 8px 20px;
+      position: relative;
+      .sidebar_menu_link {
+        display: block;
+        text-decoration: none;
+        color: #666;
+        font-weight: 400;
+        padding: 10px 15px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        &:hover {
+          color: #ff7f3e;
+        }
+        &.active {
+          color: #ff7f3e;
+          font-weight: 600;
+          position: relative;
+          transition: all 0.3s ease;
+          &:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -20px;
+            width: 4px;
+            height: 100%;
+            background: #ff7f3e;
+            box-shadow: -2px 0px 10px 2px rgba(0, 56, 255, 0.08);
+            border-radius: 50px;
+          }
+        }
+      }
     }
+  }
+  .sidebar_bottom {
+    margin-top: auto;
+    width: 100%;
+    border-top: 1px solid #cac4d0;
     .sidebar_logout {
-      cursor: pointer;
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      justify-items: center;
+      align-items: center;
+      justify-items: flex-start;
+      justify-content: stretch;
+      color: #666;
+      font-weight: 500;
+      padding: 15px;
+      width: 100%;
+      text-align: left;
+      transition: color 0.3ease;
+      &:hover {
+        font-weight: 600;
+      }
     }
   }
 }

@@ -46,18 +46,16 @@ function ProjectCreatePage() {
   const [remarks, setRemarks] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [basicStatus, setBasicStatus] = useState("PROJECT-STATUS-REQUESTED"); // 유효한 기본값 설정
-  const [procurementStatus, setProcurementStatus] = useState(
-    "PROJECT-PROCUREMENT-REQUEST_RECEIVED"
-  ); // 유효한 기본값 설정
-  const [requestDepartment, setRequestDepartment] = useState("");
-  // 추가 상태 변수들
+
+  // 부서 및 멤버 관련 상태
   const [departments, setDepartments] = useState([]);
-  const [budgetCodes, setBudgetCodes] = useState([]);
-  const [businessCategories, setBusinessCategories] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [departmentMembers, setDepartmentMembers] = useState([]);
   const [selectedManager, setSelectedManager] = useState(null);
+
+  // 예산 코드와 사업 유형을 위한 공통 코드 상태
+  const [budgetCodes, setBudgetCodes] = useState([]);
+  const [businessCategories, setBusinessCategories] = useState([]);
 
   // 첨부 파일 상태
   const [attachments, setAttachments] = useState([]);
@@ -162,9 +160,11 @@ function ProjectCreatePage() {
         startDate: startDate ? startDate.format("YYYY-MM-DD") : null,
         endDate: endDate ? endDate.format("YYYY-MM-DD") : null
       },
-      basicStatus,
-      procurementStatus,
-      requestDepartment
+      // 기본 상태는 서버에서 설정하도록 생략
+      requestDepartment: selectedDepartment ? selectedDepartment.name : "",
+      requestDepartmentId: selectedDepartment ? selectedDepartment.id : null,
+      requesterName: selectedManager ? selectedManager.name : null,
+      requesterId: selectedManager ? selectedManager.id : null
     };
 
     try {
@@ -214,102 +214,6 @@ function ProjectCreatePage() {
           }
         }
 
-        alert("프로젝트가 성공적으로 생성되었습니다.");
-        navigate("/projects");
-      } else {
-        const errorData = await response.text();
-        alert(`오류 발생: ${errorData}`);
-      }
-    } catch (error) {
-      alert(`오류 발생: ${error.message}`);
-    }
-  };
-
-  /**
-   * JSON 형식으로 제출 (파일 없을 때)
-   */
-  const handleSubmitJson = async () => {
-    // 요청 데이터 구성
-    const requestData = {
-      projectName,
-      businessCategory,
-      clientCompany,
-      contractType,
-      totalBudget: parseFloat(totalBudget) || 0,
-      remarks,
-      projectPeriod: {
-        startDate: startDate ? startDate.format("YYYY-MM-DD") : null,
-        endDate: endDate ? endDate.format("YYYY-MM-DD") : null
-      },
-      basicStatus,
-      procurementStatus,
-      requestDepartment
-    };
-
-    try {
-      // API 요청
-      const response = await fetchWithAuth(`${API_URL}projects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (response.ok) {
-        alert("프로젝트가 성공적으로 생성되었습니다.");
-        navigate("/projects"); // 프로젝트 목록 페이지로 이동
-      } else {
-        const errorData = await response.text();
-        alert(`오류 발생: ${errorData}`);
-      }
-    } catch (error) {
-      alert(`오류 발생: ${error.message}`);
-    }
-  };
-
-  /**
-   * Multipart/form-data로 제출 (파일 있을 때) - 구매요청과 동일한 방식으로 수정
-   */
-  const handleSubmitWithFiles = async () => {
-    try {
-      // FormData 생성
-      const formData = new FormData();
-
-      // 각 필드를 개별적으로 추가 (JSON 문자열 대신)
-      formData.append("projectName", projectName);
-      formData.append("businessCategory", businessCategory);
-      formData.append("clientCompany", clientCompany);
-      formData.append("contractType", contractType);
-      formData.append("totalBudget", parseFloat(totalBudget) || 0);
-      formData.append("remarks", remarks);
-
-      // 날짜 필드
-      if (startDate)
-        formData.append(
-          "projectPeriod.startDate",
-          startDate.format("YYYY-MM-DD")
-        );
-      if (endDate)
-        formData.append("projectPeriod.endDate", endDate.format("YYYY-MM-DD"));
-
-      // 상태 필드
-      formData.append("basicStatus", basicStatus);
-      formData.append("procurementStatus", procurementStatus);
-      formData.append("requestDepartment", requestDepartment);
-
-      // 첨부 파일 추가
-      for (let i = 0; i < attachments.length; i++) {
-        formData.append("files", attachments[i]);
-      }
-
-      // API 요청
-      const response = await fetchWithAuth(`${API_URL}projects`, {
-        method: "POST",
-        body: formData
-      });
-
-      if (response.ok) {
         alert("프로젝트가 성공적으로 생성되었습니다.");
         navigate("/projects");
       } else {
@@ -443,58 +347,8 @@ function ProjectCreatePage() {
                 onChange={(e) => setRemarks(e.target.value)}
               />
             </Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth>
-                <InputLabel id="basic-status-label">기본 상태</InputLabel>
-                <Select
-                  labelId="basic-status-label"
-                  value={basicStatus}
-                  label="기본 상태"
-                  onChange={(e) => setBasicStatus(e.target.value)}>
-                  <MenuItem value="PROJECT-STATUS-REQUESTED">
-                    프로젝트 요청
-                  </MenuItem>
-                  <MenuItem value="PROJECT-STATUS-RECEIVED">
-                    프로젝트 접수
-                  </MenuItem>
-                  <MenuItem value="PROJECT-STATUS-REJECTED">
-                    프로젝트 반려
-                  </MenuItem>
-                  <MenuItem value="PROJECT-STATUS-TERMINATED">
-                    프로젝트 중도 종결
-                  </MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth>
-                <InputLabel id="procurement-status-label">조달 상태</InputLabel>
-                <Select
-                  labelId="procurement-status-label"
-                  value={procurementStatus}
-                  label="조달 상태"
-                  onChange={(e) => setProcurementStatus(e.target.value)}>
-                  <MenuItem value="PROJECT-PROCUREMENT-REQUEST_RECEIVED">
-                    구매요청 접수
-                  </MenuItem>
-                  <MenuItem value="PROJECT-PROCUREMENT-VENDOR_SELECTION">
-                    업체 선정
-                  </MenuItem>
-                  <MenuItem value="PROJECT-PROCUREMENT-CONTRACT_PENDING">
-                    구매계약 대기
-                  </MenuItem>
-                  <MenuItem value="PROJECT-PROCUREMENT-INSPECTION">
-                    검수 진행
-                  </MenuItem>
-                  <MenuItem value="PROJECT-PROCUREMENT-INVOICE_ISSUED">
-                    인보이스 발행
-                  </MenuItem>
-                  <MenuItem value="PROJECT-PROCUREMENT-PAYMENT_COMPLETED">
-                    대급지급 완료
-                  </MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+
+            {/* 날짜 선택 */}
             <Grid item xs={6}>
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DatePicker

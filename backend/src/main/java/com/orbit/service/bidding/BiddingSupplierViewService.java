@@ -11,13 +11,17 @@ import com.orbit.dto.bidding.BiddingParticipationDto;
 import com.orbit.dto.bidding.BiddingSupplierDto;
 import com.orbit.entity.bidding.Bidding;
 import com.orbit.entity.bidding.BiddingParticipation;
+import com.orbit.entity.bidding.BiddingSupplier;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.member.Member;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
 import com.orbit.repository.bidding.BiddingRepository;
 import com.orbit.repository.bidding.BiddingSupplierRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
+import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.supplier.SupplierRegistrationRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +35,26 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class BiddingSupplierViewService {
     private final BiddingRepository biddingRepository;
+    private final MemberRepository memberRepository;
     private final BiddingParticipationRepository participationRepository;
     private final BiddingSupplierRepository supplierRepository;
     private final ParentCodeRepository parentCodeRepository;
     private final ChildCodeRepository childCodeRepository;
+    private final SupplierRegistrationRepository supplierRegistrationRepository;
+
+    /**
+     * 초대 상태 조회
+     */
+    @Transactional(readOnly = true)
+    public BiddingSupplierDto getInvitationStatus(Long biddingId, Long supplierId) {
+        Member supplier = memberRepository.findById(supplierId)
+                .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+                
+        BiddingSupplier invitation = supplierRepository.findByBiddingIdAndSupplierId(biddingId, supplierId)
+                .orElseThrow(() -> new EntityNotFoundException("초대 정보를 찾을 수 없습니다."));
+                
+        return BiddingSupplierDto.fromEntityWithBusinessNo(invitation, supplierRegistrationRepository);
+    }
 
     /**
      * 특정 공급업체가 초대받은 모든 입찰 공고 목록 조회
@@ -101,16 +121,6 @@ public class BiddingSupplierViewService {
                 .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다."));
         
         return BiddingParticipationDto.fromEntity(participation);
-    }
-
-    /**
-     * 공급업체의 초대 상태 확인
-     */
-    @Transactional(readOnly = true)
-    public BiddingSupplierDto getInvitationStatus(Long biddingId, Long supplierId) {
-        return supplierRepository.findByBiddingIdAndSupplierId(biddingId, supplierId)
-                .map(BiddingSupplierDto::fromEntity)
-                .orElseThrow(() -> new EntityNotFoundException("입찰 초대 정보를 찾을 수 없습니다."));
     }
 
     /**

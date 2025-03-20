@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchSupplierById, updateSupplierStatus, resetSupplierState } from '../../redux/supplier/supplierSlice';
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchSupplierById,
+  updateSupplierStatus,
+  resetSupplierState
+} from "../../redux/supplier/supplierSlice";
 import {
   Box,
   Container,
@@ -26,7 +30,7 @@ import {
   IconButton,
   Stack,
   Tooltip
-} from '@mui/material';
+} from "@mui/material";
 import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
@@ -36,9 +40,9 @@ import {
   Block as BlockIcon,
   ErrorOutline as ErrorOutlineIcon,
   Edit as EditIcon // 수정 아이콘 추가
-} from '@mui/icons-material';
-import { API_URL } from '@/utils/constants';
-import { fetchWithAuth } from '@/utils/fetchWithAuth';
+} from "@mui/icons-material";
+import { API_URL } from "@/utils/constants";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
 // 전화번호 포맷팅 함수 추가
 const formatPhoneNumber = (phoneNumber) => {
@@ -66,11 +70,11 @@ const formatPhoneNumber = (phoneNumber) => {
 
 // 파일 크기 포맷팅 함수 추가
 const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
 const SupplierReviewPage = () => {
@@ -84,9 +88,15 @@ const SupplierReviewPage = () => {
     loading: false,
     error: null,
     success: false,
-    message: ''
+    message: ""
   };
-  const { currentSupplier, loading = false, error = null, success = false, message = '' } = supplierState;
+  const {
+    currentSupplier,
+    loading = false,
+    error = null,
+    success = false,
+    message = ""
+  } = supplierState;
 
   // 안전하게 사용자 정보 접근
   const authState = useSelector((state) => state.auth) || { user: null };
@@ -94,41 +104,44 @@ const SupplierReviewPage = () => {
 
   const [openRejectModal, setOpenRejectModal] = useState(false);
   const [openApproveModal, setOpenApproveModal] = useState(false); // 승인 확인 모달 상태 추가
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [rejectionError, setRejectionError] = useState('');
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionError, setRejectionError] = useState("");
   const [downloadLoading, setDownloadLoading] = useState(false);
-  const [downloadError, setDownloadError] = useState('');
+  const [downloadError, setDownloadError] = useState("");
   const [loadingAttachmentId, setLoadingAttachmentId] = useState(null);
   const [openInactivateModal, setOpenInactivateModal] = useState(false);
-  const [inactivateReason, setInactivateReason] = useState('');
+  const [inactivateReason, setInactivateReason] = useState("");
   const [openActivateModal, setOpenActivateModal] = useState(false);
 
   // ADMIN 권한 체크 수정
-  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
+  const isAdmin = user && user.roles && user.roles.includes("ROLE_ADMIN");
   // SUPPLIER 권한 체크 추가
-  const isSupplier = user && user.roles && user.roles.includes('ROLE_SUPPLIER');
+  const isSupplier = user && user.roles && user.roles.includes("ROLE_SUPPLIER");
 
-  console.log('현재 협력업체 전체 데이터:', currentSupplier);
+  console.log("현재 협력업체 전체 데이터:", currentSupplier);
   // 현재 사용자가 해당 업체의 소유자인지 확인
-  const isOwner = isSupplier && currentSupplier && currentSupplier.status?.childCode === 'PENDING';
+  const isOwner =
+    isSupplier &&
+    currentSupplier &&
+    currentSupplier.status?.childCode === "PENDING";
 
-  console.log('사용자 ID:', user?.id);
-  console.log('isSupplier:', isSupplier);
-  console.log('협력업체 상태:', currentSupplier?.status?.childCode);
-  console.log('isOwner 수정된 결과:', isOwner);
+  console.log("사용자 ID:", user?.id);
+  console.log("isSupplier:", isSupplier);
+  console.log("협력업체 상태:", currentSupplier?.status?.childCode);
+  console.log("isOwner 수정된 결과:", isOwner);
 
   useEffect(() => {
     try {
       dispatch(fetchSupplierById(id));
     } catch (err) {
-      console.error('Error fetching supplier details:', err);
+      console.error("Error fetching supplier details:", err);
     }
 
     return () => {
       try {
         dispatch(resetSupplierState());
       } catch (err) {
-        console.error('Error resetting supplier state:', err);
+        console.error("Error resetting supplier state:", err);
       }
     };
   }, [dispatch, id]);
@@ -152,13 +165,15 @@ const SupplierReviewPage = () => {
   // 승인 처리
   const handleApprove = () => {
     try {
-      dispatch(updateSupplierStatus({
-        id: currentSupplier.id,
-        statusCode: 'APPROVED'
-      }));
+      dispatch(
+        updateSupplierStatus({
+          id: currentSupplier.id,
+          statusCode: "APPROVED"
+        })
+      );
       setOpenApproveModal(false); // 모달 닫기
     } catch (err) {
-      console.error('Error approving supplier:', err);
+      console.error("Error approving supplier:", err);
     }
   };
 
@@ -170,34 +185,36 @@ const SupplierReviewPage = () => {
   // 반려 모달 닫기
   const handleCloseRejectModal = () => {
     setOpenRejectModal(false);
-    setRejectionReason('');
-    setRejectionError('');
+    setRejectionReason("");
+    setRejectionError("");
   };
 
   // 반려 사유 입력 처리
   const handleRejectionReasonChange = (e) => {
     setRejectionReason(e.target.value);
-    if (rejectionError) setRejectionError('');
+    if (rejectionError) setRejectionError("");
   };
 
   // 반려 처리
   const handleReject = () => {
     if (!rejectionReason.trim()) {
-      setRejectionError('반려 사유를 입력해주세요.');
+      setRejectionError("반려 사유를 입력해주세요.");
       return;
     }
 
     try {
-      dispatch(updateSupplierStatus({
-        id: currentSupplier.id,
-        statusCode: 'REJECTED',
-        rejectionReason
-      }));
+      dispatch(
+        updateSupplierStatus({
+          id: currentSupplier.id,
+          statusCode: "REJECTED",
+          rejectionReason
+        })
+      );
 
       setOpenRejectModal(false);
     } catch (err) {
-      console.error('Error rejecting supplier:', err);
-      setRejectionError('처리 중 오류가 발생했습니다.');
+      console.error("Error rejecting supplier:", err);
+      setRejectionError("처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -209,7 +226,7 @@ const SupplierReviewPage = () => {
   // 비활성화 모달 닫기 함수 추가
   const handleCloseInactivateModal = () => {
     setOpenInactivateModal(false);
-    setInactivateReason('');
+    setInactivateReason("");
   };
 
   // 활성화 모달 열기 함수 추가
@@ -226,22 +243,24 @@ const SupplierReviewPage = () => {
   const handleInactivateSupplier = () => {
     if (currentSupplier?.id) {
       try {
-        dispatch(updateSupplierStatus({
-          id: currentSupplier.id,
-          statusCode: 'INACTIVE',
-          rejectionReason: inactivateReason
-        }))
+        dispatch(
+          updateSupplierStatus({
+            id: currentSupplier.id,
+            statusCode: "INACTIVE",
+            rejectionReason: inactivateReason
+          })
+        )
           .unwrap()
           .then(() => {
             handleCloseInactivateModal();
             // 상태 변경 후 목록 페이지로 리다이렉트
-            navigate('/supplier');
+            navigate("/supplier");
           })
-          .catch(error => {
-            console.error('비활성화 오류:', error);
+          .catch((error) => {
+            console.error("비활성화 오류:", error);
           });
       } catch (err) {
-        console.error('비활성화 오류:', err);
+        console.error("비활성화 오류:", err);
       }
     }
   };
@@ -250,21 +269,23 @@ const SupplierReviewPage = () => {
   const handleActivateSupplier = () => {
     if (currentSupplier?.id) {
       try {
-        dispatch(updateSupplierStatus({
-          id: currentSupplier.id,
-          statusCode: 'ACTIVE'
-        }))
+        dispatch(
+          updateSupplierStatus({
+            id: currentSupplier.id,
+            statusCode: "ACTIVE"
+          })
+        )
           .unwrap()
           .then(() => {
             handleCloseActivateModal();
             // 상태 변경 후 목록 페이지로 리다이렉트
-            navigate('/supplier');
+            navigate("/supplier");
           })
-          .catch(error => {
-            console.error('활성화 오류:', error);
+          .catch((error) => {
+            console.error("활성화 오류:", error);
           });
       } catch (err) {
-        console.error('활성화 오류:', err);
+        console.error("활성화 오류:", err);
       }
     }
   };
@@ -281,17 +302,17 @@ const SupplierReviewPage = () => {
       }
 
       setLoadingAttachmentId(attachment.id);
-      setDownloadError('');
+      setDownloadError("");
 
       const response = await fetchWithAuth(
         `${API_URL}supplier-registrations/attachments/${attachment.id}/download`,
-        { method: 'GET', responseType: 'blob' }
+        { method: "GET", responseType: "blob" }
       );
 
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = attachment.fileName; // 원본 파일 이름 사용
         document.body.appendChild(a);
@@ -299,12 +320,14 @@ const SupplierReviewPage = () => {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       } else {
-        console.error('다운로드 실패:', await response.text());
-        setDownloadError('파일 다운로드에 실패했습니다.');
+        console.error("다운로드 실패:", await response.text());
+        setDownloadError("파일 다운로드에 실패했습니다.");
       }
     } catch (error) {
-      console.error('다운로드 오류:', error);
-      setDownloadError('파일 다운로드 중 오류가 발생했습니다: ' + error.message);
+      console.error("다운로드 오류:", error);
+      setDownloadError(
+        "파일 다운로드 중 오류가 발생했습니다: " + error.message
+      );
     } finally {
       setLoadingAttachmentId(null);
     }
@@ -315,18 +338,18 @@ const SupplierReviewPage = () => {
     // status가 객체인 경우 childCode를 사용
     const statusCode = status?.childCode || status;
 
-    switch(statusCode) {
-      case 'APPROVED':
+    switch (statusCode) {
+      case "APPROVED":
         return <Chip label="승인" color="success" variant="outlined" />;
-      case 'PENDING':
+      case "PENDING":
         return <Chip label="심사대기" color="warning" variant="outlined" />;
-      case 'REJECTED':
+      case "REJECTED":
         return <Chip label="반려" color="error" variant="outlined" />;
-      case 'SUSPENDED':
+      case "SUSPENDED":
         return <Chip label="일시정지" color="default" variant="outlined" />;
-      case 'BLACKLIST':
+      case "BLACKLIST":
         return <Chip label="블랙리스트" color="error" variant="outlined" />;
-      case 'INACTIVE':
+      case "INACTIVE":
         return <Chip label="비활성" color="default" variant="outlined" />;
       default:
         return <Chip label="미확인" variant="outlined" />;
@@ -336,7 +359,9 @@ const SupplierReviewPage = () => {
   // 로딩 중 표시
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container
+        maxWidth="md"
+        sx={{ mt: 4, mb: 4, display: "flex", justifyContent: "center" }}>
         <CircularProgress />
       </Container>
     );
@@ -347,13 +372,16 @@ const SupplierReviewPage = () => {
     return (
       <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
         <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>협력업체 정보</Typography>
-          <Alert severity="info">협력업체 정보를 불러오는 중이거나 찾을 수 없습니다.</Alert>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            협력업체 정보
+          </Typography>
+          <Alert severity="info">
+            협력업체 정보를 불러오는 중이거나 찾을 수 없습니다.
+          </Alert>
           <Button
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/supplier')}
-            sx={{ mt: 2 }}
-          >
+            onClick={() => navigate("/supplier")}
+            sx={{ mt: 2 }}>
             목록으로 돌아가기
           </Button>
         </Paper>
@@ -363,50 +391,72 @@ const SupplierReviewPage = () => {
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>데이터를 처리하는 중 오류가 발생했습니다.</Alert>}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {message}
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          데이터를 처리하는 중 오류가 발생했습니다.
+        </Alert>
+      )}
 
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box
+        sx={{
+          mb: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/supplier')}
-        >
+          onClick={() => navigate("/supplier")}>
           목록으로
         </Button>
         <Typography variant="h5">협력업체 상세 정보</Typography>
-        <Box sx={{ width: '100px' }}></Box> {/* 균형을 맞추기 위한 빈 박스 */}
+        <Box sx={{ width: "100px" }}></Box> {/* 균형을 맞추기 위한 빈 박스 */}
       </Box>
 
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">{currentSupplier.supplierName || '이름 없음'}</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2
+          }}>
+          <Typography variant="h6">
+            {currentSupplier.supplierName || "이름 없음"}
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             {getStatusChip(currentSupplier.status)}
 
             {/* SUPPLIER 본인이고 상태가 PENDING일 때 수정 버튼 표시 */}
-            {isSupplier && currentSupplier && currentSupplier.status?.childCode === 'PENDING' && (
-              <Button
-                size="small"
-                color="primary"
-                variant="contained"
-                startIcon={<EditIcon />}
-                onClick={handleEdit}
-              >
-                수정하기
-              </Button>
-            )}
+            {isSupplier &&
+              currentSupplier &&
+              currentSupplier.status?.childCode === "PENDING" && (
+                <Button
+                  size="small"
+                  color="primary"
+                  variant="contained"
+                  startIcon={<EditIcon />}
+                  onClick={handleEdit}>
+                  수정하기
+                </Button>
+              )}
 
             {/* ADMIN에게만 활성화/비활성화 버튼 표시 */}
-            {isAdmin && currentSupplier.status?.childCode !== 'PENDING' && (
+            {isAdmin && currentSupplier.status?.childCode !== "PENDING" && (
               <>
-                {currentSupplier.status === 'INACTIVE' || currentSupplier.status?.childCode === 'INACTIVE' ? (
+                {currentSupplier.status === "INACTIVE" ||
+                currentSupplier.status?.childCode === "INACTIVE" ? (
                   <Button
                     size="small"
                     color="success"
                     variant="contained"
                     startIcon={<CheckCircleIcon />}
-                    onClick={handleOpenActivateModal}
-                  >
+                    onClick={handleOpenActivateModal}>
                     활성화 하기
                   </Button>
                 ) : (
@@ -415,8 +465,7 @@ const SupplierReviewPage = () => {
                     color="error"
                     variant="contained"
                     startIcon={<BlockIcon />}
-                    onClick={handleOpenInactivateModal}
-                  >
+                    onClick={handleOpenInactivateModal}>
                     비활성화 하기
                   </Button>
                 )}
@@ -430,50 +479,84 @@ const SupplierReviewPage = () => {
         <Grid container spacing={3}>
           {/* 기본 정보 */}
           <Grid item xs={12}>
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>기본 정보</Typography>
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold" }}>
+              기본 정보
+            </Typography>
           </Grid>
 
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">사업자등록번호</Typography>
-              <Typography variant="body1">{currentSupplier.businessNo || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                사업자등록번호
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.businessNo || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">대표자명</Typography>
-              <Typography variant="body1">{currentSupplier.ceoName || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                대표자명
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.ceoName || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">업태</Typography>
-              <Typography variant="body1">{currentSupplier.businessType || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                업태
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.businessType || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">업종</Typography>
-              <Typography variant="body1">{currentSupplier.businessCategory || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                업종
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.businessCategory || "-"}
+              </Typography>
             </Box>
           </Grid>
 
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">소싱대분류</Typography>
-              <Typography variant="body1">{currentSupplier.sourcingCategory || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                소싱대분류
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.sourcingCategory || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">소싱중분류</Typography>
-              <Typography variant="body1">{currentSupplier.sourcingSubCategory || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                소싱중분류
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.sourcingSubCategory || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">소싱소분류</Typography>
-              <Typography variant="body1">{currentSupplier.sourcingDetailCategory || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                소싱소분류
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.sourcingDetailCategory || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">등록 요청일</Typography>
-              <Typography variant="body1">{currentSupplier.registrationDate || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                등록 요청일
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.registrationDate || "-"}
+              </Typography>
             </Box>
           </Grid>
 
@@ -483,39 +566,63 @@ const SupplierReviewPage = () => {
 
           {/* 연락처 정보 */}
           <Grid item xs={12}>
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>연락처 정보</Typography>
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold" }}>
+              연락처 정보
+            </Typography>
           </Grid>
 
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">회사 전화번호</Typography>
-              <Typography variant="body1">{formatPhoneNumber(currentSupplier.phoneNumber) || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                회사 전화번호
+              </Typography>
+              <Typography variant="body1">
+                {formatPhoneNumber(currentSupplier.phoneNumber) || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">본사 주소</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                본사 주소
+              </Typography>
               <Typography variant="body1">
-                {currentSupplier.postalCode ? `[${currentSupplier.postalCode}] ` : ''}
-                {currentSupplier.roadAddress || ''}
-                {currentSupplier.detailAddress ? ` ${currentSupplier.detailAddress}` : ''}
+                {currentSupplier.postalCode
+                  ? `[${currentSupplier.postalCode}] `
+                  : ""}
+                {currentSupplier.roadAddress || ""}
+                {currentSupplier.detailAddress
+                  ? ` ${currentSupplier.detailAddress}`
+                  : ""}
               </Typography>
             </Box>
           </Grid>
 
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">담당자</Typography>
-              <Typography variant="body1">{currentSupplier.contactPerson || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                담당자
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.contactPerson || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">담당자 연락처</Typography>
-              <Typography variant="body1">{formatPhoneNumber(currentSupplier.contactPhone) || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                담당자 연락처
+              </Typography>
+              <Typography variant="body1">
+                {formatPhoneNumber(currentSupplier.contactPhone) || "-"}
+              </Typography>
             </Box>
 
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">담당자 이메일</Typography>
-              <Typography variant="body1">{currentSupplier.contactEmail || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                담당자 이메일
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.contactEmail || "-"}
+              </Typography>
             </Box>
           </Grid>
 
@@ -525,23 +632,33 @@ const SupplierReviewPage = () => {
 
           <Grid item xs={12}>
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">비고</Typography>
-              <Typography variant="body1">{currentSupplier.comments || '-'}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">
+                비고
+              </Typography>
+              <Typography variant="body1">
+                {currentSupplier.comments || "-"}
+              </Typography>
             </Box>
           </Grid>
 
-          {currentSupplier.status?.childCode === 'REJECTED' && currentSupplier.rejectionReason && (
-            <Grid item xs={12}>
-              <Alert severity="error" sx={{ mb: 2 }}>
-                <Typography variant="subtitle2">반려 사유</Typography>
-                <Typography variant="body2">{currentSupplier.rejectionReason || '반려 사유가 입력되지 않았습니다.'}</Typography>
-              </Alert>
-            </Grid>
-          )}
+          {currentSupplier.status?.childCode === "REJECTED" &&
+            currentSupplier.rejectionReason && (
+              <Grid item xs={12}>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2">반려 사유</Typography>
+                  <Typography variant="body2">
+                    {currentSupplier.rejectionReason ||
+                      "반려 사유가 입력되지 않았습니다."}
+                  </Typography>
+                </Alert>
+              </Grid>
+            )}
 
           {/* 첨부 파일 섹션 */}
           <Grid item xs={12}>
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>첨부 파일</Typography>
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: "bold" }}>
+              첨부 파일
+            </Typography>
 
             {downloadError && (
               <Alert severity="error" sx={{ mb: 2 }}>
@@ -549,7 +666,8 @@ const SupplierReviewPage = () => {
               </Alert>
             )}
 
-            {currentSupplier.attachments && currentSupplier.attachments.length > 0 ? (
+            {currentSupplier.attachments &&
+            currentSupplier.attachments.length > 0 ? (
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <List>
                   {currentSupplier.attachments.map((attachment) => (
@@ -561,70 +679,76 @@ const SupplierReviewPage = () => {
                             <IconButton
                               edge="end"
                               onClick={() => downloadFile(attachment)}
-                              disabled={loadingAttachmentId === attachment.id}
-                            >
-                              {loadingAttachmentId === attachment.id ? <CircularProgress size={24} /> : <DownloadIcon />}
+                              disabled={loadingAttachmentId === attachment.id}>
+                              {loadingAttachmentId === attachment.id ? (
+                                <CircularProgress size={24} />
+                              ) : (
+                                <DownloadIcon />
+                              )}
                             </IconButton>
                           </span>
                         </Tooltip>
-                      }
-                    >
+                      }>
                       <ListItemIcon>
                         <AttachFileIcon />
                       </ListItemIcon>
                       <ListItemText
                         primary={attachment.fileName}
-                        secondary={attachment.fileSize ? formatFileSize(attachment.fileSize) : ''}
+                        secondary={
+                          attachment.fileSize
+                            ? formatFileSize(attachment.fileSize)
+                            : ""
+                        }
                       />
                     </ListItem>
                   ))}
                 </List>
               </Paper>
+            ) : currentSupplier.businessFile ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <ListItem>
+                  <ListItemIcon>
+                    <AttachFileIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="사업자등록증"
+                    secondary="이전 버전 첨부파일"
+                  />
+                  <Tooltip title="파일 다운로드">
+                    <span>
+                      <IconButton
+                        edge="end"
+                        onClick={() => {
+                          // 이전 버전 호환성 - 링크로 열기
+                          window.open(
+                            `/files/${currentSupplier.businessFile}`,
+                            "_blank"
+                          );
+                        }}>
+                        <DownloadIcon />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </ListItem>
+              </Paper>
             ) : (
-              currentSupplier.businessFile ? (
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <ListItem>
-                    <ListItemIcon>
-                      <AttachFileIcon />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary="사업자등록증"
-                      secondary="이전 버전 첨부파일"
-                    />
-                    <Tooltip title="파일 다운로드">
-                      <span>
-                        <IconButton
-                          edge="end"
-                          onClick={() => {
-                            // 이전 버전 호환성 - 링크로 열기
-                            window.open(`/files/${currentSupplier.businessFile}`, '_blank');
-                          }}
-                        >
-                          <DownloadIcon />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </ListItem>
-                </Paper>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  첨부된 파일이 없습니다.
-                </Typography>
-              )
+              <Typography variant="body2" color="text.secondary">
+                첨부된 파일이 없습니다.
+              </Typography>
             )}
           </Grid>
         </Grid>
       </Paper>
 
       {/* ADMIN만 보이는 승인/반려 버튼 */}
-      {isAdmin && currentSupplier.status?.childCode === 'PENDING' && (
-        <Paper sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+      {isAdmin && currentSupplier.status?.childCode === "PENDING" && (
+        <Paper
+          sx={{ p: 3, display: "flex", justifyContent: "flex-end", gap: 2 }}>
           <Button
             variant="outlined"
             color="error"
             startIcon={<CancelIcon />}
-            onClick={handleOpenRejectModal}
-          >
+            onClick={handleOpenRejectModal}>
             반려
           </Button>
           <Button
@@ -639,40 +763,55 @@ const SupplierReviewPage = () => {
       )}
 
       {/* SUPPLIER 본인이고 PENDING 상태일 때 수정 버튼 (하단) */}
-      {isSupplier && isOwner && currentSupplier.status?.childCode === 'PENDING' && (
-        <Paper sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<EditIcon />}
-            onClick={handleEdit}
-          >
-            정보 수정하기
-          </Button>
-        </Paper>
-      )}
+      {isSupplier &&
+        isOwner &&
+        currentSupplier.status?.childCode === "PENDING" && (
+          <Paper
+            sx={{
+              p: 3,
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 2,
+              mt: 2
+            }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<EditIcon />}
+              onClick={handleEdit}>
+              정보 수정하기
+            </Button>
+          </Paper>
+        )}
 
       {/* SUPPLIER 본인이고 REJECTED 상태일 때 재승인 요청 버튼 */}
-      {isSupplier && currentSupplier && currentSupplier.status?.childCode === 'REJECTED' && (
-        <Paper sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<EditIcon />}
-            onClick={handleEdit}
-          >
-            정보 수정 및 재승인 요청하기
-          </Button>
-        </Paper>
-      )}
+      {isSupplier &&
+        currentSupplier &&
+        currentSupplier.status?.childCode === "REJECTED" && (
+          <Paper
+            sx={{
+              p: 3,
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 2,
+              mt: 2
+            }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<EditIcon />}
+              onClick={handleEdit}>
+              정보 수정 및 재승인 요청하기
+            </Button>
+          </Paper>
+        )}
 
       {/* 하단 네비게이션 버튼 */}
-      <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/supplier')}
-        >
+          onClick={() => navigate("/supplier")}>
           목록으로 돌아가기
         </Button>
       </Box>
@@ -716,7 +855,8 @@ const SupplierReviewPage = () => {
         <DialogTitle>협력업체 승인</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체의 등록 요청을 승인하시겠습니까?
+            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체의 등록
+            요청을 승인하시겠습니까?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -733,13 +873,15 @@ const SupplierReviewPage = () => {
       <Dialog
         open={openInactivateModal}
         onClose={handleCloseInactivateModal}
-        aria-labelledby="inactivate-dialog-title"
-      >
-        <DialogTitle id="inactivate-dialog-title">협력업체 비활성화</DialogTitle>
+        aria-labelledby="inactivate-dialog-title">
+        <DialogTitle id="inactivate-dialog-title">
+          협력업체 비활성화
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 비활성화하시겠습니까?
-            비활성화 후에는 해당 업체와 더 이상 거래가 불가능합니다.
+            '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를
+            비활성화하시겠습니까? 비활성화 후에는 해당 업체와 더 이상 거래가
+            불가능합니다.
           </DialogContentText>
           <TextField
             autoFocus
@@ -760,7 +902,10 @@ const SupplierReviewPage = () => {
           <Button onClick={handleCloseInactivateModal} color="inherit">
             취소
           </Button>
-          <Button onClick={handleInactivateSupplier} color="error" variant="contained">
+          <Button
+            onClick={handleInactivateSupplier}
+            color="error"
+            variant="contained">
             비활성화
           </Button>
         </DialogActions>
@@ -770,20 +915,20 @@ const SupplierReviewPage = () => {
       <Dialog
         open={openActivateModal}
         onClose={handleCloseActivateModal}
-        aria-labelledby="activate-dialog-title"
-      >
+        aria-labelledby="activate-dialog-title">
         <DialogTitle id="activate-dialog-title">협력업체 활성화</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
               <ErrorOutlineIcon color="warning" sx={{ mr: 1 }} />
               <Typography variant="subtitle1" fontWeight="bold">
-                '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 다시 활성화하시겠습니까?
+                '{currentSupplier?.supplierName || "해당 업체"}' 협력업체를 다시
+                활성화하시겠습니까?
               </Typography>
             </Box>
             <Typography>
-              활성화하면 해당 업체와 다시 거래가 가능해집니다. 비활성 사유는 삭제되며,
-              업체 상태는 '승인'으로 변경됩니다.
+              활성화하면 해당 업체와 다시 거래가 가능해집니다. 비활성 사유는
+              삭제되며, 업체 상태는 '승인'으로 변경됩니다.
             </Typography>
           </DialogContentText>
         </DialogContent>
@@ -791,7 +936,10 @@ const SupplierReviewPage = () => {
           <Button onClick={handleCloseActivateModal} color="inherit">
             취소
           </Button>
-          <Button onClick={handleActivateSupplier} color="success" variant="contained">
+          <Button
+            onClick={handleActivateSupplier}
+            color="success"
+            variant="contained">
             활성화
           </Button>
         </DialogActions>
