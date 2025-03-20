@@ -39,6 +39,7 @@ public class InvoiceDto {
     private String unit;
     private String status; // 상태 코드 (WAITING, PAID, OVERDUE)
     private String notes;
+    private String orderNumber;
 
     // 송장 수정 시 사용되는 DTO
     @Data
@@ -60,6 +61,7 @@ public class InvoiceDto {
                 .invoiceNumber(invoice.getInvoiceNumber())
                 .contractNumber(invoice.getContractNumber())
                 .transactionNumber(invoice.getTransactionNumber())
+                .orderNumber(invoice.getDelivery() != null ? invoice.getDelivery().getOrderNumber() : null)
                 .supplyPrice(invoice.getSupplyPrice())
                 .vat(invoice.getVat())
                 .totalAmount(invoice.getTotalAmount())
