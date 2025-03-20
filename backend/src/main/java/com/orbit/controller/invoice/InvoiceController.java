@@ -187,4 +187,38 @@ public class InvoiceController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    // 송장 승인 처리
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<InvoiceDto> approveInvoice(@PathVariable Long id) {
+        try {
+            Invoice invoice = invoiceService.getInvoiceById(id)
+                    .orElseThrow(() -> new RuntimeException("송장을 찾을 수 없습니다."));
+
+            invoice.setStatus(new SystemStatus("INVOICE", "APPROVED"));
+
+            Invoice updatedInvoice = invoiceService.createInvoice(invoice);
+
+            return ResponseEntity.ok(InvoiceDto.fromEntity(updatedInvoice));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // 송장 거부 처리
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<InvoiceDto> rejectInvoice(@PathVariable Long id) {
+        try {
+            Invoice invoice = invoiceService.getInvoiceById(id)
+                    .orElseThrow(() -> new RuntimeException("송장을 찾을 수 없습니다."));
+
+            invoice.setStatus(new SystemStatus("INVOICE", "REJECTED"));
+
+            Invoice updatedInvoice = invoiceService.createInvoice(invoice);
+
+            return ResponseEntity.ok(InvoiceDto.fromEntity(updatedInvoice));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

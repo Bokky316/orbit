@@ -133,8 +133,8 @@ public class CommonCodeDataInitializer {
         // 송장 상태 코드
         ParentCode invoiceStatus = initParentCode("INVOICE", "STATUS", "송장 상태");
         initChildCodes(invoiceStatus,
-                List.of("WAITING", "PAID", "OVERDUE", "CANCELED"),
-                List.of("대기", "지불완료", "연체", "취소")
+                List.of("WAITING", "APPROVED", "REJECTED", "PAID", "OVERDUE"),
+                List.of("대기", "승인됨", "거부됨", "지불완료", "연체")
         );
     }
 
