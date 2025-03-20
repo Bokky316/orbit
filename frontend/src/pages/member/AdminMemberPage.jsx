@@ -53,6 +53,7 @@ export default function AdminMemberPage() {
   // URL 쿼리 파라미터 파싱
   const queryParams = new URLSearchParams(location.search);
   const statusFromQuery = queryParams.get('status');
+  const roleFromQuery = queryParams.get('role'); // 역할 쿼리 파라미터 추가
 
   // 이미 마운트된 상태인지 확인하는 플래그 추가 (컴포넌트 최상위 레벨에서 선언)
   const initialLoadDone = React.useRef(false);
@@ -67,7 +68,8 @@ export default function AdminMemberPage() {
     size: 15,
     searchType: '',
     keyword: '',
-    status: statusFromQuery || ''
+    status: statusFromQuery || '',
+    role: roleFromQuery || '' // 역할 필터 추가
   });
 
   // 검색 실행
@@ -112,11 +114,14 @@ export default function AdminMemberPage() {
 
   // URL 쿼리 파라미터가 변경되면 페이지 요청 상태 업데이트
   useEffect(() => {
-      setPageRequest(prev => ({
-        ...prev,
-        status: statusFromQuery || ''
-      }));
-  }, [location.search, statusFromQuery]);
+    console.log("URL 쿼리 파라미터 변경:", { status: statusFromQuery, role: roleFromQuery });
+    setPageRequest(prev => ({
+      ...prev,
+      status: statusFromQuery || '',
+      role: roleFromQuery || '',
+      page: 0 // 필터 변경 시 첫 페이지로 이동
+    }));
+  }, [location.search, statusFromQuery, roleFromQuery]);
 
   // 통합된 useEffect와 함께 마운트 플래그 사용
   // 단일 통합 useEffect - 모든 데이터 로딩 관련 로직 처리
@@ -154,29 +159,32 @@ export default function AdminMemberPage() {
     } else {
       navigate('/unauthorized');
     }
-  }, [pageRequest.page, pageRequest.size, pageRequest.status]);
+  }, [pageRequest.page, pageRequest.size, pageRequest.status, pageRequest.role, pageRequest.searchType, pageRequest.keyword, user]);
 
   // 회원 목록 조회
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      // 쿼리 파라미터 생성
+      // 역할 필터를 제외한 나머지 필터만 백엔드에 전송
       const queryParams = new URLSearchParams();
-      queryParams.append('page', pageRequest.page + 1); // 백엔드는 1부터 시작하므로 +1
-      queryParams.append('size', pageRequest.size);
+
+      // 역할 필터링은 프론트엔드에서 처리하므로 백엔드에는 전체 데이터 요청
+      // 백엔드 페이징 파라미터는 보내지 않거나 큰 값을 전송 (전체 데이터 가져오기 위해)
+      // 이 부분은 데이터 양에 따라 최적화 필요
+      queryParams.append('page', 1);
+      queryParams.append('size', 1000); // 충분히 큰 값으로 설정
 
       // 검색 조건이 있을 때만 추가
       if (pageRequest.searchType) {
         queryParams.append('searchType', pageRequest.searchType);
       }
 
-      // 상태 필터가 있을 때만 추가 - 항상 status 값을 포함
+      // 상태 필터가 있을 때만 추가
       if (pageRequest.status === 'active') {
         queryParams.append('status', 'active');
       } else if (pageRequest.status === 'inactive') {
         queryParams.append('status', 'inactive');
       }
-      // 전체(빈 문자열) 상태인 경우 status 파라미터 자체를 보내지 않음
 
       // 검색어가 있을 때만 추가
       if (pageRequest.keyword && pageRequest.keyword.trim() !== '') {
@@ -196,45 +204,70 @@ export default function AdminMemberPage() {
         const data = await response.json();
         console.log("응답 데이터:", data);
 
-        // 응답 데이터 구조 확인 - 값 확인
+        // 응답 데이터 구조 확인
         if (data && Array.isArray(data.dtoList)) {
-          const membersList = data.dtoList || [];
+          let membersList = data.dtoList || [];
 
-          // 필터링 상태에 따라 클라이언트 측에서 한번 더 필터링
-          let filteredMembers = membersList;
-          if (pageRequest.status === 'active') {
-            filteredMembers = membersList.filter(member => member.enabled);
-          } else if (pageRequest.status === 'inactive') {
-            filteredMembers = membersList.filter(member => !member.enabled);
+          // 역할 필터링
+          let filteredMembers = [...membersList];
+
+          if (pageRequest.role) {
+            const roleFilter = pageRequest.role.toUpperCase();
+
+            if (roleFilter === 'EMPLOYEE') {
+              filteredMembers = filteredMembers.filter(member => {
+                const role = (member.role || '').toString().toUpperCase();
+                return role === 'BUYER' || role === 'ADMIN';
+              });
+            } else {
+              filteredMembers = filteredMembers.filter(member => {
+                const role = (member.role || '').toString().toUpperCase();
+                return role === roleFilter;
+              });
+            }
+
+            console.log("역할 필터링 후 결과 수:", filteredMembers.length);
           }
 
-          // totalPages 계산 대신 totalItems 저장
-          setMembers(filteredMembers);
-          setTotalItems(data.total || 0);
+          // 필터링된 총 항목 수 계산
+          const totalFilteredItems = filteredMembers.length;
 
-          // 비활성화 상태에서 결과가 없을 때 알림
-          if (pageRequest.status === 'inactive' && filteredMembers.length === 0) {
-            showAlert('비활성화된 회원이 없습니다.', 'info');
+          // 현재 페이지에 표시할 항목 계산
+          const startIndex = pageRequest.page * pageRequest.size;
+          const endIndex = Math.min(startIndex + pageRequest.size, totalFilteredItems);
+
+          // 현재 페이지에 해당하는 항목들
+          const pagedMembers = filteredMembers.slice(startIndex, endIndex);
+
+          // 상태 업데이트
+          setMembers(pagedMembers);
+          setTotalItems(totalFilteredItems);
+
+          // 결과가 없을 때 알림
+          if (filteredMembers.length === 0) {
+            const message = pageRequest.role
+              ? `'${pageRequest.role === 'employee' ? '직원(BUYER, ADMIN)' : pageRequest.role}' 역할을 가진 회원이 없습니다.`
+              : pageRequest.status === 'inactive'
+                ? '비활성화된 회원이 없습니다.'
+                : '검색 결과가 없습니다.';
+
+            showAlert(message, 'info');
           }
         } else {
           console.warn("응답 데이터 형식이 예상과 다릅니다:", data);
-          // 빈 배열로 설정하고 알림 표시하지 않음
           setMembers([]);
-          setTotalPages(0);
+          setTotalItems(0);
         }
       } else {
         console.error("API 호출 실패:", response.status);
-        const errorText = await response.text();
-        console.error("에러 응답:", errorText);
         showAlert(`회원 목록을 불러오는데 실패했습니다. (${response.status})`, 'error');
         setMembers([]);
-        setTotalPages(0);
+        setTotalItems(0);
       }
     } catch (error) {
       console.error('회원 목록 조회 오류:', error);
-      // 오류 시 빈 배열로 설정하고 오류 메시지만 콘솔에 표시
       setMembers([]);
-      setTotalPages(0);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
@@ -531,7 +564,8 @@ export default function AdminMemberPage() {
       size: 15,
       searchType: '',
       keyword: '',
-      status: ''
+      status: '',
+      role: '' // 역할 필터도 초기화
     });
 
     // URL 쿼리 파라미터 초기화
@@ -589,462 +623,506 @@ export default function AdminMemberPage() {
   };
 
   // 상태 필터 변경
-  const handleStatusFilterChange = (event) => {
-    const newStatus = event.target.value;
-    setPageRequest({
-      ...pageRequest,
-      status: newStatus,
-      page: 0 // 필터 변경 시 첫 페이지로 이동, TablePagination은 0부터 시작
-    });
+    const handleStatusFilterChange = (event) => {
+      const newStatus = event.target.value;
+      setPageRequest({
+        ...pageRequest,
+        status: newStatus,
+        page: 0 // 필터 변경 시 첫 페이지로 이동, TablePagination은 0부터 시작
+      });
 
-    // URL 쿼리 파라미터 업데이트
-    if (newStatus) {
-      navigate(`/members?status=${newStatus}`);
-    } else {
-      navigate('/members');
-    }
-  };
+      // URL 쿼리 파라미터 업데이트
+      updateURLParams(newStatus, pageRequest.role);
+    };
 
-  // 회원 편집 다이얼로그 열기
-  const openMemberEditDialog = (member) => {
-    setSelectedMember(member);
-    setEditedRole(member.role);
-    setOpenEditDialog(true);
-  };
+    // 역할 필터 변경 핸들러
+    const handleRoleFilterChange = (event) => {
+      const newRole = event.target.value;
+      console.log("역할 필터 변경:", newRole);
 
-  // 회원 상태 변경 다이얼로그 열기
-  const openStatusChangeDialog = (member) => {
-    setStatusMemberId(member.id);
-    setStatusAction(member.enabled ? '비활성화' : '활성화');
-    setStatusDialogOpen(true);
-  };
+      setPageRequest(prev => ({
+        ...prev,
+        role: newRole,
+        page: 0 // 필터 변경 시 첫 페이지로 이동
+      }));
 
-  // 알림 표시
-  const showAlert = (message, severity = 'info') => {
-    setAlert({
-      show: true,
-      message,
-      severity
-    });
+      // URL 쿼리 파라미터 업데이트
+      updateURLParams(pageRequest.status, newRole);
+    };
 
-    setTimeout(() => {
-      setAlert({ ...alert, show: false });
-    }, 3000);
-  };
+    // URL 쿼리 파라미터 업데이트 함수 (함수를 외부로 이동)
+    const updateURLParams = (status, role) => {
+      const params = new URLSearchParams();
 
-  // 역할에 따른 칩 스타일 및 레이블
-  const getRoleChip = (role) => {
-    let color = 'default';
+      if (status) {
+        params.append('status', status);
+      }
 
-    switch (role) {
-      case 'ADMIN':
-        color = 'error';
-        break;
-      case 'SUPPLIER':
-        color = 'primary';
-        break;
-      case 'BUYER':
-        color = 'success';
-        break;
-      default:
-        color = 'default';
-    }
+      if (role) {
+        params.append('role', role);
+      }
 
-    return <Chip label={role} color={color} size="small" />;
-  };
+      const queryString = params.toString();
+      navigate(`/members${queryString ? `?${queryString}` : ''}`);
+    };
 
-  return (
-    <PageContainer>
-      <PageTitle variant="h4">
-        사용자 목록
-      </PageTitle>
+    // 회원 편집 다이얼로그 열기
+    const openMemberEditDialog = (member) => {
+      setSelectedMember(member);
+      setEditedRole(member.role);
+      setOpenEditDialog(true);
+    };
 
-      {/* 검색 및 필터 */}
-      <SearchFilterPaper elevation={2}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel>상태 필터</InputLabel>
-              <Select
-                value={pageRequest.status}
-                onChange={handleStatusFilterChange}
-                label="상태 필터"
+    // 회원 상태 변경 다이얼로그 열기
+    const openStatusChangeDialog = (member) => {
+      setStatusMemberId(member.id);
+      setStatusAction(member.enabled ? '비활성화' : '활성화');
+      setStatusDialogOpen(true);
+    };
+
+    // 알림 표시
+    const showAlert = (message, severity = 'info') => {
+      setAlert({
+        show: true,
+        message,
+        severity
+      });
+
+      setTimeout(() => {
+        setAlert({ ...alert, show: false });
+      }, 3000);
+    };
+
+    // 역할에 따른 칩 스타일 및 레이블
+    const getRoleChip = (role) => {
+      let color = 'default';
+      let displayRole = role ? role.toUpperCase() : '';  // 대문자로 표시
+
+      switch (displayRole) {
+        case 'ADMIN':
+          color = 'error';
+          break;
+        case 'SUPPLIER':
+          color = 'primary';
+          break;
+        case 'BUYER':
+          color = 'success';
+          break;
+        default:
+          color = 'default';
+      }
+
+      return <Chip label={displayRole} color={color} size="small" />;
+    };
+
+    return (
+      <PageContainer>
+        <PageTitle variant="h4">
+          사용자 목록
+        </PageTitle>
+
+        {/* 검색 및 필터 */}
+        <SearchFilterPaper elevation={2}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>상태 필터</InputLabel>
+                <Select
+                  value={pageRequest.status}
+                  onChange={handleStatusFilterChange}
+                  label="상태 필터"
+                >
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="active">활성</MenuItem>
+                  <MenuItem value="inactive">비활성</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>역할 필터</InputLabel>
+                <Select
+                  value={pageRequest.role}
+                  onChange={handleRoleFilterChange}
+                  label="역할 필터"
+                >
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="employee">직원 (BUYER, ADMIN)</MenuItem>
+                  <MenuItem value="BUYER">구매자 (BUYER)</MenuItem>
+                  <MenuItem value="SUPPLIER">공급자 (SUPPLIER)</MenuItem>
+                  <MenuItem value="ADMIN">관리자 (ADMIN)</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>검색 조건</InputLabel>
+                <Select
+                  value={pageRequest.searchType}
+                  onChange={handleSearchTypeChange}
+                  label="검색 조건"
+                >
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="name">이름</MenuItem>
+                  <MenuItem value="username">아이디</MenuItem>
+                  <MenuItem value="email">이메일</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="검색어 입력 (자동 검색)"
+                name="keyword"
+                value={pageRequest.keyword || ''}
+                onChange={handleKeywordChange}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                InputProps={{
+                  endAdornment: pageRequest.keyword ? (
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setPageRequest(prev => ({
+                          ...prev,
+                          keyword: '',
+                          // 검색어를 지울 때 검색 조건도 초기화할지 여부 (필요에 따라 주석 해제)
+                          // searchType: ''
+                        }));
+
+                        // 상태 업데이트 후 즉시 검색 실행
+                        fetchMembers();
+                      }}
+                    >
+                      <Clear fontSize="small" />
+                    </IconButton>
+                  ) : (
+                    <SearchIcon color="action" fontSize="small" />
+                  )
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={resetFilters}
+                sx={{ minWidth: '120px' }}  // 적절한 최소 너비 지정
               >
-                <MenuItem value="">전체</MenuItem>
-                <MenuItem value="active">활성</MenuItem>
-                <MenuItem value="inactive">비활성</MenuItem>
-              </Select>
-            </FormControl>
+                필터 초기화
+              </Button>
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel>검색 조건</InputLabel>
-              <Select
-                value={pageRequest.searchType}
-                onChange={handleSearchTypeChange}
-                label="검색 조건"
-              >
-                <MenuItem value="">전체</MenuItem>
-                <MenuItem value="name">이름</MenuItem>
-                <MenuItem value="username">아이디</MenuItem>
-                <MenuItem value="email">이메일</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              size="small"
-              label="검색어 입력 (자동 검색)"
-              name="keyword"
-              value={pageRequest.keyword || ''}
-              onChange={handleKeywordChange}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              InputProps={{
-                endAdornment: pageRequest.keyword ? (
-                  <IconButton
-                    size="small"
-                    onClick={() => {
-                      setPageRequest(prev => ({
-                        ...prev,
-                        keyword: '',
-                        // 검색어를 지울 때 검색 조건도 초기화할지 여부 (필요에 따라 주석 해제)
-                        // searchType: ''
-                      }));
+        </SearchFilterPaper>
 
-                      // 상태 업데이트 후 즉시 검색 실행
-                      fetchMembers();
-                    }}
-                  >
-                    <Clear fontSize="small" />
-                  </IconButton>
-                ) : (
-                  <SearchIcon color="action" fontSize="small" />
-                )
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={resetFilters}
-              sx={{ minWidth: '120px' }}  // 적절한 최소 너비 지정
-            >
-              필터 초기화
-            </Button>
-          </Grid>
-        </Grid>
-      </SearchFilterPaper>
+        {/* 알림 메시지 */}
+        {alert.show && (
+          <AlertStyled severity={alert.severity}>
+            {alert.message}
+          </AlertStyled>
+        )}
 
-      {/* 알림 메시지 */}
-      {alert.show && (
-        <AlertStyled severity={alert.severity}>
-          {alert.message}
-        </AlertStyled>
-      )}
-
-      {/* 회원 목록 */}
-      <TablePaper elevation={3}>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>아이디</TableCell>
-                <TableCell>이름</TableCell>
-                <TableCell>이메일</TableCell>
-                <TableCell>회사명</TableCell>
-                <TableCell>역할</TableCell>
-                <TableCell>상태</TableCell>
-                <TableCell>관리</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
+        {/* 회원 목록 */}
+        <TablePaper elevation={3}>
+          <TableContainer>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    <CircularProgress />
-                  </TableCell>
+                  <TableCell>ID</TableCell>
+                  <TableCell>아이디</TableCell>
+                  <TableCell>이름</TableCell>
+                  <TableCell>이메일</TableCell>
+                  <TableCell>회사명</TableCell>
+                  <TableCell>역할</TableCell>
+                  <TableCell>상태</TableCell>
+                  <TableCell>관리</TableCell>
                 </TableRow>
-              ) : members.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    회원 정보가 없습니다.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                members.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>{member.id}</TableCell>
-                    <TableCell>{member.username}</TableCell>
-                    <TableCell>{member.name}</TableCell>
-                    <TableCell>{member.email}</TableCell>
-                    <TableCell>{member.companyName}</TableCell>
-                    <TableCell>{getRoleChip(member.role)}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={member.enabled ? '활성' : '비활성'}
-                        color={member.enabled ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1}>
-                        <IconButton
-                          size="small"
-                          onClick={() => fetchMemberDetail(member.id)}
-                          title="상세 정보"
-                          color="primary"
-                        >
-                          <SearchIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => openMemberEditDialog(member)}
-                          title="역할 변경"
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => openStatusChangeDialog(member)}
-                          title={member.enabled ? '비활성화' : '활성화'}
-                        >
-                          {member.enabled ? (
-                            <BlockIcon fontSize="small" />
-                          ) : (
-                            <CheckCircleIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </Stack>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      <CircularProgress />
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : members.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      회원 정보가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  members.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell>{member.id}</TableCell>
+                      <TableCell>{member.username}</TableCell>
+                      <TableCell>{member.name}</TableCell>
+                      <TableCell>{member.email}</TableCell>
+                      <TableCell>{member.companyName}</TableCell>
+                      <TableCell>{getRoleChip(member.role)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={member.enabled ? '활성' : '비활성'}
+                          color={member.enabled ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1}>
+                          <IconButton
+                            size="small"
+                            onClick={() => fetchMemberDetail(member.id)}
+                            title="상세 정보"
+                            color="primary"
+                          >
+                            <SearchIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => openMemberEditDialog(member)}
+                            title="역할 변경"
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => openStatusChangeDialog(member)}
+                            title={member.enabled ? '비활성화' : '활성화'}
+                          >
+                            {member.enabled ? (
+                              <BlockIcon fontSize="small" />
+                            ) : (
+                              <CheckCircleIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-        {/* 테이블 페이지네이션 */}
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 15, 30]}
-          component="div"
-          count={totalItems}
-          rowsPerPage={pageRequest.size}
-          page={pageRequest.page}
-          onPageChange={handlePageChange}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="페이지당 행 수"
-          labelDisplayedRows={({ from, to, count, page }) => {
-            const totalPages = Math.ceil(count / pageRequest.size);
-            return `${page + 1} / ${totalPages}`;
-          }}
-        />
-      </TablePaper>
-
-      {/* 역할 편집 다이얼로그 */}
-      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
-        <DialogTitle>회원 역할 수정</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {selectedMember?.name} 회원의 역할을 변경합니다.
-          </DialogContentText>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>역할</InputLabel>
-            <Select
-              value={editedRole}
-              onChange={(e) => setEditedRole(e.target.value)}
-              label="역할"
-            >
-              <MenuItem value="BUYER">구매자 (BUYER)</MenuItem>
-              <MenuItem value="SUPPLIER">공급자 (SUPPLIER)</MenuItem>
-              <MenuItem value="ADMIN">관리자 (ADMIN)</MenuItem>
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={updateMemberRole} color="primary">
-            저장
-          </Button>
-          <Button onClick={() => setOpenEditDialog(false)}>취소</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 상태 변경 확인 다이얼로그 */}
-      <Dialog
-        open={statusDialogOpen}
-        onClose={() => setStatusDialogOpen(false)}
-      >
-        <DialogTitle>회원 상태 변경</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            정말 이 회원을 {statusAction} 하시겠습니까?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              toggleMemberStatus(statusMemberId);
-              setStatusDialogOpen(false);
+          {/* 테이블 페이지네이션 */}
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 15, 30]}
+            component="div"
+            count={totalItems}
+            rowsPerPage={pageRequest.size}
+            page={pageRequest.page}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="페이지당 행 수"
+            labelDisplayedRows={({ from, to, count, page }) => {
+              const totalPages = Math.ceil(count / pageRequest.size);
+              return `${page + 1} / ${totalPages}`;
             }}
-            color="primary"
-          >
-            확인
-          </Button>
-          <Button onClick={() => setStatusDialogOpen(false)}>취소</Button>
-        </DialogActions>
-      </Dialog>
+          />
+        </TablePaper>
 
-      {/* 회원 상세정보 및 수정 다이얼로그 */}
-      <Dialog
-        open={openDetailDialog}
-        onClose={() => setOpenDetailDialog(false)}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>회원 상세 정보</DialogTitle>
-        <DialogContent>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : memberDetail ? (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="아이디"
-                  value={memberDetail.username || ''}
-                  InputProps={{ readOnly: true }}
-                  variant="outlined"
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="이름"
-                  name="name"
-                  value={editMemberData?.name || ''}
-                  onChange={handleDetailInputChange}
-                  variant="outlined"
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="이메일"
-                  name="email"
-                  value={editMemberData?.email || ''}
-                  onChange={handleDetailInputChange}
-                  variant="outlined"
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="회사명"
-                  name="companyName"
-                  value={editMemberData?.companyName || ''}
-                  onChange={handleDetailInputChange}
-                  variant="outlined"
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="연락처"
-                  name="contactNumber"
-                  value={editMemberData?.contactNumber || ''}
-                  onChange={handleDetailInputChange}
-                  variant="outlined"
-                  margin="normal"
-                  placeholder="000-0000-0000 형식으로 입력"
-                  helperText="예: 010-1234-5678"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+        {/* 역할 편집 다이얼로그 */}
+        <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
+          <DialogTitle>회원 역할 수정</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {selectedMember?.name} 회원의 역할을 변경합니다.
+            </DialogContentText>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>역할</InputLabel>
+              <Select
+                value={editedRole}
+                onChange={(e) => setEditedRole(e.target.value)}
+                label="역할"
+              >
+                <MenuItem value="BUYER">구매자 (BUYER)</MenuItem>
+                <MenuItem value="SUPPLIER">공급자 (SUPPLIER)</MenuItem>
+                <MenuItem value="ADMIN">관리자 (ADMIN)</MenuItem>
+              </Select>
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={updateMemberRole} color="primary">
+              저장
+            </Button>
+            <Button onClick={() => setOpenEditDialog(false)}>취소</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 상태 변경 확인 다이얼로그 */}
+        <Dialog
+          open={statusDialogOpen}
+          onClose={() => setStatusDialogOpen(false)}
+        >
+          <DialogTitle>회원 상태 변경</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              정말 이 회원을 {statusAction} 하시겠습니까?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                toggleMemberStatus(statusMemberId);
+                setStatusDialogOpen(false);
+              }}
+              color="primary"
+            >
+              확인
+            </Button>
+            <Button onClick={() => setStatusDialogOpen(false)}>취소</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 회원 상세정보 및 수정 다이얼로그 */}
+        <Dialog
+          open={openDetailDialog}
+          onClose={() => setOpenDetailDialog(false)}
+          fullWidth
+          maxWidth="md"
+        >
+          <DialogTitle>회원 상세 정보</DialogTitle>
+          <DialogContent>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : memberDetail ? (
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} md={6}>
                   <TextField
-                    label="우편번호"
-                    name="postalCode"
-                    value={editMemberData?.postalCode || ''}
+                    fullWidth
+                    label="아이디"
+                    value={memberDetail.username || ''}
+                    InputProps={{ readOnly: true }}
+                    variant="outlined"
+                    margin="normal"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="이름"
+                    name="name"
+                    value={editMemberData?.name || ''}
                     onChange={handleDetailInputChange}
                     variant="outlined"
                     margin="normal"
-                    InputProps={{ readOnly: true }}
-                    sx={{ width: '60%' }}
                   />
-                  <Box sx={{ mt: 2 }}>
-                    <KakaoAddressSearch onAddressSelect={handleAddressSelect} />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="이메일"
+                    name="email"
+                    value={editMemberData?.email || ''}
+                    onChange={handleDetailInputChange}
+                    variant="outlined"
+                    margin="normal"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="회사명"
+                    name="companyName"
+                    value={editMemberData?.companyName || ''}
+                    onChange={handleDetailInputChange}
+                    variant="outlined"
+                    margin="normal"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="연락처"
+                    name="contactNumber"
+                    value={editMemberData?.contactNumber || ''}
+                    onChange={handleDetailInputChange}
+                    variant="outlined"
+                    margin="normal"
+                    placeholder="000-0000-0000 형식으로 입력"
+                    helperText="예: 010-1234-5678"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                    <TextField
+                      label="우편번호"
+                      name="postalCode"
+                      value={editMemberData?.postalCode || ''}
+                      onChange={handleDetailInputChange}
+                      variant="outlined"
+                      margin="normal"
+                      InputProps={{ readOnly: true }}
+                      sx={{ width: '60%' }}
+                    />
+                    <Box sx={{ mt: 2 }}>
+                      <KakaoAddressSearch onAddressSelect={handleAddressSelect} />
+                    </Box>
                   </Box>
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="도로명 주소"
-                  name="roadAddress"
-                  value={editMemberData?.roadAddress || ''}
-                  onChange={handleDetailInputChange}
-                  variant="outlined"
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="상세 주소"
-                  name="detailAddress"
-                  value={editMemberData?.detailAddress || ''}
-                  onChange={handleDetailInputChange}
-                  variant="outlined"
-                  margin="normal"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth margin="normal" disabled>
-                  <InputLabel>역할</InputLabel>
-                  <Select
-                    value={memberDetail.role || ''}
-                    label="역할"
-                  >
-                    <MenuItem value="BUYER">구매자 (BUYER)</MenuItem>
-                    <MenuItem value="SUPPLIER">공급자 (SUPPLIER)</MenuItem>
-                    <MenuItem value="ADMIN">관리자 (ADMIN)</MenuItem>
-                  </Select>
-                  <FormHelperText>역할 변경은 별도 버튼을 이용하세요</FormHelperText>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, ml: 2 }}>
-                  <Typography variant="body1" sx={{ mr: 2 }}>계정 상태:</Typography>
-                  <Chip
-                    label={memberDetail.enabled ? '활성' : '비활성'}
-                    color={memberDetail.enabled ? 'success' : 'default'}
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="도로명 주소"
+                    name="roadAddress"
+                    value={editMemberData?.roadAddress || ''}
+                    onChange={handleDetailInputChange}
+                    variant="outlined"
+                    margin="normal"
                   />
-                </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="상세 주소"
+                    name="detailAddress"
+                    value={editMemberData?.detailAddress || ''}
+                    onChange={handleDetailInputChange}
+                    variant="outlined"
+                    margin="normal"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth margin="normal" disabled>
+                    <InputLabel>역할</InputLabel>
+                    <Select
+                      value={memberDetail.role ? memberDetail.role.toUpperCase() : ''}
+                      label="역할"
+                    >
+                      <MenuItem value="BUYER">구매자 (BUYER)</MenuItem>
+                      <MenuItem value="SUPPLIER">공급자 (SUPPLIER)</MenuItem>
+                      <MenuItem value="ADMIN">관리자 (ADMIN)</MenuItem>
+                    </Select>
+                    <FormHelperText>역할 변경은 별도 버튼을 이용하세요</FormHelperText>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 3, ml: 2 }}>
+                    <Typography variant="body1" sx={{ mr: 2 }}>계정 상태:</Typography>
+                    <Chip
+                      label={memberDetail.enabled ? '활성' : '비활성'}
+                      color={memberDetail.enabled ? 'success' : 'default'}
+                    />
+                  </Box>
+                </Grid>
               </Grid>
-            </Grid>
-          ) : (
-            <Alert severity="error">회원 정보를 불러올 수 없습니다.</Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={updateMemberDetail}
-            color="primary"
-            disabled={loading || !memberDetail}
-          >
-            {loading ? <CircularProgress size={24} /> : "변경사항 저장"}
-          </Button>
-          <Button onClick={() => setOpenDetailDialog(false)}>닫기</Button>
-        </DialogActions>
-      </Dialog>
-    </PageContainer>
-  );
-}
+            ) : (
+              <Alert severity="error">회원 정보를 불러올 수 없습니다.</Alert>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={updateMemberDetail}
+              color="primary"
+              disabled={loading || !memberDetail}
+            >
+              {loading ? <CircularProgress size={24} /> : "변경사항 저장"}
+            </Button>
+            <Button onClick={() => setOpenDetailDialog(false)}>닫기</Button>
+          </DialogActions>
+        </Dialog>
+      </PageContainer>
+    );
+  }
