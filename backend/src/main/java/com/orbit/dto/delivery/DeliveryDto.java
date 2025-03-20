@@ -48,6 +48,7 @@ public class DeliveryDto {
         private String deliveryNumber;            // 입고번호
         private Long biddingOrderId;              // 발주 ID
         private String orderNumber;               // 발주번호
+        private String contractNumber;            // 계약번호
         private Long supplierId;                  // 공급업체 ID
         private String supplierName;              // 공급업체명
         private LocalDate deliveryDate;           // 입고일
@@ -62,6 +63,7 @@ public class DeliveryDto {
         private BigDecimal itemUnitPrice;         // 단가
         private String itemUnit;                  // 단위
         private LocalDateTime createdAt;          // 생성일시
+        private Boolean invoiceIssued;          // 송장 발행 여부
 
         public static Response fromEntity(Delivery entity) {
             Response response = Response.builder()
@@ -82,6 +84,7 @@ public class DeliveryDto {
                     .itemUnitPrice(entity.getItemUnitPrice())
                     .itemUnit(entity.getItemUnit())
                     .createdAt(entity.getRegTime())
+                    .invoiceIssued(entity.getInvoiceIssued())
                     .build();
 
             // 품목 ID 설정 (purchaseRequestItem이 있으면 그 ID 사용, 없으면 deliveryItemId 사용)
@@ -109,6 +112,7 @@ public class DeliveryDto {
         private String supplierName;              // 공급업체명
         private LocalDate startDate;              // 시작일
         private LocalDate endDate;                // 종료일
+        private Boolean invoiceIssued;      // 송장 발행 여부
         private int page;                         // 페이지
         private int size;                         // 페이지 크기
     }
