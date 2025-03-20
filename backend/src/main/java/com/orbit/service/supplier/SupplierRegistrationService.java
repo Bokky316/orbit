@@ -259,6 +259,13 @@ public class SupplierRegistrationService {
         // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "APPROVED"));
 
+        // Member 테이블의 enabled 필드도 함께 업데이트
+        Member supplier = registration.getSupplier();
+        if (supplier != null) {
+            supplier.setEnabled(true);
+            memberRepository.save(supplier);
+        }
+
         // 이벤트 발행
         publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-APPROVED", getCurrentUsername());
     }
@@ -275,6 +282,13 @@ public class SupplierRegistrationService {
         // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "REJECTED"));
         registration.setRejectionReason(reason);
+
+        // 반려 상태에서는 회원 계정은 활성 상태로 유지 (재신청 가능하도록)
+        Member supplier = registration.getSupplier();
+        if (supplier != null) {
+            supplier.setEnabled(true);
+            memberRepository.save(supplier);
+        }
 
         // 이벤트 발행
         publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-REJECTED", getCurrentUsername());
@@ -293,6 +307,13 @@ public class SupplierRegistrationService {
         registration.setStatus(new SystemStatus("SUPPLIER", "SUSPENDED"));
         registration.setRejectionReason(reason);
 
+        // Member 테이블의 enabled 필드도 함께 업데이트
+        Member supplier = registration.getSupplier();
+        if (supplier != null) {
+            supplier.setEnabled(false);
+            memberRepository.save(supplier);
+        }
+
         // 이벤트 발행
         publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-SUSPENDED", getCurrentUsername());
     }
@@ -309,6 +330,13 @@ public class SupplierRegistrationService {
         // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "BLACKLIST"));
         registration.setRejectionReason(reason);
+
+        // Member 테이블의 enabled 필드도 함께 업데이트
+        Member supplier = registration.getSupplier();
+        if (supplier != null) {
+            supplier.setEnabled(false);
+            memberRepository.save(supplier);
+        }
 
         // 이벤트 발행
         publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-BLACKLIST", getCurrentUsername());
@@ -327,6 +355,13 @@ public class SupplierRegistrationService {
         registration.setStatus(new SystemStatus("SUPPLIER", "INACTIVE"));
         registration.setRejectionReason(reason);
 
+        // Member 테이블의 enabled 필드도 함께 업데이트
+        Member supplier = registration.getSupplier();
+        if (supplier != null) {
+            supplier.setEnabled(false);
+            memberRepository.save(supplier);
+        }
+
         // 이벤트 발행
         publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-INACTIVE", getCurrentUsername());
     }
@@ -343,6 +378,13 @@ public class SupplierRegistrationService {
         // 상태 변경
         registration.setStatus(new SystemStatus("SUPPLIER", "APPROVED"));
         registration.setRejectionReason(null); // 비활성화 사유 제거
+
+        // Member 테이블의 enabled 필드도 함께 업데이트
+        Member supplier = registration.getSupplier();
+        if (supplier != null) {
+            supplier.setEnabled(true);
+            memberRepository.save(supplier);
+        }
 
         // 이벤트 발행
         publishStatusChangeEvent(id, oldStatus, "SUPPLIER-STATUS-APPROVED", getCurrentUsername());
@@ -493,7 +535,18 @@ public class SupplierRegistrationService {
         SystemStatus newStatus = new SystemStatus("SUPPLIER", processedStatusCode);
         supplier.setStatus(newStatus);
 
-        // 5. 상태 변경 이벤트 발행
+        // 5. Member 테이블의 enabled 필드도 함께 업데이트
+        Member member = supplier.getSupplier();
+        if (member != null) {
+            // 승인 상태면 계정 활성화, 그 외에는 비활성화
+            boolean enabledStatus = "APPROVED".equals(processedStatusCode);
+            member.setEnabled(enabledStatus);
+            memberRepository.save(member);
+            log.info("회원 상태 변경: supplierId={}, username={}, enabled={}",
+                    supplierId, member.getUsername(), enabledStatus);
+        }
+
+        // 6. 상태 변경 이벤트 발행
         publishStatusChangeEvent(
                 supplierId,
                 oldStatusCode,
