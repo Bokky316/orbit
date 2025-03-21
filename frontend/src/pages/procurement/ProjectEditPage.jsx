@@ -257,7 +257,7 @@ function ProjectEditPage() {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
-            basicStatus: projectStatus ? `PROJECT-BASIC_STATUS-${projectStatus}` :  '',
+            basicStatus: project.basicStatus,
             requestDepartment: selectedDepartment ? selectedDepartment.name : '',
             requestDepartmentId: selectedDepartment ? selectedDepartment.id : null,
             requesterName: selectedManager ? selectedManager.name : null,
