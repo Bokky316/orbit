@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Data
@@ -41,6 +42,11 @@ public class InvoiceDto {
     private String notes;
     private String orderNumber;
 
+    // 승인자/담당자 정보
+    private Long approverId;  // 배정된 담당자 ID
+    private String approverName;  // 배정된 담당자 이름
+    private String approvedAt;  // 승인/거절 처리 시간
+
     // 송장 수정 시 사용되는 DTO
     @Data
     public static class InvoiceUpdateDto {
@@ -55,6 +61,7 @@ public class InvoiceDto {
     // Entity -> DTO 변환 메서드
     public static InvoiceDto fromEntity(Invoice invoice) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy. MM. dd.");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy. MM. dd. HH:mm:ss");
 
         InvoiceDto dto = InvoiceDto.builder()
                 .id(invoice.getId())
@@ -100,6 +107,17 @@ public class InvoiceDto {
                 }
             }
             dto.setSupplierAddress(fullAddress);
+        }
+
+        // 담당자 정보 설정
+        if (invoice.getApprover() != null) {
+            dto.setApproverId(invoice.getApprover().getId());
+            dto.setApproverName(invoice.getApprover().getName());
+        }
+
+        // 승인/거절 처리 시간 설정
+        if (invoice.getApprovedAt() != null) {
+            dto.setApprovedAt(invoice.getApprovedAt().format(dateTimeFormatter));
         }
 
         return dto;

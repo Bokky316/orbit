@@ -241,14 +241,20 @@ const InvoiceDetailPage = () => {
   const handleApproveInvoice = async () => {
     try {
       setLoading(true);
-      const response = await fetchWithAuth(`${API_URL}invoices/${id}`, {
+
+      // 현재 로그인한 사용자 정보 준비
+      const approverInfo = {
+        approverId: currentUser?.id || currentUser?.userId
+      };
+
+      console.log('승인 정보:', approverInfo);
+
+      const response = await fetchWithAuth(`${API_URL}invoices/${id}/approve`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          status: 'APPROVED'
-        })
+        body: JSON.stringify(approverInfo)
       });
 
       if (!response.ok) {
@@ -272,14 +278,20 @@ const InvoiceDetailPage = () => {
   const handleRejectInvoice = async () => {
     try {
       setLoading(true);
-      const response = await fetchWithAuth(`${API_URL}invoices/${id}`, {
+
+      // 현재 로그인한 사용자 정보 준비
+      const approverInfo = {
+        approverId: currentUser?.id || currentUser?.userId
+      };
+
+      console.log('거절 정보:', approverInfo);
+
+      const response = await fetchWithAuth(`${API_URL}invoices/${id}/reject`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          status: 'REJECTED'
-        })
+        body: JSON.stringify(approverInfo)
       });
 
       if (!response.ok) {
@@ -696,6 +708,20 @@ const InvoiceDetailPage = () => {
                 이 송장은 지불 기한이 지났습니다. 빠른 처리가 필요합니다.
               </Alert>
             )}
+
+            <Box sx={{ display: 'flex', mt: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', mr: 4, alignItems: 'center' }}>
+                  <Typography sx={{ fontWeight: 500, color: 'text.secondary', mr: 1 }}>담당자:</Typography>
+                  <Typography>{invoice.approverName || '-'}</Typography>
+                </Box>
+
+              {invoice.approvedAt && (
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography sx={{ fontWeight: 500, color: 'text.secondary', mr: 1 }}>처리 일시:</Typography>
+                  <Typography>{invoice.approvedAt}</Typography>
+                </Box>
+              )}
+            </Box>
           </Paper>
 
           {/* 기본 정보 */}

@@ -73,6 +73,7 @@ const InvoiceEditPage = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [companyName, setCompanyName] = useState('');
 
   // 폼 필드
   const [formData, setFormData] = useState({
@@ -101,21 +102,92 @@ const InvoiceEditPage = () => {
     return currentUser?.roles?.includes('ROLE_BUYER') || currentUser?.role === 'BUYER';
   };
 
+  const isSupplier = () => {
+    return currentUser?.roles?.includes('ROLE_SUPPLIER') || currentUser?.role === 'SUPPLIER';
+  };
+
   // username이 001로 시작하는지 확인 (구매관리팀)
   const isPurchaseDept = () => {
     if (!currentUser?.username) return false;
     return currentUser.username.startsWith('001');
   };
 
+  // 회사명 찾기
+  const findCompanyName = () => {
+    if (!currentUser) return '';
+
+    // 공급업체 역할인 경우 회사명 추출
+    if (isSupplier()) {
+      // 공급업체명을 찾을 수 있는 가능한 속성 확인
+      const company = currentUser.companyName ||
+                     currentUser.company ||
+                     currentUser.supplierName;
+
+      // 회사명이 이미 있으면 사용
+      if (company) {
+        console.log('회사명 찾음 (속성):', company);
+        return company;
+      }
+
+      // 이름에서 추출 (예: '공급사 1 담당자' -> '공급사 1')
+      if (currentUser.name) {
+        // 이름에서 '공급사 N' 패턴 추출
+        const nameMatch = currentUser.name.match(/(공급사\s*\d+)/);
+        if (nameMatch) {
+          console.log('회사명 찾음 (이름 패턴):', nameMatch[1]);
+          return nameMatch[1];
+        }
+
+        // 이름이 공급사명인 경우 (예: '공급사 1')
+        if (currentUser.name.trim().startsWith('공급사')) {
+          console.log('회사명 찾음 (이름):', currentUser.name);
+          return currentUser.name.trim();
+        }
+      }
+
+      // 그래도 못 찾았다면, 이름 자체를 그대로 사용
+      if (currentUser.name) {
+        console.log('회사명으로 이름 사용:', currentUser.name);
+        return currentUser.name;
+      }
+    }
+
+    return '';
+  };
+
+  // 회사명 설정
+  useEffect(() => {
+    if (currentUser && isSupplier()) {
+      const company = findCompanyName();
+      setCompanyName(company);
+      console.log('공급업체명 설정:', company);
+    }
+  }, [currentUser]);
+
   // 송장에 대한 수정 권한 확인
   const canEditInvoice = () => {
-    if (!isLoggedIn || !currentUser) return false;
+    if (!isLoggedIn || !currentUser || !invoice) return false;
 
     // ADMIN은 항상 가능
     if (isAdmin()) return true;
 
     // BUYER(구매관리팀)도 가능
     if (isBuyer() && isPurchaseDept()) return true;
+
+    // SUPPLIER는 자신의 회사 송장만 수정 가능
+    if (isSupplier()) {
+      // 회사명 정규화 (공백 제거 후 소문자 변환)
+      const normalizeText = (text) => text?.replace(/\s+/g, '').toLowerCase();
+      const normalizedCompanyName = normalizeText(companyName || currentUser.name || currentUser.companyName);
+      const normalizedSupplierName = normalizeText(invoice.supplierName);
+
+      // 정규화된 이름으로 비교
+      if (normalizedCompanyName && normalizedSupplierName) {
+        // 이름이 포함 관계인지 확인 (더 유연한 비교)
+        return normalizedSupplierName.includes(normalizedCompanyName) ||
+               normalizedCompanyName.includes(normalizedSupplierName);
+      }
+    }
 
     return false;
   };
@@ -167,17 +239,22 @@ const InvoiceEditPage = () => {
     } else {
       setLoading(false);
     }
-
-    // 권한 체크
-    if (!canEditInvoice()) {
-      setError('송장 수정 권한이 없습니다.');
-      setShowError(true);
-      // 권한 없으면 상세 페이지로 리다이렉트
-      setTimeout(() => {
-        navigate(`/invoices/${id}`);
-      }, 2000);
-    }
   }, [isLoggedIn, currentUser, id]);
+
+  // 데이터 로드 후 권한 체크
+  useEffect(() => {
+    if (invoice && !loading) {
+      // 권한 체크
+      if (!canEditInvoice()) {
+        setError('송장 수정 권한이 없습니다.');
+        setShowError(true);
+        // 권한 없으면 상세 페이지로 리다이렉트
+        setTimeout(() => {
+          navigate(`/invoices/${id}`);
+        }, 2000);
+      }
+    }
+  }, [invoice, loading]);
 
   // 입력값 변경 핸들러
   const handleInputChange = (e) => {
@@ -186,6 +263,7 @@ const InvoiceEditPage = () => {
       ...formData,
       [name]: value
     });
+    console.log(`필드 ${name} 값 변경: ${value}`);
   };
 
   // 날짜 변경 핸들러
@@ -194,6 +272,7 @@ const InvoiceEditPage = () => {
       ...formData,
       [name]: date
     });
+    console.log(`${name} 날짜 변경:`, date.format('YYYY-MM-DD'));
   };
 
   // 숫자 입력 핸들러 (천 단위 쉼표 처리)
@@ -227,6 +306,7 @@ const InvoiceEditPage = () => {
   // 폼 제출 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("폼 제출 시작", formData);
 
     try {
       setSaving(true);
@@ -255,6 +335,8 @@ const InvoiceEditPage = () => {
         unitPrice: Number(formData.unitPrice),
         unit: formData.unit
       };
+
+      console.log("API 요청 데이터:", requestData);
 
       // 상태 변경 API 호출
       const response = await fetchWithAuth(`${API_URL}invoices/${id}`, {
