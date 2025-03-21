@@ -247,14 +247,17 @@ const InvoicesListPage = () => {
 
     // SUPPLIER는 자사 관련 데이터만 접근 가능
     if (isSupplier()) {
-      // 회사명이 있으면 정확히 매칭되는지 확인
-      if (companyName) {
-        return invoice.supplierName === companyName;
-      }
+      // 회사명 정규화 (공백 제거 후 소문자 변환)
+      const normalizeText = (text) => text?.replace(/\s+/g, '').toLowerCase();
+      const normalizedCompanyName = normalizeText(companyName || currentUser.name || currentUser.companyName);
+      const normalizedSupplierName = normalizeText(invoice.supplierName);
 
-      // 그 외에는 이름 기반으로 확인
-      return invoice.supplierName === currentUser.companyName ||
-             invoice.supplierName.includes(currentUser.name);
+      // 정규화된 이름으로 비교
+      if (normalizedCompanyName && normalizedSupplierName) {
+        // 이름이 포함 관계인지 확인 (더 유연한 비교)
+        return normalizedSupplierName.includes(normalizedCompanyName) ||
+               normalizedCompanyName.includes(normalizedSupplierName);
+      }
     }
 
     // 그 외 BUYER는 관련 데이터만 접근
@@ -280,37 +283,19 @@ const InvoicesListPage = () => {
 
     // SUPPLIER는 자사 관련 데이터만 접근 가능
     if (isSupplier()) {
-      // 회사명이 있으면 정확히 매칭되는지 확인
-      if (companyName) {
-        return data.filter(invoice => invoice.supplierName === companyName);
-      }
+      // 회사명 정규화 (공백 제거 후 소문자 변환)
+      const normalizeText = (text) => text?.replace(/\s+/g, '').toLowerCase();
 
-      // 이름에서 공급사명 추출 시도 (예: "공급사 1")
-      const userName = currentUser.name;
-      const supplierMatch = userName ? userName.match(/(공급사\s*\d+)/) : null;
-      const extractedName = supplierMatch ? supplierMatch[1] : null;
+      return data.filter(invoice => {
+        const normalizedCompanyName = normalizeText(companyName || currentUser.name || currentUser.companyName);
+        const normalizedSupplierName = normalizeText(invoice.supplierName);
 
-      if (extractedName) {
-        return data.filter(invoice => invoice.supplierName === extractedName);
-      }
-
-      // 이름에서 숫자만 추출 시도 (최후의 수단)
-      if (userName) {
-        const numMatch = userName.match(/\d+/);
-        if (numMatch) {
-          const numPart = numMatch[0];
-          console.log('숫자 추출 시도:', numPart);
-          return data.filter(invoice =>
-            invoice.supplierName && invoice.supplierName.includes(numPart)
-          );
+        if (normalizedCompanyName && normalizedSupplierName) {
+          return normalizedSupplierName.includes(normalizedCompanyName) ||
+                 normalizedCompanyName.includes(normalizedSupplierName);
         }
-      }
-
-      // 그 외에는 이름 기반으로 필터링
-      return data.filter(invoice =>
-        invoice.supplierName === currentUser.companyName ||
-        (currentUser.name && invoice.supplierName.includes(currentUser.name))
-      );
+        return false;
+      });
     }
 
     return data;
@@ -651,8 +636,7 @@ const InvoicesListPage = () => {
                   <TableCell align="center">발행일</TableCell>
                   <TableCell align="center">마감일</TableCell>
                   <TableCell align="center">공급업체</TableCell>
-                  <TableCell align="center">공급가액</TableCell>
-                  <TableCell align="center">부가세</TableCell>
+                  <TableCell align="center">담당자</TableCell>
                   <TableCell align="center">총액</TableCell>
                   <TableCell align="center">상태</TableCell>
                 </TableRow>
@@ -669,14 +653,13 @@ const InvoicesListPage = () => {
                         opacity: canAccessInvoice(invoice) ? 1 : 0.5
                       }}
                     >
-                      <TableCell>{invoice.invoiceNumber}</TableCell>
-                      <TableCell>{invoice.orderNumber || '-'}</TableCell>
-                      <TableCell>{invoice.issueDate}</TableCell>
-                      <TableCell>{invoice.dueDate}</TableCell>
-                      <TableCell>{invoice.supplierName}</TableCell>
-                      <TableCell align="right">{formatCurrency(invoice.supplyPrice)}</TableCell>
-                      <TableCell align="right">{formatCurrency(invoice.vat)}</TableCell>
-                      <TableCell align="right">{formatCurrency(invoice.totalAmount)}</TableCell>
+                      <TableCell align="center">{invoice.invoiceNumber}</TableCell>
+                      <TableCell align="center">{invoice.orderNumber || '-'}</TableCell>
+                      <TableCell align="center">{invoice.issueDate}</TableCell>
+                      <TableCell align="center">{invoice.dueDate}</TableCell>
+                      <TableCell align="center">{invoice.supplierName}</TableCell>
+                      <TableCell align="center">{invoice.approverName || '-'}</TableCell>
+                      <TableCell align="center">{formatCurrency(invoice.totalAmount)}</TableCell>
                       <TableCell align="center">
                         <Chip
                           label={getStatusProps(invoice.status).label}
@@ -688,7 +671,7 @@ const InvoicesListPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">
+                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
                       표시할 송장이 없습니다.
                     </TableCell>
                   </TableRow>
