@@ -150,7 +150,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/invoices/**").hasAnyRole("SUPPLIER", "ADMIN")
 
                 // 입고 관리 (ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/deliveries", "/api/deliveries/**").hasAnyRole("BUYER","SUPPLIER", "ADMIN")
+                .requestMatchers("/api/deliveries", "/api/deliveries/**").hasAnyRole("BUYER", "ADMIN","SUPPLIER")
 
                 // 지불 관리 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/payments/**").hasRole("ADMIN")

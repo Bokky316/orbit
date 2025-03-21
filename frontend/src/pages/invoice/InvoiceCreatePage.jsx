@@ -634,11 +634,7 @@ const InvoiceCreatePage = () => {
                 />
               </Box>
               <Alert severity="info" sx={{ mt: 2 }}>
-                송장은 발주 정보를 기반으로 생성됩니다. 아래에서 발주 정보를 선택해주세요.
-              </Alert>
-              {/* 경고 메시지 추가 */}
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                주의: 시스템 구조상 송장은 입고 데이터에 등록된 공급자 정보로 저장됩니다.
+                송장은 입고된 발주 정보를 기반으로 생성됩니다. 아래에서 발주 정보를 선택해주세요.
               </Alert>
             </Paper>
 
