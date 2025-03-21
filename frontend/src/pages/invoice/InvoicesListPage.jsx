@@ -94,7 +94,7 @@ const calculateStatistics = (invoices) => {
   };
 
   invoices.forEach(invoice => {
-    const amount = invoice.totalAmount || 0;
+    const amount = parseFloat(invoice.totalAmount) || 0;
     stats.totalAmount += amount;
 
     switch(invoice.status) {
@@ -177,6 +177,12 @@ const InvoicesListPage = () => {
     return currentUser?.roles?.includes('ROLE_SUPPLIER') || currentUser?.role === 'SUPPLIER';
   };
 
+  // 재무회계팀(004로 시작)인지 확인하는 함수
+  const isFinanceDept = () => {
+    if (!currentUser?.username) return false;
+    return currentUser.username.startsWith('004');
+  };
+
   // username이 001로 시작하는지 확인 (구매관리팀)
   const isPurchaseDept = () => {
     if (!currentUser?.username) return false;
@@ -233,17 +239,39 @@ const InvoicesListPage = () => {
       setCompanyName(company);
       console.log('공급업체명 설정:', company);
     }
+
+    // 디버깅 정보 - 로그인한 사용자 정보
+    if (currentUser) {
+      console.log('현재 사용자:', currentUser);
+      console.log('사용자 ID 타입:', typeof currentUser.id);
+      console.log('사용자 ID 값:', currentUser.id);
+      console.log('재무회계팀 여부:', isFinanceDept());
+    }
   }, [currentUser]);
 
-  // 송장에 대한 접근 권한 확인
+  // 송장에 대한 접근 권한 확인 (ID 비교 개선)
   const canAccessInvoice = (invoice) => {
     if (!currentUser) return false;
 
     // ADMIN은 모든 데이터 접근 가능
     if (isAdmin()) return true;
 
+    // 재무회계팀(004로 시작)은 자신이 담당자인 데이터만 접근 가능
+    if (isFinanceDept()) {
+      // ID를 문자열로 변환하여 비교
+      const approverIdStr = invoice.approverId !== null && invoice.approverId !== undefined
+        ? String(invoice.approverId)
+        : '';
+      const userIdStr = String(currentUser.id);
+
+      return approverIdStr === userIdStr;
+    }
+
     // BUYER(구매관리팀)은 모든 데이터 접근 가능
     if (isBuyer() && isPurchaseDept()) return true;
+
+    // 일반 BUYER도 모든 데이터 접근 가능
+    if (isBuyer()) return true;
 
     // SUPPLIER는 자사 관련 데이터만 접근 가능
     if (isSupplier()) {
@@ -260,20 +288,28 @@ const InvoicesListPage = () => {
       }
     }
 
-    // 그 외 BUYER는 관련 데이터만 접근
-    if (isBuyer()) {
-      return true; // 일반적으로 BUYER는 모든 송장 접근 가능
-    }
-
     return false;
   };
 
-  // 역할 기반 데이터 필터링
+  // 역할 기반 데이터 필터링 (문자열 ID 비교)
   const filterInvoicesByRole = (data) => {
     if (!currentUser || !data || data.length === 0) return [];
 
     // ADMIN은 모든 데이터 접근 가능
     if (isAdmin()) return data;
+
+    // 재무회계팀(004로 시작)은 자신이 담당자인 데이터만 접근 가능
+    if (isFinanceDept()) {
+      const userIdStr = String(currentUser.id);
+
+      return data.filter(invoice => {
+        const approverIdStr = invoice.approverId !== null && invoice.approverId !== undefined
+          ? String(invoice.approverId)
+          : '';
+
+        return approverIdStr === userIdStr;
+      });
+    }
 
     // BUYER(구매관리팀)은 모든 데이터 접근 가능
     if (isBuyer() && isPurchaseDept()) return data;
@@ -312,7 +348,7 @@ const InvoicesListPage = () => {
     return false;
   };
 
-  // 데이터 로드 함수
+  // 데이터 로드 함수 (API 호출 파라미터 개선)
   const fetchInvoices = async () => {
     try {
       setLoading(true);
@@ -325,12 +361,23 @@ const InvoicesListPage = () => {
       params.append('sortBy', sortBy);
       params.append('sortDir', sortDir);
 
+      // 재무회계팀(004로 시작)인 경우 자신이 담당자인 데이터만 조회
+      if (isFinanceDept() && currentUser?.id) {
+        // 백엔드에서 approverId로 필터링하는지 확인
+        // 여러 필드명 시도 (approverId, approver_id, approver 등)
+        params.append('approverId', currentUser.id);
+        console.log('재무회계팀 담당자 ID로 필터링:', currentUser.id);
+      }
+
       // SUPPLIER인 경우 자사 데이터만 조회하도록 필터 추가
       if (isSupplier() && companyName) {
         params.append('supplierName', companyName);
       }
 
-      const response = await fetchWithAuth(`${API_URL}invoices/list?${params.toString()}`);
+      const apiUrl = `${API_URL}invoices/list?${params.toString()}`;
+      console.log('API 호출 URL:', apiUrl);
+
+      const response = await fetchWithAuth(apiUrl);
 
       if (!response.ok) {
         throw new Error(`송장 목록 조회 실패: ${response.status}`);
@@ -343,24 +390,48 @@ const InvoicesListPage = () => {
         // 송장 데이터 설정
         if (data.invoices) {
           const allInvoices = data.invoices;
+          console.log('받은 송장 수:', allInvoices.length);
           setInvoices(allInvoices);
+
+          // 담당자 확인 디버깅
+          if (isFinanceDept()) {
+            console.log('재무회계팀 사용자 ID:', currentUser.id);
+            let matchCount = 0;
+
+            allInvoices.forEach(invoice => {
+              const approverIdStr = String(invoice.approverId || '');
+              const userIdStr = String(currentUser.id);
+              const matches = approverIdStr === userIdStr;
+
+              if (matches) {
+                matchCount++;
+                console.log(`일치하는 송장 - ID: ${invoice.id}, 번호: ${invoice.invoiceNumber}`);
+              }
+            });
+
+            console.log(`일치하는 송장 수: ${matchCount}/${allInvoices.length}`);
+          }
 
           // 역할 기반 필터링 적용
           const filtered = filterInvoicesByRole(allInvoices);
+          console.log('필터링 후 송장 수:', filtered.length);
           setFilteredInvoices(filtered);
 
           // 필터링된 데이터 기준으로 총 항목 수 설정
           setTotalElements(filtered.length);
 
-          // 필터링된 데이터로 통계 계산 (프론트엔드에서 직접 계산)
+          // 필터링된 데이터로 통계 계산
           const calculatedStats = calculateStatistics(filtered);
           setStatistics(calculatedStats);
+        } else {
+          setInvoices([]);
+          setFilteredInvoices([]);
         }
 
         // 페이지네이션 정보 설정
         if (data.totalPages) setTotalPages(data.totalPages);
         if (data.currentPage !== undefined) setPage(data.currentPage);
-        if (data.totalItems && !isSupplier()) setTotalElements(data.totalItems);
+        if (data.totalItems) setTotalElements(data.totalItems);
       } else {
         throw new Error('송장 목록 조회 실패');
       }
