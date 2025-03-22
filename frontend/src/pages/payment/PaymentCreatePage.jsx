@@ -543,21 +543,46 @@ const PaymentCreatePage = () => {
               </Grid>
             </Paper>
 
-            {/* 금액 정보 */}
+            {/* 금액 정보 - 테이블 형태로 정렬 개선 및 구분선 제거 */}
             {selectedInvoice && (
               <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-                <SectionTitle variant="h6">결제 금액</SectionTitle>
+                <SectionTitle variant="h6">금액 정보</SectionTitle>
                 <Divider sx={{ mb: 2 }} />
 
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                  <Card variant="outlined" sx={{ minWidth: 300, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                    <CardContent sx={{ textAlign: 'center' }}>
-                      <Typography variant="h6" gutterBottom>
-                        총 결제 금액
+                <Box sx={{ border: '1px solid #eee', borderRadius: '4px', overflow: 'hidden' }}>
+                  {/* 헤더 행 */}
+                  <Grid container sx={{ bgcolor: '#f9f9f9', borderBottom: '1px solid #eee' }}>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" fontWeight="bold">단가</Typography>
+                    </Grid>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" fontWeight="bold">공급가액</Typography>
+                    </Grid>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" fontWeight="bold">부가세</Typography>
+                    </Grid>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" fontWeight="bold">총액</Typography>
+                    </Grid>
+                  </Grid>
+
+                  {/* 데이터 행 */}
+                  <Grid container>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography>{formatCurrency(selectedInvoice.unitPrice)}</Typography>
+                    </Grid>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography>{formatCurrency(selectedInvoice.supplyPrice)}</Typography>
+                    </Grid>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography>{formatCurrency(selectedInvoice.vat)}</Typography>
+                    </Grid>
+                    <Grid item xs={3} sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography sx={{ fontWeight: 'bold', color: '#FC8D4D' }}>
+                        {formatCurrency(selectedInvoice.totalAmount)}
                       </Typography>
-                      <Typography variant="h4">{formatCurrency(selectedInvoice.totalAmount)}</Typography>
-                    </CardContent>
-                  </Card>
+                    </Grid>
+                  </Grid>
                 </Box>
               </Paper>
             )}
