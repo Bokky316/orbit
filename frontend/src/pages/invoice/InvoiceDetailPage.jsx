@@ -437,8 +437,8 @@ const InvoiceDetailPage = () => {
               <span>${formatCurrency(vat)}</span>
             </div>
             <div>
-              <span style="font-weight: bold; margin-right: 10px; color: #1976d2;">총액:</span>
-              <span style="font-weight: bold; font-size: 16px; color: #1976d2;">${formatCurrency(totalAmount)}</span>
+              <span style="font-weight: bold; margin-right: 10px; color: #FC8D4D;">총액:</span>
+              <span style="font-weight: bold; font-size: 16px; color: #FC8D4D;">${formatCurrency(totalAmount)}</span>
             </div>
           </div>
         </div>
@@ -847,38 +847,22 @@ const InvoiceDetailPage = () => {
 
           {/* 금액 요약 */}
           <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" color="textSecondary" gutterBottom>
-                      공급가액
-                    </Typography>
-                    <Typography variant="h5">{formatCurrency(invoice.supplyPrice)}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" color="textSecondary" gutterBottom>
-                      부가세
-                    </Typography>
-                    <Typography variant="h5">{formatCurrency(invoice.vat)}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Card variant="outlined" sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      총액
-                    </Typography>
-                    <Typography variant="h4">{formatCurrency(invoice.totalAmount)}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              borderRadius: 1,
+            }}>
+              <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                공급가액: <span style={{ fontWeight: 'normal' }}>{formatCurrency(invoice.supplyPrice)}</span>
+              </Typography>
+              <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                부가세: <span style={{ fontWeight: 'normal' }}>{formatCurrency(invoice.vat)}</span>
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500, color: 'primary.main' }}>
+                총액: <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{formatCurrency(invoice.totalAmount)}</span>
+              </Typography>
+            </Box>
           </Paper>
 
           {/* 비고 */}
