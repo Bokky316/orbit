@@ -71,6 +71,27 @@ import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
 import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
+import NotificationPage from "./pages/member/NotificationPage";
+import NotificationToast from "./components/notification/NotificationToast";
+import SupplierDashboard from "./pages/dashboard/SupplierDashboard";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
+import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
+import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage"
+import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage"
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
+import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
+import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
+ import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import PaymentListPage from '@/pages/payment/PaymentListPage';
+import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
+import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
+
+/**
+ * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
+ * @returns {JSX.Element} - 전체 앱 콘텐츠
+ */
+
 function AppContent() {
   const { isLoggedIn, roles, user } = useSelector((state) => state.auth);
   const roleList = roles || user?.roles || [];
@@ -156,6 +177,16 @@ function AppContent() {
                 <Route path="/invoices/create" element={<InvoiceCreatePage />} />
                 <Route path="/payments" element={<PaymentListPage />} />
                 <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
+                  {/* 송장 관리 */}
+                  <Route path="/invoices" element={<InvoicesListPage />} />
+                  <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+                  <Route path="/invoices/edit/:id" element={<InvoiceEditPage />} />
+                  <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+
+                  {/* 지불 관리 */}
+                  <Route path="/payments" element={<PaymentListPage />} />
+                  <Route path="/payments/:id" element={<PaymentDetailPage />} />
+                  <Route path="/payments/create" element={<PaymentCreatePage />} />
 
                   {/* 협력사 관리 */}
                   <Route path="/supplier" element={<SupplierListPage />} />
