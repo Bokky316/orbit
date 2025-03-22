@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -147,9 +148,10 @@ public class Invoice {
         this.unit = delivery.getItemUnit();
 
         // 금액 정보 계산
-        this.supplyPrice = delivery.getTotalAmount();
-        this.vat = this.supplyPrice.multiply(new BigDecimal("0.1")); // 10% 부가세
-        this.totalAmount = this.supplyPrice.add(this.vat);
+        BigDecimal totalAmountFromDelivery = delivery.getTotalAmount();
+        this.supplyPrice = totalAmountFromDelivery.divide(new BigDecimal("1.1"), 0, RoundingMode.HALF_UP); // 공급가액 = 총액 ÷ 1.1
+        this.vat = totalAmountFromDelivery.subtract(this.supplyPrice); // 부가세 = 총액 - 공급가액
+        this.totalAmount = totalAmountFromDelivery; // 원래 총액 유지
 
         // 날짜 정보 설정
         this.issueDate = LocalDate.now();

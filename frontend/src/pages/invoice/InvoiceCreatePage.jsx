@@ -638,34 +638,6 @@ const InvoiceCreatePage = () => {
               </Alert>
             </Paper>
 
-            {/* 디버깅 정보 (개발 환경에서만 표시) */}
-            {process.env.NODE_ENV === 'development' && currentUser && (
-              <Paper sx={{ p: 2, mb: 3, bgcolor: '#f5f5f5', fontSize: '0.75rem' }}>
-                <Typography variant="h6" gutterBottom>디버깅 정보</Typography>
-                <div>사용자: {currentUser.username} ({currentUser.roles?.join(', ') || currentUser.role})</div>
-                <div>이름: {currentUser.name}</div>
-                <div>회사명: {companyName || currentUser.companyName || '-'}</div>
-                <div>송장 발행 권한: {canCreateInvoice() ? 'Yes' : 'No'}</div>
-                <div>입고데이터 개수: {deliveries.length}</div>
-                <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>상세 정보:</Typography>
-                <pre>{JSON.stringify(userDetail, null, 2)}</pre>
-                {selectedDelivery && (
-                  <>
-                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>선택된 입고 정보:</Typography>
-                    <div>입고 ID: {selectedDelivery.id}</div>
-                    <div>입고 공급자 ID: {selectedDelivery.supplierId}</div>
-                    <div>입고 공급자명: {selectedDelivery.supplierName}</div>
-                  </>
-                )}
-                {supplierDetail && (
-                  <>
-                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>공급자 상세 정보:</Typography>
-                    <pre>{JSON.stringify(supplierDetail, null, 2)}</pre>
-                  </>
-                )}
-              </Paper>
-            )}
-
             {/* 발주 정보 선택 */}
             <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
               <SectionTitle variant="h6">발주 정보 선택</SectionTitle>
@@ -899,38 +871,22 @@ const InvoiceCreatePage = () => {
               <SectionTitle variant="h6">결제 정보</SectionTitle>
               <Divider sx={{ mb: 2 }} />
 
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" color="textSecondary" gutterBottom>
-                        공급가액
-                      </Typography>
-                      <Typography variant="h5">{formatCurrency(selectedDelivery ? calculateSupplyPrice(selectedDelivery.totalAmount) : 0)}</Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" color="textSecondary" gutterBottom>
-                        부가세
-                      </Typography>
-                      <Typography variant="h5">{formatCurrency(selectedDelivery ? calculateVAT(selectedDelivery.totalAmount) : 0)}</Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Card variant="outlined" sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        총액
-                      </Typography>
-                      <Typography variant="h4">{formatCurrency(selectedDelivery ? selectedDelivery.totalAmount : 0)}</Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                borderRadius: 1,
+              }}>
+                <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                  공급가액: <span style={{ fontWeight: 'normal' }}>{formatCurrency(selectedDelivery ? calculateSupplyPrice(selectedDelivery.totalAmount) : 0)}</span>
+                </Typography>
+                <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                  부가세: <span style={{ fontWeight: 'normal' }}>{formatCurrency(selectedDelivery ? calculateVAT(selectedDelivery.totalAmount) : 0)}</span>
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500, color: '#ff7043' }}>
+                  총액: <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{formatCurrency(selectedDelivery ? selectedDelivery.totalAmount : 0)}</span>
+                </Typography>
+              </Box>
             </Paper>
 
             {/* 비고 */}

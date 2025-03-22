@@ -275,17 +275,36 @@ const InvoiceEditPage = () => {
     console.log(`${name} 날짜 변경:`, date.format('YYYY-MM-DD'));
   };
 
-  // 숫자 입력 핸들러 (천 단위 쉼표 처리)
   const handleNumberInputChange = (e) => {
     const { name, value } = e.target;
 
     // 쉼표 제거하고 숫자만 추출
     const numericValue = value.replace(/[^\d]/g, '');
 
-    setFormData({
+    // 현재 상태 복사
+    const updatedFormData = {
       ...formData,
       [name]: numericValue
-    });
+    };
+
+    // 단가 또는 수량이 변경된 경우 공급가액 자동 계산
+    if (name === 'unitPrice' || name === 'quantity') {
+      const unitPrice = name === 'unitPrice' ? Number(numericValue) : Number(updatedFormData.unitPrice);
+      const quantity = name === 'quantity' ? Number(numericValue) : Number(updatedFormData.quantity);
+
+      // 공급가액 계산
+      const supplyPrice = unitPrice * quantity;
+      updatedFormData.supplyPrice = supplyPrice;
+
+      // 부가세 및 총액 자동 계산
+      const vat = Math.round(supplyPrice * 0.1); // 10% 부가세
+      const totalAmount = supplyPrice + vat;
+
+      updatedFormData.vat = vat;
+      updatedFormData.totalAmount = totalAmount;
+    }
+
+    setFormData(updatedFormData);
   };
 
   // 공급가액 변경 시 부가세 및 총액 자동 계산
@@ -641,47 +660,24 @@ const InvoiceEditPage = () => {
             </Card>
 
             {/* 금액 정보 */}
-            <SectionTitle>금액 정보</SectionTitle>
-            <Divider sx={{ mb: 2 }} />
-
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" color="textSecondary" gutterBottom>
-                      공급가액
-                    </Typography>
-                    <Typography variant="h5">
-                      {formatCurrency(invoice.supplyPrice)}원
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" color="textSecondary" gutterBottom>
-                      부가세 (10%)
-                    </Typography>
-                    <Typography variant="h5">
-                      {formatCurrency(invoice.vat)}원
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Card sx={{ bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      총액
-                    </Typography>
-                    <Typography variant="h5">
-                      {formatCurrency(invoice.totalAmount)}원
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                    <Box sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      borderRadius: 1,
+                    }}>
+                      <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                        공급가액: <span style={{ fontWeight: 'normal' }}>{formatCurrency(invoice.supplyPrice)}</span>
+                      </Typography>
+                      <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                        부가세: <span style={{ fontWeight: 'normal' }}>{formatCurrency(invoice.vat)}</span>
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, color: '#FC8D4D' }}>
+                        총액: <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{formatCurrency(invoice.totalAmount)}</span>
+                      </Typography>
+                    </Box>
+                  </Paper>
           </Paper>
 
           {/* 비고 */}
