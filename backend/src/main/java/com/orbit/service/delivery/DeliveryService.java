@@ -227,7 +227,10 @@ public class DeliveryService {
             item.put("supplierId", delivery.getSupplierId());
             item.put("supplierName", delivery.getSupplierName());
             item.put("itemName", delivery.getItemName());
+            item.put("itemSpecification", delivery.getItemSpecification()); // 품목 규격 추가
             item.put("itemQuantity", delivery.getItemQuantity());
+            item.put("unitPrice", delivery.getItemUnitPrice()); // 단가 추가
+            item.put("itemUnit", delivery.getItemUnit()); // 단위 추가
             item.put("totalAmount", delivery.getTotalAmount());
             item.put("invoiceIssued", delivery.getInvoiceIssued());
 
@@ -264,12 +267,9 @@ public class DeliveryService {
                 item.put("supplierAddress", "-");
             }
 
-            // 계약 번호 조회 (BiddingOrder → Bidding → BiddingContract 관계를 통해)
+            // 계약 번호 조회
             String contractNumber = null;
             if (delivery.getBiddingOrder() != null && delivery.getBiddingOrder().getBidding() != null) {
-                // 계약 번호를 조회하는 복잡한 로직
-                // 예: BiddingContract 엔티티에서 bidding_id로 조회하여 transactionNumber 가져오기
-                // 실제 구현은 관계 설정에 따라 달라질 수 있음
                 BiddingOrder order = delivery.getBiddingOrder();
                 List<BiddingContract> contracts = biddingContractRepository.findByBiddingId(order.getBiddingId());
                 if (!contracts.isEmpty()) {
