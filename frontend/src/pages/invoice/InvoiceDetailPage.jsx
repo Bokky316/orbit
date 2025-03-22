@@ -181,6 +181,9 @@ const InvoiceDetailPage = () => {
   const canEditInvoice = () => {
     if (!isLoggedIn || !currentUser || !invoice) return false;
 
+    // 대기 상태 또는 거부 상태의 송장만 수정 가능
+    if (invoice.status !== 'WAITING' && invoice.status !== 'REJECTED') return false;
+
     // 오직 SUPPLIER만 수정 가능하고, 자신의 회사 송장만 수정 가능
     if (isSupplier()) {
       // 회사명 기준으로 확인
@@ -195,7 +198,6 @@ const InvoiceDetailPage = () => {
 
     return false;
   };
-
   // 송장에 대한 삭제 권한 확인
   const canDeleteInvoice = () => {
     if (!isLoggedIn || !currentUser || !invoice) return false;

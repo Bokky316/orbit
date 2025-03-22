@@ -5,7 +5,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, Button,
     Grid, CircularProgress, IconButton, InputAdornment, TablePagination,
-    Snackbar, Alert
+    Snackbar, Alert, Container
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -375,7 +375,7 @@ function DeliveryListPage() {
     };
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
             {/* 에러 메시지 표시 */}
             <Snackbar
                 open={showError}
@@ -523,7 +523,7 @@ function DeliveryListPage() {
                     />
                 )}
             </Paper>
-        </Box>
+        </Container>
     );
 }
 
