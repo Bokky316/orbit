@@ -146,9 +146,35 @@ public class InvoiceController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable Long id) {
         try {
-            invoiceService.deleteInvoice(id);
-            return ResponseEntity.noContent().build();
+            // 송장 삭제 전에 송장 정보 조회
+            Optional<Invoice> invoiceOpt = invoiceService.getInvoiceById(id);
+            if (invoiceOpt.isPresent()) {
+                Invoice invoice = invoiceOpt.get();
+                Long deliveryId = invoice.getDelivery().getId();
+
+                // 송장 삭제
+                invoiceService.deleteInvoice(id);
+
+                // 입고의 invoiceIssued 상태를 false로 업데이트
+                Optional<Delivery> deliveryOpt = deliveryService.getDeliveryById(deliveryId);
+                if (deliveryOpt.isPresent()) {
+                    Delivery delivery = deliveryOpt.get();
+                    delivery.setInvoiceIssued(false);
+
+                    DeliveryDto.Request request = new DeliveryDto.Request();
+                    request.setDeliveryDate(delivery.getDeliveryDate());
+                    request.setItemQuantity(delivery.getItemQuantity());
+                    deliveryService.updateDelivery(delivery.getId(), request);
+
+                    System.out.println("송장 삭제 후 입고 상태 업데이트 완료: " + deliveryId);
+                }
+
+                return ResponseEntity.noContent().build();
+            } else {
+                return ResponseEntity.notFound().build();
+            }
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
