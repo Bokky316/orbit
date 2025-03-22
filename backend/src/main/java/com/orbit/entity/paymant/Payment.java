@@ -110,16 +110,6 @@ public class Payment {
         this.invoice = invoice;
         this.totalAmount = invoice.getTotalAmount();
         this.paymentDate = LocalDate.now();
-        // 다른 필드는 서비스에서 설정
-    }
-
-    /**
-     * 💳 결제 방법 Enum
-     */
-    public void setFromInvoice(Invoice invoice) {
-        this.invoice = invoice;
-        this.totalAmount = invoice.getTotalAmount();
-        this.paymentDate = LocalDate.now();
         this.status = new SystemStatus("PAYMENT", "COMPLETED"); // 기본 상태: 완료
         this.method = new SystemStatus("PAYMENT", "TRANSFER"); // 기본 결제 방법: 계좌이체
         // 다른 필드는 서비스에서 설정
@@ -135,5 +125,33 @@ public class Payment {
         } else {
             this.method.setChildCode(methodCode);
         }
+    }
+
+    /**
+     * 결제 방법 코드 조회 (편의 메서드)
+     * @return 결제 방법 코드
+     */
+    public String getPaymentMethodCode() {
+        return this.method != null ? this.method.getChildCode() : null;
+    }
+
+    /**
+     * 결제 상태 설정 (편의 메서드)
+     * @param statusCode 결제 상태 코드 (COMPLETED, FAILED, CANCELED)
+     */
+    public void setPaymentStatusCode(String statusCode) {
+        if (this.status == null) {
+            this.status = new SystemStatus("PAYMENT", statusCode);
+        } else {
+            this.status.setChildCode(statusCode);
+        }
+    }
+
+    /**
+     * 결제 상태 코드 조회 (편의 메서드)
+     * @return 결제 상태 코드
+     */
+    public String getPaymentStatusCode() {
+        return this.status != null ? this.status.getChildCode() : null;
     }
 }

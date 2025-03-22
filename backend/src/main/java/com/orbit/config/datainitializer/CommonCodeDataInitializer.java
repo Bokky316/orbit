@@ -146,6 +146,23 @@ public class CommonCodeDataInitializer {
         );
     }
 
+    //▶▶▶ 지불 관련 코드
+    private void initPaymentCodes() {
+        // 결제 상태 코드
+        ParentCode paymentStatus = initParentCode("PAYMENT", "STATUS", "결제 상태");
+        initChildCodes(paymentStatus,
+                List.of("COMPLETED", "FAILED", "CANCELED"),
+                List.of("완료", "실패", "취소")
+        );
+
+        // 결제 방법 코드
+        ParentCode paymentMethod = initParentCode("PAYMENT", "METHOD", "결제 방법");
+        initChildCodes(paymentMethod,
+                List.of("TRANSFER", "CARD", "CHECK"),
+                List.of("계좌이체", "카드", "수표")
+        );
+    }
+
     //━━━━ 공통 메서드 ━━━━━━
     private ParentCode initParentCode(String entityType, String codeGroup, String codeName) {
         return parentCodeRepo.findByEntityTypeAndCodeGroup(entityType, codeGroup)

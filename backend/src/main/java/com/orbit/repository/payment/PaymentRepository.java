@@ -16,19 +16,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     // 송장 ID로 결제 정보 조회
     Optional<Payment> findByInvoiceId(Long invoiceId);
 
-    // 결제 상태별 조회 (SystemStatus 사용)
-    @Query("SELECT p FROM Payment p WHERE p.method.parentCode = :parentCode AND p.method.childCode = :methodCode")
-    Page<Payment> findByMethod(
-            @Param("parentCode") String parentCode,
-            @Param("methodCode") String methodCode,
-            Pageable pageable);
-
-    @Query("SELECT p FROM Payment p WHERE p.status.parentCode = :parentCode AND p.status.childCode = :statusCode")
-    Page<Payment> findByStatus(
-            @Param("parentCode") String parentCode,
-            @Param("statusCode") String statusCode,
-            Pageable pageable);
-
     @Query("SELECT p FROM Payment p WHERE p.status.parentCode = :parentCode AND p.status.childCode = :childCode")
     List<Payment> findAllByStatus(@Param("parentCode") String parentCode, @Param("childCode") String childCode);
 

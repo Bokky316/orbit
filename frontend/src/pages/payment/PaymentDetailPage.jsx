@@ -81,14 +81,6 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
 };
 
-// 0원 값을 대시(-)로 표시하는 형식 함수
-const formatZeroableCurrency = (amount) => {
-  if (!amount || amount === 0) {
-    return '-';  // 0원 대신 '-' 표시
-  }
-  return formatCurrency(amount);
-};
-
 // 날짜 형식 변환 함수
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -164,48 +156,6 @@ const PaymentDetailPage = () => {
 
       const data = await response.json();
       console.log('결제 데이터:', data);
-
-      // 관련 인보이스 정보 가져오기
-      if (data.invoiceId) {
-        try {
-          const invoiceResponse = await fetchWithAuth(`${API_URL}invoices/${data.invoiceId}`);
-          if (invoiceResponse.ok) {
-            const invoiceData = await invoiceResponse.json();
-            console.log('송장 데이터:', invoiceData);
-
-            // 송장에서 단가, 수량, 계약번호 등 정보 가져오기
-            if (invoiceData) {
-              // 단가 정보 가져오기
-              if ((!data.unitPrice || data.unitPrice === 0) && invoiceData.unitPrice) {
-                data.unitPrice = invoiceData.unitPrice;
-              }
-
-              // 수량 정보 가져오기
-              if ((!data.quantity || data.quantity === 0) && invoiceData.quantity) {
-                data.quantity = invoiceData.quantity;
-              }
-
-              // 계약 번호 가져오기
-              /* if (!data.contractNumber && invoiceData.contractNumber) {
-                data.contractNumber = invoiceData.contractNumber;
-              } */
-            }
-          }
-        } catch (invoiceError) {
-          console.error('송장 정보를 불러오는 중 오류 발생:', invoiceError);
-          // 송장 정보 가져오기 실패해도 결제 정보는 계속 처리
-        }
-      }
-
-      // 금액 정보 계산
-      if (data.totalAmount) {
-        // 공급가액이 없거나 0인 경우 계산 (10% 세율 가정)
-        if (!data.supplyPrice || data.supplyPrice === 0) {
-          data.supplyPrice = Math.round(data.totalAmount / 1.1);
-          data.vat = data.totalAmount - data.supplyPrice;
-        }
-      }
-
       setPayment(data);
     } catch (error) {
       console.error('결제 정보를 불러오는 중 오류 발생:', error);
@@ -224,20 +174,6 @@ const PaymentDetailPage = () => {
       setLoading(false);
     }
   }, [isLoggedIn, currentUser, id]);
-
-  // 결제 정보 데이터가 업데이트되었을 때 UI를 최적화하는 기능
-  useEffect(() => {
-    if (payment && payment.totalAmount > 0) {
-      // 모든 데이터가 정상적으로 로드됐는지 확인
-      const dataComplete = payment.unitPrice && payment.supplyPrice && payment.vat;
-
-      // 데이터가 불완전하면 fetchPayment()를 다시 실행
-      if (!dataComplete && !loading) {
-        console.log('데이터가 불완전하여 다시 로드합니다.');
-        fetchPayment();
-      }
-    }
-  }, [payment]);
 
   // 결제 삭제 함수
   const handleDeletePayment = async () => {
@@ -316,11 +252,6 @@ const PaymentDetailPage = () => {
             box-sizing: border-box !important;
           }
 
-          /* 첫 번째 Paper 요소 제거 */
-          .payment-detail-content > .MuiPaper-root:first-child {
-            display: none !important;
-          }
-
           .MuiPaper-root {
             padding: 15px !important;
             margin-bottom: 20px !important;
@@ -366,29 +297,6 @@ const PaymentDetailPage = () => {
             flex-basis: 66.666% !important;
             max-width: 66.666% !important;
             margin: 0 auto !important;
-          }
-
-          table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            font-size: 12px !important;
-          }
-
-          th, td {
-            padding: 5px 8px !important;
-            border: 1px solid #ddd !important;
-            font-size: 12px !important;
-            line-height: 1.3 !important;
-            font-weight: normal !important;
-          }
-
-          td[align="center"] {
-            text-align: center !important;
-          }
-
-          td[style*="font-weight: bold"] {
-            font-weight: bold !important;
-            font-size: 12px !important;
           }
 
           .label, .value {
@@ -477,12 +385,16 @@ const PaymentDetailPage = () => {
       // 인쇄 헤더와 푸터 추가
       const printHeader = `
         <div class="print-header">
-          거래 ID: ${payment.transactionId || '-'}
+          결제 영수증 (No. ${payment.id})
+          <div style="font-size: 14px; margin-top: 5px; font-weight: normal;">
+            거래 ID: ${payment.transactionId || '-'}
+          </div>
         </div>
       `;
 
       const printFooter = `
         <div class="print-footer">
+          <div style="margin-bottom: 5px;">송장 번호: ${payment.invoiceNumber} | 결제일: ${payment.paymentDate} | 금액: ${formatCurrency(payment.totalAmount)}</div>
           <div>인쇄일자: ${new Date().toLocaleDateString()} | ORBIT 구매 관리 시스템</div>
         </div>
       `;
@@ -579,7 +491,10 @@ const PaymentDetailPage = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box>
                 <Typography variant="h5" component="h1">
-                  거래 번호 : {payment.transactionId || '-'}
+                  결제 번호: #{payment.id}
+                </Typography>
+                <Typography variant="subtitle1" sx={{ mt: 1 }}>
+                  거래 ID: {payment.transactionId || '-'}
                 </Typography>
               </Box>
               <Chip
@@ -657,20 +572,19 @@ const PaymentDetailPage = () => {
                   <Typography className="label">공급업체:</Typography>
                   <Typography className="value">{payment.supplierName}</Typography>
                 </InfoRow>
-
-              </Grid>
-              <Grid item xs={12} md={6}>
-                {/* <InfoRow>
-                  <Typography className="label">계약 번호:</Typography>
-                  <Typography className="value">{payment.contractNumber || '-'}</Typography>
-                </InfoRow> */}
-                <InfoRow>
-                  <Typography className="label">주문 번호:</Typography>
-                  <Typography className="value">{payment.orderNumber || '-'}</Typography>
-                </InfoRow>
                 <InfoRow>
                   <Typography className="label">품목:</Typography>
                   <Typography className="value">{payment.itemName}</Typography>
+                </InfoRow>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <InfoRow>
+                  <Typography className="label">계약 번호:</Typography>
+                  <Typography className="value">{payment.contractNumber || '-'}</Typography>
+                </InfoRow>
+                <InfoRow>
+                  <Typography className="label">주문 번호:</Typography>
+                  <Typography className="value">{payment.orderNumber || '-'}</Typography>
                 </InfoRow>
                 <InfoRow>
                   <Typography className="label">수량:</Typography>
@@ -699,10 +613,10 @@ const PaymentDetailPage = () => {
                 </TableHead>
                 <TableBody>
                   <TableRow>
-                    <TableCell align="center">{formatZeroableCurrency(payment.unitPrice)}</TableCell>
-                    <TableCell align="center">{formatZeroableCurrency(payment.supplyPrice)}</TableCell>
-                    <TableCell align="center">{formatZeroableCurrency(payment.vat)}</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>{formatCurrency(payment.totalAmount)}</TableCell>
+                    <TableCell align="center">{formatCurrency(payment.unitPrice)}</TableCell>
+                    <TableCell align="center">{formatCurrency(payment.supplyPrice)}</TableCell>
+                    <TableCell align="center">{formatCurrency(payment.vat)}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{formatCurrency(payment.totalAmount)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -728,6 +642,16 @@ const PaymentDetailPage = () => {
             >
               인쇄
             </Button>
+            {canEditPayment() && (
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/payments/edit/${id}`)}
+              >
+                수정
+              </Button>
+            )}
             {canDeletePayment() && (
               <Button
                 variant="outlined"
