@@ -52,8 +52,9 @@ import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
 import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
  import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
-/*import PaymentListPage from '@/pages/payment/PaymentListPage';
-import PaymentProcessPage from '@/pages/payment/PaymentProcessPage'; */
+import PaymentListPage from '@/pages/payment/PaymentListPage';
+import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
+import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -220,8 +221,9 @@ function AppContent() {
                   <Route path="/invoices/create" element={<InvoiceCreatePage />} />
 
                   {/* 지불 관리 */}
-                  {/* <Route path="/payments" element={<PaymentListPage />} />
-                  <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} /> */}
+                  <Route path="/payments" element={<PaymentListPage />} />
+                  <Route path="/payments/:id" element={<PaymentDetailPage />} />
+                  <Route path="/payments/create" element={<PaymentCreatePage />} />
 
                   {/* 협력사 관리 */}
                   <Route path="/supplier" element={<SupplierListPage />} />

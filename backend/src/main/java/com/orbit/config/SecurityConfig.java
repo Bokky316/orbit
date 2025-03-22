@@ -152,7 +152,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/deliveries", "/api/deliveries/**").hasAnyRole("BUYER", "ADMIN","SUPPLIER")
 
                 // 지불 관리 (ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/payments/**").hasRole("ADMIN")
+                .requestMatchers("/api/payments/**").hasAnyRole("BUYER","ADMIN")
 
                 // 협력업체 등록 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/supplier-registrations/**").hasAnyRole("SUPPLIER", "ADMIN")
