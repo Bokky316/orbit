@@ -18,12 +18,7 @@ const buyerAdminMenuItems = [
   { label: "발주관리", path: "/orders" },
   { label: "입고 관리", path: "/deliveries" },
   { label: "송장 관리", path: "/invoices" },
-  {
-    label: "자금 관리",
-    path: "/payments",
-    roles: ["ROLE_ADMIN", "ROLE_BUYER"]
-  },
-  { label: "통계 관리", path: "/chart" },
+  { label: "자금 관리", path: "/payments" },
   { label: "보고서생성/관리", path: "/reports" },
   { label: "시스템 설정", path: "/system", roles: ["ROLE_ADMIN"] }
 ];
