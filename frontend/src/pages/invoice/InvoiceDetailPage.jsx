@@ -428,11 +428,11 @@ const InvoiceDetailPage = () => {
       const simplifiedAmountHTML = `
         <div style="margin-top: 12px; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9;">
           <div style="display: flex; justify-content: flex-end; align-items: center; font-size: 14px;">
-            <div style="margin-right: 20px;">
+            <div style="padding-right: 20px;">
               <span style="font-weight: bold; margin-right: 10px;">공급가액:</span>
               <span>${formatCurrency(supplyPrice)}</span>
             </div>
-            <div style="margin-right: 20px;">
+            <div style="padding-right: 20px;">
               <span style="font-weight: bold; margin-right: 10px;">부가세:</span>
               <span>${formatCurrency(vat)}</span>
             </div>

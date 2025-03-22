@@ -252,6 +252,11 @@ const PaymentDetailPage = () => {
             box-sizing: border-box !important;
           }
 
+          /* 첫 번째 Paper 요소 제거 */
+          .payment-detail-content > .MuiPaper-root:first-child {
+            display: none !important;
+          }
+
           .MuiPaper-root {
             padding: 15px !important;
             margin-bottom: 20px !important;
@@ -297,6 +302,29 @@ const PaymentDetailPage = () => {
             flex-basis: 66.666% !important;
             max-width: 66.666% !important;
             margin: 0 auto !important;
+          }
+
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 12px !important;
+          }
+
+          th, td {
+            padding: 5px 8px !important;
+            border: 1px solid #ddd !important;
+            font-size: 12px !important;
+            line-height: 1.3 !important;
+            font-weight: normal !important;
+          }
+
+          td[align="center"] {
+            text-align: center !important;
+          }
+
+          td[style*="font-weight: bold"] {
+            font-weight: bold !important;
+            font-size: 12px !important;
           }
 
           .label, .value {
@@ -385,16 +413,12 @@ const PaymentDetailPage = () => {
       // 인쇄 헤더와 푸터 추가
       const printHeader = `
         <div class="print-header">
-          결제 영수증 (No. ${payment.id})
-          <div style="font-size: 14px; margin-top: 5px; font-weight: normal;">
-            거래 ID: ${payment.transactionId || '-'}
-          </div>
+          거래 ID: ${payment.transactionId || '-'}
         </div>
       `;
 
       const printFooter = `
         <div class="print-footer">
-          <div style="margin-bottom: 5px;">송장 번호: ${payment.invoiceNumber} | 결제일: ${payment.paymentDate} | 금액: ${formatCurrency(payment.totalAmount)}</div>
           <div>인쇄일자: ${new Date().toLocaleDateString()} | ORBIT 구매 관리 시스템</div>
         </div>
       `;
@@ -491,10 +515,7 @@ const PaymentDetailPage = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box>
                 <Typography variant="h5" component="h1">
-                  결제 번호: #{payment.id}
-                </Typography>
-                <Typography variant="subtitle1" sx={{ mt: 1 }}>
-                  거래 ID: {payment.transactionId || '-'}
+                  거래 번호 : {payment.transactionId || '-'}
                 </Typography>
               </Box>
               <Chip
@@ -616,7 +637,7 @@ const PaymentDetailPage = () => {
                     <TableCell align="center">{formatCurrency(payment.unitPrice)}</TableCell>
                     <TableCell align="center">{formatCurrency(payment.supplyPrice)}</TableCell>
                     <TableCell align="center">{formatCurrency(payment.vat)}</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{formatCurrency(payment.totalAmount)}</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: 'inherit' }}>{formatCurrency(payment.totalAmount)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
