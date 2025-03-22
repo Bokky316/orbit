@@ -394,13 +394,6 @@ function DeliveryListPage() {
                     입고 목록
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton
-                        color="primary"
-                        onClick={handleRefresh}
-                        title="새로고침"
-                    >
-                        <RefreshIcon />
-                    </IconButton>
                     {/* 입고 등록 버튼은 ADMIN 또는 username이 001로 시작하는 BUYER만 표시 */}
                     {canCreateDelivery() && (
                         <Button
@@ -469,18 +462,6 @@ function DeliveryListPage() {
 
             {/* 테이블 영역 */}
             <Paper variant="outlined">
-                {/* 디버깅 정보 (개발 환경에서만 표시) */}
-                {process.env.NODE_ENV === 'development' && currentUser && (
-                    <Box sx={{ p: 1, bgcolor: '#f5f5f5', fontSize: '0.75rem' }}>
-                        <div>사용자: {currentUser.username} ({currentUser.roles?.join(', ') || currentUser.role})</div>
-                        <div>이름: {currentUser.name}</div>
-                        <div>001 구매관리팀: {isPurchaseDept() ? 'Yes' : 'No'}</div>
-                        <div>회사: {companyName || '-'}</div>
-                        <div>권한: {canCreateDelivery() ? '입고 등록 가능' : '입고 등록 불가'}</div>
-                        <div>필터링된 데이터: {filteredDeliveries.length} / 전체 데이터: {deliveries.length}</div>
-                    </Box>
-                )}
-
                 <TableContainer sx={{ maxHeight: 440 }}>
                     {loading ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
