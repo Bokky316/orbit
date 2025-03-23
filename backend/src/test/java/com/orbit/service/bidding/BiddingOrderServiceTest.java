@@ -1,13 +1,7 @@
 package com.orbit.service.bidding;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-
 import com.orbit.dto.statistics.MonthlyOrderStatisticsDto;
+import com.orbit.repository.bidding.BiddingOrderRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,8 +9,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-//import com.orbit.dto.bidding.MonthlyOrderStatisticsDto;
-import com.orbit.repository.bidding.BiddingOrderRepository;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class BiddingOrderServiceTest {

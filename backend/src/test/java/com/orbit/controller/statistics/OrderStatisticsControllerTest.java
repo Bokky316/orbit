@@ -1,16 +1,11 @@
 package com.orbit.controller.statistics;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-
+import com.orbit.config.SecurityConfig;
+import com.orbit.config.jwt.RefreshTokenCheckFilter;
+import com.orbit.config.jwt.TokenAuthenticationFilter;
+import com.orbit.dto.statistics.MonthlyOrderStatisticsDto;
+import com.orbit.service.bidding.BiddingOrderService;
+import com.orbit.service.statistics.OrderStatisticsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,16 +13,20 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.http.MediaType;
 
-import com.orbit.config.SecurityConfig;
-import com.orbit.config.jwt.TokenAuthenticationFilter;
-import com.orbit.config.jwt.RefreshTokenCheckFilter;
-import com.orbit.dto.statistics.MonthlyOrderStatisticsDto;
-import com.orbit.service.bidding.BiddingOrderService;
-import com.orbit.service.statistics.OrderStatisticsService;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(value = OrderStatisticsController.class,
     excludeFilters = {
