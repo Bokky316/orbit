@@ -290,4 +290,34 @@ public class InvoiceController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    // 담당자별 송장 목록 페이징/검색/정렬 조회
+    @GetMapping("/list/approver/{approverId}")
+    public ResponseEntity<Map<String, Object>> getFilteredInvoicesByApprover(
+            @PathVariable Long approverId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "issueDate") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+
+        Page<Invoice> invoicesPage = invoiceService.getFilteredInvoicesByApprover(status, searchTerm, approverId, pageable);
+        Page<InvoiceDto> invoiceDtos = invoicesPage.map(InvoiceDto::fromEntity);
+
+        InvoiceService.InvoiceStatistics statistics = invoiceService.getInvoiceStatistics();
+
+        Map<String, Object> response = Map.of(
+                "invoices", invoiceDtos.getContent(),
+                "currentPage", invoiceDtos.getNumber(),
+                "totalItems", invoiceDtos.getTotalElements(),
+                "totalPages", invoiceDtos.getTotalPages(),
+                "statistics", statistics
+        );
+
+        return ResponseEntity.ok(response);
+    }
 }

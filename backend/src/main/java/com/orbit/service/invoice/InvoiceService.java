@@ -107,6 +107,28 @@ public class InvoiceService {
     }
 
     /**
+     * 페이징 및 정렬, 필터링, 담당자를 적용한 송장 목록 조회
+     */
+    public Page<Invoice> getFilteredInvoicesByApprover(String status, String searchTerm, Long approverId, Pageable pageable) {
+        // 상태, 검색어, 담당자가 모두 있는 경우
+        if (status != null && !status.isEmpty() && searchTerm != null && !searchTerm.isEmpty()) {
+            return invoiceRepository.findByStatusAndApproverIdAndSearchTerm("INVOICE", status, approverId, searchTerm, pageable);
+        }
+        // 상태와 담당자만 있는 경우
+        else if (status != null && !status.isEmpty()) {
+            return invoiceRepository.findByStatusAndApproverId("INVOICE", status, approverId, pageable);
+        }
+        // 검색어와 담당자만 있는 경우
+        else if (searchTerm != null && !searchTerm.isEmpty()) {
+            return invoiceRepository.findByApproverIdAndSearchTerm(approverId, searchTerm, pageable);
+        }
+        // 담당자만 있는 경우
+        else {
+            return invoiceRepository.findByApproverId(approverId, pageable);
+        }
+    }
+
+    /**
      * 송장 상태별 통계 조회
      */
     public InvoiceStatistics getInvoiceStatistics() {
@@ -152,6 +174,61 @@ public class InvoiceService {
                 .rejectedCount(rejectedInvoices.size())
                 .paidCount(paidInvoices.size())
                 .overdueCount(overdueInvoices.size())
+                .totalAmount(totalAmount)
+                .waitingAmount(waitingAmount)
+                .approvedAmount(approvedAmount)
+                .rejectedAmount(rejectedAmount)
+                .paidAmount(paidAmount)
+                .overdueAmount(overdueAmount)
+                .build();
+    }
+
+    /**
+     * 담당자별 송장 통계 조회
+     */
+    public InvoiceStatistics getInvoiceStatisticsByApprover(Long approverId) {
+        List<Invoice> allInvoices = invoiceRepository.findByApproverId(approverId, Pageable.unpaged()).getContent();
+
+        // 상태별 분류
+        Page<Invoice> waitingInvoices = invoiceRepository.findByStatusAndApproverId("INVOICE", "WAITING", approverId, Pageable.unpaged());
+        Page<Invoice> approvedInvoices = invoiceRepository.findByStatusAndApproverId("INVOICE", "APPROVED", approverId, Pageable.unpaged());
+        Page<Invoice> rejectedInvoices = invoiceRepository.findByStatusAndApproverId("INVOICE", "REJECTED", approverId, Pageable.unpaged());
+        Page<Invoice> paidInvoices = invoiceRepository.findByStatusAndApproverId("INVOICE", "PAID", approverId, Pageable.unpaged());
+        Page<Invoice> overdueInvoices = invoiceRepository.findByStatusAndApproverId("INVOICE", "OVERDUE", approverId, Pageable.unpaged());
+
+        // 금액 합계 계산
+        long totalAmount = allInvoices.stream()
+                .mapToLong(i -> i.getTotalAmount().longValue())
+                .sum();
+
+        long waitingAmount = waitingInvoices.getContent().stream()
+                .mapToLong(i -> i.getTotalAmount().longValue())
+                .sum();
+
+        long approvedAmount = approvedInvoices.getContent().stream()
+                .mapToLong(i -> i.getTotalAmount().longValue())
+                .sum();
+
+        long rejectedAmount = rejectedInvoices.getContent().stream()
+                .mapToLong(i -> i.getTotalAmount().longValue())
+                .sum();
+
+        long paidAmount = paidInvoices.getContent().stream()
+                .mapToLong(i -> i.getTotalAmount().longValue())
+                .sum();
+
+        long overdueAmount = overdueInvoices.getContent().stream()
+                .mapToLong(i -> i.getTotalAmount().longValue())
+                .sum();
+
+        // 통계 객체 생성
+        return InvoiceStatistics.builder()
+                .totalCount(allInvoices.size())
+                .waitingCount((int) waitingInvoices.getTotalElements())
+                .approvedCount((int) approvedInvoices.getTotalElements())
+                .rejectedCount((int) rejectedInvoices.getTotalElements())
+                .paidCount((int) paidInvoices.getTotalElements())
+                .overdueCount((int) overdueInvoices.getTotalElements())
                 .totalAmount(totalAmount)
                 .waitingAmount(waitingAmount)
                 .approvedAmount(approvedAmount)
