@@ -44,7 +44,7 @@ import {
 } from "@mui/lab";
 import moment from "moment";
 
-const BiddingOrderDetail = () => {
+const BiddingOrderDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
@@ -644,4 +644,4 @@ const BiddingOrderDetail = () => {
   );
 };
 
-export default BiddingOrderDetail;
+export default BiddingOrderDetailPage;

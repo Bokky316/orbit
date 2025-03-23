@@ -1,5 +1,11 @@
 package com.orbit.service.organization;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.orbit.dto.approval.DepartmentDTO;
 import com.orbit.dto.member.MemberDTO;
 import com.orbit.entity.approval.Department;
@@ -7,13 +13,9 @@ import com.orbit.entity.member.Member;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.DepartmentRepository;
 import com.orbit.repository.member.MemberRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 조직 관련 서비스 (부서 및 멤버 정보 조회)

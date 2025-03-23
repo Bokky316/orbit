@@ -1,6 +1,6 @@
 // src/pages/item/ItemListPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Container,
   Typography,
@@ -19,9 +19,9 @@ import {
   MenuItem,
   FormControl,
   InputLabel
-} from '@mui/material';
-import { Edit, Delete } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+} from "@mui/material";
+import { Edit, Delete } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
 import {
   fetchAllItems,
@@ -30,9 +30,9 @@ import {
   selectItems,
   selectCategories,
   selectItemCategoryLoading
-} from '@redux/itemCategorySlice';
+} from "@redux/itemCategorySlice";
 
-import ConfirmDialog from '@components/common/ConfirmDialog';
+import ConfirmDialog from "@components/common/ConfirmDialog";
 
 const ItemListPage = () => {
   const dispatch = useDispatch();
@@ -41,7 +41,7 @@ const ItemListPage = () => {
   const categories = useSelector(selectCategories);
   const isLoading = useSelector(selectItemCategoryLoading);
 
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
@@ -68,12 +68,16 @@ const ItemListPage = () => {
   };
 
   const filteredItems = selectedCategory
-    ? items.filter(item => item.categoryId === selectedCategory)
+    ? items.filter((item) => item.categoryId === selectedCategory)
     : items;
 
   return (
     <Container maxWidth="lg">
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}>
         <Typography variant="h4">아이템 관리</Typography>
         <Box display="flex" alignItems="center" gap={2}>
           <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
@@ -81,10 +85,9 @@ const ItemListPage = () => {
             <Select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              label="카테고리 필터"
-            >
+              label="카테고리 필터">
               <MenuItem value="">전체 카테고리</MenuItem>
-              {categories.map(category => (
+              {categories.map((category) => (
                 <MenuItem key={category.id} value={category.id}>
                   {category.name}
                 </MenuItem>
@@ -94,8 +97,7 @@ const ItemListPage = () => {
           <Button
             variant="contained"
             color="primary"
-            onClick={() => navigate('/items/new')}
-          >
+            onClick={() => navigate("/items/new")}>
             아이템 추가
           </Button>
         </Box>
@@ -120,26 +122,24 @@ const ItemListPage = () => {
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.code}</TableCell>
                 <TableCell>{item.categoryName}</TableCell>
-                <TableCell>{item.specification || '-'}</TableCell>
+                <TableCell>{item.specification || "-"}</TableCell>
                 <TableCell>{item.standardPrice.toLocaleString()}원</TableCell>
                 <TableCell>
                   <Chip
-                    label={item.useYn === 'Y' ? '활성' : '비활성'}
-                    color={item.useYn === 'Y' ? 'primary' : 'default'}
+                    label={item.useYn === "Y" ? "활성" : "비활성"}
+                    color={item.useYn === "Y" ? "primary" : "default"}
                     size="small"
                   />
                 </TableCell>
                 <TableCell align="right">
                   <IconButton
                     color="primary"
-                    onClick={() => handleEditItem(item)}
-                  >
+                    onClick={() => handleEditItem(item)}>
                     <Edit />
                   </IconButton>
                   <IconButton
                     color="secondary"
-                    onClick={() => handleDeleteItem(item)}
-                  >
+                    onClick={() => handleDeleteItem(item)}>
                     <Delete />
                   </IconButton>
                 </TableCell>

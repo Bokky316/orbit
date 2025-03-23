@@ -52,16 +52,14 @@ public class Bidding extends BaseEntity {
    @JoinColumn(name = "purchase_request_id")
    private PurchaseRequest purchaseRequest;
 
-   @Column(name = "purchase_request_id", insertable = false, updatable = false)
-   private Long purchaseRequestId; // 구매 요청 ID (매핑용)
-
    // 구매 요청 품목 연관관계
    @ManyToOne(fetch = FetchType.LAZY)
    @JoinColumn(name = "purchase_request_item_id")
    private PurchaseRequestItem purchaseRequestItem;
 
+   // 구매 요청 품목 ID 매핑 (필요한 경우)
    @Column(name = "purchase_request_item_id", insertable = false, updatable = false)
-   private Long purchaseRequestItemId; // 구매 요청 품목 ID (매핑용)
+   private Long purchaseRequestItemId;
 
    // 입찰 기본 정보
    @Column(name = "bid_number", unique = true, nullable = false, length = 50)
@@ -124,9 +122,9 @@ public class Bidding extends BaseEntity {
    private ChildCode methodChild;
 
    // 입찰 초대 공급사 목록 (양방향 1:N)
-   @OneToMany(mappedBy = "biddingId", cascade = CascadeType.ALL)
-   @Builder.Default
-   private List<BiddingSupplier> suppliers = new ArrayList<>();
+    @OneToMany(mappedBy = "bidding", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<BiddingSupplier> suppliers = new ArrayList<>();
 
    // 입찰 참여 정보 (양방향 1:N)
    @OneToMany(mappedBy = "bidding", cascade = CascadeType.ALL)
@@ -173,6 +171,59 @@ public class Bidding extends BaseEntity {
             this.attachmentPaths.remove(filePath);
         }
     }
+
+    /**
+    * 구매 요청 품목의 정보를 기반으로 입찰 정보 초기화
+    */
+    public void initializeFromPurchaseRequestItem() {
+        if (this.purchaseRequestItem != null) {
+            // 수량 설정
+            this.quantity = this.purchaseRequestItem.getQuantity();
+            
+            // 단가 설정
+            this.unitPrice = this.purchaseRequestItem.getUnitPrice();
+            
+            // 공급가액, VAT, 총액 재계산
+            recalculatePrices();
+            
+            // 추가 정보 설정 (선택적)
+            if (this.purchaseRequest == null && this.purchaseRequestItem.getPurchaseRequest() != null) {
+                // 구매요청 객체가 없으면 구매요청 품목에서 가져옴
+                this.purchaseRequest = this.purchaseRequestItem.getPurchaseRequest();
+            }
+            
+            if (this.purchaseRequest != null) {
+                this.title = this.purchaseRequest.getRequestName();
+                this.description = this.purchaseRequest.getSpecialNotes();
+            }
+        }
+    }
+
+    // 양방향 연관관계 유지를 위한 헬퍼 메서드
+    public void setPurchaseRequestItem(PurchaseRequestItem purchaseRequestItem) {
+        this.purchaseRequestItem = purchaseRequestItem;
+        
+        // 구매요청도 함께 설정
+        if (purchaseRequestItem != null && purchaseRequestItem.getPurchaseRequest() != null) {
+            this.purchaseRequest = purchaseRequestItem.getPurchaseRequest();
+        }
+        
+        // 초기화 메서드 호출
+        initializeFromPurchaseRequestItem();
+    }
+
+    /**
+    * 구매 요청 품목의 정보로 입찰 가격 정보 업데이트
+    */
+   public void updatePricesFromPurchaseRequestItem() {
+    if (this.purchaseRequestItem != null) {
+        this.quantity = this.purchaseRequestItem.getQuantity();
+        this.unitPrice = this.purchaseRequestItem.getUnitPrice();
+        
+        // 가격 재계산 메서드 호출
+        recalculatePrices();
+    }
+}
    
     /**
      * 금액 재계산
@@ -241,47 +292,48 @@ public class Bidding extends BaseEntity {
    /**
     * 공급사 초대 추가 + 알림 발송
     */
-   public BiddingSupplier inviteSupplier(Long supplierId, MemberRepository memberRepo, NotificationRepository notificationRepo) {
-       // 이미 초대했는지 확인
-       boolean alreadyInvited = suppliers.stream()
-           .anyMatch(s -> s.getSupplierId().equals(supplierId));
-           
-       if (alreadyInvited) {
-           throw new IllegalStateException("이미 초대된 공급사입니다.");
-       }
-       
-       // 초대 생성
-       BiddingSupplier supplier = BiddingSupplier.builder()
-           .biddingId(this.id)
-           .supplierId(supplierId)
-           .notificationSent(false)
-           .build();
-           
-       suppliers.add(supplier);
-       
-       // 알림 생성 및 발송
-       try {
-           Member supplierMember = memberRepo.findById(supplierId).orElse(null);
-           if (supplierMember != null) {
-               Notification notification = Notification.createBiddingNotification(
-                   supplierMember,
-                   "새로운 입찰 공고 초대",
-                   "입찰 공고 '" + this.title + "'에 참여 요청이 왔습니다. 확인해주세요.",
-                   this.id
-               );
-               notificationRepo.save(notification);
-               
-               // 알림 발송 처리 완료
-               supplier.setNotificationSent(true);
-               supplier.setNotificationDate(LocalDateTime.now());
-           }
-       } catch (Exception e) {
-           // 알림 발송 실패 처리 (로깅 필요)
-           System.err.println("공급사 초대 알림 발송 실패: " + e.getMessage());
-       }
-       
-       return supplier;
-   }
+    public BiddingSupplier inviteSupplier(Long supplierId, MemberRepository memberRepo, NotificationRepository notificationRepo) {
+        // 이미 초대했는지 확인
+        boolean alreadyInvited = suppliers.stream()
+            .anyMatch(s -> s.getSupplier() != null && s.getSupplier().getId().equals(supplierId));
+            
+        if (alreadyInvited) {
+            throw new IllegalStateException("이미 초대된 공급사입니다.");
+        }
+        
+        // supplier 멤버 조회
+        Member supplierMember = memberRepo.findById(supplierId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 공급사입니다."));
+        
+        // 초대 생성
+        BiddingSupplier supplier = new BiddingSupplier();
+        supplier.setBidding(this); // 객체 참조 방식 사용
+        supplier.setSupplier(supplierMember); // 공급사 객체 설정
+        supplier.setCompanyName(supplierMember.getCompanyName()); // 공급사 이름 설정
+        supplier.setNotificationSent(false);
+        
+        suppliers.add(supplier);
+        
+        // 알림 생성 및 발송
+        try {
+            Notification notification = Notification.createBiddingNotification(
+                supplierMember,
+                "새로운 입찰 공고 초대",
+                "입찰 공고 '" + this.title + "'에 참여 요청이 왔습니다. 확인해주세요.",
+                this.id
+            );
+            notificationRepo.save(notification);
+            
+            // 알림 발송 처리 완료
+            supplier.setNotificationSent(true);
+            supplier.setNotificationDate(LocalDateTime.now());
+        } catch (Exception e) {
+            // 알림 발송 실패 처리 (로깅 필요)
+            System.err.println("공급사 초대 알림 발송 실패: " + e.getMessage());
+        }
+        
+        return supplier;
+    }
 
    /**
     * 공급사 참여 추가
@@ -306,6 +358,7 @@ public class Bidding extends BaseEntity {
            .build();
            
        participations.add(participation);
+       participation.setBidding(this);
        return participation;
    }
 
@@ -361,60 +414,64 @@ public class Bidding extends BaseEntity {
            System.err.println("상태 변경 알림 발송 실패: " + e.getMessage());
        }
    }
-   
+
    /**
     * 상태 변경 알림 발송 헬퍼 메서드
     */
-   private void sendStatusChangeNotifications(String title, String content,
-                                          MemberRepository memberRepo, NotificationRepository notificationRepo) {
-       // 초대된 모든 공급사에게 알림 발송
-       for (BiddingSupplier supplier : suppliers) {
-           Member supplierMember = memberRepo.findById(supplier.getSupplierId()).orElse(null);
-           if (supplierMember != null) {
-               Notification notification = Notification.createBiddingNotification(
-                   supplierMember, title, content, this.id
-               );
-               notificationRepo.save(notification);
-           }
-       }
-       
-       // 참여한 모든 공급사에게 알림 발송
-       for (BiddingParticipation participation : participations) {
-           // 중복 방지 (이미 초대된 공급사인 경우 제외)
-           boolean alreadyNotified = suppliers.stream()
-               .anyMatch(s -> s.getSupplierId().equals(participation.getSupplierId()));
-               
-           if (!alreadyNotified) {
-               Member participantMember = memberRepo.findById(participation.getSupplierId()).orElse(null);
-               if (participantMember != null) {
-                   Notification notification = Notification.createBiddingNotification(
-                       participantMember, title, content, this.id
-                   );
-                   notificationRepo.save(notification);
-               }
-           }
-       }
-   }
+    private void sendStatusChangeNotifications(String title, String content,
+                                        MemberRepository memberRepo, NotificationRepository notificationRepo) {
+        // 초대된 모든 공급사에게 알림 발송
+        for (BiddingSupplier supplier : suppliers) {
+            if (supplier.getSupplier() != null) {
+                Member supplierMember = supplier.getSupplier();
+                Notification notification = Notification.createBiddingNotification(
+                    supplierMember, title, content, this.id
+                );
+                notificationRepo.save(notification);
+            }
+        }
+        
+        // 참여한 모든 공급사에게 알림 발송
+        for (BiddingParticipation participation : participations) {
+            // 중복 방지 (이미 초대된 공급사인 경우 제외)
+            boolean alreadyNotified = suppliers.stream()
+                .anyMatch(s -> s.getSupplier() != null && 
+                        s.getSupplier().getId().equals(participation.getSupplierId()));
+                
+            if (!alreadyNotified) {
+                Member participantMember = memberRepo.findById(participation.getSupplierId()).orElse(null);
+                if (participantMember != null) {
+                    Notification notification = Notification.createBiddingNotification(
+                        participantMember, title, content, this.id
+                    );
+                    notificationRepo.save(notification);
+                }
+            }
+        }
+    }
+
+  
 
    /**
      * 평가 추가 + 알림 발송
      */
     public BiddingEvaluation addEvaluation(BiddingParticipation participation, Long evaluatorId,
-                                    MemberRepository memberRepo, NotificationRepository notificationRepo) {
+                                MemberRepository memberRepo, NotificationRepository notificationRepo) {
         // 평가 생성
         BiddingEvaluation evaluation = BiddingEvaluation.builder()
             .biddingId(this.id)
-            .biddingParticipationId(participation.getId())
             .supplierName(participation.getCompanyName())
             .evaluatorId(evaluatorId)
-            // 기본 점수 설정
             .priceScore(0)
             .qualityScore(0)
             .deliveryScore(0)
             .reliabilityScore(0)
             .build();
             
-        // 평가 상태 업데이트 - 간단한 버전 호출로 수정
+        // participation 관계 설정
+        evaluation.setParticipation(participation);
+        
+        // 평가 상태 업데이트
         participation.updateEvaluationStatus(true);
         
         // 알림 발송

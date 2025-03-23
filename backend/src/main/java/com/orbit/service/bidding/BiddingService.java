@@ -48,6 +48,7 @@ import com.orbit.repository.bidding.BiddingSupplierRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.supplier.SupplierRegistrationRepository;
 import com.orbit.util.BiddingNumberUtil;
 import com.orbit.util.PriceCalculator;
 import com.orbit.util.PriceCalculator.PriceResult;
@@ -71,6 +72,7 @@ public class BiddingService {
     private final NotificationRepository notificationRepository;
     private final ParentCodeRepository parentCodeRepository;
     private final ChildCodeRepository childCodeRepository;
+    private final SupplierRegistrationRepository supplierRegistrationRepository;
     private final ResourceLoader resourceLoader;
 
     @Value("${uploadPath}")
@@ -174,9 +176,8 @@ public class BiddingService {
         bidding = biddingRepository.save(bidding);
 
         // 업데이트된 입찰 공고 반환
-        return BiddingDto.fromEntity(bidding);
+        return convertToDto(bidding);
     }
-
 
     @Transactional
     public Resource downloadAttachment(Long biddingId, String filename) {
@@ -258,10 +259,9 @@ public class BiddingService {
         }
         
         return biddings.stream()
-                .map(BiddingDto::fromEntity)
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
-
 
     /**
      * 특정 상태의 입찰 공고 목록 조회
@@ -281,19 +281,22 @@ public class BiddingService {
         
         List<Bidding> biddings = biddingRepository.findByStatusChild(statusCode.get());
         return biddings.stream()
-                .map(BiddingDto::fromEntity)
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
-
 
     /**
      * 특정 공급사가 초대된 입찰 공고 목록 조회
      */
     @Transactional(readOnly = true)
     public List<BiddingDto> getBiddingsInvitedSupplier(Long supplierId) {
+        // 멤버로 공급사 정보 조회
+        Member supplier = memberRepository.findById(supplierId)
+                .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+                
         List<Bidding> biddings = biddingRepository.findBiddingsInvitedSupplier(supplierId);
         return biddings.stream()
-                .map(BiddingDto::fromEntity)
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
@@ -304,7 +307,7 @@ public class BiddingService {
     public List<BiddingDto> getBiddingsParticipatedBySupplier(Long supplierId) {
         List<Bidding> biddings = biddingRepository.findBiddingsParticipatedBySupplier(supplierId);
         return biddings.stream()
-                .map(BiddingDto::fromEntity)
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
     
@@ -316,7 +319,7 @@ public class BiddingService {
         Bidding bidding = biddingRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + id));
         
-        return BiddingDto.fromEntity(bidding);
+        return convertToDto(bidding);
     }
 
     /**
@@ -394,18 +397,39 @@ public class BiddingService {
         if (formDto.getSupplierIds() != null && !formDto.getSupplierIds().isEmpty()) {
             for (Long supplierId : formDto.getSupplierIds()) {
                 try {
-                    // 공급사 초대 생성
-                    BiddingSupplier supplier = bidding.inviteSupplier(supplierId, memberRepository, notificationRepository);
-                    supplierRepository.save(supplier);
+                    // 공급사 조회
+                    Member supplier = memberRepository.findById(supplierId)
+                            .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+                    
+                    // 공급사 초대 생성 (수정된 메서드 사용)
+                    BiddingSupplier supplierInvitation = new BiddingSupplier();
+                    supplierInvitation.setBidding(bidding);
+                    supplierInvitation.setSupplier(supplier);
+                    supplierInvitation.setCompanyName(supplier.getCompanyName());
+                    supplierInvitation.setNotificationSent(false);
+                    
+                    // 초대 저장
+                    bidding.getSuppliers().add(supplierInvitation);
+                    supplierRepository.save(supplierInvitation);
+                    
+                    // 알림 발송 (새로운 방식)
+                    supplierInvitation.sendNotification(
+                        notificationRepository,
+                        memberRepository,
+                        "새로운 입찰 공고 초대",
+                        "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
+                    );
                 } catch (Exception e) {
                     log.error("공급사 초대 중 오류 발생: {}", e.getMessage());
                 }
             }
         }
         
-        return BiddingDto.fromEntity(bidding);
+        // 최종 저장
+        bidding = biddingRepository.save(bidding);
+        
+        return convertToDto(bidding);
     }
-
 
     /**
      * 입찰 공고 수정
@@ -427,7 +451,11 @@ public class BiddingService {
         bidding.setInternalNote(formDto.getInternalNote());
         bidding.setQuantity(formDto.getQuantity());
         bidding.setUnitPrice(formDto.getUnitPrice());
-        bidding.setAttachmentPaths(formDto.getAttachmentPaths());
+        
+        // 첨부파일 처리
+        if (formDto.getAttachmentPaths() != null) {
+            bidding.setAttachmentPaths(formDto.getAttachmentPaths());
+        }
         
         // 상태 코드 업데이트 (변경이 있는 경우)
         String statusCode = formDto.getStatusChild() != null ? formDto.getStatusChild().getCodeValue() : null;
@@ -475,9 +503,8 @@ public class BiddingService {
         // 엔티티 저장
         bidding = biddingRepository.save(bidding);
         
-        return BiddingDto.fromEntity(bidding);
+        return convertToDto(bidding);
     }
-
 
     /**
      * 입찰 공고 삭제
@@ -490,7 +517,6 @@ public class BiddingService {
         
         biddingRepository.deleteById(id);
     }
-
 
     /**
      * 입찰 상태 변경
@@ -515,23 +541,13 @@ public class BiddingService {
             throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + status);
         }
         
-        // 상태 변경
-        bidding.setStatusChild(newStatus.get());
+        // 상태 변경 및 알림 발송 (수정된 메서드 사용)
+        bidding.changeStatus(newStatus.get(), reason, null, memberRepository, notificationRepository);
         
-        // 상태 이력 추가
-        StatusHistory history = StatusHistory.builder()
-                .entityType(StatusHistory.EntityType.BIDDING)
-                .bidding(bidding)
-                .fromStatus(oldStatus)
-                .toStatus(newStatus.get())
-                .reason(reason)
-                .changedAt(LocalDateTime.now())
-                .build();
-        
-        bidding.getStatusHistories().add(history);
+        // 엔티티 저장
         bidding = biddingRepository.save(bidding);
         
-        return BiddingDto.fromEntity(bidding);
+        return convertToDto(bidding);
     }
 
     /**
@@ -541,7 +557,6 @@ public class BiddingService {
     public List<StatusHistory> getBiddingStatusHistories(Long biddingId) {
         return biddingRepository.findStatusHistoriesByBiddingId(biddingId);
     }
-
 
     /**
      * 입찰 참여
@@ -632,7 +647,6 @@ public class BiddingService {
         }
     }
 
-
     /**
      * 입찰 참여 금액 계산
      */
@@ -713,20 +727,7 @@ public class BiddingService {
         
         Optional<ChildCode> closedStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent.get(), "CLOSED");
         if (closedStatus.isPresent() && !closedStatus.get().equals(bidding.getStatusChild())) {
-            ChildCode oldStatus = bidding.getStatusChild();
-            bidding.setStatusChild(closedStatus.get());
-            
-            // 상태 이력 추가
-            StatusHistory history = StatusHistory.builder()
-                    .entityType(StatusHistory.EntityType.BIDDING)
-                    .bidding(bidding)
-                    .fromStatus(oldStatus)
-                    .toStatus(closedStatus.get())
-                    .reason("낙찰자 선정으로 인한 마감")
-                    .changedAt(LocalDateTime.now())
-                    .build();
-            
-            bidding.getStatusHistories().add(history);
+            bidding.changeStatus(closedStatus.get(), "낙찰자 선정으로 인한 마감", null, memberRepository, notificationRepository);
         }
         
         biddingRepository.save(bidding);
@@ -768,20 +769,7 @@ public class BiddingService {
         
         Optional<ChildCode> closedStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent.get(), "CLOSED");
         if (closedStatus.isPresent() && !closedStatus.get().equals(bidding.getStatusChild())) {
-            ChildCode oldStatus = bidding.getStatusChild();
-            bidding.setStatusChild(closedStatus.get());
-            
-            // 상태 이력 추가
-            StatusHistory history = StatusHistory.builder()
-                    .entityType(StatusHistory.EntityType.BIDDING)
-                    .bidding(bidding)
-                    .fromStatus(oldStatus)
-                    .toStatus(closedStatus.get())
-                    .reason("수동 낙찰자 선정으로 인한 마감")
-                    .changedAt(LocalDateTime.now())
-                    .build();
-            
-            bidding.getStatusHistories().add(history);
+            bidding.changeStatus(closedStatus.get(), "수동 낙찰자 선정으로 인한 마감", null, memberRepository, notificationRepository);
         }
         
         biddingRepository.save(bidding);
@@ -801,7 +789,6 @@ public class BiddingService {
                 .collect(Collectors.toList());
     }
 
-
     /**
      * 특정 입찰에 초대된 공급사 목록 조회
      */
@@ -810,7 +797,7 @@ public class BiddingService {
         List<BiddingSupplier> suppliers = supplierRepository.findByBiddingId(biddingId);
         
         return suppliers.stream()
-                .map(BiddingSupplierDto::fromEntity)
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
                 .collect(Collectors.toList());
     }
     
@@ -822,21 +809,38 @@ public class BiddingService {
         Bidding bidding = biddingRepository.findById(biddingId)
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
                 
+        // 멤버 조회
+        Member supplier = memberRepository.findById(supplierId)
+                .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+        
         // 이미 초대된 공급사인지 확인
         if (supplierRepository.existsByBiddingIdAndSupplierId(biddingId, supplierId)) {
             throw new IllegalStateException("이미 초대된 공급사입니다.");
         }
         
-        // 공급사 초대
-        BiddingSupplier supplier = bidding.inviteSupplier(supplierId, memberRepository, notificationRepository);
-        supplier = supplierRepository.save(supplier);
+        // 공급사 초대 생성
+        BiddingSupplier supplierInvitation = new BiddingSupplier();
+        supplierInvitation.setBidding(bidding);
+        supplierInvitation.setSupplier(supplier);
+        supplierInvitation.setCompanyName(supplier.getCompanyName());
+        supplierInvitation.setNotificationSent(false);
         
-        return BiddingSupplierDto.fromEntity(supplier);
+        // 공급사 초대 저장
+        bidding.getSuppliers().add(supplierInvitation);
+        supplierInvitation = supplierRepository.save(supplierInvitation);
+        
+        // 알림 발송
+        supplierInvitation.sendNotification(
+            notificationRepository,
+            memberRepository,
+            "새로운 입찰 공고 초대",
+            "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
+        );
+        
+        return BiddingSupplierDto.fromEntityWithBusinessNo(supplierInvitation, supplierRegistrationRepository);
     }
-    
 
-
-   /**
+    /**
      * 계약 초안 생성
      */
     @Transactional
@@ -886,9 +890,7 @@ public class BiddingService {
         return contract.getId();
     }
     
-    
-    
-   /**
+    /**
      * 발주 생성
      */
     @Transactional
@@ -925,5 +927,33 @@ public class BiddingService {
         
         return order.getId();
     }
-
+    
+    /**
+     * Bidding 엔티티를 BiddingDto로 변환 (공급사 정보 포함)
+     */
+    private BiddingDto convertToDto(Bidding bidding) {
+        BiddingDto dto = BiddingDto.fromEntity(bidding);
+        
+        // 공급사 정보 변환 (사업자번호 포함)
+        if (bidding.getSuppliers() != null && !bidding.getSuppliers().isEmpty()) {
+            List<BiddingSupplierDto> supplierDtos = bidding.getSuppliers().stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
+                .collect(Collectors.toList());
+            
+            dto.setSuppliers(supplierDtos);
+            dto.setTotalSuppliers(supplierDtos.size());
+        }
+        
+        // 참여 정보 변환
+        if (bidding.getParticipations() != null && !bidding.getParticipations().isEmpty()) {
+            List<BiddingParticipationDto> participationDtos = bidding.getParticipations().stream()
+                .map(BiddingParticipationDto::fromEntity)
+                .collect(Collectors.toList());
+            
+            dto.setParticipations(participationDtos);
+            dto.setTotalParticipations(participationDtos.size());
+        }
+        
+        return dto;
+    }
 }

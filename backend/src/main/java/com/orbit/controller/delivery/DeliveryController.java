@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -39,6 +40,7 @@ public class DeliveryController {
             @RequestParam(required = false) String supplierName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Boolean invoiceIssued,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -49,6 +51,7 @@ public class DeliveryController {
                 .supplierName(supplierName)
                 .startDate(startDate)
                 .endDate(endDate)
+                .invoiceIssued(invoiceIssued)
                 .page(page)
                 .size(size)
                 .build();
@@ -140,5 +143,14 @@ public class DeliveryController {
     public ResponseEntity<Void> deleteDelivery(@PathVariable Long id) {
         deliveryService.deleteDelivery(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 송장 미발행 입고 목록 조회 (계약 번호 포함)
+     */
+    @GetMapping("/uninvoiced-with-contracts")
+    public ResponseEntity<List<Map<String, Object>>> getUninvoicedDeliveriesWithContracts() {
+        List<Map<String, Object>> result = deliveryService.getUninvoicedDeliveriesWithContracts();
+        return ResponseEntity.ok(result);
     }
 }
