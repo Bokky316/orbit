@@ -918,6 +918,15 @@ export default function AdminMemberPage() {
               const totalPages = Math.ceil(count / pageRequest.size);
               return `${page + 1} / ${totalPages}`;
             }}
+            sx={{
+              '& .MuiTablePagination-selectLabel': {
+                marginRight: '8px',
+              },
+              '& .MuiTablePagination-select': {
+                marginRight: '16px',
+                minWidth: '45px'
+              }
+            }}
           />
         </TablePaper>
 
