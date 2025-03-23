@@ -682,7 +682,7 @@ const InvoiceEditPage = () => {
 
           {/* 비고 */}
           <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-            <SectionTitle>비고</SectionTitle>
+            <SectionTitle variant="h6">비고</SectionTitle>
             <Divider sx={{ mb: 2 }} />
             <TextField
               fullWidth
@@ -690,9 +690,11 @@ const InvoiceEditPage = () => {
               value={formData.notes}
               onChange={handleInputChange}
               multiline
-              rows={4}
+              variant="filled"
+              minRows={4}
+              maxRows={8}
+              placeholder="추가 정보가 있으면 입력하세요"
               margin="normal"
-              helperText="추가 정보가 있으면 입력하세요"
             />
           </Paper>
 

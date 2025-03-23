@@ -899,8 +899,11 @@ const InvoiceCreatePage = () => {
                 value={formData.notes}
                 onChange={handleInputChange}
                 multiline
-                rows={4}
+                variant="filled"
+                minRows={4}
+                maxRows={8}
                 placeholder="추가 정보가 있으면 입력하세요"
+                margin="normal"
               />
             </Paper>
 
