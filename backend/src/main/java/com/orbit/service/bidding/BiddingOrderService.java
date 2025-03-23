@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.orbit.dto.statistics.MonthlyOrderStatisticsDto;
 import com.orbit.repository.delivery.DeliveryRepository;
 import com.orbit.service.delivery.DeliveryService;
 import org.springframework.stereotype.Service;
@@ -450,5 +451,22 @@ public class BiddingOrderService {
                 .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + biddingOrderId));
 
         return BiddingOrderDto.fromEntity(order);
+    }
+
+    public List<MonthlyOrderStatisticsDto> getMonthlyOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
+        List<Object[]> results = biddingOrderRepository.findMonthlyOrderStatistics(startDate, endDate);
+
+        return results.stream()
+                .map(row -> MonthlyOrderStatisticsDto.builder()
+                        .yearMonth((String) row[0])
+                        .orderCount(((Number) row[1]).longValue())
+                        .totalAmount(((Number) row[2]).doubleValue())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Object[]> getSupplierOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
+        return biddingOrderRepository.findSupplierOrderStatistics(startDate, endDate);
     }
 }
