@@ -198,6 +198,7 @@ const InvoiceDetailPage = () => {
 
     return false;
   };
+
   // 송장에 대한 삭제 권한 확인
   const canDeleteInvoice = () => {
     if (!isLoggedIn || !currentUser || !invoice) return false;

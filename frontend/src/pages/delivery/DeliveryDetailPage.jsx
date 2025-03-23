@@ -491,50 +491,39 @@ function DeliveryDetailPage() {
                                 </Typography>
                             </Grid>
 
-                            {/* 버튼 영역 */}
-                            <Grid item xs={12}>
-                                <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
-                                    {/* 개발 환경에서만 표시되는 디버깅 정보 */}
-                                    {process.env.NODE_ENV === 'development' && (
-                                        <Box sx={{ width: '100%', mb: 2, p: 1, bgcolor: '#f5f5f5', fontSize: '0.75rem' }}>
-                                            <div>사용자: {(userInfo || currentUser)?.username}</div>
-                                            <div>역할: {(userInfo || currentUser)?.role || (userInfo || currentUser)?.roles?.join(', ')}</div>
-                                            <div>ADMIN: {isAdmin() ? 'Yes' : 'No'}</div>
-                                            <div>BUYER: {isBuyer() ? 'Yes' : 'No'}</div>
-                                            <div>구매부서(001): {isPurchaseDept() ? 'Yes' : 'No'}</div>
-                                            <div>공급업체: {isSupplier() ? 'Yes' : 'No'}</div>
-                                            <div>회사명: {companyName || '-'}</div>
-                                            <div>접근 권한: {canAccessDelivery() ? 'Yes' : 'No'}</div>
-                                            <div>수정 권한: {canEdit() ? 'Yes' : 'No'}</div>
-                                            <div>삭제 권한: {canDelete() ? 'Yes' : 'No'}</div>
-                                        </Box>
-                                    )}
+                           {/* 버튼 영역 */}
+                           <Grid item xs={12}>
+                             <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
+                               {/* 공급업체가 아닐 때만 버튼 표시 */}
+                               {!isSupplier() && (
+                                 <>
+                                   {/* 조건부 수정 버튼 표시 */}
+                                   <Button
+                                     variant="outlined"
+                                     color="primary"
+                                     startIcon={<EditIcon />}
+                                     onClick={handleEdit}
+                                     sx={{ minWidth: 120 }}
+                                     disabled={!canEdit()}
+                                   >
+                                     수정 {!canEdit() && '(권한 없음)'}
+                                   </Button>
 
-                                    {/* 조건부 수정 버튼 표시 */}
-                                    <Button
-                                        variant="outlined"
-                                        color="primary"
-                                        startIcon={<EditIcon />}
-                                        onClick={handleEdit}
-                                        sx={{ minWidth: 120 }}
-                                        disabled={!canEdit()}
-                                    >
-                                        수정 {!canEdit() && '(권한 없음)'}
-                                    </Button>
-
-                                    {/* 조건부 삭제 버튼 표시 */}
-                                    <Button
-                                        variant="outlined"
-                                        color="error"
-                                        startIcon={<DeleteIcon />}
-                                        onClick={handleOpenDeleteDialog}
-                                        sx={{ minWidth: 120 }}
-                                        disabled={!canDelete()}
-                                    >
-                                        삭제 {!canDelete() && '(권한 없음)'}
-                                    </Button>
-                                </Box>
-                            </Grid>
+                                   {/* 조건부 삭제 버튼 표시 */}
+                                   <Button
+                                     variant="outlined"
+                                     color="error"
+                                     startIcon={<DeleteIcon />}
+                                     onClick={handleOpenDeleteDialog}
+                                     sx={{ minWidth: 120 }}
+                                     disabled={!canDelete()}
+                                   >
+                                     삭제 {!canDelete() && '(권한 없음)'}
+                                   </Button>
+                                 </>
+                               )}
+                             </Box>
+                           </Grid>
                         </Grid>
                     </CardContent>
                 </Card>
