@@ -592,24 +592,12 @@ const PurchaseRequestDetailPage = () => {
     // 상태 변경 핸들러
     const handleStatusChange = (newStatus) => {
         if (window.confirm(`상태를 '${getStatusLabel(newStatus)}'로 변경하시겠습니까?`)) {
-            const currentStatus = request.prStatusChild;
+            const currentStatus = extractStatusCode(request);
             sendStatusChange(id, currentStatus, newStatus);
         }
     };
 
-    // 상태 라벨 가져오기
-    const getStatusLabel = (statusCode) => {
-        switch(statusCode) {
-            case 'REQUESTED': return '구매 요청';
-            case 'RECEIVED': return '구매요청 접수';
-            case 'VENDOR_SELECTION': return '업체 선정';
-            case 'CONTRACT_PENDING': return '계약 대기';
-            case 'INSPECTION': return '검수 진행';
-            case 'INVOICE_ISSUED': return '인보이스 발행';
-            case 'PAYMENT_COMPLETED': return '대금지급 완료';
-            default: return statusCode || '상태 정보 없음';
-        }
-    };
+
 
 
     // 구매요청 삭제 처리 함수
@@ -634,10 +622,10 @@ const PurchaseRequestDetailPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="h4">{request.requestName}</Typography>
                     <StatusChip
-                        label={getStatusLabel(request.prStatusChild)}
-                        statuscode={request.prStatusChild}
-                        variant="outlined"
-                    />
+                         label={getStatusLabel(extractStatusCode(request))}
+                         statuscode={extractStatusCode(request)}
+                         variant="outlined"
+                     />
                 </Box>
 
     return (
