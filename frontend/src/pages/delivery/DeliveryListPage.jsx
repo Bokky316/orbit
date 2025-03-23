@@ -4,8 +4,8 @@ import { useSelector } from 'react-redux';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, Button,
-    Grid, CircularProgress, IconButton, InputAdornment, TablePagination,
-    Snackbar, Alert
+    Grid, CircularProgress, InputAdornment, TablePagination,
+    Snackbar, Alert, Container, Chip, FormControl, InputLabel, Select, MenuItem, Card, CardContent
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -16,14 +16,10 @@ import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
 import { Search as SearchIcon, Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 
-const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
-    maxHeight: 440,
-    '& .MuiTableHead-root': {
-        position: 'sticky',
-        top: 0,
-        backgroundColor: theme.palette.background.paper,
-        zIndex: 1,
-    },
+// 스타일 컴포넌트
+const StyledCard = styled(Card)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+  boxShadow: theme.shadows[2]
 }));
 
 const StyledTableRow = styled(TableRow)(({ theme }) => ({
@@ -34,6 +30,48 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
         backgroundColor: theme.palette.action.selected,
     },
 }));
+
+// 송장 발행 상태에 따른 Chip 색상 및 라벨
+const getInvoiceStatusProps = (invoiceIssued) => {
+  if (invoiceIssued === true) {
+    return { color: 'success', label: '발행됨' };
+  } else {
+    return { color: 'warning', label: '미발행' };
+  }
+};
+
+// 금액 형식 변환 함수
+const formatCurrency = (amount) => {
+  if (!amount) return '0원';
+  return new Intl.NumberFormat('ko-KR').format(amount) + '원';
+};
+
+// 배송 상태에 따른 통계 계산
+const calculateStatistics = (deliveries) => {
+  const stats = {
+    totalCount: deliveries.length,
+    invoicedCount: 0,
+    notInvoicedCount: 0,
+    totalAmount: 0,
+    invoicedAmount: 0,
+    notInvoicedAmount: 0,
+  };
+
+  deliveries.forEach(delivery => {
+    const amount = parseFloat(delivery.totalAmount) || 0;
+    stats.totalAmount += amount;
+
+    if (delivery.invoiceIssued) {
+      stats.invoicedCount++;
+      stats.invoicedAmount += amount;
+    } else {
+      stats.notInvoicedCount++;
+      stats.notInvoicedAmount += amount;
+    }
+  });
+
+  return stats;
+};
 
 function DeliveryListPage() {
     const navigate = useNavigate();
@@ -49,6 +87,7 @@ function DeliveryListPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [deliveryDate, setDeliveryDate] = useState(null);
     const [supplier, setSupplier] = useState('');
+    const [invoiceStatus, setInvoiceStatus] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalPages, setTotalPages] = useState(0);
@@ -56,6 +95,18 @@ function DeliveryListPage() {
     const [error, setError] = useState('');
     const [showError, setShowError] = useState(false);
     const [companyName, setCompanyName] = useState('');
+    const [sortBy, setSortBy] = useState('regTime');
+    const [sortDir, setSortDir] = useState('desc');
+
+    // 통계 정보
+    const [statistics, setStatistics] = useState({
+      totalCount: 0,
+      invoicedCount: 0,
+      notInvoicedCount: 0,
+      totalAmount: 0,
+      invoicedAmount: 0,
+      notInvoicedAmount: 0,
+    });
 
     // 디버깅용 - 사용자 정보 출력
     useEffect(() => {
@@ -77,10 +128,9 @@ function DeliveryListPage() {
         return currentUser?.roles?.includes('ROLE_SUPPLIER') || currentUser?.role === 'SUPPLIER';
     };
 
-    // username이 001로 시작하는지 확인
+    // username이 001로 시작하는지 확인 (구매관리팀)
     const isPurchaseDept = () => {
         if (!currentUser?.username) return false;
-
         return currentUser.username.startsWith('001');
     };
 
@@ -231,6 +281,9 @@ function DeliveryListPage() {
             if (searchTerm) params.append('deliveryNumber', searchTerm);
             if (deliveryDate) params.append('startDate', moment(deliveryDate).format('YYYY-MM-DD'));
             if (supplier) params.append('supplierName', supplier);
+            if (invoiceStatus !== '') {
+                params.append('invoiceIssued', invoiceStatus === 'ISSUED' ? 'true' : 'false');
+            }
             params.append('page', page);
             params.append('size', rowsPerPage);
 
@@ -260,6 +313,10 @@ function DeliveryListPage() {
                     // 페이지네이션 정보 설정 (필터링된 데이터 기준)
                     setTotalElements(filtered.length);
                     setTotalPages(Math.ceil(filtered.length / rowsPerPage));
+
+                    // 통계 계산
+                    const calculatedStats = calculateStatistics(filtered);
+                    setStatistics(calculatedStats);
                 } else if (Array.isArray(data)) {
                     const allDeliveries = data;
                     setDeliveries(allDeliveries);
@@ -269,12 +326,26 @@ function DeliveryListPage() {
 
                     setTotalElements(filtered.length);
                     setTotalPages(Math.ceil(filtered.length / rowsPerPage));
+
+                    // 통계 계산
+                    const calculatedStats = calculateStatistics(filtered);
+                    setStatistics(calculatedStats);
                 } else {
                     console.error('예상치 못한 응답 형식:', data);
                     setDeliveries([]);
                     setFilteredDeliveries([]);
                     setTotalElements(0);
                     setTotalPages(0);
+
+                    // 빈 통계 설정
+                    setStatistics({
+                      totalCount: 0,
+                      invoicedCount: 0,
+                      notInvoicedCount: 0,
+                      totalAmount: 0,
+                      invoicedAmount: 0,
+                      notInvoicedAmount: 0,
+                    });
                 }
             } else {
                 throw new Error('입고 목록 조회 실패');
@@ -287,6 +358,16 @@ function DeliveryListPage() {
             setTotalPages(0);
             setError('데이터를 불러오는 중 오류가 발생했습니다.');
             setShowError(true);
+
+            // 빈 통계 설정
+            setStatistics({
+              totalCount: 0,
+              invoicedCount: 0,
+              notInvoicedCount: 0,
+              totalAmount: 0,
+              invoicedAmount: 0,
+              notInvoicedAmount: 0,
+            });
         } finally {
             setLoading(false);
         }
@@ -308,6 +389,10 @@ function DeliveryListPage() {
             setFilteredDeliveries(filtered);
             setTotalElements(filtered.length);
             setTotalPages(Math.ceil(filtered.length / rowsPerPage));
+
+            // 통계 재계산
+            const calculatedStats = calculateStatistics(filtered);
+            setStatistics(calculatedStats);
         }
     }, [currentUser, companyName]);
 
@@ -346,6 +431,17 @@ function DeliveryListPage() {
 
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const handleInvoiceStatusChange = (event) => {
+        setInvoiceStatus(event.target.value);
+        setPage(0);
+    };
+
+    const handleSortChange = (field, direction) => {
+        setSortBy(field);
+        setSortDir(direction);
         setPage(0);
     };
 
@@ -408,6 +504,41 @@ function DeliveryListPage() {
                 </Box>
             </Box>
 
+            {/* 요약 카드 섹션 */}
+            <Box sx={{ mb: 3, overflowX: 'auto' }}>
+                <Grid container spacing={1}>
+                    <Grid item xs={4} sm={4}>
+                        <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+                            <Typography variant="body2" color="text.secondary">총 입고</Typography>
+                            <Typography variant="h6" sx={{ my: 1 }}>{statistics.totalCount}</Typography>
+                            <Typography variant="caption" display="block">
+                                {formatCurrency(statistics.totalAmount)}
+                            </Typography>
+                        </Box>
+                    </Grid>
+
+                    <Grid item xs={4} sm={4}>
+                        <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+                            <Typography variant="body2" color="text.secondary">송장 발행</Typography>
+                            <Typography variant="h6" color="success.main" sx={{ my: 1 }}>{statistics.invoicedCount}</Typography>
+                            <Typography variant="caption" display="block">
+                                {formatCurrency(statistics.invoicedAmount)}
+                            </Typography>
+                        </Box>
+                    </Grid>
+
+                    <Grid item xs={4} sm={4}>
+                        <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+                            <Typography variant="body2" color="text.secondary">송장 미발행</Typography>
+                            <Typography variant="h6" color="warning.main" sx={{ my: 1 }}>{statistics.notInvoicedCount}</Typography>
+                            <Typography variant="caption" display="block">
+                                {formatCurrency(statistics.notInvoicedAmount)}
+                            </Typography>
+                        </Box>
+                    </Grid>
+                </Grid>
+            </Box>
+
             {/* 검색 필터 영역 */}
             <Paper sx={{ p: 2, mb: 2 }}>
                 <Grid container spacing={2} alignItems="center">
@@ -419,8 +550,8 @@ function DeliveryListPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                             InputProps={{
-                                endAdornment: (
-                                    <InputAdornment position="end">
+                                startAdornment: (
+                                    <InputAdornment position="start">
                                         <SearchIcon />
                                     </InputAdornment>
                                 ),
@@ -437,7 +568,7 @@ function DeliveryListPage() {
                             />
                         </LocalizationProvider>
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} md={2}>
                         <TextField
                             fullWidth
                             label="공급업체명"
@@ -448,7 +579,21 @@ function DeliveryListPage() {
                             disabled={isSupplier()}
                         />
                     </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
+                    <Grid item xs={12} sm={6} md={2}>
+                        <FormControl fullWidth variant="outlined">
+                            <InputLabel>송장 상태</InputLabel>
+                            <Select
+                                value={invoiceStatus}
+                                onChange={handleInvoiceStatusChange}
+                                label="송장 상태"
+                            >
+                                <MenuItem value="">전체</MenuItem>
+                                <MenuItem value="ISSUED">발행됨</MenuItem>
+                                <MenuItem value="NOT_ISSUED">미발행</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={2}>
                         <Button
                             variant="contained"
                             onClick={handleSearch}
@@ -471,12 +616,13 @@ function DeliveryListPage() {
                         <Table stickyHeader>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>입고번호</TableCell>
-                                    <TableCell>발주번호</TableCell>
-                                    <TableCell>공급업체명</TableCell>
-                                    <TableCell>입고일</TableCell>
-                                    <TableCell>입고 담당자</TableCell>
-                                    <TableCell>총 금액</TableCell>
+                                    <TableCell align="center">입고번호</TableCell>
+                                    <TableCell align="center">발주번호</TableCell>
+                                    <TableCell align="center">공급업체명</TableCell>
+                                    <TableCell align="center">입고일</TableCell>
+                                    <TableCell align="center">입고 담당자</TableCell>
+                                    <TableCell align="center">총 금액</TableCell>
+                                    <TableCell align="center">송장 상태</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -491,17 +637,24 @@ function DeliveryListPage() {
                                                 opacity: canAccessDelivery(delivery) ? 1 : 0.5
                                             }}
                                         >
-                                            <TableCell>{delivery.deliveryNumber}</TableCell>
-                                            <TableCell>{delivery.orderNumber}</TableCell>
-                                            <TableCell>{delivery.supplierName}</TableCell>
-                                            <TableCell>{delivery.deliveryDate ? moment(delivery.deliveryDate).format('YYYY-MM-DD') : '-'}</TableCell>
-                                            <TableCell>{delivery.receiverName || '-'}</TableCell>
-                                            <TableCell>{delivery.totalAmount ? delivery.totalAmount.toLocaleString() : '-'}</TableCell>
+                                            <TableCell align="center">{delivery.deliveryNumber}</TableCell>
+                                            <TableCell align="center">{delivery.orderNumber}</TableCell>
+                                            <TableCell align="center">{delivery.supplierName}</TableCell>
+                                            <TableCell align="center">{delivery.deliveryDate ? moment(delivery.deliveryDate).format('YYYY-MM-DD') : '-'}</TableCell>
+                                            <TableCell align="center">{delivery.receiverName || '-'}</TableCell>
+                                            <TableCell align="center">{delivery.totalAmount ? delivery.totalAmount.toLocaleString() + '원' : '-'}</TableCell>
+                                            <TableCell align="center">
+                                                <Chip
+                                                    label={getInvoiceStatusProps(delivery.invoiceIssued).label}
+                                                    color={getInvoiceStatusProps(delivery.invoiceIssued).color}
+                                                    size="small"
+                                                />
+                                            </TableCell>
                                         </StyledTableRow>
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} align="center">
+                                        <TableCell colSpan={7} align="center">
                                             데이터가 없습니다.
                                         </TableCell>
                                     </TableRow>
