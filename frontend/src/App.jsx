@@ -246,6 +246,12 @@ function AppContent() {
 
                   {/* 알림 페이지 */}
                   <Route path="/notifications" element={<NotificationPage />} />
+                  {/* 사용자 관리 */}
+                  <Route
+                    path="/members"
+                    element={<AdminMemberPage />}
+                  />
+
                 </>
               )}
               <Route path="/payments" element={<PaymentListPage />} />
