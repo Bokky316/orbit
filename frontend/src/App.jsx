@@ -44,6 +44,8 @@ import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
+import ChartDashboard from '@/pages/statistics/ChartDashboard';
+
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -144,22 +146,16 @@ function AppContent() {
               <Route path="/supplier/edit/:id" element={<SupplierRegistrationPage />} />
 
 
-              <Route path="/categories" element={<CategoryListPage />} />
-              <Route path="/categories/new" element={<CategoryFormPage mode="create" />} />
-              <Route path="/categories/edit/:id" element={<CategoryFormPage mode="edit" />} />
+                  {/* 통계 관리 */}
+                  <Route path="/chart" element={<ChartDashboard />} />
 
-
-              <Route path="/items" element={<ItemListPage />} />
-              <Route path="/items/new" element={<ItemFormPage mode="create" />} />
-              <Route path="/items/edit/:id" element={<ItemFormPage mode="edit" />} />
-
-              {/* 공통 코드 관리 */}
-              <Route path="/common-codes" element={<CommonCodeManagement />} />
-
-                {/* 지불 관리 */}
-                <Route path="/payments" element={<PaymentListPage />} />
-                <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
-
+                  {/* 공통 코드 관리 */}
+                  <Route
+                    path="/common-codes"
+                    element={<CommonCodeManagement />}
+                  />
+                </>
+              )}
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>

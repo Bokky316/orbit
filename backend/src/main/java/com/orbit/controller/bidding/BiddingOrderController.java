@@ -1,6 +1,7 @@
 package com.orbit.controller.bidding;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -266,5 +267,25 @@ public class BiddingOrderController {
         }
     }
 
+    @GetMapping("/statistics/monthly")
+    public ResponseEntity<List<MonthlyOrderStatisticsDto>> getMonthlyStatistics(
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
+        return ResponseEntity.ok(orderService.getMonthlyOrderStatistics(startDate, endDate));
+    }
+
+    @GetMapping("/statistics/supplier")
+    public ResponseEntity<List<Object[]>> getSupplierOrderStatistics(
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
+        log.info("공급업체별 구매 실적 조회 요청");
+        try {
+            List<Object[]> statistics = orderService.getSupplierOrderStatistics(startDate, endDate);
+            return ResponseEntity.ok(statistics);
+        } catch (Exception e) {
+            log.error("공급업체별 구매 실적 조회 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
 }

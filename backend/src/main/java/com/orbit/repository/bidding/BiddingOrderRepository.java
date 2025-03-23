@@ -168,4 +168,23 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+
+    /**
+     * 공급업체별 구매 통계 조회
+     */
+    @Query(value = """
+        SELECT 
+            bo.supplier_id AS supplierId,
+            bo.supplier_name AS supplierName,
+            SUM(bo.total_amount) AS totalAmount
+        FROM bidding_orders bo
+        WHERE bo.reg_time BETWEEN CAST(:startDate AS DATETIME) AND CAST(:endDate AS DATETIME)
+        GROUP BY bo.supplier_id, bo.supplier_name
+        ORDER BY totalAmount DESC
+        """, nativeQuery = true)
+    List<Object[]> findSupplierOrderStatistics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }
