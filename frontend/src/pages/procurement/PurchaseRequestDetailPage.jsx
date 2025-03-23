@@ -147,10 +147,114 @@ const PurchaseRequestDetailPage = () => {
   const [hasApprovalAuthority, setHasApprovalAuthority] = useState(false);
   const [tabValue, setTabValue] = useState(0);
 
-  const extractStatusCode = (request) => {
-    // 1. prStatusChild가 있으면 그대로 사용
-    if (request.prStatusChild) {
-      return request.prStatusChild;
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                // 1. 구매 요청 데이터 가져오기
+                const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`데이터 로드 실패: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('API 응답 데이터:', data);
+
+                // 만약 GOODS 타입인데 items가 없으면 빈 배열로 초기화
+                if (data.businessType === 'GOODS' && !Array.isArray(data.items)) {
+                    console.log('GOODS 타입인데 items가 배열이 아니므로 초기화합니다');
+                    data.items = [];
+                }
+
+                setRequest(data);
+
+                // 2. 프로젝트 ID가 있으면 프로젝트 정보 가져오기
+                if (data.projectId) {
+                    const projectResponse = await fetchWithAuth(`${API_URL}projects/${data.projectId}`);
+                    if (projectResponse.ok) {
+                        const projectData = await projectResponse.json();
+                        setProject(projectData);
+                    } else {
+                        console.warn('프로젝트 정보를 가져오는데 실패했습니다.');
+                    }
+                }
+
+                // 3. 결재선 정보 가져오기
+                try {
+                    const approvalResponse = await fetchWithAuth(`${API_URL}approvals/${id}`);
+                    if (approvalResponse.ok) {
+                        const approvalData = await approvalResponse.json();
+                        setApprovalLines(approvalData);
+
+                        // 현재 사용자가 결재 권한이 있는지 확인
+                        if (currentUser) {
+                            const hasAuthority = approvalData.some(line =>
+                                (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
+                                (line.approverId === currentUser.id || line.approver_id === currentUser.id)
+                            );
+                            setHasApprovalAuthority(hasAuthority);
+                        }
+                    }
+                } catch (approvalError) {
+                    console.warn('결재선 정보를 가져오는데 실패했습니다:', approvalError);
+                    // 결재선 정보가 없어도 페이지는 계속 로드
+                }
+
+                setError(null);
+            } catch (error) {
+                console.error('Error:', error);
+                setError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [id, currentUser]);
+
+    // 결재 처리 완료 핸들러
+    const handleApprovalComplete = () => {
+        // 구매요청 정보 다시 조회
+        const fetchUpdatedData = async () => {
+            try {
+                console.log("결재 처리 완료 후 데이터 다시 로드");
+                const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("업데이트된 구매요청 데이터:", data);
+                    setRequest(data);
+
+                    // 결재선 정보 다시 조회
+                    const approvalResponse = await fetchWithAuth(`${API_URL}approvals/${id}`);
+                    if (approvalResponse.ok) {
+                        const approvalData = await approvalResponse.json();
+                        setApprovalLines(approvalData);
+
+                        // 결재 권한 업데이트
+                        if (currentUser) {
+                            const hasAuthority = approvalData.some(line =>
+                                (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
+                                (line.approverId === currentUser.id || line.approver_id === currentUser.id)
+                            );
+                            setHasApprovalAuthority(hasAuthority);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('데이터 업데이트 중 오류 발생:', error);
+            }
+        };
+
+        fetchUpdatedData();
+    };
+
+    // 로딩 상태 처리
+    if (loading) {
+        return (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+                <Typography>데이터를 불러오는 중입니다...</Typography>
+            </Box>
+        );
     }
 
     // 2. status_child_code가 있으면 사용 (이 부분 추가)
@@ -463,17 +567,302 @@ const PurchaseRequestDetailPage = () => {
     // 결재 상태 확인
     const approvalStatus = getApprovalStatus();
 
-    // 1. '구매 요청' 상태이거나
-    // 2. 결재가 진행 중이지만 최종 승인되지 않은 상태이고
-    // 3. 사용자가 요청자이거나 관리자인 경우
-    const isInReviewStatus =
-      approvalStatus.includes("REVIEW") || approvalStatus === "FIRST_LEVEL";
-    const isNotFullyApproved = approvalStatus !== "FULLY_APPROVED";
+    // 상태 변경 핸들러
+    const handleStatusChange = (newStatus) => {
+        if (window.confirm(`상태를 '${getStatusLabel(newStatus)}'로 변경하시겠습니까?`)) {
+            const currentStatus = request.prStatusChild;
+            sendStatusChange(id, currentStatus, newStatus);
+        }
+    };
+
+    // 상태 라벨 가져오기
+    const getStatusLabel = (statusCode) => {
+        switch(statusCode) {
+            case 'REQUESTED': return '구매 요청';
+            case 'RECEIVED': return '구매요청 접수';
+            case 'VENDOR_SELECTION': return '업체 선정';
+            case 'CONTRACT_PENDING': return '계약 대기';
+            case 'INSPECTION': return '검수 진행';
+            case 'INVOICE_ISSUED': return '인보이스 발행';
+            case 'PAYMENT_COMPLETED': return '대금지급 완료';
+            default: return statusCode || '상태 정보 없음';
+        }
+    };
+
+
+    // 구매요청 삭제 처리 함수
+    const handleDeleteRequest = () => {
+        if (window.confirm('정말 삭제하시겠습니까?')) {
+            dispatch(deletePurchaseRequest(id))
+                .unwrap()
+                .then(() => {
+                    alert('구매요청이 삭제되었습니다.');
+                    navigate('/purchase-requests');
+                })
+                .catch((err) => {
+                    alert(`삭제 실패: ${err}`);
+                });
+        }
+    };
 
     return (
-      (statusCode === "REQUESTED" ||
-        (isInReviewStatus && isNotFullyApproved)) &&
-      (isRequester || isAdmin)
+        <Box sx={{ p: 3 }}>
+            {/* 상단 헤더 및 상태 표시 */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="h4">{request.requestName}</Typography>
+                    <StatusChip
+                        label={getStatusLabel(request.prStatusChild)}
+                        statuscode={request.prStatusChild}
+                        variant="outlined"
+                    />
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {canModifyRequest() && (
+                        <>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<EditIcon />}
+                                onClick={() => navigate(`/purchase-requests/edit/${id}`)}
+                            >
+                                수정
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={handleDeleteRequest}
+                            >
+                                삭제
+                            </Button>
+                        </>
+                    )}
+                </Box>
+            </Box>
+
+            {/* 결재선 표시 */}
+            {approvalLines.length > 0 && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <ApprovalLineComponent
+                        purchaseRequestId={Number(id)}
+                        currentUserId={currentUser?.id}
+                        onApprovalComplete={handleApprovalComplete}
+                    />
+                </Paper>
+            )}
+
+            {/* 관련 프로젝트 정보 */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>관련 프로젝트 정보</Typography>
+                {project ? (
+                    <Grid container spacing={2}>
+                        <Grid item xs={4}>
+                            <Typography><strong>프로젝트명:</strong> {project.projectName}</Typography>
+                            <Typography>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{ mt: 1 }}
+                                    onClick={() => navigate(`/projects/${project.id}`)}
+                                >
+                                    프로젝트 상세보기
+                                </Button>
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Typography><strong>고객사:</strong> {project.clientCompany || '정보 없음'}</Typography>
+                            <Typography><strong>계약 유형:</strong> {project.contractType || '정보 없음'}</Typography>
+                        </Grid>
+                        <Grid item xs={4}>
+                            <Typography><strong>기간:</strong> {
+                                project.projectPeriod ?
+                                `${moment(project.projectPeriod.startDate).format('YYYY-MM-DD')} ~
+                                ${moment(project.projectPeriod.endDate).format('YYYY-MM-DD')}` :
+                                '정보 없음'
+                            }</Typography>
+                            <Typography><strong>예산:</strong> {
+                                project.totalBudget ?
+                                `${project.totalBudget.toLocaleString()}원` :
+                                '정보 없음'
+                            }</Typography>
+                        </Grid>
+                    </Grid>
+                ) : (
+                    <Typography color="text.secondary">관련 프로젝트 정보가 없습니다.</Typography>
+                )}
+            </Paper>
+
+            {/* 기본 정보 */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>기본 정보</Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={4}>
+                        <Typography><strong>요청번호:</strong> {request.id}</Typography>
+                        <Typography><strong>사업구분:</strong> {request.businessType}</Typography>
+                        <Typography><strong>요청일:</strong> {request.requestDate ? moment(request.requestDate).format('YYYY-MM-DD') : '정보 없음'}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                        <Typography><strong>고객사:</strong> {request.customer || '정보 없음'}</Typography>
+                        <Typography><strong>사업부서:</strong> {request.businessDepartment || '정보 없음'}</Typography>
+                        <Typography><strong>담당자:</strong> {request.businessManager || '정보 없음'}</Typography>
+                    </Grid>
+                    <Grid item xs={4}>
+                        <Typography><strong>예산:</strong> {request.businessBudget ? `${request.businessBudget.toLocaleString()}원` : '정보 없음'}</Typography>
+                        <Typography><strong>연락처:</strong> {request.managerPhoneNumber || '정보 없음'}</Typography>
+                    </Grid>
+                </Grid>
+            </Paper>
+
+            {/* 요청자 정보 */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>요청자 정보</Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                        <Typography><strong>요청자:</strong> {request.memberName || '정보 없음'}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                        <Typography><strong>소속:</strong> {request.memberCompany || '정보 없음'}</Typography>
+                    </Grid>
+                </Grid>
+            </Paper>
+
+            {/* 사업 구분별 상세 정보 */}
+            {request.businessType === 'SI' && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>SI 프로젝트 정보</Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <Typography>
+                                <strong>시작일:</strong> {request.projectStartDate ? moment(request.projectStartDate).format('YYYY-MM-DD') : '정보 없음'}
+                            </Typography>
+                            <Typography>
+                                <strong>종료일:</strong> {request.projectEndDate ? moment(request.projectEndDate).format('YYYY-MM-DD') : '정보 없음'}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography><strong>프로젝트 내용:</strong></Typography>
+                            <Typography sx={{ whiteSpace: 'pre-wrap' }}>{request.projectContent || '내용 없음'}</Typography>
+                        </Grid>
+                    </Grid>
+                </Paper>
+            )}
+
+            {request.businessType === 'MAINTENANCE' && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>유지보수 정보</Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                            <Typography>
+                                <strong>계약기간:</strong> {
+                                    request.contractStartDate && request.contractEndDate ?
+                                    `${moment(request.contractStartDate).format('YYYY-MM-DD')} ~ ${moment(request.contractEndDate).format('YYYY-MM-DD')}` :
+                                    '정보 없음'
+                                }
+                            </Typography>
+                            <Typography>
+                                <strong>계약금액:</strong> {request.contractAmount ? `${request.contractAmount.toLocaleString()}원` : '정보 없음'}
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                            <Typography><strong>계약내용:</strong></Typography>
+                            <Typography sx={{ whiteSpace: 'pre-wrap' }}>{request.contractDetails || '내용 없음'}</Typography>
+                        </Grid>
+                    </Grid>
+                </Paper>
+            )}
+
+            {/* 물품 구매 정보 (GOODS 타입일 때만 표시) */}
+            {request.businessType === 'GOODS' && (
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>구매 품목</Typography>
+                    {Array.isArray(request.items) && request.items.length > 0 ? (
+                        <TableContainer>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>No</TableCell>
+                                        <TableCell>품목명</TableCell>
+                                        <TableCell>사양</TableCell>
+                                        <TableCell>단위</TableCell>
+                                        <TableCell align="right">수량</TableCell>
+                                        <TableCell align="right">단가</TableCell>
+                                        <TableCell align="right">금액</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {request.items.map((item, index) => (
+                                        <TableRow key={item.id || index}>
+                                            <TableCell>{index + 1}</TableCell>
+                                            <TableCell>{item.itemName}</TableCell>
+                                            <TableCell>{item.specification || '-'}</TableCell>
+                                            <TableCell>{item.unitChildCode || '-'}</TableCell>
+                                            <TableCell align="right">{item.quantity}</TableCell>
+                                            <TableCell align="right">
+                                                ₩{Number(item.unitPrice).toLocaleString()}
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                ₩{Number(item.totalPrice).toLocaleString()}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="right" sx={{ fontWeight: 'bold' }}>합계</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                            ₩{request.items.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0).toLocaleString()}
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    ) : (
+                        <Typography variant="body2" color="text.secondary">
+                            구매 품목 정보가 없습니다.
+                        </Typography>
+                    )}
+                </Paper>
+            )}
+
+            {/* 첨부 파일 */}
+            {request.attachments && request.attachments.length > 0 ? (
+                <Paper sx={{ p: 3 }}>
+                    <Typography variant="h6" gutterBottom>첨부 파일</Typography>
+                    <List>
+                        {request.attachments.map((attachment) => (
+                           <ListItem key={attachment.id}>
+                             <Link
+                               component="button"
+                               onClick={() => downloadFile(attachment)}
+                               sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                             >
+                               <AttachFileIcon sx={{ mr: 1 }} />
+                               {attachment.fileName || '파일명 없음'}
+                               <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                                 ({Math.round((attachment.fileSize || 0) / 1024)}KB)
+                               </Typography>
+                             </Link>
+                           </ListItem>
+                        ))}
+                    </List>
+                </Paper>
+            ) : (
+                <Paper sx={{ p: 3 }}>
+                    <Typography variant="h6" gutterBottom>첨부 파일</Typography>
+                    <Typography variant="body2" color="text.secondary">첨부된 파일이 없습니다.</Typography>
+                </Paper>
+            )}
+
+            {/* 하단 버튼 그룹 */}
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
+                <Button
+                    variant="outlined"
+                    onClick={() => navigate('/purchase-requests')}
+                >
+                    목록으로
+                </Button>
+            </Box>
+        </Box>
     );
   };
 
