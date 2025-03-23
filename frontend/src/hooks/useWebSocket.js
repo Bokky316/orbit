@@ -109,26 +109,22 @@ const useWebSocket = (user) => {
               }
             );
           }
+        }
 
-          // 1. 사용자 공급업체 ID별 구독 추가
-          client.subscribe(`/topic/supplier/${user.id}`, (message) => {
+        // 사용자별 개인 알림 구독
+        client.subscribe(
+          `/user/${user.username}/queue/notifications`,
+          (message) => {
             try {
-              const updateData = JSON.parse(message.body);
-              console.log(
-                "📣 사용자별 공급업체 상태 변경 이벤트 수신:",
-                updateData
-              );
-              dispatch(
-                updateSupplierStatus({
-                  id: updateData.supplierId,
-                  fromStatus: updateData.fromStatus,
-                  toStatus: updateData.toStatus
-                })
-              );
+              const notification = JSON.parse(message.body);
+              console.log("🔔 개인 알림 수신:", notification);
+              // 알림 처리 로직
             } catch (error) {
-              console.error("❌ 사용자별 협력업체 상태 업데이트 오류:", error);
+              console.error("❌ 알림 처리 오류:", error);
             }
-          });
+          }
+        );
+      },
 
           // 2. 공급업체 상태 변경 구독을 위한 준비
           // 참고: 현재 보고 있는 개별 공급업체에 대한 구독은

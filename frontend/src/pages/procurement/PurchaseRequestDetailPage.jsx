@@ -122,8 +122,6 @@ const PurchaseRequestDetailPage = () => {
     const [error, setError] = useState(null);
     const [approvalLines, setApprovalLines] = useState([]);
     const [hasApprovalAuthority, setHasApprovalAuthority] = useState(false);
-    const [tabValue, setTabValue] = useState(0);
-
     const extractStatusCode = (request) => {
         // 1. prStatusChild가 있으면 그대로 사용
         if (request.prStatusChild) {
@@ -147,8 +145,7 @@ const PurchaseRequestDetailPage = () => {
         // 4. 기본값 반환
         return "REQUESTED"; // 기본 상태
     };
-
-    // 상태 라벨 가져오기
+// 상태 라벨 가져오기
     const getStatusLabel = (statusCode) => {
         switch(statusCode) {
             case 'REQUESTED': return '구매 요청';
@@ -162,31 +159,16 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
-    // 비즈니스 유형 표시 변환
-    const getBusinessTypeLabel = (type) => {
-        switch(type) {
-            case 'SI': return 'SI';
-            case 'MAINTENANCE': return '유지보수';
-            case 'GOODS': return '물품';
-            default: return type || '정보 없음';
-        }
-    };
-
-    // 탭 변경 핸들러
-    const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
-    };
-
     // useEffect 안에 상태 정보 디버깅 추가
     useEffect(() => {
-        if (request) {
-            console.log('==== 구매요청 상태 정보 디버깅 ====');
-            console.log('request.status:', request.status);
-            console.log('request.prStatusChild:', request.prStatusChild);
-            console.log('추출된 상태 코드:', extractStatusCode(request));
-            console.log('상태 라벨:', getStatusLabel(extractStatusCode(request)));
-        }
-    }, [request]);
+         if (request) {
+             console.log('==== 구매요청 상태 정보 디버깅 ====');
+             console.log('request.status:', request.status);
+             console.log('request.prStatusChild:', request.prStatusChild);
+             console.log('추출된 상태 코드:', extractStatusCode(request));
+             console.log('상태 라벨:', getStatusLabel(extractStatusCode(request)));
+         }
+     }, [request]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -527,7 +509,7 @@ const PurchaseRequestDetailPage = () => {
 
     // 구매요청이 수정/삭제 가능한지 확인하는 함수 (개선된 버전)
     const canModifyRequest = () => {
-        // 상태 코드 추출
+        // 상태 코드 추출 - extractStatusCode 함수 사용
         const statusCode = extractStatusCode(request);
 
         // 현재 사용자가 요청자인지 확인
@@ -597,6 +579,9 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
+
+
+
     // 구매요청 삭제 처리 함수
     const handleDeleteRequest = () => {
         if (window.confirm('정말 삭제하시겠습니까?')) {
@@ -612,9 +597,18 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
-    // 상태 코드 가져오기
-    const statusCode = extractStatusCode(request);
-    const statusLabel = getStatusLabel(statusCode);
+    return (
+        <Box sx={{ p: 3 }}>
+            {/* 상단 헤더 및 상태 표시 */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="h4">{request.requestName}</Typography>
+                    <StatusChip
+                         label={getStatusLabel(extractStatusCode(request))}
+                         statuscode={extractStatusCode(request)}
+                         variant="outlined"
+                     />
+                </Box>
 
     return (
         <Box sx={{ p: 4 }}>
