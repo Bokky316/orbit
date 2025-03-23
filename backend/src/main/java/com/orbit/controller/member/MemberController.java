@@ -1,9 +1,7 @@
 package com.orbit.controller.member;
 
 import com.orbit.config.jwt.TokenProvider;
-import com.orbit.dto.member.LoginFormDto;
-import com.orbit.dto.member.MemberFormDto;
-import com.orbit.dto.member.MemberUpdateDto;
+import com.orbit.dto.member.*;
 import com.orbit.entity.member.Member;
 import com.orbit.service.member.MemberService;
 import jakarta.servlet.http.Cookie;
@@ -121,6 +119,19 @@ public class MemberController {
             @RequestBody LoginFormDto loginForm, HttpServletResponse response) {
         Map<String, Object> responseMap = new HashMap<>();
 
+        // 사용자 존재 여부 및 활성화 상태 확인
+        try {
+            Member checkMember = memberService.findByUsername(loginForm.getUsername());
+            if (!checkMember.isEnabled()) {
+                responseMap.put("status", "failed");
+                responseMap.put("message", "비활성화된 계정입니다. 관리자에게 문의하세요.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseMap);
+            }
+        } catch (IllegalArgumentException e) {
+            // 사용자가 존재하지 않는 경우는 여기서 처리하지 않고 그대로 진행
+            // 구체적인 오류 메시지는 원래 flow에서 처리하도록 함
+        }
+
         if (memberService.login(loginForm)) {
             Member member = memberService.findByUsername(loginForm.getUsername());
 
@@ -175,6 +186,17 @@ public class MemberController {
     }
 
     /**
+     * 회원 목록 조회 API (페이징, 검색 포함)
+     * @param pageRequest 페이지 요청 정보
+     * @return 페이징된 회원 목록
+     */
+    @GetMapping("")
+    public ResponseEntity<PageResponseDTO<MemberDTO>> getMemberList(PageRequestDTO pageRequest) {
+        PageResponseDTO<MemberDTO> result = memberService.getMemberDTOList(pageRequest);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * 회원 탈퇴 API
      * @param id 탈퇴할 회원의 ID
      * @return 성공 메시지
@@ -186,6 +208,53 @@ public class MemberController {
             return ResponseEntity.ok("회원 탈퇴 완료");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    /**
+     * 회원 활성화/비활성화 상태 토글 API
+     * @param id 토글할 회원의 ID
+     * @return 상태 변경 결과
+     */
+    @PostMapping("/{id}/toggle-status")
+    public ResponseEntity<Map<String, Object>> toggleMemberStatus(@PathVariable Long id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            boolean isEnabled = memberService.toggleMemberStatus(id);
+            response.put("status", "success");
+            response.put("enabled", isEnabled);
+            response.put("message", isEnabled ? "회원이 활성화되었습니다." : "회원이 비활성화되었습니다.");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("status", "error");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+
+    /**
+     * 회원 역할 변경 API
+     * @param id 회원 ID
+     * @param roleRequest 변경할 역할 정보
+     * @return 역할 변경 결과
+     */
+    @PutMapping("/{id}/role")
+    public ResponseEntity<Map<String, Object>> updateMemberRole(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> roleRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String role = roleRequest.get("role");
+            memberService.updateMemberRole(id, role);
+
+            response.put("status", "success");
+            response.put("message", "회원 역할이 변경되었습니다.");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("status", "error");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
     }
 }

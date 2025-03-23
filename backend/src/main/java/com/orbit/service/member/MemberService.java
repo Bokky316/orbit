@@ -1,10 +1,6 @@
 package com.orbit.service.member;
 
-import com.orbit.dto.member.PageRequestDTO;
-import com.orbit.dto.member.PageResponseDTO;
-import com.orbit.dto.member.LoginFormDto;
-import com.orbit.dto.member.MemberFormDto;
-import com.orbit.dto.member.MemberUpdateDto;
+import com.orbit.dto.member.*;
 import com.orbit.entity.member.Member;
 import com.orbit.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 회원 관리 서비스
@@ -206,5 +203,137 @@ public class MemberService {
      */
     public List<Member> findByUsernameStartingWith(String prefix) {
         return memberRepository.findByUsernameStartingWith(prefix);
+    }
+
+    /**
+     * 회원 정보를 DTO로 변환하여 반환
+     * @param memberId 조회할 회원의 ID
+     * @return MemberDTO 객체
+     * @throws IllegalArgumentException 존재하지 않는 회원 ID로 조회 시
+     */
+    public MemberDTO getMemberDTO(Long memberId) {
+        Member member = findById(memberId);
+        return convertToDTO(member);
+    }
+
+    /**
+     * 회원 목록을 페이징하여 DTO 리스트로 반환
+     * @param pageRequestDTO 페이징 및 검색 조건
+     * @return 페이징된 MemberDTO 목록
+     */
+    @Transactional(readOnly = true)
+    public PageResponseDTO<MemberDTO> getMemberDTOList(PageRequestDTO pageRequestDTO) {
+        Pageable pageable = pageRequestDTO.getPageable("id");
+
+        Specification<Member> spec = Specification.where(null);
+
+        // 검색 조건 처리
+        if (pageRequestDTO.getKeyword() != null && !pageRequestDTO.getKeyword().isEmpty()) {
+            if ("username".equals(pageRequestDTO.getSearchType())) {
+                spec = spec.and((root, query, criteriaBuilder) ->
+                        criteriaBuilder.like(root.get("username"), "%" + pageRequestDTO.getKeyword() + "%"));
+            } else if ("name".equals(pageRequestDTO.getSearchType())) {
+                spec = spec.and((root, query, criteriaBuilder) ->
+                        criteriaBuilder.like(root.get("name"), "%" + pageRequestDTO.getKeyword() + "%"));
+            } else if ("email".equals(pageRequestDTO.getSearchType())) {
+                spec = spec.and((root, query, criteriaBuilder) ->
+                        criteriaBuilder.like(root.get("email"), "%" + pageRequestDTO.getKeyword() + "%"));
+            }
+        }
+
+        // 회원 상태 필터링 (활성/비활성)
+        if (pageRequestDTO.getStatus() != null && !pageRequestDTO.getStatus().isEmpty()) {
+            boolean enabled = "active".equals(pageRequestDTO.getStatus());
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("enabled"), enabled));
+        }
+
+        Page<Member> result = memberRepository.findAll(spec, pageable);
+
+        List<MemberDTO> dtoList = result.getContent().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+
+        return new PageResponseDTO<>(
+                pageRequestDTO,
+                dtoList,
+                (int) result.getTotalElements()
+        );
+    }
+
+    /**
+     * Member 엔티티를 MemberDTO로 변환
+     * @param member Member 엔티티
+     * @return MemberDTO 객체
+     */
+    private MemberDTO convertToDTO(Member member) {
+        MemberDTO.DepartmentInfo departmentInfo = null;
+        if (member.getDepartment() != null) {
+            departmentInfo = MemberDTO.DepartmentInfo.builder()
+                    .id(member.getDepartment().getId())
+                    .name(member.getDepartment().getName())
+                    .code(member.getDepartment().getCode())
+                    .build();
+        }
+
+        MemberDTO.PositionInfo positionInfo = null;
+        if (member.getPosition() != null) {
+            positionInfo = MemberDTO.PositionInfo.builder()
+                    .id(member.getPosition().getId())
+                    .name(member.getPosition().getName())
+                    .level(member.getPosition().getLevel())
+                    .build();
+        }
+
+        return MemberDTO.builder()
+                .id(member.getId())
+                .username(member.getUsername())
+                .name(member.getName())
+                .email(member.getEmail())
+                .contactNumber(member.getContactNumber())
+                .companyName(member.getCompanyName())
+                .enabled(member.isEnabled())
+                .role(member.getRole().name())
+                .department(departmentInfo)
+                .position(positionInfo)
+                .build();
+    }
+
+    /**
+     * 회원 활성화/비활성화 상태 토글
+     * @param memberId 토글할 회원의 ID
+     * @return 변경된 활성화 상태 (true: 활성화, false: 비활성화)
+     */
+    @Transactional
+    public boolean toggleMemberStatus(Long memberId) {
+        Member member = findById(memberId);
+
+        if (member.isEnabled()) {
+            member.deactivateMember();
+        } else {
+            member.activateMember();
+        }
+
+        memberRepository.save(member);
+        return member.isEnabled();
+    }
+
+    /**
+     * 회원 역할 변경
+     * @param memberId 역할을 변경할 회원의 ID
+     * @param roleName 변경할 역할명 (BUYER, SUPPLIER, ADMIN)
+     * @throws IllegalArgumentException 잘못된 역할명이 전달된 경우
+     */
+    @Transactional
+    public void updateMemberRole(Long memberId, String roleName) {
+        Member member = findById(memberId);
+
+        try {
+            Member.Role role = Member.Role.valueOf(roleName.toUpperCase());
+            member.setRole(role);
+            memberRepository.save(member);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("유효하지 않은 역할입니다: " + roleName);
+        }
     }
 }
