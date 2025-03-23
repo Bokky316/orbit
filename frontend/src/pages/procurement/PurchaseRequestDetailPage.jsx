@@ -141,9 +141,11 @@ const PurchaseRequestDetailPage = () => {
         // 구매요청 정보 다시 조회
         const fetchUpdatedData = async () => {
             try {
+                console.log("결재 처리 완료 후 데이터 다시 로드");
                 const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
                 if (response.ok) {
                     const data = await response.json();
+                    console.log("업데이트된 구매요청 데이터:", data);
                     setRequest(data);
 
                     // 결재선 정보 다시 조회
@@ -155,8 +157,8 @@ const PurchaseRequestDetailPage = () => {
                         // 결재 권한 업데이트
                         if (currentUser) {
                             const hasAuthority = approvalData.some(line =>
-                                line.statusCode === 'IN_REVIEW' &&
-                                line.approverId === currentUser.id
+                                (line.statusCode === 'IN_REVIEW' || line.statusCode === 'PENDING' || line.statusCode === 'REQUESTED') &&
+                                (line.approverId === currentUser.id || line.approver_id === currentUser.id)
                             );
                             setHasApprovalAuthority(hasAuthority);
                         }
@@ -308,6 +310,14 @@ const PurchaseRequestDetailPage = () => {
         return 'UNKNOWN';
     };
 
+    // 상태 변경 핸들러
+    const handleStatusChange = (newStatus) => {
+        if (window.confirm(`상태를 '${getStatusLabel(newStatus)}'로 변경하시겠습니까?`)) {
+            const currentStatus = request.prStatusChild;
+            sendStatusChange(id, currentStatus, newStatus);
+        }
+    };
+
     // 상태 라벨 가져오기
     const getStatusLabel = (statusCode) => {
         switch(statusCode) {
@@ -318,9 +328,10 @@ const PurchaseRequestDetailPage = () => {
             case 'INSPECTION': return '검수 진행';
             case 'INVOICE_ISSUED': return '인보이스 발행';
             case 'PAYMENT_COMPLETED': return '대금지급 완료';
-            default: return statusCode;
+            default: return statusCode || '상태 정보 없음';
         }
     };
+
 
     // 구매요청 삭제 처리 함수
     const handleDeleteRequest = () => {
@@ -344,8 +355,8 @@ const PurchaseRequestDetailPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="h4">{request.requestName}</Typography>
                     <StatusChip
-                        label={getStatusLabel(request.prStatusChild || request.status?.split('-')[2] || 'REQUESTED')}
-                        statuscode={request.prStatusChild || request.status?.split('-')[2] || 'REQUESTED'}
+                        label={getStatusLabel(request.prStatusChild)}
+                        statuscode={request.prStatusChild}
                         variant="outlined"
                     />
                 </Box>
