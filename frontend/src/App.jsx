@@ -62,6 +62,8 @@ import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
+import ChartDashboard from '@/pages/statistics/ChartDashboard';
+
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -190,6 +192,9 @@ function AppContent() {
                 {/* 지불 관리 */}
                 <Route path="/payments" element={<PaymentListPage />} />
                 <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
+
+                  {/* 통계 관리 */}
+                  <Route path="/chart" element={<ChartDashboard />} />
 
                   {/* 통계 관리 */}
                   <Route path="/chart" element={<ChartDashboard />} />
