@@ -63,6 +63,40 @@ function PurchaseRequestListPage() {
     dispatch(fetchPurchaseRequests());
   }, [dispatch]);
 
+  // 상태 코드 추출 함수 추가
+  const extractStatusCode = (request) => {
+    // 1. prStatusChild가 있으면 그대로 사용
+    if (request.prStatusChild) {
+      return request.prStatusChild;
+    }
+
+    // 2. status 문자열이 있으면 파싱해서 childCode 부분 추출
+    if (request.status) {
+      const parts = request.status.split('-');
+      // PURCHASE_REQUEST-STATUS-REQUESTED 형식에서 마지막 부분 추출
+      if (parts.length >= 3) {
+        return parts[2];
+      }
+    }
+
+    // 3. 기본값 반환
+    return "REQUESTED"; // 기본 상태
+  };
+
+  // 상태 라벨 가져오기 함수 추가
+  const getStatusLabel = (statusCode) => {
+    switch(statusCode) {
+      case 'REQUESTED': return '구매 요청';
+      case 'RECEIVED': return '구매요청 접수';
+      case 'VENDOR_SELECTION': return '업체 선정';
+      case 'CONTRACT_PENDING': return '계약 대기';
+      case 'INSPECTION': return '검수 진행';
+      case 'INVOICE_ISSUED': return '인보이스 발행';
+      case 'PAYMENT_COMPLETED': return '대금지급 완료';
+      default: return statusCode || '상태 정보 없음';
+    }
+  };
+
   // 필터링된 구매 요청 목록 계산
   const filteredRequests = purchaseRequests.filter((request) => {
     const searchTermLower = filters.searchTerm.toLowerCase();
@@ -79,7 +113,7 @@ function PurchaseRequestListPage() {
         moment(request.requestDate).isSame(filters.requestDate, "day"));
 
     const statusMatch =
-      !filters.status || request.prStatusChild === filters.status;
+      !filters.status || extractStatusCode(request) === filters.status;
 
     return searchMatch && dateMatch && statusMatch;
   });
@@ -101,7 +135,10 @@ function PurchaseRequestListPage() {
     }
   };
 
-  const downloadFile = async (attachment) => {
+  const downloadFile = async (attachment, e) => {
+    // 이벤트 전파 방지 (행 클릭 이벤트 방지)
+    e.stopPropagation();
+
     try {
       const response = await fetchWithAuth(
         `${API_URL}attachments/${attachment.id}/download`,
@@ -116,7 +153,7 @@ function PurchaseRequestListPage() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = attachment.originalName; // 파일 이름 설정
+        a.download = attachment.originalName || attachment.fileName; // 파일 이름 설정
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -151,7 +188,7 @@ function PurchaseRequestListPage() {
             <LocalizationProvider dateAdapter={AdapterMoment}>
               <DatePicker
                 label="요청일"
-                value={moment(filters.requestDate)} // moment 객체로 변환
+                value={filters.requestDate ? moment(filters.requestDate) : null}
                 onChange={(date) => handleFilterChange("requestDate", date)}
                 slotProps={{
                   textField: {
@@ -205,15 +242,13 @@ function PurchaseRequestListPage() {
                 onClick={() => navigate(`/purchase-requests/${request.id}`)}
                 sx={{ cursor: "pointer" }}>
                 <TableCell>
-                  {request.prStatusChild ||
-                    request.status?.split("-")[2] ||
-                    "구매 요청"}
+                  {getStatusLabel(extractStatusCode(request))}
                 </TableCell>
                 <TableCell>{request.requestName}</TableCell>
                 <TableCell>{request.id}</TableCell>
                 <TableCell>{request.customer}</TableCell>
                 <TableCell>
-                  {moment(request.requestDate).format("YYYY-MM-DD")}
+                  {request.requestDate ? moment(request.requestDate).format("YYYY-MM-DD") : '-'}
                 </TableCell>
                 <TableCell>{request.businessDepartment}</TableCell>
                 <TableCell>
@@ -223,7 +258,7 @@ function PurchaseRequestListPage() {
                           key={attachment.id}
                           component="button"
                           variant="body2"
-                          onClick={() => downloadFile(attachment)}>
+                          onClick={(e) => downloadFile(attachment, e)}>
                           {attachment.originalName || attachment.fileName}
                         </Link>
                       ))
