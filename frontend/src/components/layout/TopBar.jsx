@@ -15,7 +15,6 @@ function TopBar() {
   const subCategories = {
     "/members": [
       { label: "사용자목록", path: "/members" },
-      /* { label: "직원관리", path: "/employee" }, */
     ],
     "/supplier": [
       { label: "협력업체리스트", path: "/supplier" },

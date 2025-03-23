@@ -17,6 +17,7 @@ import projectReducer from "./projectSlice";
 import purchaseRequestReducer, { websocketMiddleware } from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
 import approvalAdminReducer from "./approvalAdminSlice";
+import supplierReducer from "./supplier/supplierSlice";
 import authReducer from "./authSlice";
 import commonCodeReducer from "./commonCodeSlice";
 import itemCategoryReducer from "./itemCategorySlice";
@@ -32,6 +33,7 @@ const persistConfig = {
     "purchaseRequest",
     "approval",
     "approvalAdmin",
+    "supplier",
     "auth",
     "commonCode",
     "itemCategory",
@@ -44,6 +46,7 @@ const rootReducer = combineReducers({
   purchaseRequest: purchaseRequestReducer,
   approval: approvalReducer,
   approvalAdmin: approvalAdminReducer,
+  supplier: supplierReducer,
   auth: authReducer,
   commonCode: commonCodeReducer,
   itemCategory: itemCategoryReducer,

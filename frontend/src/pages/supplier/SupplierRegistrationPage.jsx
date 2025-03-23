@@ -679,7 +679,7 @@ const SupplierRegistrationPage = () => {
                   label="비고"
                   name="comments"
                   multiline
-                  rows={4}
+                  variant="filled"
                   value={formData.comments}
                   onChange={handleChange}
                 />
