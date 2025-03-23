@@ -1,15 +1,16 @@
 package com.orbit.dto.member;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 목록 출력과 같은 페이지에서 페이징 관련된 정보 저장 역할.

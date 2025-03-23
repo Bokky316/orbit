@@ -8,8 +8,10 @@ import com.orbit.entity.approval.Department;
 import com.orbit.entity.approval.Position;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.event.event.PurchaseRequestStatusChangeEvent;
 import com.orbit.exception.ApprovalException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.ApprovalLineRepository;
@@ -20,12 +22,14 @@ import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,7 +48,8 @@ public class ApprovalLineService {
     private final MemberRepository memberRepo;
     private final ParentCodeRepository parentCodeRepo;
     private final ChildCodeRepository childCodeRepo;
-    private final DepartmentRepository departmentRepo; // 추가된 Repository
+    private final DepartmentRepository departmentRepo;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final SimpMessagingTemplate messagingTemplate;
     private static final int MAX_APPROVAL_STEPS = 3;
 
@@ -192,13 +197,16 @@ public class ApprovalLineService {
         // 결재선 자동 생성
         List<ApprovalLine> lines = new ArrayList<>();
 
-        // 1단계: 기안자 (작성자)
-        ChildCode initialStatus = findChildCode(parentCode, "REQUESTED");
+        // 1단계: 기안자 (작성자) - 요청과 동시에 승인 처리
+        ChildCode approvedStatus = findChildCode(parentCode, "APPROVED"); // 승인 상태 사용
+
         ApprovalLine requesterLine = ApprovalLine.builder()
                 .purchaseRequest(request)
                 .approver(requester)
                 .step(1)
-                .status(initialStatus)
+                .status(approvedStatus) // 바로 승인 상태로 설정
+                .approvedAt(LocalDateTime.now()) // 승인 시간 현재로 설정
+                .comment("구매 요청 작성자(기안자) 자동 승인") // 기본 코멘트 설정
                 .build();
         lines.add(requesterLine);
 
@@ -254,7 +262,7 @@ public class ApprovalLineService {
         return lines;
     }
 
-    // 결재 처리 메서드
+    // 결재 처리 메서드 수정
     public ApprovalLineResponseDTO processApproval(Long lineId, ApprovalProcessDTO dto) {
         ApprovalLine line = approvalLineRepo.findById(lineId)
                 .orElseThrow(() -> new ResourceNotFoundException("결재선을 찾을 수 없습니다. ID: " + lineId));
@@ -267,6 +275,11 @@ public class ApprovalLineService {
 
         // 결재 처리
         processApprovalAction(line, dto, nextStatus, parentCode);
+
+        // 모든 결재가 완료되었는지 확인하고 구매요청 상태 변경
+        if ("APPROVE".equalsIgnoreCase(dto.getAction())) {
+            checkAndUpdateRequestStatus(line.getPurchaseRequest().getId());
+        }
 
         // 실시간 업데이트
         sendRealTimeUpdate(line.getPurchaseRequest().getId());
@@ -481,5 +494,104 @@ public class ApprovalLineService {
                 "/queue/approvals",
                 notificationDto
         );
+    }
+
+    /**
+     * 모든 결재 단계가 완료되었는지 확인하고, 완료된 경우 구매 요청 상태 변경
+     */
+    @Transactional
+    public void checkAndUpdateRequestStatus(Long requestId) {
+        log.info("결재 완료 여부 확인 및 구매요청 상태 업데이트: 요청 ID={}", requestId);
+
+        // 1. 해당 요청의 모든 결재선 조회
+        List<ApprovalLine> approvalLines = approvalLineRepo.findAllByRequestId(requestId);
+
+        log.info("총 결재선 수: {}", approvalLines.size());
+
+        // 상위 상태 코드 및 승인 상태 코드 조회
+        ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
+        ChildCode approvedStatus = findChildCode(parentCode, "APPROVED");
+
+        // 모든 결재선의 상태를 상세히 로깅
+        for (ApprovalLine line : approvalLines) {
+            log.info("결재선 ID: {}, 스텝: {}, 현재 상태 ID: {}, 승인 상태 ID: {}",
+                    line.getId(), line.getStep(), line.getStatus().getId(), approvedStatus.getId());
+        }
+
+        // 모든 결재선이 승인 상태인지 확인
+        boolean allApproved = approvalLines.stream()
+                .allMatch(line -> {
+                    boolean isApproved = line.getStatus().getId().equals(approvedStatus.getId());
+                    log.info("결재선 {} 승인 상태: {}", line.getId(), isApproved);
+                    return isApproved;
+                });
+
+        // 3. 모든 결재선이 승인 상태이면 구매 요청 상태 변경
+        if (allApproved) {
+            log.info("모든 결재가 승인되었습니다. 구매요청 상태를 변경합니다: 요청 ID={}", requestId);
+
+            PurchaseRequest purchaseRequest = purchaseRequestRepo.findById(requestId)
+                    .orElseThrow(() -> new ResourceNotFoundException("구매요청을 찾을 수 없습니다. ID: " + requestId));
+
+            // 구매 요청 상태를 "구매요청 접수"로 변경
+            ParentCode requestParentCode = parentCodeRepo.findByEntityTypeAndCodeGroup("PURCHASE_REQUEST", "STATUS")
+                    .orElseThrow(() -> new ResourceNotFoundException("ParentCode(PURCHASE_REQUEST, STATUS)를 찾을 수 없습니다."));
+
+            ChildCode receivedStatus = childCodeRepo.findByParentCodeAndCodeValue(requestParentCode, "RECEIVED")
+                    .orElseThrow(() -> new ResourceNotFoundException("ChildCode(RECEIVED)를 찾을 수 없습니다."));
+
+            SystemStatus newStatus = new SystemStatus(requestParentCode.getCodeName(), receivedStatus.getCodeValue());
+            purchaseRequest.setStatus(newStatus);
+
+            purchaseRequestRepo.save(purchaseRequest);
+            log.info("구매요청 상태가 '구매요청 접수'로 변경되었습니다: 요청 ID={}", requestId);
+
+            // 이벤트 발행 추가
+            PurchaseRequestStatusChangeEvent event = new PurchaseRequestStatusChangeEvent(
+                    this,
+                    requestId,
+                    purchaseRequest.getStatus().getFullCode(),
+                    newStatus.getFullCode(),
+                    "SYSTEM"
+            );
+            applicationEventPublisher.publishEvent(event);
+
+            // 구매요청 접수 알림 전송
+            sendRequestReceivedNotification(purchaseRequest);
+        } else {
+            log.warn("모든 결재선이 승인되지 않았습니다: 요청 ID={}", requestId);
+        }
+    }
+
+    /**
+     * 구매요청 접수 알림 전송
+     */
+    private void sendRequestReceivedNotification(PurchaseRequest request) {
+        // 구매 담당자에게 알림 전송
+        try {
+            // 구매팀 담당자 찾기
+            Department purchaseDept = departmentRepo.findByName("구매팀")
+                    .orElseGet(() -> departmentRepo.findByName("구매관리팀")
+                            .orElse(null));
+
+            if (purchaseDept != null) {
+                List<Member> purchaseManagers = memberRepo.findByDepartmentAndPositionLevelBetween(
+                        purchaseDept,
+                        purchaseDept.getMiddleManagerLevel(),
+                        purchaseDept.getUpperManagerLevel()
+                );
+
+                for (Member manager : purchaseManagers) {
+                    messagingTemplate.convertAndSendToUser(
+                            manager.getUsername(),
+                            "/queue/notifications",
+                            String.format("새로운 구매요청(ID: %d, 요청명: %s)이 접수되었습니다.",
+                                    request.getId(), request.getRequestName())
+                    );
+                }
+            }
+        } catch (Exception e) {
+            log.error("구매요청 접수 알림 전송 중 오류 발생: {}", e.getMessage());
+        }
     }
 }

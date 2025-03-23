@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // 네비게이션 훅 추가
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Container,
@@ -14,482 +15,624 @@ import {
   TablePagination,
   TextField,
   InputAdornment,
-  IconButton,
   Chip,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Grid,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Divider,
   Card,
   CardContent,
-  Tooltip,
+  CircularProgress,
   Snackbar,
   Alert
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import {
   Search as SearchIcon,
-  FilterList as FilterIcon,
-  Visibility as VisibilityIcon,
-  GetApp as DownloadIcon,
-  Print as PrintIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  ReceiptLong as ReceiptIcon,
-  Payment as PaymentIcon,
-  Save as SaveIcon,
-  Close as CloseIcon,
-  Add as AddIcon // 추가 아이콘 import
+  Add as AddIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
-
-// 목데이터 import
-import { mockInvoices, STATUS_TYPES } from './generateMockInvoices';
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
+import { API_URL } from '@/utils/constants';
 
 // 스타일 컴포넌트
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  '&:nth-of-type(odd)': {
-    backgroundColor: theme.palette.action.hover,
-  },
-  // 마우스 오버 효과
-  '&:hover': {
-    backgroundColor: theme.palette.action.selected,
-  },
-}));
-
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3),
   boxShadow: theme.shadows[2]
 }));
 
-// 송장 상태에 따른 Chip 색상
-const getStatusColor = (status) => {
-  switch (status) {
-    case STATUS_TYPES.WAITING:
-      return 'warning';
-    case STATUS_TYPES.PAID:
-      return 'success';
-    case STATUS_TYPES.OVERDUE:
-      return 'error';
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: theme.palette.action.hover,
+  },
+  '&:hover': {
+    backgroundColor: theme.palette.action.selected,
+  },
+}));
+
+// 송장 상태에 따른 Chip 색상 및 라벨
+const getStatusProps = (status) => {
+  switch(status) {
+    case 'WAITING':
+      return { color: 'warning', label: '대기' };
+    case 'APPROVED':
+      return { color: 'success', label: '승인됨' };
+    case 'REJECTED':
+      return { color: 'error', label: '거부됨' };
+    case 'PAID':
+      return { color: 'success', label: '지불완료' };
+    case 'OVERDUE':
+      return { color: 'error', label: '연체' };
     default:
-      return 'default';
+      return { color: 'default', label: status };
   }
 };
 
 // 금액 형식 변환 함수
 const formatCurrency = (amount) => {
+  if (!amount) return '0원';
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
 };
 
-// 금액 형식 제거 함수 (원 제거)
-const unformatCurrency = (formattedAmount) => {
-  if (!formattedAmount) return 0;
-  const numericString = formattedAmount.replace(/[^0-9]/g, '');
-  return numericString ? parseInt(numericString, 10) : 0;
-};
+// 필터링된 송장 데이터로 통계 계산하는 함수
+const calculateStatistics = (invoices) => {
+  const stats = {
+    totalCount: invoices.length,
+    waitingCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    paidCount: 0,
+    overdueCount: 0,
+    totalAmount: 0,
+    waitingAmount: 0,
+    approvedAmount: 0,
+    rejectedAmount: 0,
+    paidAmount: 0,
+    overdueAmount: 0
+  };
 
-// 날짜 형식 변환 함수
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
+  invoices.forEach(invoice => {
+    const amount = parseFloat(invoice.totalAmount) || 0;
+    stats.totalAmount += amount;
+
+    switch(invoice.status) {
+      case 'WAITING':
+        stats.waitingCount++;
+        stats.waitingAmount += amount;
+        break;
+      case 'APPROVED':
+        stats.approvedCount++;
+        stats.approvedAmount += amount;
+        break;
+      case 'REJECTED':
+        stats.rejectedCount++;
+        stats.rejectedAmount += amount;
+        break;
+      case 'PAID':
+        stats.paidCount++;
+        stats.paidAmount += amount;
+        break;
+      case 'OVERDUE':
+        stats.overdueCount++;
+        stats.overdueAmount += amount;
+        break;
+    }
   });
+
+  return stats;
 };
 
-// ISO 형식 날짜로 변환
-const toISODateString = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toISOString().split('T')[0];
-};
-
-const InvoiceListPage = () => {
-  // useNavigate 훅 사용
+const InvoicesListPage = () => {
   const navigate = useNavigate();
 
+  // Redux 상태에서 인증 정보 가져오기
+  const auth = useSelector((state) => state.auth);
+  const currentUser = auth?.user;
+  const isLoggedIn = auth?.isLoggedIn;
+
   // 상태 관리
-  const [invoices, setInvoices] = useState(mockInvoices);
-  const [filteredInvoices, setFilteredInvoices] = useState(mockInvoices);
+  const [invoices, setInvoices] = useState([]);
+  const [filteredInvoices, setFilteredInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [openFilterDialog, setOpenFilterDialog] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
-  const [openDetailDialog, setOpenDetailDialog] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editedInvoice, setEditedInvoice] = useState(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [sortBy, setSortBy] = useState('issueDate');
+  const [sortDir, setSortDir] = useState('desc');
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [error, setError] = useState('');
+  const [showError, setShowError] = useState(false);
+  const [companyName, setCompanyName] = useState('');
 
-  // 요약 통계 계산
-  const totalInvoicesCount = invoices.length;
-  const waitingInvoicesCount = invoices.filter(invoice => invoice.status === STATUS_TYPES.WAITING).length;
-  const paidInvoicesCount = invoices.filter(invoice => invoice.status === STATUS_TYPES.PAID).length;
-  const overdueInvoicesCount = invoices.filter(invoice => invoice.status === STATUS_TYPES.OVERDUE).length;
+  // 통계 정보
+  const [statistics, setStatistics] = useState({
+    totalCount: 0,
+    waitingCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    paidCount: 0,
+    overdueCount: 0,
+    totalAmount: 0,
+    waitingAmount: 0,
+    approvedAmount: 0,
+    rejectedAmount: 0,
+    paidAmount: 0,
+    overdueAmount: 0
+  });
 
-  const totalAmount = invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-  const waitingAmount = invoices.filter(invoice => invoice.status === STATUS_TYPES.WAITING)
-    .reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-  const paidAmount = invoices.filter(invoice => invoice.status === STATUS_TYPES.PAID)
-    .reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-  const overdueAmount = invoices.filter(invoice => invoice.status === STATUS_TYPES.OVERDUE)
-    .reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-
-  // 날짜 변경 핸들러
-  const handleStartDateChange = (e) => {
-    setStartDate(e.target.value);
+  // 역할 확인 유틸리티 함수
+  const isAdmin = () => {
+    return currentUser?.roles?.includes('ROLE_ADMIN') || currentUser?.role === 'ADMIN';
   };
 
-  const handleEndDateChange = (e) => {
-    setEndDate(e.target.value);
+  const isBuyer = () => {
+    return currentUser?.roles?.includes('ROLE_BUYER') || currentUser?.role === 'BUYER';
   };
 
-  // 검색 및 필터링 적용
+  const isSupplier = () => {
+    return currentUser?.roles?.includes('ROLE_SUPPLIER') || currentUser?.role === 'SUPPLIER';
+  };
+
+  // 재무회계팀(004로 시작)인지 확인하는 함수
+  const isFinanceDept = () => {
+    if (!currentUser?.username) return false;
+    return currentUser.username.startsWith('004');
+  };
+
+  // username이 001로 시작하는지 확인 (구매관리팀)
+  const isPurchaseDept = () => {
+    if (!currentUser?.username) return false;
+    return currentUser.username.startsWith('001');
+  };
+
+  // 회사명 찾기
+  const findCompanyName = () => {
+    if (!currentUser) return '';
+
+    // 공급업체 역할인 경우 회사명 추출
+    if (isSupplier()) {
+      // 공급업체명을 찾을 수 있는 가능한 속성 확인
+      const company = currentUser.companyName ||
+                     currentUser.company ||
+                     currentUser.supplierName;
+
+      // 회사명이 이미 있으면 사용
+      if (company) {
+        console.log('회사명 찾음 (속성):', company);
+        return company;
+      }
+
+      // 이름에서 추출 (예: '공급사 1 담당자' -> '공급사 1')
+      if (currentUser.name) {
+        // 이름에서 '공급사 N' 패턴 추출
+        const nameMatch = currentUser.name.match(/(공급사\s*\d+)/);
+        if (nameMatch) {
+          console.log('회사명 찾음 (이름 패턴):', nameMatch[1]);
+          return nameMatch[1];
+        }
+
+        // 이름이 공급사명인 경우 (예: '공급사 1')
+        if (currentUser.name.trim().startsWith('공급사')) {
+          console.log('회사명 찾음 (이름):', currentUser.name);
+          return currentUser.name.trim();
+        }
+      }
+
+      // 그래도 못 찾았다면, 이름 자체를 그대로 사용
+      if (currentUser.name) {
+        console.log('회사명으로 이름 사용:', currentUser.name);
+        return currentUser.name;
+      }
+    }
+
+    return '';
+  };
+
+  // 회사명 설정
   useEffect(() => {
-      let result = [...invoices];
+    if (currentUser && isSupplier()) {
+      const company = findCompanyName();
+      setCompanyName(company);
+      console.log('공급업체명 설정:', company);
+    }
 
-      if (searchTerm) {
-        result = result.filter(invoice =>
-          invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          invoice.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          invoice.contractId.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+    // 디버깅 정보 - 로그인한 사용자 정보
+    if (currentUser) {
+      console.log('현재 사용자:', currentUser);
+      console.log('사용자 ID 타입:', typeof currentUser.id);
+      console.log('사용자 ID 값:', currentUser.id);
+      console.log('재무회계팀 여부:', isFinanceDept());
+    }
+  }, [currentUser]);
+
+  // 송장에 대한 접근 권한 확인 (ID 비교 개선)
+  const canAccessInvoice = (invoice) => {
+    if (!currentUser) return false;
+
+    // ADMIN은 모든 데이터 접근 가능
+    if (isAdmin()) return true;
+
+    // 재무회계팀(004로 시작)은 자신이 담당자인 데이터만 접근 가능
+    if (isFinanceDept()) {
+      // ID를 문자열로 변환하여 비교
+      const approverIdStr = invoice.approverId !== null && invoice.approverId !== undefined
+        ? String(invoice.approverId)
+        : '';
+      const userIdStr = String(currentUser.id);
+
+      return approverIdStr === userIdStr;
+    }
+
+    // BUYER(구매관리팀)은 모든 데이터 접근 가능
+    if (isBuyer() && isPurchaseDept()) return true;
+
+    // 일반 BUYER도 모든 데이터 접근 가능
+    if (isBuyer()) return true;
+
+    // SUPPLIER는 자사 관련 데이터만 접근 가능
+    if (isSupplier()) {
+      // 회사명 정규화 (공백 제거 후 소문자 변환)
+      const normalizeText = (text) => text?.replace(/\s+/g, '').toLowerCase();
+      const normalizedCompanyName = normalizeText(companyName || currentUser.name || currentUser.companyName);
+      const normalizedSupplierName = normalizeText(invoice.supplierName);
+
+      // 정규화된 이름으로 비교
+      if (normalizedCompanyName && normalizedSupplierName) {
+        // 이름이 포함 관계인지 확인 (더 유연한 비교)
+        return normalizedSupplierName.includes(normalizedCompanyName) ||
+               normalizedCompanyName.includes(normalizedSupplierName);
+      }
+    }
+
+    return false;
+  };
+
+  // 역할 기반 데이터 필터링 (문자열 ID 비교)
+  const filterInvoicesByRole = (data) => {
+    if (!currentUser || !data || data.length === 0) return [];
+
+    // ADMIN은 모든 데이터 접근 가능
+    if (isAdmin()) return data;
+
+    // 재무회계팀(004로 시작)은 자신이 담당자인 데이터만 접근 가능
+    if (isFinanceDept()) {
+      const userIdStr = String(currentUser.id);
+
+      return data.filter(invoice => {
+        const approverIdStr = invoice.approverId !== null && invoice.approverId !== undefined
+          ? String(invoice.approverId)
+          : '';
+
+        return approverIdStr === userIdStr;
+      });
+    }
+
+    // BUYER(구매관리팀)은 모든 데이터 접근 가능
+    if (isBuyer() && isPurchaseDept()) return data;
+
+    // 일반 BUYER는 모든 데이터 접근 가능
+    if (isBuyer() && !isPurchaseDept()) return data;
+
+    // SUPPLIER는 자사 관련 데이터만 접근 가능
+    if (isSupplier()) {
+      // 회사명 정규화 (공백 제거 후 소문자 변환)
+      const normalizeText = (text) => text?.replace(/\s+/g, '').toLowerCase();
+
+      return data.filter(invoice => {
+        const normalizedCompanyName = normalizeText(companyName || currentUser.name || currentUser.companyName);
+        const normalizedSupplierName = normalizeText(invoice.supplierName);
+
+        if (normalizedCompanyName && normalizedSupplierName) {
+          return normalizedSupplierName.includes(normalizedCompanyName) ||
+                 normalizedCompanyName.includes(normalizedSupplierName);
+        }
+        return false;
+      });
+    }
+
+    return data;
+  };
+
+  // 송장 등록 권한 확인
+  const canCreateInvoice = () => {
+    if (!isLoggedIn || !currentUser) return false;
+
+    // 오직 SUPPLIER(공급업체)만 송장 발행 가능
+    if (isSupplier()) return true;
+
+    // 다른 역할은 불가능
+    return false;
+  };
+
+  // 데이터 로드 함수 (API 호출 파라미터 개선)
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+
+      if (statusFilter) params.append('status', statusFilter);
+      if (searchTerm) params.append('searchTerm', searchTerm);
+      params.append('page', page);
+      params.append('size', rowsPerPage);
+      params.append('sortBy', sortBy);
+      params.append('sortDir', sortDir);
+
+      // 재무회계팀(004로 시작)인 경우 자신이 담당자인 데이터만 조회
+      if (isFinanceDept() && currentUser?.id) {
+        // 백엔드에서 approverId로 필터링하는지 확인
+        // 여러 필드명 시도 (approverId, approver_id, approver 등)
+        params.append('approverId', currentUser.id);
+        console.log('재무회계팀 담당자 ID로 필터링:', currentUser.id);
       }
 
-      if (statusFilter) {
-        result = result.filter(invoice => invoice.status === statusFilter);
+      // SUPPLIER인 경우 자사 데이터만 조회하도록 필터 추가
+      if (isSupplier() && companyName) {
+        params.append('supplierName', companyName);
       }
 
-      if (startDate) {
-        result = result.filter(invoice => new Date(invoice.issueDate) >= new Date(startDate));
+      const apiUrl = `${API_URL}invoices/list?${params.toString()}`;
+      console.log('API 호출 URL:', apiUrl);
+
+      const response = await fetchWithAuth(apiUrl);
+
+      if (!response.ok) {
+        throw new Error(`송장 목록 조회 실패: ${response.status}`);
       }
 
-      if (endDate) {
-        result = result.filter(invoice => new Date(invoice.issueDate) <= new Date(endDate));
+      const data = await response.json();
+      console.log('API 응답 데이터:', data);
+
+      if (data) {
+        // 송장 데이터 설정
+        if (data.invoices) {
+          const allInvoices = data.invoices;
+          console.log('받은 송장 수:', allInvoices.length);
+          setInvoices(allInvoices);
+
+          // 담당자 확인 디버깅
+          if (isFinanceDept()) {
+            console.log('재무회계팀 사용자 ID:', currentUser.id);
+            let matchCount = 0;
+
+            allInvoices.forEach(invoice => {
+              const approverIdStr = String(invoice.approverId || '');
+              const userIdStr = String(currentUser.id);
+              const matches = approverIdStr === userIdStr;
+
+              if (matches) {
+                matchCount++;
+                console.log(`일치하는 송장 - ID: ${invoice.id}, 번호: ${invoice.invoiceNumber}`);
+              }
+            });
+
+            console.log(`일치하는 송장 수: ${matchCount}/${allInvoices.length}`);
+          }
+
+          // 역할 기반 필터링 적용
+          const filtered = filterInvoicesByRole(allInvoices);
+          console.log('필터링 후 송장 수:', filtered.length);
+          setFilteredInvoices(filtered);
+
+          // 필터링된 데이터 기준으로 총 항목 수 설정
+          setTotalElements(filtered.length);
+
+          // 필터링된 데이터로 통계 계산
+          const calculatedStats = calculateStatistics(filtered);
+          setStatistics(calculatedStats);
+        } else {
+          setInvoices([]);
+          setFilteredInvoices([]);
+        }
+
+        // 페이지네이션 정보 설정
+        if (data.totalPages) setTotalPages(data.totalPages);
+        if (data.currentPage !== undefined) setPage(data.currentPage);
+        if (data.totalItems) setTotalElements(data.totalItems);
+      } else {
+        throw new Error('송장 목록 조회 실패');
       }
+    } catch (error) {
+      console.error('송장 목록을 불러오는 중 오류 발생:', error);
+      setInvoices([]);
+      setFilteredInvoices([]);
+      setError('데이터를 불러오는 중 오류가 발생했습니다.');
+      setShowError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setFilteredInvoices(result);
-      setPage(0);
-    }, [invoices, searchTerm, statusFilter, startDate, endDate]);
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    if (isLoggedIn && currentUser) {
+      fetchInvoices();
+    } else {
+      setLoading(false);
+    }
+  }, [isLoggedIn, currentUser, page, rowsPerPage, sortBy, sortDir]);
 
-  // 페이지 변경 핸들러
+  // 필터링 변경 시 데이터 재필터링
+  useEffect(() => {
+    if (invoices.length > 0) {
+      const filtered = filterInvoicesByRole(invoices);
+      setFilteredInvoices(filtered);
+      setTotalElements(filtered.length);
+
+      // 필터링된 데이터로 통계 재계산
+      const calculatedStats = calculateStatistics(filtered);
+      setStatistics(calculatedStats);
+    }
+  }, [currentUser, companyName]);
+
+  // 이벤트 핸들러
+  const handleSearch = () => {
+    setPage(0);
+    fetchInvoices();
+  };
+
+  const handleRefresh = () => {
+    fetchInvoices();
+  };
+
+  const handleCreateInvoice = () => {
+    navigate('/invoices/create');
+  };
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
 
-  // 페이지당 행 수 변경 핸들러
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  // 검색어 변경 핸들러
-  const handleSearchChange = (event) => {
-    setSearchTerm(event.target.value);
+  const handleStatusFilterChange = (event) => {
+    setStatusFilter(event.target.value);
+    setPage(0);
   };
 
-// ✅ 정렬 상태 추가
-const [issueSort, setIssueSort] = useState('desc'); // 기본: 발행일 최신순
-const [dueSort, setDueSort] = useState('desc'); // 기본: 마감일 최신순
-
-// ✅ 정렬 옵션 리스트
-const sortOptions = [
-  { value: 'desc', label: '최신순' },
-  { value: 'asc', label: '오래된순' }
-];
-
-// ✅ 정렬 변경 핸들러
-const handleIssueSortChange = (event) => {
-  setIssueSort(event.target.value);
-};
-
-const handleDueSortChange = (event) => {
-  setDueSort(event.target.value);
-};
-
-// ✅ 정렬된 데이터 생성
-const sortedInvoices = [...filteredInvoices]
-  .sort((a, b) => {
-    const valueA = new Date(a.issueDate);
-    const valueB = new Date(b.issueDate);
-    return issueSort === 'asc' ? valueA - valueB : valueB - valueA;
-  })
-  .sort((a, b) => {
-    const valueA = new Date(a.dueDate);
-    const valueB = new Date(b.dueDate);
-    return dueSort === 'asc' ? valueA - valueB : valueB - valueA;
-  });
-
-
-  // 필터 다이얼로그 열기/닫기 핸들러
-  const handleFilterDialogOpen = () => {
-    setOpenFilterDialog(true);
+  const handleSortChange = (field, direction) => {
+    setSortBy(field);
+    setSortDir(direction);
+    setPage(0);
   };
 
-  const handleFilterDialogClose = () => {
-    setOpenFilterDialog(false);
+  const handleCloseError = () => {
+    setShowError(false);
   };
 
-  // 필터 적용 핸들러
-  const applyFilters = () => {
-    handleFilterDialogClose();
-  };
-
-  // 필터 초기화 핸들러
-  const resetFilters = () => {
-    setStatusFilter('');
-    setStartDate('');
-    setEndDate('');
-    handleFilterDialogClose();
-  };
-
-  // 상세보기 다이얼로그 열기 핸들러
+  // 송장 상세 페이지로 이동
   const handleViewInvoice = (invoice) => {
-    setSelectedInvoice(invoice);
-    setOpenDetailDialog(true);
-  };
-
-  // 상세보기 다이얼로그 닫기 핸들러
-  const handleCloseDetailDialog = () => {
-    setOpenDetailDialog(false);
-  };
-
-  // 결제 완료 표시 핸들러
-  const handleMarkAsPaid = (invoiceId) => {
-    setInvoices(invoices.map(invoice =>
-      invoice.id === invoiceId
-        ? { ...invoice, status: STATUS_TYPES.PAID, paymentDate: new Date().toISOString().split('T')[0] }
-        : invoice
-    ));
-    setSelectedInvoice(null);
-    handleCloseDetailDialog();
-    showSnackbar('송장이 결제 완료 처리되었습니다.', 'success');
-  };
-
-  // 송장 편집 다이얼로그 열기 핸들러
-  const handleEditInvoice = (invoice) => {
-    // 지불완료 상태인 경우 수정 불가능
-    if (invoice.status === STATUS_TYPES.PAID) {
-      showSnackbar('결제 완료된 송장은 수정할 수 없습니다.', 'error');
+    if (!canAccessInvoice(invoice)) {
+      setError('접근 권한이 없습니다.');
+      setShowError(true);
       return;
     }
 
-    // 기존 송장 정보를 복사하여 편집 상태로 설정
-    setEditedInvoice({
-      ...invoice,
-      dueDate: toISODateString(invoice.dueDate),
-      items: [...invoice.items.map(item => ({ ...item }))]
-    });
-
-    setOpenEditDialog(true);
-    if (openDetailDialog) {
-      handleCloseDetailDialog();
-    }
+    navigate(`/invoices/${invoice.id}`);
   };
 
-  // 편집 다이얼로그 닫기 핸들러
-  const handleCloseEditDialog = () => {
-    setOpenEditDialog(false);
-    setEditedInvoice(null);
-  };
-
-  // 편집 송장 필드 변경 핸들러
-  const handleEditChange = (field, value) => {
-    setEditedInvoice(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // 공급자 정보 변경 핸들러
-  const handleSupplierChange = (field, value) => {
-    setEditedInvoice(prev => ({
-      ...prev,
-      supplier: {
-        ...prev.supplier,
-        [field]: value
-      }
-    }));
-  };
-
-  // 품목 정보 변경 핸들러
-  const handleItemChange = (index, field, value) => {
-    const updatedItems = [...editedInvoice.items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      [field]: value
-    };
-
-    // 단가나 수량이 변경되면 공급가액 재계산
-    if (field === 'unitPrice' || field === 'quantity') {
-      const quantity = field === 'quantity' ? value : updatedItems[index].quantity;
-      const unitPrice = field === 'unitPrice' ? value : updatedItems[index].unitPrice;
-      const supplyAmount = quantity * unitPrice;
-      const vatAmount = Math.round(supplyAmount * 0.1); // 부가세 10%
-      const totalAmount = supplyAmount + vatAmount;
-
-      updatedItems[index] = {
-        ...updatedItems[index],
-        supplyAmount,
-        vatAmount,
-        totalAmount
-      };
-    }
-
-    // 총 금액 계산
-    const totalSupplyAmount = updatedItems.reduce((sum, item) => sum + item.supplyAmount, 0);
-    const totalVatAmount = updatedItems.reduce((sum, item) => sum + item.vatAmount, 0);
-    const totalAmount = totalSupplyAmount + totalVatAmount;
-
-    setEditedInvoice(prev => ({
-      ...prev,
-      items: updatedItems,
-      supplyAmount: totalSupplyAmount,
-      vatAmount: totalVatAmount,
-      totalAmount: totalAmount
-    }));
-  };
-
-  // 송장 저장 핸들러
-  const handleSaveInvoice = () => {
-    // 기본 검증
-    if (!editedInvoice.dueDate) {
-      showSnackbar('마감일을 입력해주세요.', 'error');
-      return;
-    }
-
-    if (new Date(editedInvoice.dueDate) <= new Date(editedInvoice.issueDate)) {
-      showSnackbar('마감일은 발행일보다 이후여야 합니다.', 'error');
-      return;
-    }
-
-    // 송장 업데이트
-    const updatedInvoices = invoices.map(invoice =>
-      invoice.id === editedInvoice.id ? {
-        ...editedInvoice,
-        updatedAt: new Date().toISOString()
-      } : invoice
-    );
-
-    setInvoices(updatedInvoices);
-    handleCloseEditDialog();
-    showSnackbar('송장이 성공적으로 수정되었습니다.', 'success');
-  };
-
-  // 스낵바 표시 함수
-  const showSnackbar = (message, severity) => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
-  };
-
-  // 스낵바 닫기 핸들러
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-  };
-
-  // 송장 발행 페이지로 이동하는 핸들러
-  const handleCreateInvoice = () => {
-    navigate('/invoices/create'); // 송장 발행 페이지로 이동
+  // 페이지네이션된 데이터 계산
+  const getCurrentPageData = () => {
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredInvoices.slice(startIndex, endIndex);
   };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
+      {/* 에러 메시지 표시 */}
+      <Snackbar
+        open={showError}
+        autoHideDuration={6000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
+
       {/* 제목과 송장 발행 버튼 */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
           송장 목록
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={handleCreateInvoice}
-        >
-          새 송장 발행
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {canCreateInvoice() && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={handleCreateInvoice}
+            >
+              새 송장 발행
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* 요약 카드 섹션 */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StyledCard>
-            <CardContent>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                총 송장
+      <Box sx={{ mb: 3, overflowX: 'auto' }}>
+        <Grid container spacing={1}>
+          <Grid item xs={4} sm={2}>
+            <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+              <Typography variant="body2" color="text.secondary">총 송장</Typography>
+              <Typography variant="h6" sx={{ my: 1 }}>{statistics.totalCount}</Typography>
+              <Typography variant="caption" display="block">
+                {formatCurrency(statistics.totalAmount)}
               </Typography>
-              <Typography variant="h4">{totalInvoicesCount}건</Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                총액: {formatCurrency(totalAmount)}
+            </Box>
+          </Grid>
+
+          <Grid item xs={4} sm={2}>
+            <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+              <Typography variant="body2" color="text.secondary">대기</Typography>
+              <Typography variant="h6" color="warning.main" sx={{ my: 1 }}>{statistics.waitingCount}</Typography>
+              <Typography variant="caption" display="block">
+                {formatCurrency(statistics.waitingAmount)}
               </Typography>
-            </CardContent>
-          </StyledCard>
+            </Box>
+          </Grid>
+
+          <Grid item xs={4} sm={2}>
+            <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+              <Typography variant="body2" color="text.secondary">승인</Typography>
+              <Typography variant="h6" color="success.main" sx={{ my: 1 }}>{statistics.approvedCount}</Typography>
+              <Typography variant="caption" display="block">
+                {formatCurrency(statistics.approvedAmount)}
+              </Typography>
+            </Box>
+          </Grid>
+
+          <Grid item xs={4} sm={2}>
+            <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+              <Typography variant="body2" color="text.secondary">거부</Typography>
+              <Typography variant="h6" color="error.main" sx={{ my: 1 }}>{statistics.rejectedCount}</Typography>
+              <Typography variant="caption" display="block">
+                {formatCurrency(statistics.rejectedAmount)}
+              </Typography>
+            </Box>
+          </Grid>
+
+          <Grid item xs={4} sm={2}>
+            <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+              <Typography variant="body2" color="text.secondary">완료</Typography>
+              <Typography variant="h6" color="info.main" sx={{ my: 1 }}>{statistics.paidCount}</Typography>
+              <Typography variant="caption" display="block">
+                {formatCurrency(statistics.paidAmount)}
+              </Typography>
+            </Box>
+          </Grid>
+
+          <Grid item xs={4} sm={2}>
+            <Box sx={{ p: 1.5, textAlign: 'center', borderRadius: 1, bgcolor: 'background.paper', boxShadow: 1 }}>
+              <Typography variant="body2" color="text.secondary">연체</Typography>
+              <Typography variant="h6" color="error.dark" sx={{ my: 1 }}>{statistics.overdueCount}</Typography>
+              <Typography variant="caption" display="block">
+                {formatCurrency(statistics.overdueAmount)}
+              </Typography>
+            </Box>
+          </Grid>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StyledCard>
-            <CardContent>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                대기 중
-              </Typography>
-              <Typography variant="h4" color="warning.main">{waitingInvoicesCount}건</Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                총액: {formatCurrency(waitingAmount)}
-              </Typography>
-            </CardContent>
-          </StyledCard>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StyledCard>
-            <CardContent>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                지불 완료
-              </Typography>
-              <Typography variant="h4" color="success.main">{paidInvoicesCount}건</Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                총액: {formatCurrency(paidAmount)}
-              </Typography>
-            </CardContent>
-          </StyledCard>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StyledCard>
-            <CardContent>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                연체
-              </Typography>
-              <Typography variant="h4" color="error.main">{overdueInvoicesCount}건</Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                총액: {formatCurrency(overdueAmount)}
-              </Typography>
-            </CardContent>
-          </StyledCard>
-        </Grid>
-      </Grid>
+      </Box>
 
       {/* 검색 및 필터 섹션 */}
       <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={1} alignItems="center" justifyContent="space-between">
-          <Grid item xs={12} md={6}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              placeholder="송장번호, 공급업체, 계약번호로 검색"
+              placeholder="송장번호, 공급업체명으로 검색"
               variant="outlined"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -499,147 +642,119 @@ const sortedInvoices = [...filteredInvoices]
               }}
             />
           </Grid>
-          <Grid item xs={6} md={2}>
+          <Grid item xs={12} md={3}>
             <FormControl fullWidth variant="outlined">
               <InputLabel>상태</InputLabel>
               <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={handleStatusFilterChange}
                 label="상태"
               >
                 <MenuItem value="">전체</MenuItem>
-                <MenuItem value={STATUS_TYPES.WAITING}>대기</MenuItem>
-                <MenuItem value={STATUS_TYPES.PAID}>지불완료</MenuItem>
-                <MenuItem value={STATUS_TYPES.OVERDUE}>연체</MenuItem>
+                <MenuItem value="WAITING">대기</MenuItem>
+                <MenuItem value="APPROVED">승인됨</MenuItem>
+                <MenuItem value="REJECTED">거부됨</MenuItem>
+                <MenuItem value="PAID">지불완료</MenuItem>
+                <MenuItem value="OVERDUE">연체</MenuItem>
               </Select>
             </FormControl>
           </Grid>
-
-           {/* 📅 발행일 정렬 (드롭다운) */}
-          <Grid item xs={6} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>발행일 정렬</InputLabel>
-              <Select value={issueSort} onChange={handleIssueSortChange} label="발행일 정렬">
-                {sortOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    발행일 ({option.label})
-                  </MenuItem>
-                ))}
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel>정렬</InputLabel>
+              <Select
+                value={`${sortBy}-${sortDir}`}
+                onChange={(e) => {
+                  const [field, direction] = e.target.value.split('-');
+                  handleSortChange(field, direction);
+                }}
+                label="정렬"
+              >
+                <MenuItem value="issueDate-desc">발행일 (최신순)</MenuItem>
+                <MenuItem value="issueDate-asc">발행일 (오래된순)</MenuItem>
+                <MenuItem value="dueDate-asc">마감일 (오래된순)</MenuItem>
+                <MenuItem value="dueDate-desc">마감일 (최신순)</MenuItem>
+                <MenuItem value="totalAmount-desc">금액 (높은순)</MenuItem>
+                <MenuItem value="totalAmount-asc">금액 (낮은순)</MenuItem>
               </Select>
             </FormControl>
           </Grid>
-
-          {/* 📅 마감일 정렬 (드롭다운) */}
-          <Grid item xs={6} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>마감일 정렬</InputLabel>
-              <Select value={dueSort} onChange={handleDueSortChange} label="마감일 정렬">
-                {sortOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    마감일 ({option.label})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <Grid item xs={12} md={2}>
+            <Button
+              variant="contained"
+              onClick={handleSearch}
+              fullWidth
+            >
+              검색
+            </Button>
           </Grid>
-
         </Grid>
       </Paper>
-
 
       {/* 송장 목록 테이블 */}
       <Paper variant="outlined">
         <TableContainer>
-          <Table sx={{ minWidth: 700 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>송장 번호</TableCell>
-                <TableCell>발행일</TableCell>
-                <TableCell>마감일</TableCell>
-                <TableCell>공급업체</TableCell>
-                <TableCell align="right">공급가액</TableCell>
-                <TableCell align="right">부가세</TableCell>
-                <TableCell align="right">총액</TableCell>
-                <TableCell>상태</TableCell>
-                <TableCell align="center">작업</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredInvoices
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((invoice) => (
-                  <StyledTableRow key={invoice.id} onClick={() => handleViewInvoice(invoice)} sx={{ cursor: 'pointer' }}>
-                    <TableCell component="th" scope="row">{invoice.invoiceNumber}</TableCell>
-                    <TableCell>{formatDate(invoice.issueDate)}</TableCell>
-                    <TableCell>{formatDate(invoice.dueDate)}</TableCell>
-                    <TableCell>{invoice.supplier.name}</TableCell>
-                    <TableCell align="right">{formatCurrency(invoice.supplyAmount)}</TableCell>
-                    <TableCell align="right">{formatCurrency(invoice.vatAmount)}</TableCell>
-                    <TableCell align="right">{formatCurrency(invoice.totalAmount)}</TableCell>
-                    <TableCell>
-                      <Chip label={invoice.status} color={getStatusColor(invoice.status)} size="small" />
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Table sx={{ minWidth: 700 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell align="center">송장 번호</TableCell>
+                  <TableCell align="center">발주 번호</TableCell>
+                  <TableCell align="center">발행일</TableCell>
+                  <TableCell align="center">마감일</TableCell>
+                  <TableCell align="center">공급업체</TableCell>
+                  <TableCell align="center">담당자</TableCell>
+                  <TableCell align="center">총액</TableCell>
+                  <TableCell align="center">상태</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {getCurrentPageData().length > 0 ? (
+                  getCurrentPageData().map((invoice) => (
+                    <StyledTableRow
+                      key={invoice.id}
+                      hover
+                      onClick={() => handleViewInvoice(invoice)}
+                      sx={{
+                        cursor: canAccessInvoice(invoice) ? 'pointer' : 'not-allowed',
+                        opacity: canAccessInvoice(invoice) ? 1 : 0.5
+                      }}
+                    >
+                      <TableCell align="center">{invoice.invoiceNumber}</TableCell>
+                      <TableCell align="center">{invoice.orderNumber || '-'}</TableCell>
+                      <TableCell align="center">{invoice.issueDate}</TableCell>
+                      <TableCell align="center">{invoice.dueDate}</TableCell>
+                      <TableCell align="center">{invoice.supplierName}</TableCell>
+                      <TableCell align="center">{invoice.approverName || '-'}</TableCell>
+                      <TableCell align="center">{formatCurrency(invoice.totalAmount)}</TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={getStatusProps(invoice.status).label}
+                          color={getStatusProps(invoice.status).color}
+                          size="small"
+                        />
+                      </TableCell>
+                    </StyledTableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                      표시할 송장이 없습니다.
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                        {/* 🔥 "상세보기" 버튼 제거됨! */}
-
-                        {/* ✏ 수정 버튼 */}
-                        <Tooltip title="수정">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={(e) => {
-                              e.stopPropagation(); // 행 클릭과 구분
-                              handleEditInvoice(invoice);
-                            }}
-                            disabled={invoice.status === STATUS_TYPES.PAID}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-
-                        {/* 💳 결제 페이지로 이동하는 버튼 */}
-                        {invoice.status === STATUS_TYPES.WAITING && (
-                          <Tooltip title="결제하기">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={(e) => {
-                                e.stopPropagation(); // 행 클릭과 구분
-                                navigate(`/payments/${invoice.id}`);
-                              }}
-                            >
-                              <PaymentIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-
-                        {/* 💳 결제 처리 버튼 */}
-                        {invoice.status === STATUS_TYPES.WAITING && (
-                          <Tooltip title="결제 처리">
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={(e) => {
-                                e.stopPropagation(); // 행 클릭과 구분
-                                handleMarkAsPaid(invoice.id);
-                              }}
-                            >
-                              <PaymentIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
-                  </StyledTableRow>
-                ))}
-            </TableBody>
-          </Table>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </TableContainer>
         <TablePagination
           rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"
-          count={filteredInvoices.length}
+          count={totalElements}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
@@ -647,513 +762,8 @@ const sortedInvoices = [...filteredInvoices]
           labelRowsPerPage="페이지당 행 수"
         />
       </Paper>
-
-      {/* 필터 다이얼로그 */}
-      <Dialog open={openFilterDialog} onClose={handleFilterDialogClose}>
-        <DialogTitle>상세 필터</DialogTitle>
-        <DialogContent dividers>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <FormControl fullWidth variant="outlined">
-                <InputLabel id="status-filter-dialog-label">상태</InputLabel>
-                <Select
-                  labelId="status-filter-dialog-label"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  label="상태"
-                >
-                  <MenuItem value="">전체</MenuItem>
-                  <MenuItem value={STATUS_TYPES.WAITING}>대기</MenuItem>
-                  <MenuItem value={STATUS_TYPES.PAID}>지불완료</MenuItem>
-                  <MenuItem value={STATUS_TYPES.OVERDUE}>연체</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="시작일"
-                type="date"
-                value={startDate}
-                onChange={handleStartDateChange}
-                fullWidth
-                InputLabelProps={{
-                  shrink: true,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="종료일"
-                type="date"
-                value={endDate}
-                onChange={handleEndDateChange}
-                fullWidth
-                InputLabelProps={{
-                  shrink: true,
-                }}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={resetFilters} color="inherit">
-            초기화
-          </Button>
-          <Button onClick={applyFilters} color="primary" variant="contained">
-            필터 적용
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 송장 상세 다이얼로그 */}
-      <Dialog
-        open={openDetailDialog}
-        onClose={handleCloseDetailDialog}
-        fullWidth
-        maxWidth="md"
-      >
-        {selectedInvoice && (
-          <>
-            <DialogTitle>
-              <Grid container alignItems="center" justifyContent="space-between">
-                <Grid item>
-                  송장 상세 정보: {selectedInvoice.invoiceNumber}
-                </Grid>
-                <Grid item>
-                  <Chip
-                    label={selectedInvoice.status}
-                    color={getStatusColor(selectedInvoice.status)}
-                  />
-                </Grid>
-              </Grid>
-            </DialogTitle>
-            <DialogContent dividers>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    기본 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">계약 번호</Typography>
-                      <Typography variant="body1">{selectedInvoice.contractId}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">거래 번호</Typography>
-                      <Typography variant="body1">{selectedInvoice.transactionNumber}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">발행일</Typography>
-                      <Typography variant="body1">{formatDate(selectedInvoice.issueDate)}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">마감일</Typography>
-                      <Typography variant="body1">{formatDate(selectedInvoice.dueDate)}</Typography>
-                    </Grid>
-                    {selectedInvoice.paymentDate && (
-                      <Grid item xs={12} sm={6} md={4}>
-                        <Typography variant="subtitle2" color="textSecondary">결제일</Typography>
-                        <Typography variant="body1">{formatDate(selectedInvoice.paymentDate)}</Typography>
-                      </Grid>
-                    )}
-                    {selectedInvoice.status === STATUS_TYPES.OVERDUE && (
-                      <Grid item xs={12} sm={6} md={4}>
-                        <Typography variant="subtitle2" color="textSecondary">연체일</Typography>
-                        <Typography variant="body1" color="error.main">{selectedInvoice.overdueDays}일</Typography>
-                      </Grid>
-                    )}
-                  </Grid>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    공급자 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">공급자 ID</Typography>
-                      <Typography variant="body1">{selectedInvoice.supplier.id}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">공급자명</Typography>
-                      <Typography variant="body1">{selectedInvoice.supplier.name}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">담당자</Typography>
-                      <Typography variant="body1">{selectedInvoice.supplier.contactPerson}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">이메일</Typography>
-                      <Typography variant="body1">{selectedInvoice.supplier.email}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">전화번호</Typography>
-                      <Typography variant="body1">{selectedInvoice.supplier.phone}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="subtitle2" color="textSecondary">주소</Typography>
-                      <Typography variant="body1">{selectedInvoice.supplier.address}</Typography>
-                    </Grid>
-                  </Grid>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    품목 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>품목명</TableCell>
-                          <TableCell align="right">수량</TableCell>
-                          <TableCell align="right">단가</TableCell>
-                          <TableCell align="right">공급가액</TableCell>
-                          <TableCell align="right">부가세</TableCell>
-                          <TableCell align="right">총액</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {selectedInvoice.items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.itemName}</TableCell>
-                            <TableCell align="right">{item.quantity}</TableCell>
-                            <TableCell align="right">{formatCurrency(item.unitPrice)}</TableCell>
-                            <TableCell align="right">{formatCurrency(item.supplyAmount)}</TableCell>
-                            <TableCell align="right">{formatCurrency(item.vatAmount)}</TableCell>
-                            <TableCell align="right">{formatCurrency(item.totalAmount)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    금액 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="textSecondary">공급가액</Typography>
-                      <Typography variant="body1">{formatCurrency(selectedInvoice.supplyAmount)}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="textSecondary">부가세</Typography>
-                      <Typography variant="body1">{formatCurrency(selectedInvoice.vatAmount)}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="textSecondary">총액</Typography>
-                      <Typography variant="h6" color="primary.main">
-                        {formatCurrency(selectedInvoice.totalAmount)}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
-            </DialogContent>
-            <DialogActions>
-              <Button startIcon={<EditIcon />} color="primary"
-                onClick={() => handleEditInvoice(selectedInvoice)}
-                disabled={selectedInvoice.status === STATUS_TYPES.PAID}>
-                수정
-              </Button>
-              <Button startIcon={<PrintIcon />} onClick={() => alert('인쇄 기능')}>
-                인쇄
-              </Button>
-              <Button startIcon={<DownloadIcon />} onClick={() => alert('다운로드 기능')}>
-                다운로드
-              </Button>
-              {selectedInvoice.status === STATUS_TYPES.WAITING && (
-                <Button
-                  startIcon={<PaymentIcon />}
-                  color="success"
-                  variant="contained"
-                  onClick={() => handleMarkAsPaid(selectedInvoice.id)}
-                >
-                  결제 완료 처리
-                </Button>
-              )}
-              <Button onClick={handleCloseDetailDialog}>
-                닫기
-              </Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
-
-      {/* 송장 수정 다이얼로그 */}
-      <Dialog
-        open={openEditDialog}
-        onClose={handleCloseEditDialog}
-        fullWidth
-        maxWidth="md"
-      >
-        {editedInvoice && (
-          <>
-            <DialogTitle>
-              <Grid container alignItems="center" justifyContent="space-between">
-                <Grid item>
-                  송장 수정: {editedInvoice.invoiceNumber}
-                </Grid>
-                <Grid item>
-                  <Chip
-                    label={editedInvoice.status}
-                    color={getStatusColor(editedInvoice.status)}
-                  />
-                </Grid>
-              </Grid>
-            </DialogTitle>
-            <DialogContent dividers>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    기본 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="계약 번호"
-                        value={editedInvoice.contractId}
-                        InputProps={{ readOnly: true }}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="거래 번호"
-                        value={editedInvoice.transactionNumber}
-                        InputProps={{ readOnly: true }}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="발행일"
-                        value={toISODateString(editedInvoice.issueDate)}
-                        InputProps={{ readOnly: true }}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="마감일"
-                        type="date"
-                        value={editedInvoice.dueDate}
-                        onChange={(e) => handleEditChange('dueDate', e.target.value)}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                        InputLabelProps={{
-                          shrink: true,
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    공급자 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="공급자 ID"
-                        value={editedInvoice.supplier.id}
-                        InputProps={{ readOnly: true }}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="공급자명"
-                        value={editedInvoice.supplier.name}
-                        InputProps={{ readOnly: true }}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="담당자"
-                        value={editedInvoice.supplier.contactPerson}
-                        onChange={(e) => handleSupplierChange('contactPerson', e.target.value)}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="이메일"
-                        value={editedInvoice.supplier.email}
-                        onChange={(e) => handleSupplierChange('email', e.target.value)}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                        type="email"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="전화번호"
-                        value={editedInvoice.supplier.phone}
-                        onChange={(e) => handleSupplierChange('phone', e.target.value)}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <TextField
-                        label="주소"
-                        value={editedInvoice.supplier.address}
-                        onChange={(e) => handleSupplierChange('address', e.target.value)}
-                        fullWidth
-                        margin="normal"
-                        size="small"
-                      />
-                    </Grid>
-                  </Grid>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    품목 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>품목명</TableCell>
-                          <TableCell align="right">수량</TableCell>
-                          <TableCell align="right">단가</TableCell>
-                          <TableCell align="right">공급가액</TableCell>
-                          <TableCell align="right">부가세</TableCell>
-                          <TableCell align="right">총액</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {editedInvoice.items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <TextField
-                                value={item.itemName}
-                                onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
-                                size="small"
-                                variant="standard"
-                                fullWidth
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              <TextField
-                                value={item.quantity}
-                                onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
-                                size="small"
-                                variant="standard"
-                                type="number"
-                                sx={{ width: '80px' }}
-                                InputProps={{ inputProps: { min: 1 } }}
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              <TextField
-                                value={item.unitPrice}
-                                onChange={(e) => handleItemChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
-                                size="small"
-                                variant="standard"
-                                type="number"
-                                sx={{ width: '120px' }}
-                                InputProps={{ inputProps: { min: 0 } }}
-                              />
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCurrency(item.supplyAmount)}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCurrency(item.vatAmount)}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCurrency(item.totalAmount)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    금액 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="textSecondary">공급가액</Typography>
-                      <Typography variant="body1">{formatCurrency(editedInvoice.supplyAmount)}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="textSecondary">부가세</Typography>
-                      <Typography variant="body1">{formatCurrency(editedInvoice.vatAmount)}</Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="textSecondary">총액</Typography>
-                      <Typography variant="h6" color="primary.main">
-                        {formatCurrency(editedInvoice.totalAmount)}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseEditDialog} startIcon={<CloseIcon />}>
-                취소
-              </Button>
-              <Button
-                onClick={handleSaveInvoice}
-                color="primary"
-                variant="contained"
-                startIcon={<SaveIcon />}
-              >
-                저장
-              </Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
-
-      {/* 알림 스낵바 */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
     </Container>
   );
 };
 
-export default InvoiceListPage;
+export default InvoicesListPage;

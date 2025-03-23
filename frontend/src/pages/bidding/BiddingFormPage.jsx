@@ -102,17 +102,23 @@ function BiddingFormPage() {
   const fetchSuppliers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetchWithAuth(`${API_URL}suppliers/active`);
+      console.log("공급업체 목록 API 호출 시작");
+      const response = await fetchWithAuth(
+        `${API_URL}biddings/suppliers/active`
+      );
 
       if (!response.ok) {
         throw new Error("공급사 목록을 가져오는데 실패했습니다.");
       }
 
       const data = await response.json();
+      console.log("공급업체 API 응답 데이터:", data);
       setSuppliers(data);
     } catch (error) {
       console.error("공급사 목록 가져오기 실패:", error);
       setRequestError("공급사 정보를 불러오는데 실패했습니다.");
+      // 에러가 발생해도 한 번만 표시하기 위한 조치
+      setSuppliers([]); // 빈 배열로 설정하여 무한 루프 방지
     } finally {
       setIsLoading(false);
     }
@@ -121,17 +127,25 @@ function BiddingFormPage() {
   // 구매 요청 목록 가져오기
   const fetchPurchaseRequests = async () => {
     try {
+      console.log("구매 요청 목록 API 호출 시작");
       const response = await fetchWithAuth(
-        `${API_URL}purchase-requests/active`
+        `${API_URL}biddings/purchase-requests/active`
       );
+
       if (!response.ok) {
-        throw new Error("구매 요청 목록을 가져오는데 실패했습니다.");
+        const errorText = await response.text();
+        console.error("API 오류 응답:", errorText);
+        throw new Error(
+          errorText || "구매 요청 목록을 가져오는데 실패했습니다."
+        );
       }
 
       const data = await response.json();
+      console.log("구매 요청 API 응답 데이터:", data);
       setPurchaseRequests(data || []);
     } catch (error) {
       console.error("구매 요청 목록 가져오기 실패:", error);
+      setRequestError(error.message || "구매 요청 목록을 불러올 수 없습니다.");
     }
   };
 
@@ -462,7 +476,7 @@ function BiddingFormPage() {
             setFileList([{ name: biddingData.filePath }]);
           }
 
-          // 수정 모드에서는 공급자 정보도 정확히 가져와야 함
+          // 수정 모드에서는 공급자 정보도 가져와야 함
           if (
             !mappedFormData.suppliers ||
             mappedFormData.suppliers.length === 0
@@ -495,7 +509,7 @@ function BiddingFormPage() {
     fetchSuppliers();
     fetchPurchaseRequests();
     fetchBiddingData();
-  }, [mode, biddingId, suppliers]);
+  }, [mode, biddingId]);
 
   // 취소 핸들러
   function handleCancel() {

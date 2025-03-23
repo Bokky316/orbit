@@ -442,11 +442,11 @@ function PurchaseRequestEditPage() {
                 });
 
                 try {
-                    const fileResponse = await fetchWithAuth(`${API_URL}purchase-requests/${purchaseRequest.id}/attachments`, {
+                    const fileResponse = await fetch(`${API_URL}purchase-requests/${purchaseRequest.id}/attachments`, {
                         method: 'POST',
+                        credentials: 'include', // 쿠키 포함
                         body: fileFormData
                     });
-
                     if (!fileResponse.ok) {
                         const errorMsg = await fileResponse.text();
                         console.error(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);

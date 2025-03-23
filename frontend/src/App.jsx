@@ -1,6 +1,6 @@
 import React from "react";
 import { useSelector } from "react-redux";
-import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./redux/store";
 
@@ -12,10 +12,16 @@ import BiddingDetailPage from "./pages/bidding/BiddingDetailPage";
 import BiddingFormPage from "@/pages/bidding/BiddingFormPage";
 import BiddingEvaluationListPage from "./pages/bidding/BiddingEvaluationListPage";
 import BiddingEvaluationDetailPage from "./pages/bidding/BiddingEvaluationDetailPage";
-import BiddingOrderDetail from "./pages/bidding/BiddingOrderDetail";
+import SupplierBiddingListPage from "./pages/bidding/SupplierBiddingListPage";
+import SupplierBiddingDetailPage from "./pages/bidding/SupplierBiddingDetailPage";
 import ContractsListPage from "./pages/contract/ContractsListPage";
 import ContractCreatePage from "./pages/contract/ContractCreatePage";
-import BiddingOrderPage from "./pages/bidding/BiddingOrderPage";
+import SupplierContractsListPage from "./pages/contract/SupplierContractsListPage";
+import SupplierContractDetailPage from "./pages/contract/SupplierContractDetailPage";
+import BiddingOrderListPage from "./pages/order/BiddingOrderListPage";
+import BiddingOrderDetailPage from "./pages/order/BiddingOrderDetailPage";
+import SupplierOrdersListPage from "./pages/order/SupplierOrdersListPage";
+import SupplierOrderDetailPage from "./pages/order/SupplierOrderDetailPage";
 import ErrorPage from "@/pages/error/ErrorPage";
 import ProjectListPage from "@/pages/procurement/ProjectListPage";
 import ProjectDetailPage from "@/pages/procurement/ProjectDetailPage";
@@ -28,25 +34,27 @@ import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
-import ApprovalLineAdministration from '@/pages/approval/ApprovalLineAdministration';
-import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
-import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
-import PaymentListPage from '@/pages/payment/PaymentListPage';
-import PaymentProcessPage from '@/pages/payment/PaymentProcessPage';
+import ApprovalLineAdministration from "@/pages/approval/ApprovalLineAdministration";
 import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
 import SupplierApprovalListPage from "@/pages/supplier/SupplierApprovalListPage";
-import CommonCodeManagement from '@/pages/commonCode/CommonCodeManagement';
+import CommonCodeManagement from "@/pages/commonCode/CommonCodeManagement";
 import CategoryListPage from "@pages/item/CategoryListPage";
 import CategoryFormPage from "@pages/item/CategoryFormPage";
 import ItemListPage from "@pages/item/ItemListPage";
 import ItemFormPage from "@pages/item/ItemFormPage";
-import DeliveryListPage from "@/pages/delivery/DeliveryListPage"
-import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage"
-import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage"
-import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage"
-import AdminMemberPage from "@/pages/member/AdminMemberPage";
+import DeliveryListPage from "@/pages/delivery/DeliveryListPage";
+import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage";
+import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage";
+import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage";
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
+import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
+import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
+ import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import PaymentListPage from '@/pages/payment/PaymentListPage';
+import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
+import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -55,9 +63,18 @@ import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 function AppContent() {
   const { isLoggedIn } = useSelector((state) => state.auth);
+  const auth = useSelector((state) => state.auth);
+  const isSupplier = auth?.roles?.some(
+    (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
+  );
 
   // 대시보드 페이지 임시 컴포넌트
   const DashboardPage = () => <div>대시보드 페이지</div>;
+  // 공급자 대시보드 임시 컴포넌트
+  const SupplierDashboard = () => <div>공급자 대시보드 페이지</div>;
+  // 임시 페이지 컴포넌트들
+  const SupplierContractsPage = () => <div>공급사 계약 페이지 (개발 중)</div>;
+  const SupplierOrdersPage = () => <div>공급사 주문 페이지 (개발 중)</div>;
 
   return (
     <BrowserRouter>
@@ -69,108 +86,191 @@ function AppContent() {
 
           {isLoggedIn ? (
             <Route element={<Home />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              {/* 입찰 관리 */}
-              <Route path="/biddings" element={<BiddingListPage />} />
+              {/* 공통 라우트 (로그인한 모든 사용자가 접근 가능) */}
               <Route
-                path="/biddings/new"
-                element={<BiddingFormPage mode="create" />}
-              />
-              <Route
-                path="/biddings/:id/edit"
-                element={<BiddingFormPage mode="edit" />}
-              />
-              <Route path="/biddings/:id" element={<BiddingDetailPage />} />
-              {/* 평가 페이지 */}
-              <Route
-                path="/biddings/evaluations"
-                element={<BiddingEvaluationListPage />}
-              />
-              {/* 평가 상세 페이지 */}
-              <Route
-                path="/biddings/evaluations/:id"
-                element={<BiddingEvaluationDetailPage />}
-              />
-              {/* 계약 목록 페이지 */}
-              <Route path="contracts" element={<ContractsListPage />} />
-              {/* 계약 생성 페이지 */}
-              <Route path="" element={<ContractCreatePage />} />
-              {/* 주문 목록 페이지 */}
-              <Route path="/orders" element={<BiddingOrderPage />} />
-              {/* 주문 상세 페이지 */}
-              <Route
-                path="/biddings/orders/:id"
-                element={<BiddingOrderDetail />}
-              />
-              {/* 프로젝트 관리 */}
-              <Route path="/projects" element={<ProjectListPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailPage />} />
-              <Route path="/projects/new" element={<ProjectCreatePage />} />
-              <Route path="/projects/edit/:id" element={<ProjectEditPage />} />
-              {/* 구매 요청 관리 */}
-              <Route
-                path="/purchase-requests"
-                element={<PurchaseRequestListPage />}
-              />
-              <Route
-                path="/purchase-requests/:id"
-                element={<PurchaseRequestDetailPage />}
-              />
-              <Route
-                path="/purchase-requests/new"
-                element={<PurchaseRequestCreatePage />}
-              />
-              <Route
-                path="/purchase-requests/edit/:id"
-                element={<PurchaseRequestEditPage />}
-              />
-              {/* 승인 관리 */}
-              <Route path="/approvals" element={<ApprovalListPage />} />
-              <Route path="/approvals/:id" element={<ApprovalDetailPage />} />
-              <Route
-                path="/approval-management"
-                element={<ApprovalManagementPage />}
+                path="/"
+                element={isSupplier ? <SupplierDashboard /> : <DashboardPage />}
               />
 
-              {/* 입고 관리 */}
-              <Route path="/deliveries" element={<DeliveryListPage />} />
-              <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
-              <Route path="/deliveries/edit/:id" element={<DeliveryEditPage />} />
-              <Route
-                path="/deliveries/new"
-                element={<DeliveryCreatePage />}
-              />
+              {/* 공급자(Supplier) 전용 라우트 */}
+              {isSupplier && (
+                <>
+                  <Route
+                    path="/suppliers/dashboard"
+                    element={<SupplierDashboard />}
+                  />
+                  <Route
+                    path="/suppliers/biddings"
+                    element={<SupplierBiddingListPage />}
+                  />
+                  <Route
+                    path="/suppliers/biddings/:id"
+                    element={<SupplierBiddingDetailPage />}
+                  />
+                  <Route
+                    path="/suppliers/contracts"
+                    element={<SupplierContractsListPage />}
+                  />
+                  <Route
+                    path="/suppliers/contracts/:id"
+                    element={<SupplierContractDetailPage />}
+                  />
+                  <Route
+                    path="/suppliers/orders"
+                    element={<SupplierOrdersListPage />}
+                  />
+                  <Route
+                    path="/suppliers/orders/:id"
+                    element={<SupplierOrderDetailPage />}
+                  />
+                </>
+              )}
 
-              {/* 송장 관리 */}
-              <Route path="/invoices" element={<InvoicesListPage />} />
-              <Route path="/invoices/create" element={<InvoiceCreatePage />} />
-              <Route path="/payments" element={<PaymentListPage />} />
-              <Route path="/payments/:invoiceId" element={<PaymentProcessPage />} />
+              {/* 구매자/관리자 전용 라우트 */}
+              {!isSupplier && (
+                <>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  {/* 입찰 관리 */}
+                  <Route path="/biddings" element={<BiddingListPage />} />
+                  <Route
+                    path="/biddings/new"
+                    element={<BiddingFormPage mode="create" />}
+                  />
+                  <Route
+                    path="/biddings/:id/edit"
+                    element={<BiddingFormPage mode="edit" />}
+                  />
+                  <Route path="/biddings/:id" element={<BiddingDetailPage />} />
+                  {/* 평가 페이지 */}
+                  <Route
+                    path="/biddings/evaluations"
+                    element={<BiddingEvaluationListPage />}
+                  />
+                  {/* 평가 상세 페이지 */}
+                  <Route
+                    path="/biddings/evaluations/:id"
+                    element={<BiddingEvaluationDetailPage />}
+                  />
+                  {/* 계약 목록 페이지 */}
+                  <Route path="/contracts" element={<ContractsListPage />} />
+                  {/* 계약 생성 페이지 */}
+                  <Route
+                    path="/contracts/new"
+                    element={<ContractCreatePage />}
+                  />
+                  {/* 주문 목록 페이지 */}
+                  <Route path="/orders" element={<BiddingOrderListPage />} />
+                  {/* 주문 상세 페이지 */}
+                  <Route
+                    path="/orders/:id"
+                    element={<BiddingOrderDetailPage />}
+                  />
+                  {/* 프로젝트 관리 */}
+                  <Route path="/projects" element={<ProjectListPage />} />
+                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                  <Route path="/projects/new" element={<ProjectCreatePage />} />
+                  <Route
+                    path="/projects/edit/:id"
+                    element={<ProjectEditPage />}
+                  />
+                  {/* 구매 요청 관리 */}
+                  <Route
+                    path="/purchase-requests"
+                    element={<PurchaseRequestListPage />}
+                  />
+                  <Route
+                    path="/purchase-requests/:id"
+                    element={<PurchaseRequestDetailPage />}
+                  />
+                  <Route
+                    path="/purchase-requests/new"
+                    element={<PurchaseRequestCreatePage />}
+                  />
+                  <Route
+                    path="/purchase-requests/edit/:id"
+                    element={<PurchaseRequestEditPage />}
+                  />
+                  {/* 승인 관리 */}
+                  <Route path="/approvals" element={<ApprovalListPage />} />
+                  <Route
+                    path="/approvals/:id"
+                    element={<ApprovalDetailPage />}
+                  />
+                  <Route
+                    path="/approval-management"
+                    element={<ApprovalManagementPage />}
+                  />
+                  <Route
+                    path="/approval-lines"
+                    element={<ApprovalLineAdministration />}
+                  />
 
-              {/* 협력사 관리 */}
-              <Route path="/supplier" element={<SupplierListPage />} />
-              <Route path="/supplier/registrations" element={<SupplierRegistrationPage />} />
-              <Route path="/supplier/review/:id" element={<SupplierReviewPage />} />
-              <Route path="/supplier/approval" element={<SupplierApprovalListPage />} />
-              <Route path="/supplier/edit/:id" element={<SupplierRegistrationPage />} />
+                  {/* 입고 관리 */}
+                  <Route path="/deliveries" element={<DeliveryListPage />} />
+                  <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
+                  <Route path="/deliveries/edit/:id" element={<DeliveryEditPage />} />
+                  <Route
+                    path="/deliveries/new"
+                    element={<DeliveryCreatePage />}
+                  />
 
+                  {/* 송장 관리 */}
+                  <Route path="/invoices" element={<InvoicesListPage />} />
+                  <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+                  <Route path="/invoices/edit/:id" element={<InvoiceEditPage />} />
+                  <Route path="/invoices/create" element={<InvoiceCreatePage />} />
 
-              <Route path="/categories" element={<CategoryListPage />} />
-              <Route path="/categories/new" element={<CategoryFormPage mode="create" />} />
-              <Route path="/categories/edit/:id" element={<CategoryFormPage mode="edit" />} />
+                  {/* 지불 관리 */}
+                  <Route path="/payments" element={<PaymentListPage />} />
+                  <Route path="/payments/:id" element={<PaymentDetailPage />} />
+                  <Route path="/payments/create" element={<PaymentCreatePage />} />
 
+                  {/* 협력사 관리 */}
+                  <Route path="/supplier" element={<SupplierListPage />} />
+                  <Route
+                    path="/supplier/registrations"
+                    element={<SupplierRegistrationPage />}
+                  />
+                  <Route
+                    path="/supplier/review/:id"
+                    element={<SupplierReviewPage />}
+                  />
+                  <Route
+                    path="/supplier/approval"
+                    element={<SupplierApprovalListPage />}
+                  />
+                  <Route
+                    path="/supplier/edit/:id"
+                    element={<SupplierRegistrationPage />}
+                  />
 
-              <Route path="/items" element={<ItemListPage />} />
-              <Route path="/items/new" element={<ItemFormPage mode="create" />} />
-              <Route path="/items/edit/:id" element={<ItemFormPage mode="edit" />} />
+                  <Route path="/categories" element={<CategoryListPage />} />
+                  <Route
+                    path="/categories/new"
+                    element={<CategoryFormPage mode="create" />}
+                  />
+                  <Route
+                    path="/categories/edit/:id"
+                    element={<CategoryFormPage mode="edit" />}
+                  />
 
-              {/* 공통 코드 관리 */}
-              <Route path="/common-codes" element={<CommonCodeManagement />} />
+                  <Route path="/items" element={<ItemListPage />} />
+                  <Route
+                    path="/items/new"
+                    element={<ItemFormPage mode="create" />}
+                  />
+                  <Route
+                    path="/items/edit/:id"
+                    element={<ItemFormPage mode="edit" />}
+                  />
 
-              {/* 사용자 관리 */}
-              <Route path="/members" element={<AdminMemberPage />} />
-
+                  {/* 공통 코드 관리 */}
+                  <Route
+                    path="/common-codes"
+                    element={<CommonCodeManagement />}
+                  />
+                </>
+              )}
               {/* 404 페이지 */}
               <Route path="*" element={<ErrorPage type="notFound" />} />
             </Route>

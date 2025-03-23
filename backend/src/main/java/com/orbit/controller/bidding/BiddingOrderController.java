@@ -53,7 +53,7 @@ public class BiddingOrderController {
     /**
      * 특정 입찰 공고의 발주 목록 조회
      */
-    @GetMapping("/bidding/{biddingId}")
+    @GetMapping("/{biddingId}")
     public ResponseEntity<List<BiddingOrderDto>> getOrdersByBiddingId(@PathVariable Long biddingId) {
         log.info("특정 입찰 공고의 발주 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -69,7 +69,7 @@ public class BiddingOrderController {
     /**
      * 특정 공급사의 발주 목록 조회
      */
-    @GetMapping("/supplier/{supplierId}")
+    @GetMapping("/{supplierId}")
     public ResponseEntity<List<BiddingOrderDto>> getOrdersBySupplierId(@PathVariable Long supplierId) {
         log.info("특정 공급사의 발주 목록 조회 요청 - 공급사 ID: {}", supplierId);
         
@@ -101,7 +101,7 @@ public class BiddingOrderController {
     /**
      * 발주 번호로 발주 조회
      */
-    @GetMapping("/number/{orderNumber}")
+    @GetMapping("/{orderNumber}")
     public ResponseEntity<BiddingOrderDto> getOrderByOrderNumber(@PathVariable String orderNumber) {
         log.info("발주 번호로 발주 조회 요청 - 발주번호: {}", orderNumber);
         

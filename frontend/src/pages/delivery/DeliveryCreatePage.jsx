@@ -371,8 +371,11 @@ const DeliveryCreatePage = () => {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     multiline
-                    rows={3}
+                    variant="filled"
+                    minRows={3}
+                    maxRows={6}
                     helperText="추가 정보가 있으면 입력하세요"
+                    margin="normal"
                   />
                 </Grid>
 

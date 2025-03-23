@@ -1,6 +1,6 @@
 // src/pages/approval/ApprovalLineAdministration.jsx
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   Typography,
@@ -31,7 +31,7 @@ import {
   Divider,
   Alert,
   CircularProgress
-} from '@mui/material';
+} from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -41,7 +41,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Settings as SettingsIcon
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 import {
   fetchApprovalTemplates,
   createApprovalTemplate,
@@ -55,7 +55,7 @@ import {
   createPosition,
   updatePosition,
   deletePosition
-} from '@/redux/approvalAdminSlice';
+} from "@/redux/approvalAdminSlice";
 
 // Tab Panel Component
 function TabPanel(props) {
@@ -67,13 +67,8 @@ function TabPanel(props) {
       hidden={value !== index}
       id={`approval-admin-tabpanel-${index}`}
       aria-labelledby={`approval-admin-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
+      {...other}>
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
     </div>
   );
 }
@@ -81,12 +76,16 @@ function TabPanel(props) {
 // Department Management Component
 function DepartmentManagement() {
   const dispatch = useDispatch();
-  const { data: departments, loading, error } = useSelector(state => state.approvalAdmin.departments);
+  const {
+    data: departments,
+    loading,
+    error
+  } = useSelector((state) => state.approvalAdmin.departments);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentDepartment, setCurrentDepartment] = useState({
-    name: '',
-    code: '',
-    description: '',
+    name: "",
+    code: "",
+    description: "",
     teamLeaderLevel: 5,
     middleManagerLevel: 7,
     upperManagerLevel: 8,
@@ -100,13 +99,13 @@ function DepartmentManagement() {
 
   const handleOpenDialog = (department = null) => {
     if (department) {
-      setCurrentDepartment({...department});
+      setCurrentDepartment({ ...department });
       setIsEditing(true);
     } else {
       setCurrentDepartment({
-        name: '',
-        code: '',
-        description: '',
+        name: "",
+        code: "",
+        description: "",
         teamLeaderLevel: 5,
         middleManagerLevel: 7,
         upperManagerLevel: 8,
@@ -125,16 +124,18 @@ function DepartmentManagement() {
     const { name, value } = e.target;
     setCurrentDepartment({
       ...currentDepartment,
-      [name]: name.includes('Level') ? parseInt(value) : value
+      [name]: name.includes("Level") ? parseInt(value) : value
     });
   };
 
   const handleSave = () => {
     if (isEditing) {
-      dispatch(updateDepartment({
-        id: currentDepartment.id,
-        departmentData: currentDepartment
-      }));
+      dispatch(
+        updateDepartment({
+          id: currentDepartment.id,
+          departmentData: currentDepartment
+        })
+      );
     } else {
       dispatch(createDepartment(currentDepartment));
     }
@@ -142,7 +143,7 @@ function DepartmentManagement() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('이 부서를 삭제하시겠습니까?')) {
+    if (window.confirm("이 부서를 삭제하시겠습니까?")) {
       dispatch(deleteDepartment(id));
     }
   };
@@ -153,13 +154,12 @@ function DepartmentManagement() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">부서 관리</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
+          onClick={() => handleOpenDialog()}>
           부서 추가
         </Button>
       </Box>
@@ -198,15 +198,13 @@ function DepartmentManagement() {
                   <IconButton
                     color="primary"
                     onClick={() => handleOpenDialog(department)}
-                    size="small"
-                  >
+                    size="small">
                     <EditIcon fontSize="small" />
                   </IconButton>
                   <IconButton
                     color="error"
                     onClick={() => handleDelete(department.id)}
-                    size="small"
-                  >
+                    size="small">
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
@@ -217,8 +215,12 @@ function DepartmentManagement() {
       </TableContainer>
 
       {/* Department Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{isEditing ? '부서 수정' : '부서 추가'}</DialogTitle>
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth>
+        <DialogTitle>{isEditing ? "부서 수정" : "부서 추가"}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={6}>
@@ -312,12 +314,16 @@ function DepartmentManagement() {
 // Position Management Component
 function PositionManagement() {
   const dispatch = useDispatch();
-  const { data: positions, loading, error } = useSelector(state => state.approvalAdmin.positions);
+  const {
+    data: positions,
+    loading,
+    error
+  } = useSelector((state) => state.approvalAdmin.positions);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentPosition, setCurrentPosition] = useState({
-    name: '',
+    name: "",
     level: 1,
-    description: ''
+    description: ""
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -327,13 +333,13 @@ function PositionManagement() {
 
   const handleOpenDialog = (position = null) => {
     if (position) {
-      setCurrentPosition({...position});
+      setCurrentPosition({ ...position });
       setIsEditing(true);
     } else {
       setCurrentPosition({
-        name: '',
+        name: "",
         level: 1,
-        description: ''
+        description: ""
       });
       setIsEditing(false);
     }
@@ -348,16 +354,18 @@ function PositionManagement() {
     const { name, value } = e.target;
     setCurrentPosition({
       ...currentPosition,
-      [name]: name === 'level' ? parseInt(value) : value
+      [name]: name === "level" ? parseInt(value) : value
     });
   };
 
   const handleSave = () => {
     if (isEditing) {
-      dispatch(updatePosition({
-        id: currentPosition.id,
-        positionData: currentPosition
-      }));
+      dispatch(
+        updatePosition({
+          id: currentPosition.id,
+          positionData: currentPosition
+        })
+      );
     } else {
       dispatch(createPosition(currentPosition));
     }
@@ -365,7 +373,7 @@ function PositionManagement() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('이 직급을 삭제하시겠습니까?')) {
+    if (window.confirm("이 직급을 삭제하시겠습니까?")) {
       dispatch(deletePosition(id));
     }
   };
@@ -376,13 +384,12 @@ function PositionManagement() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">직급 관리</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
+          onClick={() => handleOpenDialog()}>
           직급 추가
         </Button>
       </Box>
@@ -413,15 +420,13 @@ function PositionManagement() {
                   <IconButton
                     color="primary"
                     onClick={() => handleOpenDialog(position)}
-                    size="small"
-                  >
+                    size="small">
                     <EditIcon fontSize="small" />
                   </IconButton>
                   <IconButton
                     color="error"
                     onClick={() => handleDelete(position.id)}
-                    size="small"
-                  >
+                    size="small">
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
@@ -432,8 +437,12 @@ function PositionManagement() {
       </TableContainer>
 
       {/* Position Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{isEditing ? '직급 수정' : '직급 추가'}</DialogTitle>
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth>
+        <DialogTitle>{isEditing ? "직급 수정" : "직급 추가"}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={6}>
@@ -485,12 +494,18 @@ function PositionManagement() {
 // Approval Template Management Component
 function ApprovalTemplateManagement() {
   const dispatch = useDispatch();
-  const { data: templates, loading, error } = useSelector(state => state.approvalAdmin.templates);
-  const { data: departments } = useSelector(state => state.approvalAdmin.departments);
+  const {
+    data: templates,
+    loading,
+    error
+  } = useSelector((state) => state.approvalAdmin.templates);
+  const { data: departments } = useSelector(
+    (state) => state.approvalAdmin.departments
+  );
   const [openDialog, setOpenDialog] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     steps: [],
     active: true
   });
@@ -505,12 +520,12 @@ function ApprovalTemplateManagement() {
 
   const handleOpenDialog = (template = null) => {
     if (template) {
-      setCurrentTemplate({...template});
+      setCurrentTemplate({ ...template });
       setIsEditing(true);
     } else {
       setCurrentTemplate({
-        name: '',
-        description: '',
+        name: "",
+        description: "",
         steps: [],
         active: true
       });
@@ -527,7 +542,7 @@ function ApprovalTemplateManagement() {
     const { name, value, checked, type } = e.target;
     setCurrentTemplate({
       ...currentTemplate,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value
     });
   };
 
@@ -537,7 +552,7 @@ function ApprovalTemplateManagement() {
       department: null,
       minLevel: 1,
       maxLevel: 10,
-      description: ''
+      description: ""
     };
     setCurrentTemplate({
       ...currentTemplate,
@@ -548,17 +563,17 @@ function ApprovalTemplateManagement() {
   const handleUpdateStep = (index, field, value) => {
     const updatedSteps = [...currentTemplate.steps];
 
-    if (field === 'department') {
+    if (field === "department") {
       if (value) {
         // 부서 ID로 부서 객체 찾기
-        const departmentObj = departments.find(d => d.id === parseInt(value));
+        const departmentObj = departments.find((d) => d.id === parseInt(value));
         if (departmentObj) {
           // 필요한 부서 정보만 포함한 DepartmentDTO로 변환
           updatedSteps[index][field] = {
             id: departmentObj.id,
             name: departmentObj.name,
-            code: departmentObj.code || '',
-            description: departmentObj.description || '',
+            code: departmentObj.code || "",
+            description: departmentObj.description || "",
             teamLeaderLevel: departmentObj.teamLeaderLevel || 5,
             middleManagerLevel: departmentObj.middleManagerLevel || 7,
             upperManagerLevel: departmentObj.upperManagerLevel || 8,
@@ -570,7 +585,7 @@ function ApprovalTemplateManagement() {
       } else {
         updatedSteps[index][field] = null;
       }
-    } else if (field === 'minLevel' || field === 'maxLevel') {
+    } else if (field === "minLevel" || field === "maxLevel") {
       updatedSteps[index][field] = parseInt(value) || 1;
     } else {
       updatedSteps[index][field] = value;
@@ -598,17 +613,20 @@ function ApprovalTemplateManagement() {
 
   const handleMoveStep = (index, direction) => {
     if (
-      (direction === 'up' && index === 0) ||
-      (direction === 'down' && index === currentTemplate.steps.length - 1)
+      (direction === "up" && index === 0) ||
+      (direction === "down" && index === currentTemplate.steps.length - 1)
     ) {
       return;
     }
 
     const updatedSteps = [...currentTemplate.steps];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    const newIndex = direction === "up" ? index - 1 : index + 1;
 
     // Swap steps
-    [updatedSteps[index], updatedSteps[newIndex]] = [updatedSteps[newIndex], updatedSteps[index]];
+    [updatedSteps[index], updatedSteps[newIndex]] = [
+      updatedSteps[newIndex],
+      updatedSteps[index]
+    ];
 
     // Update step numbers
     updatedSteps.forEach((step, i) => {
@@ -623,10 +641,12 @@ function ApprovalTemplateManagement() {
 
   const handleSave = () => {
     if (isEditing) {
-      dispatch(updateApprovalTemplate({
-        id: currentTemplate.id,
-        templateData: currentTemplate
-      }));
+      dispatch(
+        updateApprovalTemplate({
+          id: currentTemplate.id,
+          templateData: currentTemplate
+        })
+      );
     } else {
       dispatch(createApprovalTemplate(currentTemplate));
     }
@@ -634,17 +654,19 @@ function ApprovalTemplateManagement() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('이 결재선 템플릿을 삭제하시겠습니까?')) {
+    if (window.confirm("이 결재선 템플릿을 삭제하시겠습니까?")) {
       dispatch(deleteApprovalTemplate(id));
     }
   };
 
   const handleToggleActive = (template) => {
     const updatedTemplate = { ...template, active: !template.active };
-    dispatch(updateApprovalTemplate({
-      id: template.id,
-      templateData: updatedTemplate
-    }));
+    dispatch(
+      updateApprovalTemplate({
+        id: template.id,
+        templateData: updatedTemplate
+      })
+    );
   };
 
   if (loading && templates.length === 0) {
@@ -653,13 +675,12 @@ function ApprovalTemplateManagement() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">결재선 템플릿 관리</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
+          onClick={() => handleOpenDialog()}>
           템플릿 추가
         </Button>
       </Box>
@@ -675,20 +696,25 @@ function ApprovalTemplateManagement() {
           <Grid item xs={12} sm={6} md={4} key={template.id}>
             <Card
               sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
                 opacity: template.active ? 1 : 0.7
-              }}
-            >
+              }}>
               <CardContent sx={{ flexGrow: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1
+                  }}>
                   <Typography variant="h6" component="div">
                     {template.name}
                   </Typography>
                   <Chip
-                    label={template.active ? '활성' : '비활성'}
-                    color={template.active ? 'success' : 'default'}
+                    label={template.active ? "활성" : "비활성"}
+                    color={template.active ? "success" : "default"}
                     size="small"
                   />
                 </Box>
@@ -700,42 +726,49 @@ function ApprovalTemplateManagement() {
                   결재 단계 ({template.steps.length})
                 </Typography>
                 {template.steps.map((step, index) => (
-                  <Box key={index} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '24px' }}>
+                  <Box
+                    key={index}
+                    sx={{ mb: 1, display: "flex", alignItems: "center" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: "bold", minWidth: "24px" }}>
                       {step.step}.
                     </Typography>
                     <Box>
                       <Typography variant="body2">
-                        {step.department?.name || '부서 없음'} ({step.minLevel}-{step.maxLevel} 레벨)
+                        {step.department?.name || "부서 없음"} ({step.minLevel}-
+                        {step.maxLevel} 레벨)
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {step.description || ''}
+                        {step.description || ""}
                       </Typography>
                     </Box>
                   </Box>
                 ))}
               </CardContent>
-              <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
+              <Box
+                sx={{ p: 2, display: "flex", justifyContent: "space-between" }}>
                 <IconButton
-                  color={template.active ? 'warning' : 'success'}
+                  color={template.active ? "warning" : "success"}
                   onClick={() => handleToggleActive(template)}
-                  size="small"
-                >
-                  {template.active ? <CancelIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
+                  size="small">
+                  {template.active ? (
+                    <CancelIcon fontSize="small" />
+                  ) : (
+                    <CheckCircleIcon fontSize="small" />
+                  )}
                 </IconButton>
                 <Box>
                   <IconButton
                     color="primary"
                     onClick={() => handleOpenDialog(template)}
-                    size="small"
-                  >
+                    size="small">
                     <EditIcon fontSize="small" />
                   </IconButton>
                   <IconButton
                     color="error"
                     onClick={() => handleDelete(template.id)}
-                    size="small"
-                  >
+                    size="small">
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>
@@ -746,8 +779,14 @@ function ApprovalTemplateManagement() {
       </Grid>
 
       {/* Template Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{isEditing ? '결재선 템플릿 수정' : '결재선 템플릿 추가'}</DialogTitle>
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth>
+        <DialogTitle>
+          {isEditing ? "결재선 템플릿 수정" : "결재선 템플릿 추가"}
+        </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={8}>
@@ -760,7 +799,7 @@ function ApprovalTemplateManagement() {
                 required
               />
             </Grid>
-            <Grid item xs={4} sx={{ display: 'flex', alignItems: 'center' }}>
+            <Grid item xs={4} sx={{ display: "flex", alignItems: "center" }}>
               <FormControl component="fieldset">
                 <label>
                   <input
@@ -787,14 +826,19 @@ function ApprovalTemplateManagement() {
           </Grid>
 
           <Box sx={{ mt: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2
+              }}>
               <Typography variant="subtitle1">결재 단계</Typography>
               <Button
                 variant="outlined"
                 startIcon={<AddIcon />}
                 onClick={handleAddStep}
-                size="small"
-              >
+                size="small">
                 단계 추가
               </Button>
             </Box>
@@ -823,9 +867,14 @@ function ApprovalTemplateManagement() {
                         <TableCell>
                           <FormControl fullWidth size="small">
                             <Select
-                              value={step.department?.id || ''}
-                              onChange={(e) => handleUpdateStep(index, 'department', e.target.value)}
-                            >
+                              value={step.department?.id || ""}
+                              onChange={(e) =>
+                                handleUpdateStep(
+                                  index,
+                                  "department",
+                                  e.target.value
+                                )
+                              }>
                               {departments.map((dept) => (
                                 <MenuItem key={dept.id} value={dept.id}>
                                   {dept.name}
@@ -839,7 +888,13 @@ function ApprovalTemplateManagement() {
                             type="number"
                             size="small"
                             value={step.minLevel}
-                            onChange={(e) => handleUpdateStep(index, 'minLevel', e.target.value)}
+                            onChange={(e) =>
+                              handleUpdateStep(
+                                index,
+                                "minLevel",
+                                e.target.value
+                              )
+                            }
                             InputProps={{ inputProps: { min: 1, max: 10 } }}
                           />
                         </TableCell>
@@ -848,7 +903,13 @@ function ApprovalTemplateManagement() {
                             type="number"
                             size="small"
                             value={step.maxLevel}
-                            onChange={(e) => handleUpdateStep(index, 'maxLevel', e.target.value)}
+                            onChange={(e) =>
+                              handleUpdateStep(
+                                index,
+                                "maxLevel",
+                                e.target.value
+                              )
+                            }
                             InputProps={{ inputProps: { min: 1, max: 10 } }}
                           />
                         </TableCell>
@@ -856,30 +917,35 @@ function ApprovalTemplateManagement() {
                           <TextField
                             size="small"
                             fullWidth
-                            value={step.description || ''}
-                            onChange={(e) => handleUpdateStep(index, 'description', e.target.value)}
+                            value={step.description || ""}
+                            onChange={(e) =>
+                              handleUpdateStep(
+                                index,
+                                "description",
+                                e.target.value
+                              )
+                            }
                           />
                         </TableCell>
                         <TableCell>
                           <IconButton
                             size="small"
-                            onClick={() => handleMoveStep(index, 'up')}
-                            disabled={index === 0}
-                          >
+                            onClick={() => handleMoveStep(index, "up")}
+                            disabled={index === 0}>
                             <ArrowUpIcon fontSize="small" />
                           </IconButton>
                           <IconButton
                             size="small"
-                            onClick={() => handleMoveStep(index, 'down')}
-                            disabled={index === currentTemplate.steps.length - 1}
-                          >
+                            onClick={() => handleMoveStep(index, "down")}
+                            disabled={
+                              index === currentTemplate.steps.length - 1
+                            }>
                             <ArrowDownIcon fontSize="small" />
                           </IconButton>
                           <IconButton
                             size="small"
                             color="error"
-                            onClick={() => handleDeleteStep(index)}
-                          >
+                            onClick={() => handleDeleteStep(index)}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </TableCell>
@@ -897,8 +963,9 @@ function ApprovalTemplateManagement() {
             onClick={handleSave}
             variant="contained"
             color="primary"
-            disabled={currentTemplate.name === '' || currentTemplate.steps.length === 0}
-          >
+            disabled={
+              currentTemplate.name === "" || currentTemplate.steps.length === 0
+            }>
             저장
           </Button>
         </DialogActions>
@@ -917,16 +984,21 @@ function ApprovalLineAdministration() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ mb: 3 }}>결재선 관리</Typography>
+      <Typography variant="h5" sx={{ mb: 3 }}>
+        결재선 관리
+      </Typography>
 
       <Paper sx={{ mb: 3 }}>
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
           indicatorColor="primary"
-          textColor="primary"
-        >
-          <Tab label="결재선 템플릿" icon={<SettingsIcon />} iconPosition="start" />
+          textColor="primary">
+          <Tab
+            label="결재선 템플릿"
+            icon={<SettingsIcon />}
+            iconPosition="start"
+          />
           <Tab label="부서 관리" />
           <Tab label="직급 관리" />
         </Tabs>

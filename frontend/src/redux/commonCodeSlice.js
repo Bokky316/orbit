@@ -13,19 +13,23 @@ export const fetchAllCommonCodes = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}common-codes`, {
-        method: 'GET',
+        method: "GET"
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`공통 코드를 가져오는데 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `공통 코드를 가져오는데 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('공통 코드 조회 중 오류:', error);
-      return rejectWithValue(error.message || "공통 코드를 가져오는데 실패했습니다.");
+      console.error("공통 코드 조회 중 오류:", error);
+      return rejectWithValue(
+        error.message || "공통 코드를 가져오는데 실패했습니다."
+      );
     }
   }
 );
@@ -40,13 +44,18 @@ export const fetchChildCodes = createAsyncThunk(
   "commonCode/fetchChildCodes",
   async ({ entityType, codeGroup }, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}common-codes/${entityType}/${codeGroup}`, {
-        method: 'GET',
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}common-codes/${entityType}/${codeGroup}`,
+        {
+          method: "GET"
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`자식 코드를 가져오는데 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `자식 코드를 가져오는데 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
@@ -56,8 +65,10 @@ export const fetchChildCodes = createAsyncThunk(
         childCodes: data
       };
     } catch (error) {
-      console.error('자식 코드 조회 중 오류:', error);
-      return rejectWithValue(error.message || "자식 코드를 가져오는데 실패했습니다.");
+      console.error("자식 코드 조회 중 오류:", error);
+      return rejectWithValue(
+        error.message || "자식 코드를 가져오는데 실패했습니다."
+      );
     }
   }
 );
@@ -70,22 +81,24 @@ export const createParentCode = createAsyncThunk(
   async (parentCodeData, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}common-codes/parents`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(parentCodeData),
+        body: JSON.stringify(parentCodeData)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`부모 코드 생성에 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `부모 코드 생성에 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('부모 코드 생성 중 오류:', error);
+      console.error("부모 코드 생성 중 오류:", error);
       return rejectWithValue(error.message || "부모 코드 생성에 실패했습니다.");
     }
   }
@@ -98,23 +111,28 @@ export const updateParentCode = createAsyncThunk(
   "commonCode/updateParentCode",
   async ({ id, parentCodeData }, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}common-codes/parents/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(parentCodeData),
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}common-codes/parents/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(parentCodeData)
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`부모 코드 수정에 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `부모 코드 수정에 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('부모 코드 수정 중 오류:', error);
+      console.error("부모 코드 수정 중 오류:", error);
       return rejectWithValue(error.message || "부모 코드 수정에 실패했습니다.");
     }
   }
@@ -128,22 +146,24 @@ export const createChildCode = createAsyncThunk(
   async (childCodeData, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}common-codes/children`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(childCodeData),
+        body: JSON.stringify(childCodeData)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`자식 코드 생성에 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `자식 코드 생성에 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('자식 코드 생성 중 오류:', error);
+      console.error("자식 코드 생성 중 오류:", error);
       return rejectWithValue(error.message || "자식 코드 생성에 실패했습니다.");
     }
   }
@@ -156,23 +176,28 @@ export const updateChildCode = createAsyncThunk(
   "commonCode/updateChildCode",
   async ({ id, childCodeData }, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}common-codes/children/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(childCodeData),
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}common-codes/children/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(childCodeData)
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`자식 코드 수정에 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `자식 코드 수정에 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('자식 코드 수정 중 오류:', error);
+      console.error("자식 코드 수정 중 오류:", error);
       return rejectWithValue(error.message || "자식 코드 수정에 실패했습니다.");
     }
   }
@@ -186,19 +211,23 @@ export const fetchParentCodes = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}common-codes/parents`, {
-        method: 'GET',
+        method: "GET"
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`부모 코드 목록을 가져오는데 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `부모 코드 목록을 가져오는데 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('부모 코드 목록 조회 중 오류:', error);
-      return rejectWithValue(error.message || "부모 코드 목록을 가져오는데 실패했습니다.");
+      console.error("부모 코드 목록 조회 중 오류:", error);
+      return rejectWithValue(
+        error.message || "부모 코드 목록을 가져오는데 실패했습니다."
+      );
     }
   }
 );
@@ -210,18 +239,23 @@ export const deleteParentCode = createAsyncThunk(
   "commonCode/deleteParentCode",
   async (id, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}common-codes/parents/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}common-codes/parents/${id}`,
+        {
+          method: "DELETE"
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`부모 코드 삭제에 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `부모 코드 삭제에 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       return id;
     } catch (error) {
-      console.error('부모 코드 삭제 중 오류:', error);
+      console.error("부모 코드 삭제 중 오류:", error);
       return rejectWithValue(error.message || "부모 코드 삭제에 실패했습니다.");
     }
   }
@@ -234,18 +268,23 @@ export const deleteChildCode = createAsyncThunk(
   "commonCode/deleteChildCode",
   async (id, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}common-codes/children/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}common-codes/children/${id}`,
+        {
+          method: "DELETE"
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`자식 코드 삭제에 실패했습니다: ${response.status} - ${errorText}`);
+        throw new Error(
+          `자식 코드 삭제에 실패했습니다: ${response.status} - ${errorText}`
+        );
       }
 
       return id;
     } catch (error) {
-      console.error('자식 코드 삭제 중 오류:', error);
+      console.error("자식 코드 삭제 중 오류:", error);
       return rejectWithValue(error.message || "자식 코드 삭제에 실패했습니다.");
     }
   }
@@ -253,11 +292,11 @@ export const deleteChildCode = createAsyncThunk(
 
 // 초기 상태 정의
 const initialState = {
-  allCodes: [],                    // 모든 공통 코드 목록 (타입별로 그룹화)
-  parentCodes: [],                 // 부모 코드 목록
-  childCodesByTypeAndGroup: {},    // 특정 타입과 그룹의 자식 코드
-  isLoading: false,                // 로딩 상태
-  error: null                      // 오류 메시지
+  allCodes: [], // 모든 공통 코드 목록 (타입별로 그룹화)
+  parentCodes: [], // 부모 코드 목록
+  childCodesByTypeAndGroup: {}, // 특정 타입과 그룹의 자식 코드
+  isLoading: false, // 로딩 상태
+  error: null // 오류 메시지
 };
 
 /**
@@ -285,9 +324,10 @@ const commonCodeSlice = createSlice({
       })
       .addCase(fetchAllCommonCodes.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = typeof action.payload === 'object' ?
-          JSON.stringify(action.payload) :
-          action.payload || "공통 코드를 가져오는데 실패했습니다.";
+        state.error =
+          typeof action.payload === "object"
+            ? JSON.stringify(action.payload)
+            : action.payload || "공통 코드를 가져오는데 실패했습니다.";
       })
 
       // 특정 타입과 그룹의 자식 코드 가져오기
@@ -300,13 +340,15 @@ const commonCodeSlice = createSlice({
         state.isLoading = false;
 
         // 자식 코드 저장 (key 형식: "PROJECT-STATUS" 등)
-        state.childCodesByTypeAndGroup[`${entityType}-${codeGroup}`] = childCodes;
+        state.childCodesByTypeAndGroup[`${entityType}-${codeGroup}`] =
+          childCodes;
       })
       .addCase(fetchChildCodes.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = typeof action.payload === 'object' ?
-          JSON.stringify(action.payload) :
-          action.payload || "자식 코드를 가져오는데 실패했습니다.";
+        state.error =
+          typeof action.payload === "object"
+            ? JSON.stringify(action.payload)
+            : action.payload || "자식 코드를 가져오는데 실패했습니다.";
       })
 
       // 부모 코드 목록 가져오기

@@ -222,11 +222,11 @@ function ContractsListPage() {
                 <TableCell>계약번호</TableCell>
                 <TableCell>입찰번호</TableCell>
                 <TableCell>공급자</TableCell>
-                <TableCell align="right">금액</TableCell>
+                <TableCell>금액</TableCell>
                 <TableCell>계약기간</TableCell>
                 <TableCell>계약상태</TableCell>
                 <TableCell>서명상태</TableCell>
-                <TableCell align="center">관리</TableCell>
+                <TableCell>관리</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

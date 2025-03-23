@@ -8,7 +8,7 @@ import "/public/css/layout/Layout.css";
 const buyerAdminMenuItems = [
   { label: "대시보드", path: "/dashboard" },
   { label: "사용자관리", path: "/members", roles: ["ROLE_ADMIN"] },
-  { label: "협력업체관리", path: "/supplier" },
+  { label: "협력사관리", path: "/supplier" },
   { label: "품목관리", path: "/items" },
   { label: "프로젝트관리", path: "/projects" },
   { label: "구매요청관리", path: "/purchase-requests" },
@@ -18,7 +18,7 @@ const buyerAdminMenuItems = [
   { label: "발주관리", path: "/orders" },
   { label: "입고 관리", path: "/deliveries" },
   { label: "송장 관리", path: "/invoices" },
-  { label: "자금 관리", path: "/funds" },
+  { label: "자금 관리", path: "/payments" , roles: ["ROLE_ADMIN","ROLE_BUYER"] },
   { label: "보고서생성/관리", path: "/reports" },
   { label: "시스템 설정", path: "/system", roles: ["ROLE_ADMIN"] }
 ];
@@ -26,7 +26,7 @@ const buyerAdminMenuItems = [
 // 공급업체(SUPPLIER) 메뉴
 const supplierMenuItems = [
   { label: "대시보드", path: "/suppliers/dashboard" },
-  { label: "입찰 정보", path: "/suppliers/bidding" },
+  { label: "입찰 정보", path: "/suppliers/biddings" },
   { label: "계약 정보", path: "/suppliers/contracts" },
   { label: "주문 정보", path: "/suppliers/orders" },
   { label: "송장 관리", path: "/suppliers/invoices" },

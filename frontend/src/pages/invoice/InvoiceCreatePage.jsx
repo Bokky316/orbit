@@ -1,611 +1,935 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   Box,
   Container,
   Typography,
   Paper,
   Grid,
+  Button,
   Divider,
+  TextField,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Snackbar,
+  Alert,
+  Chip,
+  Autocomplete,
+  Card,
+  CardContent,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
-  TextField,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Snackbar,
-  Alert,
-  Breadcrumbs,
-  Link,
-  Autocomplete
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
+  TableRow
+} from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterMoment } from "@mui/x-date-pickers/AdapterMoment";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import {
-  ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
-  Calculate as CalculateIcon
-} from '@mui/icons-material';
-
-// 목데이터 import
-import { mockInvoices, contracts, suppliers, STATUS_TYPES } from './generateMockInvoices';
+  Cancel as CancelIcon,
+  ArrowBack as ArrowBackIcon
+} from "@mui/icons-material";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { API_URL } from "@/utils/constants";
+import moment from "moment";
+import { styled } from '@mui/material/styles';
 
 // 스타일 컴포넌트
-const FormSection = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(3),
+const InfoRow = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  margin: theme.spacing(1, 0),
+  '& .label': {
+    width: '30%',
+    fontWeight: 500,
+    color: theme.palette.text.secondary
+  },
+  '& .value': {
+    width: '70%'
+  }
+}));
+
+const SectionTitle = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  margin: theme.spacing(2, 0, 1)
 }));
 
 // 금액 형식 변환 함수
 const formatCurrency = (amount) => {
+  if (!amount) return '0원';
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
-};
-
-// 숫자만 추출하는 함수
-const extractNumber = (formattedAmount) => {
-  if (!formattedAmount) return 0;
-  const numericString = formattedAmount.replace(/[^0-9]/g, '');
-  return numericString ? parseInt(numericString, 10) : 0;
-};
-
-// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
-const getTodayDate = () => {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
-};
-
-// 특정 날짜로부터 n일 후의 날짜를 YYYY-MM-DD 형식으로 반환
-const getDateAfterDays = (dateString, days) => {
-  const date = new Date(dateString);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().split('T')[0];
-};
-
-// 송장 번호 생성 함수
-const generateInvoiceNumber = () => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `INV-${year}${month}${day}-${random}`;
 };
 
 const InvoiceCreatePage = () => {
   const navigate = useNavigate();
 
-  // 송장 기본 상태
-  const [invoice, setInvoice] = useState({
-    invoiceNumber: generateInvoiceNumber(),
-    issueDate: getTodayDate(),
-    dueDate: getDateAfterDays(getTodayDate(), 30),
-    contractId: '',
-    transactionNumber: '',
-    supplierId: '',
-    supplyAmount: 0,
-    vatAmount: 0,
-    totalAmount: 0,
-    status: STATUS_TYPES.WAITING
+  // Redux 상태에서 인증 정보 가져오기
+  const auth = useSelector((state) => state.auth);
+  const currentUser = auth?.user;
+  const isLoggedIn = auth?.isLoggedIn;
+
+  // 상태 관리
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [showError, setShowError] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [deliveries, setDeliveries] = useState([]);
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const [companyName, setCompanyName] = useState('');
+  const [userDetailLoading, setUserDetailLoading] = useState(false);
+  const [userDetail, setUserDetail] = useState(null);
+  const [supplierDetailLoading, setSupplierDetailLoading] = useState(false);
+  const [supplierDetail, setSupplierDetail] = useState(null);
+
+  // 폼 필드
+  const [formData, setFormData] = useState({
+    orderNumber: '',
+    issueDate: moment(),
+    dueDate: moment().add(30, 'days'),
+    notes: '',
+    deliveryId: '',
   });
 
-  // 선택된 계약 정보
-  const [selectedContract, setSelectedContract] = useState(null);
-  // 선택된 공급자 정보
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
-
-  // 품목 정보 (단일 품목만 허용)
-  const [item, setItem] = useState(null);
-
-  // 스낵바 상태
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-
-  // 미리보기 다이얼로그 상태
-  const [previewOpen, setPreviewOpen] = useState(false);
-
-  // 필드 변경 핸들러
-  const handleChange = (field, value) => {
-    setInvoice({ ...invoice, [field]: value });
+  // 역할 확인 유틸리티 함수
+  const isAdmin = () => {
+    return currentUser?.roles?.includes('ROLE_ADMIN') || currentUser?.role === 'ADMIN';
   };
 
-  // 계약 선택 핸들러
-  const handleContractChange = (event, newValue) => {
-    if (!newValue) {
-      setSelectedContract(null);
-      setSelectedSupplier(null);
-      setItem(null);
-      setInvoice({
-        ...invoice,
-        contractId: '',
-        transactionNumber: '',
-        supplierId: '',
-        supplyAmount: 0,
-        vatAmount: 0,
-        totalAmount: 0
+  const isBuyer = () => {
+    return currentUser?.roles?.includes('ROLE_BUYER') || currentUser?.role === 'BUYER';
+  };
+
+  const isSupplier = () => {
+    return currentUser?.roles?.includes('ROLE_SUPPLIER') || currentUser?.role === 'SUPPLIER';
+  };
+
+  // username이 001로 시작하는지 확인 (구매관리팀)
+  const isPurchaseDept = () => {
+    if (!currentUser?.username) return false;
+    return currentUser.username.startsWith('001');
+  };
+
+  // 회사명 찾기
+  const findCompanyName = () => {
+    if (!currentUser) return '';
+
+    // 공급업체 역할인 경우 회사명 추출
+    if (isSupplier()) {
+      // 공급업체명을 찾을 수 있는 가능한 속성 확인
+      const company = currentUser.companyName ||
+                     currentUser.company ||
+                     currentUser.supplierName;
+
+      // 회사명이 이미 있으면 사용
+      if (company) {
+        console.log('회사명 찾음 (속성):', company);
+        return company;
+      }
+
+      // 이름에서 추출 (예: '공급사 1 담당자' -> '공급사 1')
+      if (currentUser.name) {
+        // 이름에서 '공급사 N' 패턴 추출
+        const nameMatch = currentUser.name.match(/(공급사\s*\d+)/);
+        if (nameMatch) {
+          console.log('회사명 찾음 (이름 패턴):', nameMatch[1]);
+          return nameMatch[1];
+        }
+
+        // 이름이 공급사명인 경우 (예: '공급사 1')
+        if (currentUser.name.trim().startsWith('공급사')) {
+          console.log('회사명 찾음 (이름):', currentUser.name);
+          return currentUser.name.trim();
+        }
+      }
+
+      // 그래도 못 찾았다면, 이름 자체를 그대로 사용
+      if (currentUser.name) {
+        console.log('회사명으로 이름 사용:', currentUser.name);
+        return currentUser.name;
+      }
+    }
+
+    return '';
+  };
+
+  // 회사명 설정
+  useEffect(() => {
+    if (currentUser && isSupplier()) {
+      const company = findCompanyName();
+      setCompanyName(company);
+      console.log('공급업체명 설정:', company);
+    }
+  }, [currentUser]);
+
+  // 송장 등록 권한 확인
+  const canCreateInvoice = () => {
+    if (!isLoggedIn || !currentUser) return false;
+
+    // 오직 SUPPLIER(공급업체)만 송장 발행 가능
+    if (isSupplier()) return true;
+
+    // 다른 역할은 불가능
+    return false;
+  };
+
+  // 사용자 상세 정보를 가져오는 함수
+  const fetchUserInfo = async () => {
+    try {
+      if (!currentUser || !currentUser.id) {
+        console.error('현재 사용자 정보가 없거나 ID 값이 없습니다.', currentUser);
+        return;
+      }
+
+      setUserDetailLoading(true);
+      console.log('사용자 ID로 정보 API 호출 시작:', currentUser.id);
+
+      // API_URL에 이미 /api/가 포함되어 있는지 확인하고 경로 구성
+      const endpoint = `${API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL}members/${currentUser.id}`;
+      console.log('API 호출 경로:', endpoint);
+
+      // ID로 회원 정보 조회 API 호출
+      const response = await fetchWithAuth(endpoint);
+
+      if (!response.ok) {
+        throw new Error(`사용자 정보 조회 실패: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('사용자 상세 정보 응답:', responseData);
+
+      // API 응답이 { status: "success", data: {...} } 형태인 경우
+      if (responseData.status === "success" && responseData.data) {
+        console.log('API 응답에서 data 객체 추출:', responseData.data);
+        setUserDetail(responseData.data);
+      } else {
+        // 응답 자체가 사용자 데이터인 경우
+        console.log('API 응답을 그대로 사용:', responseData);
+        setUserDetail(responseData);
+      }
+    } catch (error) {
+      console.error('사용자 정보 조회 중 오류 발생:', error);
+
+      // 오류 발생 시에도 더미 데이터 설정
+      setUserDetail({
+        email: `${currentUser.username}@example.com`,
+        contactNumber: "010-1234-5678",
+        roadAddress: "서울시 강남구 테헤란로 123",
+        detailAddress: "456호",
+        companyName: companyName || `${currentUser.name.replace(' 담당자', '')}`
       });
-      return;
+    } finally {
+      setUserDetailLoading(false);
     }
-
-    const contract = contracts.find(c => c.id === newValue.id);
-    setSelectedContract(contract);
-
-    // 계약에 연결된 공급자 정보 가져오기
-    const supplier = suppliers.find(s => s.id === contract.supplierId);
-    setSelectedSupplier(supplier);
-
-    // 계약 정보로 송장 정보 업데이트
-    setInvoice({
-      ...invoice,
-      contractId: contract.id,
-      transactionNumber: contract.transactionNumber,
-      supplierId: contract.supplierId,
-      supplyAmount: contract.items[0].supplyAmount,
-      vatAmount: contract.items[0].vatAmount,
-      totalAmount: contract.items[0].totalAmount
-    });
-
-    // 계약의 단일 품목 정보 설정
-    setItem({ ...contract.items[0] });
   };
 
-  // 품목 정보 변경 핸들러
-  const handleItemChange = (field, value) => {
-    if (!item) return;
+  // 공급자 상세 정보 가져오기
+  const fetchSupplierInfo = async (supplierId) => {
+    try {
+      if (!supplierId) {
+        console.error('공급자 ID가 없습니다.');
+        return;
+      }
 
-    const updatedItem = { ...item, [field]: value };
+      setSupplierDetailLoading(true);
+      console.log('공급자 ID로 정보 API 호출 시작:', supplierId);
 
-    // 수량이나 단가 변경 시 금액 재계산
-    if (field === 'quantity' || field === 'unitPrice') {
-      const quantity = field === 'quantity' ? value : updatedItem.quantity;
-      const unitPrice = field === 'unitPrice' ? value : updatedItem.unitPrice;
+      // API_URL에 이미 /api/가 포함되어 있는지 확인하고 경로 구성
+      const endpoint = `${API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL}members/${supplierId}`;
+      console.log('공급자 정보 API 호출 경로:', endpoint);
 
-      updatedItem.supplyAmount = quantity * unitPrice;
-      updatedItem.vatAmount = Math.round(updatedItem.supplyAmount * 0.1);
-      updatedItem.totalAmount = updatedItem.supplyAmount + updatedItem.vatAmount;
+      // ID로 회원 정보 조회 API 호출
+      const response = await fetchWithAuth(endpoint);
 
-      // 송장 금액도 함께 업데이트
-      setInvoice({
-        ...invoice,
-        supplyAmount: updatedItem.supplyAmount,
-        vatAmount: updatedItem.vatAmount,
-        totalAmount: updatedItem.totalAmount
+      if (!response.ok) {
+        throw new Error(`공급자 정보 조회 실패: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('공급자 상세 정보 응답:', responseData);
+
+      // API 응답이 { status: "success", data: {...} } 형태인 경우
+      if (responseData.status === "success" && responseData.data) {
+        console.log('API 응답에서 data 객체 추출:', responseData.data);
+        setSupplierDetail(responseData.data);
+        return responseData.data;
+      } else {
+        // 응답 자체가 사용자 데이터인 경우
+        console.log('API 응답을 그대로 사용:', responseData);
+        setSupplierDetail(responseData);
+        return responseData;
+      }
+    } catch (error) {
+      console.error('공급자 정보 조회 중 오류 발생:', error);
+
+      // 오류 발생 시에도 더미 데이터 설정
+      const dummyData = {
+        username: selectedDelivery?.supplierId || "-",
+        name: selectedDelivery?.supplierName || "-",
+        email: `${selectedDelivery?.supplierName?.replace(/\s+/g, '').toLowerCase()}@example.com`,
+        contactNumber: "010-0000-0000",
+        companyName: selectedDelivery?.supplierName || "-"
+      };
+
+      setSupplierDetail(dummyData);
+      return dummyData;
+    } finally {
+      setSupplierDetailLoading(false);
+    }
+  };
+
+  // 입고 목록 조회
+  const fetchDeliveries = async () => {
+    try {
+      setLoading(true);
+
+      // API 엔드포인트 수정 - 서플라이어 회사명 추가
+      let endpoint = `${API_URL}deliveries/uninvoiced-with-contracts`;
+
+      // 서플라이어인 경우 자사 데이터만 조회하도록 필터 추가
+      if (isSupplier() && companyName) {
+        endpoint += `?supplierName=${encodeURIComponent(companyName)}`;
+      }
+
+      console.log('API 요청 시작: ', endpoint);
+      const response = await fetchWithAuth(endpoint);
+      console.log('API 응답 상태: ', response.status);
+
+      if (!response.ok) {
+        throw new Error(`입고 목록 조회 실패: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('입고 데이터 원본:', data);
+
+      // 페이징된 응답인 경우 content 필드를 확인하고, 아니면 data 자체를 사용
+      const deliveriesData = data.content || data;
+
+      // 데이터가 배열인지 확인
+      if (!Array.isArray(deliveriesData)) {
+        console.error('입고 데이터가 배열이 아닙니다:', deliveriesData);
+        setDeliveries([]);  // 빈 배열로 설정
+      } else {
+        console.log('사용할 입고 데이터:', deliveriesData);
+
+        // 서플라이어인 경우 자사 데이터만 필터링
+        if (isSupplier() && companyName) {
+          const filteredData = deliveriesData.filter(delivery =>
+            delivery.supplierName === companyName
+          );
+          setDeliveries(filteredData);
+        } else {
+          setDeliveries(deliveriesData);
+        }
+      }
+    } catch (error) {
+      console.error('입고 목록을 불러오는 중 오류 발생:', error);
+      setError('입고 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      setShowError(true);
+      // 오류 발생 시 빈 배열로 설정
+      setDeliveries([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    if (isLoggedIn && currentUser) {
+      // 공급업체 사용자인 경우에만 사용자 정보 호출
+      if (isSupplier()) {
+        fetchUserInfo(); // 사용자 정보 호출 추가
+      }
+
+      if (isSupplier() && companyName) {
+        fetchDeliveries();
+      } else if (isSupplier()) {
+        // 회사명이 설정되면 입고 목록을 가져오기 위해 기다림
+      } else {
+        fetchDeliveries();
+      }
+
+      // 권한 체크
+      if (!canCreateInvoice()) {
+        setError('송장 생성 권한이 없습니다. 서플라이어(공급업체)만 송장을 생성할 수 있습니다.');
+        setShowError(true);
+        // 권한 없으면 목록 페이지로 리다이렉트
+        setTimeout(() => {
+          navigate('/invoices');
+        }, 2000);
+      }
+    }
+  }, [isLoggedIn, currentUser]);
+
+  // 회사명이 설정되면 입고 목록 조회
+  useEffect(() => {
+    if (isSupplier() && companyName) {
+      fetchDeliveries();
+    }
+  }, [companyName]);
+
+  // 입력값 변경 핸들러
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+
+  // 날짜 변경 핸들러
+  const handleDateChange = (name, date) => {
+    setFormData({
+      ...formData,
+      [name]: date
+    });
+  };
+
+  // 입고 선택 핸들러 (수정된 버전)
+  const handleDeliveryChange = async (event, newValue) => {
+    setSelectedDelivery(newValue);
+    if (newValue) {
+      // 공급자 정보 일치 여부 확인
+      if (newValue.supplierId && currentUser.id && newValue.supplierId !== currentUser.id) {
+        console.warn(`입고 데이터의 공급자 ID(${newValue.supplierId})와 현재 사용자 ID(${currentUser.id})가 다릅니다.`);
+      }
+
+      setFormData({
+        ...formData,
+        deliveryId: newValue.id,
+        orderNumber: newValue.orderNumber || '',
+      });
+
+      // 선택한 입고 데이터의 공급자 정보 추가 조회
+      if (newValue.supplierId) {
+        try {
+          const endpoint = `${API_URL}members/${newValue.supplierId}`;
+          console.log('공급자 정보 API 호출:', endpoint);
+
+          const response = await fetchWithAuth(endpoint);
+
+          if (response.ok) {
+            const supplierData = await response.json();
+            console.log('공급자 상세 정보:', supplierData);
+
+            // 응답 구조에 따라 데이터 추출 (status.success 패턴 또는 직접 응답)
+            const supplierDetails = supplierData.status === "success" ? supplierData.data : supplierData;
+
+            // 선택된 입고 데이터에 공급자 정보 보강
+            setSelectedDelivery({
+              ...newValue,
+              supplierUserName: supplierDetails.username || newValue.supplierUserName || newValue.supplierId,
+              supplierContactPerson: supplierDetails.name || newValue.supplierContactPerson || '-',
+              supplierEmail: supplierDetails.email || newValue.supplierEmail || '-',
+              supplierPhone: supplierDetails.contactNumber || newValue.supplierPhone || '-',
+              supplierAddress: supplierDetails.roadAddress ?
+                `${supplierDetails.roadAddress} ${supplierDetails.detailAddress || ''}` :
+                (newValue.supplierAddress || '등록된 주소 정보가 없습니다.')
+            });
+          }
+        } catch (error) {
+          console.error("공급자 정보 조회 중 오류 발생:", error);
+        }
+      }
+    } else {
+      setFormData({
+        ...formData,
+        deliveryId: '',
+        orderNumber: '',
       });
     }
-
-    setItem(updatedItem);
   };
 
-  // 총액 계산 핸들러
-  const calculateTotals = () => {
-    if (!item) return;
+  // 폼 제출 핸들러
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    const supplyAmount = item.supplyAmount;
-    const vatAmount = item.vatAmount;
-    const totalAmount = supplyAmount + vatAmount;
-
-    setInvoice({
-      ...invoice,
-      supplyAmount,
-      vatAmount,
-      totalAmount
-    });
-  };
-
-  // 송장 저장 핸들러
-  const handleSaveInvoice = () => {
-    // 필수 필드 검증
-    if (!invoice.contractId) {
-      showSnackbar('계약을 선택해주세요.', 'error');
+    if (!selectedDelivery) {
+      setError('발주 정보를 선택해주세요.');
+      setShowError(true);
       return;
     }
 
-    if (!item) {
-      showSnackbar('품목 정보가 없습니다.', 'error');
-      return;
+    try {
+      setSaving(true);
+
+      // 송장 생성 API 호출
+      const response = await fetchWithAuth(`${API_URL}invoices/from-delivery/${formData.deliveryId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`송장 생성 실패: ${response.status}`);
+      }
+
+      const createdInvoice = await response.json();
+
+      // 추가 정보 업데이트 (계약번호, 거래번호, 메모 등)
+      const updateData = {
+        issueDate: formData.issueDate.format('YYYY-MM-DD'),
+        dueDate: formData.dueDate.format('YYYY-MM-DD'),
+        notes: formData.notes,
+        status: 'WAITING',
+      };
+
+      // 공급자 정보가 있으면 업데이트 시도
+      if (supplierDetail || userDetail) {
+        Object.assign(updateData, {
+          userName: selectedDelivery.supplierUserName || currentUser.username,
+          supplierName: selectedDelivery.supplierName || companyName || userDetail?.companyName || currentUser.name,
+          supplierContactPerson: selectedDelivery.supplierContactPerson || currentUser.name,
+          supplierEmail: selectedDelivery.supplierEmail || userDetail?.email || currentUser.email,
+          supplierPhone: selectedDelivery.supplierPhone || userDetail?.contactNumber || currentUser.contactNumber,
+          supplierAddress: selectedDelivery.supplierAddress ||
+            (userDetail?.roadAddress ?
+              `${userDetail.roadAddress} ${userDetail.detailAddress || ''}` :
+              (currentUser.roadAddress ? `${currentUser.roadAddress} ${currentUser.detailAddress || ''}` : ''))
+        });
+      }
+
+      const updateResponse = await fetchWithAuth(`${API_URL}invoices/${createdInvoice.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (!updateResponse.ok) {
+        console.warn('송장 추가 정보 업데이트 실패');
+      }
+
+      // 성공 메시지 표시
+      setSuccessMessage('송장이 성공적으로 생성되었습니다.');
+      setShowSuccess(true);
+
+      // 생성 후 상세 페이지로 이동 (타이머 설정)
+      setTimeout(() => {
+        navigate(`/invoices/${createdInvoice.id}`);
+      }, 2000);
+    } catch (error) {
+      console.error('송장 생성 중 오류 발생:', error);
+      setError('송장 생성 중 오류가 발생했습니다.');
+      setShowError(true);
+    } finally {
+      setSaving(false);
     }
-
-    // 품목 데이터 검증
-    if (!item.itemName || item.quantity <= 0 || item.unitPrice <= 0) {
-      showSnackbar('품목의 이름, 수량, 단가를 올바르게 입력해주세요.', 'error');
-      return;
-    }
-
-    if (new Date(invoice.dueDate) <= new Date(invoice.issueDate)) {
-      showSnackbar('마감일은 발행일보다 이후여야 합니다.', 'error');
-      return;
-    }
-
-    // 실제로는 API 호출을 통해 송장 저장
-    const newInvoice = {
-      ...invoice,
-      id: `INV-${mockInvoices.length + 1}`,
-      supplier: selectedSupplier,
-      item: item,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    // 저장 성공 가정
-    showSnackbar('송장이 성공적으로 발행되었습니다.', 'success');
-
-    // 미리보기 다이얼로그 표시
-    setPreviewOpen(true);
   };
 
-  // 목록으로 돌아가기 핸들러
-  const handleBackToList = () => {
-    navigate('/invoices'); // 실제 라우팅 경로에 맞게 수정
+  // 취소 핸들러
+  const handleCancel = () => {
+    setCancelDialogOpen(true);
   };
 
-  // 미리보기 다이얼로그 닫기 핸들러
-  const handleClosePreview = () => {
-    setPreviewOpen(false);
-    // 송장 목록 페이지로 이동
-    navigate('/invoices');
+  // 메시지 닫기 핸들러
+  const handleCloseError = () => {
+    setShowError(false);
   };
 
-  // 스낵바 표시 함수
-  const showSnackbar = (message, severity) => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
   };
 
-  // 스낵바 닫기 핸들러
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
+
+  // 공급가액 계산
+  const calculateSupplyPrice = (totalAmount) => {
+    if (!totalAmount) return 0;
+    return Math.round(parseFloat(totalAmount) / 1.1 * 100) / 100;
+  };
+
+  // 부가세 계산
+  const calculateVAT = (totalAmount) => {
+    if (!totalAmount) return 0;
+    return Math.round((parseFloat(totalAmount) - calculateSupplyPrice(totalAmount)) * 100) / 100;
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-      {/* 상단 네비게이션 */}
-      <Box sx={{ mb: 4 }}>
-        <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-          <Link
-            color="inherit"
-            onClick={handleBackToList}
-            sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            <ArrowBackIcon fontSize="small" sx={{ mr: 0.5 }} />
-            송장 목록
-          </Link>
-          <Typography color="textPrimary">송장 발행</Typography>
-        </Breadcrumbs>
-        <Typography variant="h4" component="h1" gutterBottom>
-          새 송장 발행
-        </Typography>
-      </Box>
-
-      {/* 송장 정보 입력 폼 */}
-      <FormSection>
-        <Typography variant="h6" gutterBottom>
-          기본 정보
-        </Typography>
-        <Divider sx={{ mb: 3 }} />
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              label="송장 번호"
-              value={invoice.invoiceNumber}
-              onChange={(e) => handleChange('invoiceNumber', e.target.value)}
-              fullWidth
-              InputProps={{
-                readOnly: true,
-              }}
-              helperText="자동 생성됨"
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              label="발행일"
-              type="date"
-              value={invoice.issueDate}
-              onChange={(e) => handleChange('issueDate', e.target.value)}
-              fullWidth
-              InputLabelProps={{
-                shrink: true,
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              label="마감일"
-              type="date"
-              value={invoice.dueDate}
-              onChange={(e) => handleChange('dueDate', e.target.value)}
-              fullWidth
-              InputLabelProps={{
-                shrink: true,
-              }}
-              helperText="발행일로부터 기본 30일"
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <Autocomplete
-              options={contracts}
-              getOptionLabel={(option) => `${option.id} (${option.items[0]?.itemName || '품목 없음'})`}
-              onChange={handleContractChange}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              renderInput={(params) => <TextField {...params} label="계약 선택" />}
-              fullWidth
-            />
-          </Grid>
-        </Grid>
-      </FormSection>
-
-      {/* 공급자 정보 */}
-      <FormSection>
-        <Typography variant="h6" gutterBottom>
-          공급자 정보
-        </Typography>
-        <Divider sx={{ mb: 3 }} />
-
-        {selectedSupplier ? (
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                label="공급자 ID"
-                value={selectedSupplier.id}
-                fullWidth
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                label="공급자명"
-                value={selectedSupplier.name}
-                fullWidth
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                label="담당자"
-                value={selectedSupplier.contactPerson}
-                fullWidth
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                label="전화번호"
-                value={selectedSupplier.phone}
-                fullWidth
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                label="이메일"
-                value={selectedSupplier.email}
-                fullWidth
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                label="주소"
-                value={selectedSupplier.address}
-                fullWidth
-                InputProps={{
-                  readOnly: true,
-                }}
-              />
-            </Grid>
-          </Grid>
-        ) : (
-          <Typography variant="body1" color="textSecondary">
-            계약을 선택하면 공급자 정보가 자동으로 표시됩니다.
-          </Typography>
-        )}
-      </FormSection>
-
-      {/* 품목 정보 */}
-      <FormSection>
-        <Typography variant="h6" gutterBottom>
-          품목 정보
-        </Typography>
-        <Divider sx={{ mb: 3 }} />
-
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>품목명</TableCell>
-                <TableCell align="right">수량</TableCell>
-                <TableCell align="right">단가</TableCell>
-                <TableCell align="right">공급가액</TableCell>
-                <TableCell align="right">부가세</TableCell>
-                <TableCell align="right">총액</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {!item ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    계약을 선택하면 품목 정보가 자동으로 표시됩니다.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <TableRow>
-                  <TableCell>
-                    <TextField
-                      value={item.itemName}
-                      onChange={(e) => handleItemChange('itemName', e.target.value)}
-                      variant="standard"
-                      fullWidth
-                      InputProps={{
-                        readOnly: true,
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange('quantity', parseInt(e.target.value) || 0)}
-                      variant="standard"
-                      InputProps={{ inputProps: { min: 1 } }}
-                      sx={{ width: '100px' }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <TextField
-                      type="number"
-                      value={item.unitPrice}
-                      onChange={(e) => handleItemChange('unitPrice', parseInt(e.target.value) || 0)}
-                      variant="standard"
-                      InputProps={{ inputProps: { min: 0 } }}
-                      sx={{ width: '120px' }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatCurrency(item.supplyAmount)}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatCurrency(item.vatAmount)}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatCurrency(item.totalAmount)}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        {/* 총계 */}
-        <Grid container sx={{ mt: 3, p: 2, backgroundColor: 'background.default' }}>
-          <Grid item xs={12} sm={4}>
-            <Typography variant="subtitle2" color="textSecondary">공급가액 합계</Typography>
-            <Typography variant="h6">{formatCurrency(invoice.supplyAmount)}</Typography>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Typography variant="subtitle2" color="textSecondary">부가세 합계</Typography>
-            <Typography variant="h6">{formatCurrency(invoice.vatAmount)}</Typography>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Typography variant="subtitle2" color="textSecondary">총액</Typography>
-            <Typography variant="h6" color="primary.main">{formatCurrency(invoice.totalAmount)}</Typography>
-          </Grid>
-        </Grid>
-
-        <Box sx={{ mt: 3 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={calculateTotals}
-            startIcon={<CalculateIcon />}
-            sx={{ mr: 1 }}
-          >
-            금액 재계산
-          </Button>
-        </Box>
-      </FormSection>
-
-      {/* 작업 버튼 */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBackToList}
-        >
-          취소
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<SaveIcon />}
-          onClick={handleSaveInvoice}
-        >
-          송장 발행하기
-        </Button>
-      </Box>
-
-      {/* 송장 발행 완료 미리보기 다이얼로그 */}
-      <Dialog
-        open={previewOpen}
-        onClose={handleClosePreview}
-        maxWidth="md"
-        fullWidth
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }} id="invoice-detail-container">
+      {/* 에러 메시지 */}
+      <Snackbar
+        open={showError}
+        autoHideDuration={6000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <DialogTitle>송장 발행 완료</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="h6" gutterBottom>
-            송장 번호: {invoice.invoiceNumber}
-          </Typography>
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="textSecondary">계약 번호</Typography>
-              <Typography variant="body1">{invoice.contractId}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="textSecondary">거래 번호</Typography>
-              <Typography variant="body1">{invoice.transactionNumber}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="textSecondary">발행일</Typography>
-              <Typography variant="body1">{invoice.issueDate}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="textSecondary">마감일</Typography>
-              <Typography variant="body1">{invoice.dueDate}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="textSecondary">공급자</Typography>
-              <Typography variant="body1">{selectedSupplier?.name}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="textSecondary">총액</Typography>
-              <Typography variant="body1" color="primary.main">{formatCurrency(invoice.totalAmount)}</Typography>
-            </Grid>
-          </Grid>
+      {/* 성공 메시지 */}
+      <Snackbar
+        open={showSuccess}
+        autoHideDuration={6000}
+        onClose={handleCloseSuccess}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSuccess} severity="success" sx={{ width: '100%' }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
 
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="body1" gutterBottom>
-              송장이 성공적으로 발행되었습니다.
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              이제 송장 목록에서 이 송장을 확인할 수 있습니다.
-            </Typography>
-          </Box>
+      {/* 취소 확인 다이얼로그 */}
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+      >
+        <DialogTitle>생성 취소</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            송장 생성을 취소하시겠습니까? 입력한 정보는 저장되지 않습니다.
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClosePreview} color="primary">
-            송장 목록으로 이동
+          <Button onClick={() => setCancelDialogOpen(false)} color="primary">
+            계속 작성
+          </Button>
+          <Button onClick={() => navigate('/invoices')} color="error" autoFocus>
+            취소하고 나가기
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* 알림 스낵바 */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      {/* 상단 네비게이션 */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 3 }}>
+        <Button
+          variant="outlined"
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/invoices')}
+        >
+          목록으로
+        </Button>
+      </Box>
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <Box className="invoice-detail-content">
+            {/* 송장 제목 및 상태 */}
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h5" component="h1">
+                  새 송장 등록
+                </Typography>
+                <Chip
+                  label="작성 중"
+                  color="default"
+                  size="medium"
+                  sx={{ fontSize: '1rem', fontWeight: 'bold' }}
+                />
+              </Box>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                송장은 입고된 발주 정보를 기반으로 생성됩니다. 아래에서 발주 정보를 선택해주세요.
+              </Alert>
+            </Paper>
+
+            {/* 발주 정보 선택 */}
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <SectionTitle variant="h6">발주 정보 선택</SectionTitle>
+              <Divider sx={{ mb: 2 }} />
+
+              <Autocomplete
+                options={deliveries}
+                getOptionLabel={(option) =>
+                  `[발주번호: ${option.orderNumber || '없음'}] [입고번호: ${option.deliveryNumber}] ${option.itemName}`
+                }
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box sx={{ width: '100%' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                        발주번호: {option.orderNumber || '발주번호 없음'}
+                      </Typography>
+                      <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                        <Grid item xs={6}>
+                          <Typography variant="body2">
+                            • 공급업체: {option.supplierName}
+                          </Typography>
+                          <Typography variant="body2">
+                            • 품목: {option.itemName}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="body2">
+                            • 수량: {option.itemQuantity}개
+                          </Typography>
+                          <Typography variant="body2">
+                            • 총액: {formatCurrency(option.totalAmount)}
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                        입고번호: {option.deliveryNumber}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
+                value={selectedDelivery}
+                onChange={handleDeliveryChange}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="입고된 발주 정보 선택"
+                    required
+                    fullWidth
+                    margin="normal"
+                    placeholder="발주번호 또는 입고번호로 검색하세요"
+                  />
+                )}
+                noOptionsText="송장 발행 가능한 발주/입고 정보가 없습니다"
+                sx={{ mb: 2 }}
+              />
+
+              {selectedDelivery && currentUser && selectedDelivery.supplierId !== currentUser.id && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  주의: 선택한 입고 데이터의 공급자({selectedDelivery.supplierName})가 현재 로그인 사용자({currentUser.name})와 다릅니다.
+                  이 송장은 입고 데이터의 공급자 정보로 생성됩니다.
+                </Alert>
+              )}
+            </Paper>
+
+            {/* 기본 정보 */}
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <SectionTitle variant="h6">기본 정보</SectionTitle>
+              <Divider sx={{ mb: 2 }} />
+
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <InfoRow>
+                    <Typography className="label">발주 번호:</Typography>
+                    <Typography className="value">
+                      {selectedDelivery ? selectedDelivery.orderNumber || '-' : '-'}
+                    </Typography>
+                  </InfoRow>
+                  <InfoRow>
+                    <Typography className="label">입고 번호:</Typography>
+                    <Typography className="value">
+                      {selectedDelivery ? selectedDelivery.deliveryNumber || '-' : '-'}
+                    </Typography>
+                  </InfoRow>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <InfoRow>
+                    <Typography className="label">발행일:</Typography>
+                    <LocalizationProvider dateAdapter={AdapterMoment}>
+                      <DatePicker
+                        value={formData.issueDate}
+                        onChange={(date) => handleDateChange('issueDate', date)}
+                        format="YYYY-MM-DD"
+                        slotProps={{
+                          textField: {
+                            size: "small",
+                            fullWidth: true,
+                            required: true,
+                          },
+                        }}
+                      />
+                    </LocalizationProvider>
+                  </InfoRow>
+                  <InfoRow>
+                    <Typography className="label">마감일:</Typography>
+                    <LocalizationProvider dateAdapter={AdapterMoment}>
+                      <DatePicker
+                        value={formData.dueDate}
+                        onChange={(date) => handleDateChange('dueDate', date)}
+                        format="YYYY-MM-DD"
+                        slotProps={{
+                          textField: {
+                            size: "small",
+                            fullWidth: true,
+                            required: true,
+                          },
+                        }}
+                      />
+                    </LocalizationProvider>
+                  </InfoRow>
+
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* 공급자 정보 */}
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <SectionTitle variant="h6">공급자 정보</SectionTitle>
+              <Divider sx={{ mb: 2 }} />
+
+              {supplierDetailLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : (
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <InfoRow>
+                      <Typography className="label">공급자 ID:</Typography>
+                      <Typography className="value">
+                        {selectedDelivery?.supplierUserName || selectedDelivery?.supplierId || "-"}
+                      </Typography>
+                    </InfoRow>
+                    <InfoRow>
+                      <Typography className="label">공급자명:</Typography>
+                      <Typography className="value">
+                        {selectedDelivery?.supplierName || "-"}
+                      </Typography>
+                    </InfoRow>
+                    <InfoRow>
+                      <Typography className="label">담당자:</Typography>
+                      <Typography className="value">
+                        {selectedDelivery?.supplierContactPerson || supplierDetail?.name || "-"}
+                      </Typography>
+                    </InfoRow>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <InfoRow>
+                      <Typography className="label">이메일:</Typography>
+                      <Typography className="value">
+                        {selectedDelivery?.supplierEmail || supplierDetail?.email || "-"}
+                      </Typography>
+                    </InfoRow>
+                    <InfoRow>
+                      <Typography className="label">전화번호:</Typography>
+                      <Typography className="value">
+                        {selectedDelivery?.supplierPhone || supplierDetail?.contactNumber || "-"}
+                      </Typography>
+                    </InfoRow>
+                    <InfoRow>
+                      <Typography className="label">주소:</Typography>
+                      <Typography className="value">
+                        {selectedDelivery?.supplierAddress ||
+                         (supplierDetail?.roadAddress ?
+                          `${supplierDetail.roadAddress} ${supplierDetail.detailAddress || ''}` :
+                          '등록된 주소 정보가 없습니다.')}
+                      </Typography>
+                    </InfoRow>
+                  </Grid>
+                </Grid>
+              )}
+            </Paper>
+
+            {/* 품목 정보 */}
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <SectionTitle variant="h6">품목 정보</SectionTitle>
+              <Divider sx={{ mb: 2 }} />
+
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>품목명</TableCell>
+                      <TableCell>수량</TableCell>
+                      <TableCell>단가</TableCell>
+                      <TableCell>공급가액</TableCell>
+                      <TableCell>부가세</TableCell>
+                      <TableCell>총액</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedDelivery ? (
+                      <TableRow>
+                        <TableCell>
+                          {selectedDelivery.itemName}
+                          {selectedDelivery.itemSpecification && (
+                            <Typography variant="caption" display="block" color="textSecondary">
+                              {selectedDelivery.itemSpecification}
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>{selectedDelivery.itemQuantity} {selectedDelivery.itemUnit || '개'}</TableCell>
+                        <TableCell>
+                          {formatCurrency(selectedDelivery.unitPrice || (selectedDelivery.totalAmount / selectedDelivery.itemQuantity))}
+                        </TableCell>
+                        <TableCell>{formatCurrency(calculateSupplyPrice(selectedDelivery.totalAmount))}</TableCell>
+                        <TableCell>{formatCurrency(calculateVAT(selectedDelivery.totalAmount))}</TableCell>
+                        <TableCell>{formatCurrency(selectedDelivery.totalAmount)}</TableCell>
+                      </TableRow>
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">발주 정보를 선택하면 품목 정보가 표시됩니다.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+
+            {/* 결제 정보 */}
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <SectionTitle variant="h6">결제 정보</SectionTitle>
+              <Divider sx={{ mb: 2 }} />
+
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                borderRadius: 1,
+              }}>
+                <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                  공급가액: <span style={{ fontWeight: 'normal' }}>{formatCurrency(selectedDelivery ? calculateSupplyPrice(selectedDelivery.totalAmount) : 0)}</span>
+                </Typography>
+                <Typography variant="body1" sx={{ mr: 3, fontWeight: 500 }}>
+                  부가세: <span style={{ fontWeight: 'normal' }}>{formatCurrency(selectedDelivery ? calculateVAT(selectedDelivery.totalAmount) : 0)}</span>
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500, color: '#ff7043' }}>
+                  총액: <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{formatCurrency(selectedDelivery ? selectedDelivery.totalAmount : 0)}</span>
+                </Typography>
+              </Box>
+            </Paper>
+
+            {/* 비고 */}
+            <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+              <SectionTitle variant="h6">비고</SectionTitle>
+              <Divider sx={{ mb: 2 }} />
+              <TextField
+                fullWidth
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+                multiline
+                variant="filled"
+                minRows={4}
+                maxRows={8}
+                placeholder="추가 정보가 있으면 입력하세요"
+                margin="normal"
+              />
+            </Paper>
+
+            {/* 하단 버튼 영역 */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap', mt: 3 }}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                startIcon={<CancelIcon />}
+                onClick={handleCancel}
+              >
+                취소
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
+                type="submit"
+                disabled={saving || !selectedDelivery}
+              >
+                송장 생성
+              </Button>
+            </Box>
+          </Box>
+        </form>
+      )}
     </Container>
   );
 };

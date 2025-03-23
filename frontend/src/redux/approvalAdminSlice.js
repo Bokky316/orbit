@@ -1,28 +1,30 @@
 // src/redux/approvalAdminSlice.js
 
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { API_URL } from '@/utils/constants';
-import { fetchWithAuth } from '@/utils/fetchWithAuth';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { API_URL } from "@/utils/constants";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
 /**
  * 결재선 템플릿 목록 조회
  */
 export const fetchApprovalTemplates = createAsyncThunk(
-  'approvalAdmin/fetchApprovalTemplates',
+  "approvalAdmin/fetchApprovalTemplates",
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}approval-templates`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`결재선 템플릿 조회 실패: ${response.status} - ${errorText}`);
+        throw new Error(
+          `결재선 템플릿 조회 실패: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       // 백엔드에서 이미 올바르게 변환된 데이터가 전달되므로 그대로 반환
       return data;
     } catch (error) {
-      console.error('결재선 템플릿 조회 중 오류 발생:', error);
+      console.error("결재선 템플릿 조회 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -32,40 +34,44 @@ export const fetchApprovalTemplates = createAsyncThunk(
  * 결재선 템플릿 생성
  */
 export const createApprovalTemplate = createAsyncThunk(
-  'approvalAdmin/createApprovalTemplate',
+  "approvalAdmin/createApprovalTemplate",
   async (templateData, { rejectWithValue }) => {
     try {
       // 데이터 준비 - department가 DepartmentDTO 객체임을 보장
       const preparedData = {
         ...templateData,
-        steps: templateData.steps.map(step => ({
+        steps: templateData.steps.map((step) => ({
           ...step,
-          department: step.department ? {
-            id: step.department.id,
-            name: step.department.name,
-            code: step.department.code,
-            description: step.department.description
-          } : null
+          department: step.department
+            ? {
+                id: step.department.id,
+                name: step.department.name,
+                code: step.department.code,
+                description: step.department.description
+              }
+            : null
         }))
       };
 
       const response = await fetchWithAuth(`${API_URL}approval-templates`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(preparedData)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`결재선 템플릿 생성 실패: ${response.status} - ${errorText}`);
+        throw new Error(
+          `결재선 템플릿 생성 실패: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('결재선 템플릿 생성 중 오류 발생:', error);
+      console.error("결재선 템플릿 생성 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -75,40 +81,47 @@ export const createApprovalTemplate = createAsyncThunk(
  * 결재선 템플릿 수정
  */
 export const updateApprovalTemplate = createAsyncThunk(
-  'approvalAdmin/updateApprovalTemplate',
+  "approvalAdmin/updateApprovalTemplate",
   async ({ id, templateData }, { rejectWithValue }) => {
     try {
       // 데이터 준비 - department가 DepartmentDTO 객체임을 보장
       const preparedData = {
         ...templateData,
-        steps: templateData.steps.map(step => ({
+        steps: templateData.steps.map((step) => ({
           ...step,
-          department: step.department ? {
-            id: step.department.id,
-            name: step.department.name,
-            code: step.department.code,
-            description: step.department.description
-          } : null
+          department: step.department
+            ? {
+                id: step.department.id,
+                name: step.department.name,
+                code: step.department.code,
+                description: step.department.description
+              }
+            : null
         }))
       };
 
-      const response = await fetchWithAuth(`${API_URL}approval-templates/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(preparedData)
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}approval-templates/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(preparedData)
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`결재선 템플릿 수정 실패: ${response.status} - ${errorText}`);
+        throw new Error(
+          `결재선 템플릿 수정 실패: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('결재선 템플릿 수정 중 오류 발생:', error);
+      console.error("결재선 템플릿 수정 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -118,21 +131,26 @@ export const updateApprovalTemplate = createAsyncThunk(
  * 결재선 템플릿 삭제
  */
 export const deleteApprovalTemplate = createAsyncThunk(
-  'approvalAdmin/deleteApprovalTemplate',
+  "approvalAdmin/deleteApprovalTemplate",
   async (id, { rejectWithValue }) => {
     try {
-      const response = await fetchWithAuth(`${API_URL}approval-templates/${id}`, {
-        method: 'DELETE'
-      });
+      const response = await fetchWithAuth(
+        `${API_URL}approval-templates/${id}`,
+        {
+          method: "DELETE"
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`결재선 템플릿 삭제 실패: ${response.status} - ${errorText}`);
+        throw new Error(
+          `결재선 템플릿 삭제 실패: ${response.status} - ${errorText}`
+        );
       }
 
       return id;
     } catch (error) {
-      console.error('결재선 템플릿 삭제 중 오류 발생:', error);
+      console.error("결재선 템플릿 삭제 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -142,20 +160,22 @@ export const deleteApprovalTemplate = createAsyncThunk(
  * 부서 목록 조회
  */
 export const fetchDepartments = createAsyncThunk(
-  'approvalAdmin/fetchDepartments',
+  "approvalAdmin/fetchDepartments",
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}departments`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`부서 목록 조회 실패: ${response.status} - ${errorText}`);
+        throw new Error(
+          `부서 목록 조회 실패: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('부서 목록 조회 중 오류 발생:', error);
+      console.error("부서 목록 조회 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -165,13 +185,13 @@ export const fetchDepartments = createAsyncThunk(
  * 부서 생성
  */
 export const createDepartment = createAsyncThunk(
-  'approvalAdmin/createDepartment',
+  "approvalAdmin/createDepartment",
   async (departmentData, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}departments`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(departmentData)
       });
@@ -184,7 +204,7 @@ export const createDepartment = createAsyncThunk(
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('부서 생성 중 오류 발생:', error);
+      console.error("부서 생성 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -194,13 +214,13 @@ export const createDepartment = createAsyncThunk(
  * 부서 수정
  */
 export const updateDepartment = createAsyncThunk(
-  'approvalAdmin/updateDepartment',
+  "approvalAdmin/updateDepartment",
   async ({ id, departmentData }, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}departments/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(departmentData)
       });
@@ -213,7 +233,7 @@ export const updateDepartment = createAsyncThunk(
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('부서 수정 중 오류 발생:', error);
+      console.error("부서 수정 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -223,11 +243,11 @@ export const updateDepartment = createAsyncThunk(
  * 부서 삭제
  */
 export const deleteDepartment = createAsyncThunk(
-  'approvalAdmin/deleteDepartment',
+  "approvalAdmin/deleteDepartment",
   async (id, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}departments/${id}`, {
-        method: 'DELETE'
+        method: "DELETE"
       });
 
       if (!response.ok) {
@@ -237,7 +257,7 @@ export const deleteDepartment = createAsyncThunk(
 
       return id;
     } catch (error) {
-      console.error('부서 삭제 중 오류 발생:', error);
+      console.error("부서 삭제 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -247,20 +267,22 @@ export const deleteDepartment = createAsyncThunk(
  * 직급 목록 조회
  */
 export const fetchPositions = createAsyncThunk(
-  'approvalAdmin/fetchPositions',
+  "approvalAdmin/fetchPositions",
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}positions`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`직급 목록 조회 실패: ${response.status} - ${errorText}`);
+        throw new Error(
+          `직급 목록 조회 실패: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('직급 목록 조회 중 오류 발생:', error);
+      console.error("직급 목록 조회 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -270,13 +292,13 @@ export const fetchPositions = createAsyncThunk(
  * 직급 생성
  */
 export const createPosition = createAsyncThunk(
-  'approvalAdmin/createPosition',
+  "approvalAdmin/createPosition",
   async (positionData, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}positions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(positionData)
       });
@@ -289,7 +311,7 @@ export const createPosition = createAsyncThunk(
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('직급 생성 중 오류 발생:', error);
+      console.error("직급 생성 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -299,13 +321,13 @@ export const createPosition = createAsyncThunk(
  * 직급 수정
  */
 export const updatePosition = createAsyncThunk(
-  'approvalAdmin/updatePosition',
+  "approvalAdmin/updatePosition",
   async ({ id, positionData }, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}positions/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(positionData)
       });
@@ -318,7 +340,7 @@ export const updatePosition = createAsyncThunk(
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('직급 수정 중 오류 발생:', error);
+      console.error("직급 수정 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -328,11 +350,11 @@ export const updatePosition = createAsyncThunk(
  * 직급 삭제
  */
 export const deletePosition = createAsyncThunk(
-  'approvalAdmin/deletePosition',
+  "approvalAdmin/deletePosition",
   async (id, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}positions/${id}`, {
-        method: 'DELETE'
+        method: "DELETE"
       });
 
       if (!response.ok) {
@@ -342,7 +364,7 @@ export const deletePosition = createAsyncThunk(
 
       return id;
     } catch (error) {
-      console.error('직급 삭제 중 오류 발생:', error);
+      console.error("직급 삭제 중 오류 발생:", error);
       return rejectWithValue(error.message);
     }
   }
@@ -369,7 +391,7 @@ const initialState = {
 
 // Slice 생성
 const approvalAdminSlice = createSlice({
-  name: 'approvalAdmin',
+  name: "approvalAdmin",
   initialState,
   reducers: {
     clearTemplatesError: (state) => {
@@ -419,7 +441,9 @@ const approvalAdminSlice = createSlice({
       })
       .addCase(updateApprovalTemplate.fulfilled, (state, action) => {
         state.templates.loading = false;
-        const index = state.templates.data.findIndex(template => template.id === action.payload.id);
+        const index = state.templates.data.findIndex(
+          (template) => template.id === action.payload.id
+        );
         if (index !== -1) {
           state.templates.data[index] = action.payload;
         }
@@ -436,7 +460,9 @@ const approvalAdminSlice = createSlice({
       })
       .addCase(deleteApprovalTemplate.fulfilled, (state, action) => {
         state.templates.loading = false;
-        state.templates.data = state.templates.data.filter(template => template.id !== action.payload);
+        state.templates.data = state.templates.data.filter(
+          (template) => template.id !== action.payload
+        );
       })
       .addCase(deleteApprovalTemplate.rejected, (state, action) => {
         state.templates.loading = false;
@@ -478,7 +504,9 @@ const approvalAdminSlice = createSlice({
       })
       .addCase(updateDepartment.fulfilled, (state, action) => {
         state.departments.loading = false;
-        const index = state.departments.data.findIndex(department => department.id === action.payload.id);
+        const index = state.departments.data.findIndex(
+          (department) => department.id === action.payload.id
+        );
         if (index !== -1) {
           state.departments.data[index] = action.payload;
         }
@@ -495,7 +523,9 @@ const approvalAdminSlice = createSlice({
       })
       .addCase(deleteDepartment.fulfilled, (state, action) => {
         state.departments.loading = false;
-        state.departments.data = state.departments.data.filter(department => department.id !== action.payload);
+        state.departments.data = state.departments.data.filter(
+          (department) => department.id !== action.payload
+        );
       })
       .addCase(deleteDepartment.rejected, (state, action) => {
         state.departments.loading = false;
@@ -537,7 +567,9 @@ const approvalAdminSlice = createSlice({
       })
       .addCase(updatePosition.fulfilled, (state, action) => {
         state.positions.loading = false;
-        const index = state.positions.data.findIndex(position => position.id === action.payload.id);
+        const index = state.positions.data.findIndex(
+          (position) => position.id === action.payload.id
+        );
         if (index !== -1) {
           state.positions.data[index] = action.payload;
         }
@@ -554,7 +586,9 @@ const approvalAdminSlice = createSlice({
       })
       .addCase(deletePosition.fulfilled, (state, action) => {
         state.positions.loading = false;
-        state.positions.data = state.positions.data.filter(position => position.id !== action.payload);
+        state.positions.data = state.positions.data.filter(
+          (position) => position.id !== action.payload
+        );
       })
       .addCase(deletePosition.rejected, (state, action) => {
         state.positions.loading = false;

@@ -3,7 +3,6 @@ package com.orbit.controller.procurement;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +30,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbit.config.jwt.TokenProvider;
 import com.orbit.dto.approval.ApprovalDTO;
 import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.Project;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ProjectRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
@@ -125,19 +123,19 @@ public class ApprovalControllerTest {
         redisService.cacheUserAuthorities(TEST_USERNAME);
 
         // 테스트 프로젝트 생성 및 저장
-        String projectId = UUID.randomUUID().toString();
-        Project project =
-                Project.builder()
-//                        .projectId(projectId)
-//                        .projectName("Test Project")
-//                        .managerName("Test Manager")
-//                        .startDate(LocalDate.now())
-//                        .endDate(LocalDate.now().plusDays(7))
-//                        .status(Project.ProjectStatus.IN_PROGRESS)
-//                        .description("Test Project Description")
-//                        .supplierStatus(SupplierStatus.PENDING)
-                        .build();
-        projectRepository.save(project);
+        // String projectId = UUID.randomUUID().toString();
+        // Project project =
+        //         Project.builder()
+        //                .projectId(projectId)
+        //                .projectName("Test Project")
+        //                .managerName("Test Manager")
+        //                .startDate(LocalDate.now())
+        //                .endDate(LocalDate.now().plusDays(7))
+        //                .status(Project.ProjectStatus.IN_PROGRESS)
+        //                .description("Test Project Description")
+        //                .supplierStatus(SupplierStatus.PENDING)
+        //                 .build();
+        // projectRepository.save(project);
 
         // 테스트 구매 요청 생성 및 저장
 ////        PurchaseRequest purchaseRequest = new PurchaseRequest();

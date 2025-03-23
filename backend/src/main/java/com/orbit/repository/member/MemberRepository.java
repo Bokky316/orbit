@@ -1,15 +1,14 @@
 package com.orbit.repository.member;
 
-import java.util.List;
-import java.util.Optional;
-
+import com.orbit.entity.approval.Department;
+import com.orbit.entity.member.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.orbit.entity.approval.Department;
-import com.orbit.entity.member.Member;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Member 엔티티를 위한 JpaRepository
@@ -38,8 +37,9 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
     List<Member> findByNameContainingIgnoreCase(String name);
 
     /**
-     * 결재 가능한 사용자 조회 (직급 레벨 3 이상)
-     * @return 결재 가능한 사용자 리스트
+     * 검수 작업이 가장 적은 품질관리부 담당자 찾기
+     * - `QualityControl` 부서에서 가장 적은 검수 건수를 가진 담당자를 찾음
+     * - 만약 검수 담당자가 없으면 `Optional.empty()` 반환
      */
         @Query("SELECT m FROM Member m JOIN m.position p WHERE p.level >= :level")
         List<Member> findByPositionLevelGreaterThanEqual(@Param("level") int level);
@@ -102,4 +102,6 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
      * @return 해당 부서에 속한 회원 리스트
      */
     List<Member> findByDepartmentId(Long departmentId);
+
+    List<Member> findByUsernameStartingWith(String prefix);
 }

@@ -65,30 +65,36 @@ export const transformFormDataToApiFormat = (formData, user) => {
 };
 
 export const mapBiddingDataToFormData = (biddingData) => {
-  let suppliers =
-    biddingData.suppliers?.map((s) => ({ id: s.supplierId })) || [];
+  console.log("백엔드에서 받은 원본 데이터:", biddingData); // 디버깅용
 
-  if (biddingData.description && suppliers.length > 0) {
-    const companyNames = biddingData.description
-      .split(",")
-      .map((name) => name.trim());
+  let suppliers = [];
 
-    companyNames.forEach((name, index) => {
-      if (index < suppliers.length) {
-        suppliers[index].companyName = name;
-        suppliers[index].name = name;
-      }
-    });
+  // suppliers 필드 처리 - 백엔드 응답 구조에 맞게 수정
+  if (biddingData.suppliers && Array.isArray(biddingData.suppliers)) {
+    suppliers = biddingData.suppliers.map((s) => ({
+      id: s.supplierId || (s.supplier && s.supplier.id),
+      name:
+        s.supplierName ||
+        s.companyName ||
+        (s.supplier && s.supplier.companyName),
+      companyName:
+        s.supplierName ||
+        s.companyName ||
+        (s.supplier && s.supplier.companyName)
+    }));
   }
 
   return {
-    purchaseRequestCode: biddingData.id?.toString() || "",
+    purchaseRequestCode: biddingData.purchaseRequestId?.toString() || "",
+    purchaseRequestItemId: biddingData.purchaseRequestItemId?.toString() || "",
     purchaseRequestName: biddingData.title || "",
     suppliers: suppliers,
+    description: biddingData.description || "",
     itemQuantity: biddingData.quantity || 0,
     unitPrice: biddingData.unitPrice || 0,
     supplyPrice: biddingData.supplyPrice || 0,
     vat: biddingData.vat || 0,
+    totalAmount: biddingData.totalAmount || 0,
     biddingConditions: biddingData.conditions || "",
     deadline: biddingData.endDate
       ? new Date(biddingData.endDate).toISOString().split("T")[0]
@@ -97,6 +103,7 @@ export const mapBiddingDataToFormData = (biddingData) => {
     status: biddingData.status || {
       parentCode: "BIDDING",
       childCode: BiddingStatus.PENDING
-    }
+    },
+    internalNote: biddingData.internalNote || ""
   };
 };
