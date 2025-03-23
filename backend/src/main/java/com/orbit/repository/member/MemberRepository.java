@@ -102,4 +102,6 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
      * @return 해당 부서에 속한 회원 리스트
      */
     List<Member> findByDepartmentId(Long departmentId);
+
+    List<Member> findByUsernameStartingWith(String prefix);
 }

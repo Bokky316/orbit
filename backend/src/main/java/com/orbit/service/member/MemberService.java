@@ -199,4 +199,12 @@ public class MemberService {
     public List<Member> searchMembersByName(String name) {
         return memberRepository.findByNameContainingIgnoreCase(name);
     }
+
+    /**
+     * 사용자명이 특정 문자열로 시작하는 멤버 목록 조회
+     * 재무회계팀(004로 시작하는)을 조회하기 위한 메소드
+     */
+    public List<Member> findByUsernameStartingWith(String prefix) {
+        return memberRepository.findByUsernameStartingWith(prefix);
+    }
 }

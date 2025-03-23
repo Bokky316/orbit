@@ -1,29 +1,16 @@
 package com.orbit.entity.delivery;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-
 import com.orbit.entity.BaseTimeEntity;
 import com.orbit.entity.bidding.BiddingOrder;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.PurchaseRequestItem;
+import jakarta.persistence.*;
+import lombok.*;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 입고 엔티티
@@ -117,11 +104,8 @@ public class Delivery extends BaseTimeEntity {
     @PrePersist
     protected void onCreate() {
         // 현재 시간 생성 (이미 BaseEntity에서 상속)
-       // BaseTimeEntity의 필드는 @CreatedDate, @LastModifiedDate 어노테이션으로 인해
-    // 자동으로 설정되므로 수동으로 설정할 필요가 없습니다.
-    // 기존 코드 제거:
-    // super.setRegTime(LocalDateTime.now());
-    // super.setUpdateTime(LocalDateTime.now());
+        super.setRegTime(LocalDateTime.now());
+        super.setUpdateTime(LocalDateTime.now());
 
         // 입고번호 생성
         if (this.deliveryNumber == null) {

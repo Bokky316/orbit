@@ -35,13 +35,6 @@ import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
 import ApprovalLineAdministration from "@/pages/approval/ApprovalLineAdministration";
-import InspectionsListPage from "@/pages/inspection/InspectionsListPage";
-import InspectionDetailPage from "@/pages/inspection/InspectionDetailPage";
-import InspectionFormPage from "@/pages/inspection/InspectionFormPage";
-import InvoicesListPage from "@/pages/invoice/InvoicesListPage";
-import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage";
-import PaymentListPage from "@/pages/payment/PaymentListPage";
-import PaymentProcessPage from "@/pages/payment/PaymentProcessPage";
 import SupplierListPage from "@/pages/supplier/SupplierListPage";
 import SupplierRegistrationPage from "@/pages/supplier/SupplierRegistrationPage";
 import SupplierReviewPage from "@/pages/supplier/SupplierReviewPage";
@@ -55,6 +48,13 @@ import DeliveryListPage from "@/pages/delivery/DeliveryListPage";
 import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage";
 import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage";
 import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage";
+import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
+import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
+import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
+ import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import PaymentListPage from '@/pages/payment/PaymentListPage';
+import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
+import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -205,30 +205,10 @@ function AppContent() {
                     element={<ApprovalLineAdministration />}
                   />
 
-                  {/* 검수 관리 */}
-                  <Route
-                    path="/inspections"
-                    element={<InspectionsListPage />}
-                  />
-                  <Route
-                    path="/inspections/:id"
-                    element={<InspectionDetailPage />}
-                  />
-                  <Route
-                    path="/inspections/:id/edit"
-                    element={<InspectionFormPage />}
-                  />
-
                   {/* 입고 관리 */}
                   <Route path="/deliveries" element={<DeliveryListPage />} />
-                  <Route
-                    path="/deliveries/:id"
-                    element={<DeliveryDetailPage />}
-                  />
-                  <Route
-                    path="/deliveries/edit/:id"
-                    element={<DeliveryEditPage />}
-                  />
+                  <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
+                  <Route path="/deliveries/edit/:id" element={<DeliveryEditPage />} />
                   <Route
                     path="/deliveries/new"
                     element={<DeliveryCreatePage />}
@@ -236,15 +216,14 @@ function AppContent() {
 
                   {/* 송장 관리 */}
                   <Route path="/invoices" element={<InvoicesListPage />} />
-                  <Route
-                    path="/invoices/create"
-                    element={<InvoiceCreatePage />}
-                  />
+                  <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+                  <Route path="/invoices/edit/:id" element={<InvoiceEditPage />} />
+                  <Route path="/invoices/create" element={<InvoiceCreatePage />} />
+
+                  {/* 지불 관리 */}
                   <Route path="/payments" element={<PaymentListPage />} />
-                  <Route
-                    path="/payments/:invoiceId"
-                    element={<PaymentProcessPage />}
-                  />
+                  <Route path="/payments/:id" element={<PaymentDetailPage />} />
+                  <Route path="/payments/create" element={<PaymentCreatePage />} />
 
                   {/* 협력사 관리 */}
                   <Route path="/supplier" element={<SupplierListPage />} />

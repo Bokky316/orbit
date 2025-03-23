@@ -1,25 +1,27 @@
 package com.orbit.service.delivery;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+import com.orbit.dto.delivery.DeliveryDto;
+import com.orbit.entity.bidding.BiddingContract;
+import com.orbit.entity.bidding.BiddingOrder;
+import com.orbit.entity.delivery.Delivery;
+import com.orbit.entity.member.Member;
+import com.orbit.entity.procurement.PurchaseRequestItem;
+import com.orbit.repository.bidding.BiddingContractRepository;
+import com.orbit.repository.bidding.BiddingOrderRepository;
+import com.orbit.repository.delivery.DeliveryRepository;
+import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.procurement.PurchaseRequestItemRepository;
+import com.orbit.service.bidding.BiddingContractService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.orbit.dto.delivery.DeliveryDto;
-import com.orbit.entity.bidding.BiddingOrder;
-import com.orbit.entity.delivery.Delivery;
-import com.orbit.entity.member.Member;
-import com.orbit.entity.procurement.PurchaseRequestItem;
-import com.orbit.repository.bidding.BiddingOrderRepository;
-import com.orbit.repository.delivery.DeliveryRepository;
-import com.orbit.repository.member.MemberRepository;
-import com.orbit.repository.procurement.PurchaseRequestItemRepository;
-
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,7 @@ public class DeliveryService {
     private final BiddingOrderRepository biddingOrderRepository;
     private final PurchaseRequestItemRepository purchaseRequestItemRepository;
     private final MemberRepository memberRepository;
+    private final BiddingContractRepository biddingContractRepository;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeliveryService.class);
 
@@ -46,6 +49,7 @@ public class DeliveryService {
                 condition.getSupplierName(),
                 condition.getStartDate(),
                 condition.getEndDate(),
+                condition.getInvoiceIssued(),
                 pageable
         );
 
@@ -202,5 +206,81 @@ public class DeliveryService {
     @Transactional
     public void deleteDelivery(Long id) {
         deliveryRepository.deleteById(id);
+    }
+
+    public Optional<Delivery> getDeliveryById(Long id) {
+        return deliveryRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getUninvoicedDeliveriesWithContracts() {
+        List<Delivery> deliveries = deliveryRepository.findByInvoiceIssuedFalse();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Delivery delivery : deliveries) {
+            Map<String, Object> item = new HashMap<>();
+
+            // 기본 정보
+            item.put("id", delivery.getId());
+            item.put("deliveryNumber", delivery.getDeliveryNumber());
+            item.put("orderNumber", delivery.getOrderNumber());
+            item.put("supplierId", delivery.getSupplierId());
+            item.put("supplierName", delivery.getSupplierName());
+            item.put("itemName", delivery.getItemName());
+            item.put("itemSpecification", delivery.getItemSpecification()); // 품목 규격 추가
+            item.put("itemQuantity", delivery.getItemQuantity());
+            item.put("unitPrice", delivery.getItemUnitPrice()); // 단가 추가
+            item.put("itemUnit", delivery.getItemUnit()); // 단위 추가
+            item.put("totalAmount", delivery.getTotalAmount());
+            item.put("invoiceIssued", delivery.getInvoiceIssued());
+
+            // 공급자 정보 추가 조회 (중요!)
+            try {
+                // 공급자 ID로 회원 정보 조회
+                Optional<Member> supplierOpt = memberRepository.findById(delivery.getSupplierId());
+                if (supplierOpt.isPresent()) {
+                    Member supplier = supplierOpt.get();
+
+                    // 공급자 추가 정보 설정
+                    item.put("supplierUserName", supplier.getUsername());
+                    item.put("supplierContactPerson", supplier.getName());
+                    item.put("supplierEmail", supplier.getEmail());
+                    item.put("supplierPhone", supplier.getContactNumber());
+
+                    // 주소 조합
+                    String fullAddress = "";
+                    if (supplier.getRoadAddress() != null) {
+                        fullAddress = supplier.getRoadAddress();
+                        if (supplier.getDetailAddress() != null) {
+                            fullAddress += " " + supplier.getDetailAddress();
+                        }
+                    }
+                    item.put("supplierAddress", fullAddress);
+                }
+            } catch (Exception e) {
+                log.warn("공급자 정보 조회 중 오류 발생: {}", e.getMessage());
+                // 기본값 설정
+                item.put("supplierUserName", String.valueOf(delivery.getSupplierId()));
+                item.put("supplierContactPerson", delivery.getSupplierName() + " 담당자");
+                item.put("supplierEmail", "-");
+                item.put("supplierPhone", "-");
+                item.put("supplierAddress", "-");
+            }
+
+            // 계약 번호 조회
+            String contractNumber = null;
+            if (delivery.getBiddingOrder() != null && delivery.getBiddingOrder().getBidding() != null) {
+                BiddingOrder order = delivery.getBiddingOrder();
+                List<BiddingContract> contracts = biddingContractRepository.findByBiddingId(order.getBiddingId());
+                if (!contracts.isEmpty()) {
+                    contractNumber = contracts.get(0).getTransactionNumber();
+                }
+            }
+
+            item.put("contractNumber", contractNumber);
+            result.add(item);
+        }
+
+        return result;
     }
 }

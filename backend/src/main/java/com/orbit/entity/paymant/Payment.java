@@ -4,12 +4,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.invoice.Invoice;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,7 +34,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "payments", indexes = {
         @Index(name = "idx_payment_date", columnList = "payment_date"),
-        @Index(name = "idx_payment_method", columnList = "payment_method")
+        @Index(name = "idx_method_child_code", columnList = "method_child_code")
 })
 @Getter
 @Setter
@@ -53,13 +55,17 @@ public class Payment {
     @Column(name = "payment_date", nullable = false)
     private LocalDate paymentDate; // 결제 완료 날짜
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "payment_method", nullable = false)
-    private PaymentMethod paymentMethod; // 결제 방법 (계좌이체, 카드, 수표)
+    // 결제 상태 (SystemStatus 사용)
+    @Embedded
+    private SystemStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", nullable = false)
-    private PaymentStatus paymentStatus = PaymentStatus.완료; // 결제 상태 (완료, 실패, 취소)
+    // 결제 방법 (SystemStatus 사용)
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name="parentCode", column=@Column(name="method_parent_code")),
+            @AttributeOverride(name="childCode", column=@Column(name="method_child_code"))
+    })
+    private SystemStatus method;
 
     @Column(name = "transaction_id")
     private String transactionId; // 거래 ID (은행 이체번호, 카드 결제번호 등)
@@ -80,6 +86,16 @@ public class Payment {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+
+        // 기본 상태 설정
+        if (this.status == null) {
+            this.status = new SystemStatus("PAYMENT", "COMPLETED");
+        }
+
+        // 기본 결제 방법 설정
+        if (this.method == null) {
+            this.method = new SystemStatus("PAYMENT", "TRANSFER"); // 기본값: 계좌이체
+        }
     }
 
     @PreUpdate
@@ -88,16 +104,54 @@ public class Payment {
     }
 
     /**
-     * 💳 결제 방법 Enum
+     * 인보이스로부터 결제 정보 생성
      */
-    public enum PaymentMethod {
-        계좌이체, 카드, 수표
+    public void setFromInvoice(Invoice invoice) {
+        this.invoice = invoice;
+        this.totalAmount = invoice.getTotalAmount();
+        this.paymentDate = LocalDate.now();
+        this.status = new SystemStatus("PAYMENT", "COMPLETED"); // 기본 상태: 완료
+        this.method = new SystemStatus("PAYMENT", "TRANSFER"); // 기본 결제 방법: 계좌이체
+        // 다른 필드는 서비스에서 설정
     }
 
     /**
-     * ✅ 결제 상태 Enum
+     * 결제 방법 설정 (편의 메서드)
+     * @param methodCode 결제 방법 코드 (TRANSFER, CARD, CHECK)
      */
-    public enum PaymentStatus {
-        완료, 실패, 취소
+    public void setPaymentMethodCode(String methodCode) {
+        if (this.method == null) {
+            this.method = new SystemStatus("PAYMENT", methodCode);
+        } else {
+            this.method.setChildCode(methodCode);
+        }
+    }
+
+    /**
+     * 결제 방법 코드 조회 (편의 메서드)
+     * @return 결제 방법 코드
+     */
+    public String getPaymentMethodCode() {
+        return this.method != null ? this.method.getChildCode() : null;
+    }
+
+    /**
+     * 결제 상태 설정 (편의 메서드)
+     * @param statusCode 결제 상태 코드 (COMPLETED, FAILED, CANCELED)
+     */
+    public void setPaymentStatusCode(String statusCode) {
+        if (this.status == null) {
+            this.status = new SystemStatus("PAYMENT", statusCode);
+        } else {
+            this.status.setChildCode(statusCode);
+        }
+    }
+
+    /**
+     * 결제 상태 코드 조회 (편의 메서드)
+     * @return 결제 상태 코드
+     */
+    public String getPaymentStatusCode() {
+        return this.status != null ? this.status.getChildCode() : null;
     }
 }

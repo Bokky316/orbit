@@ -7,7 +7,7 @@ import "/public/css/layout/Layout.css";
 // 구매자(BUYER) 및 관리자(ADMIN) 메뉴
 const buyerAdminMenuItems = [
   { label: "대시보드", path: "/dashboard" },
-  { label: "사용자관리", path: "/members", roles: ["ADMIN", "ROLE_ADMIN"] },
+  { label: "사용자관리", path: "/members", roles: ["ROLE_ADMIN"] },
   { label: "협력사관리", path: "/supplier" },
   { label: "품목관리", path: "/items" },
   { label: "프로젝트관리", path: "/projects" },
@@ -16,11 +16,11 @@ const buyerAdminMenuItems = [
   { label: "입찰공고관리", path: "/biddings" },
   { label: "계약관리", path: "/contracts" },
   { label: "발주관리", path: "/orders" },
-  { label: "검수 관리", path: "/inspections" },
+  { label: "입고 관리", path: "/deliveries" },
   { label: "송장 관리", path: "/invoices" },
-  { label: "자금 관리", path: "/funds" },
+  { label: "자금 관리", path: "/payments" , roles: ["ROLE_ADMIN","ROLE_BUYER"] },
   { label: "보고서생성/관리", path: "/reports" },
-  { label: "시스템 설정", path: "/system", roles: ["ADMIN", "ROLE_ADMIN"] }
+  { label: "시스템 설정", path: "/system", roles: ["ROLE_ADMIN"] }
 ];
 
 // 공급업체(SUPPLIER) 메뉴
@@ -40,27 +40,11 @@ function SideBar() {
   const { user } = useSelector((state) => state.auth);
 
   // 현재 사용자의 역할에 따라 메뉴 아이템 결정
-  const auth = useSelector((state) => state.auth);
-
-  // 수정: ROLE_SUPPLIER와 SUPPLIER 둘 다 체크
-  const isSupplier = auth?.roles?.some(
-    (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
-  );
-
+  const isSupplier = user?.roles?.includes("SUPPLIER");
   const menuItems = isSupplier ? supplierMenuItems : buyerAdminMenuItems;
 
   // 현재 활성화된 메뉴 확인
   const isActive = (path) => {
-    // 루트 경로인 경우(로그인 직후), 첫 번째 메뉴 활성화
-    if (
-      location.pathname === "/" &&
-      ((isSupplier && path === "/suppliers/dashboard") ||
-        (!isSupplier && path === "/dashboard"))
-    ) {
-      return true;
-    }
-
-    // 그 외의 경우는 경로 기반으로 활성화 여부 결정
     return location.pathname.startsWith(path);
   };
 
@@ -70,14 +54,7 @@ function SideBar() {
     if (!item.roles) return true;
 
     // roles 속성이 있으면 해당 역할을 가진 사용자만 접근 가능
-    return auth?.roles?.some((userRole) =>
-      item.roles.some(
-        (itemRole) =>
-          userRole === itemRole ||
-          userRole === `ROLE_${itemRole}` ||
-          itemRole === `ROLE_${userRole}`
-      )
-    );
+    return user?.roles?.some((role) => item.roles.includes(role));
   };
 
   // 로그아웃 핸들러
