@@ -1,6 +1,5 @@
 package com.orbit.service.member;
 
-import com.orbit.entity.member.Member.Role;
 import com.orbit.dto.member.*;
 import com.orbit.entity.member.Member;
 import com.orbit.repository.member.MemberRepository;
@@ -210,6 +209,17 @@ public class MemberService {
     }
 
     /**
+     * 회원 정보를 DTO로 변환하여 반환
+     * @param memberId 조회할 회원의 ID
+     * @return MemberDTO 객체
+     * @throws IllegalArgumentException 존재하지 않는 회원 ID로 조회 시
+     */
+    public MemberDTO getMemberDTO(Long memberId) {
+        Member member = findById(memberId);
+        return convertToDTO(member);
+    }
+
+    /**
      * 회원 목록을 페이징하여 DTO 리스트로 반환
      * @param pageRequestDTO 페이징 및 검색 조건
      * @return 페이징된 MemberDTO 목록
@@ -322,7 +332,7 @@ public class MemberService {
         Member member = findById(memberId);
 
         try {
-            Role role = Role.valueOf(roleName.toUpperCase());
+            Member.Role role = Member.Role.valueOf(roleName.toUpperCase());
             member.setRole(role);
             memberRepository.save(member);
         } catch (IllegalArgumentException e) {
