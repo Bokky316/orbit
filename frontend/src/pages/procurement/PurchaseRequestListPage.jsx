@@ -63,23 +63,28 @@ function PurchaseRequestListPage() {
     dispatch(fetchPurchaseRequests());
   }, [dispatch]);
 
-  // 상태 코드 추출 함수 추가
+  // 상태 코드 추출 함수
   const extractStatusCode = (request) => {
-    // 1. prStatusChild가 있으면 그대로 사용
+    // 1. status_child_code가 있으면 사용 (서버에서 직접 오는 필드)
+    if (request.status_child_code) {
+      return request.status_child_code;
+    }
+
+    // 2. prStatusChild가 있으면 그대로 사용
     if (request.prStatusChild) {
       return request.prStatusChild;
     }
 
-    // 2. status 문자열이 있으면 파싱해서 childCode 부분 추출
+    // 3. status 문자열이 있으면 파싱
     if (request.status) {
       const parts = request.status.split('-');
-      // PURCHASE_REQUEST-STATUS-REQUESTED 형식에서 마지막 부분 추출
-      if (parts.length >= 3) {
-        return parts[2];
+      // 형식이 무엇이든 마지막 부분을 상태 코드로 처리
+      if (parts.length >= 2) {
+        return parts[parts.length - 1]; // 마지막 부분 반환
       }
     }
 
-    // 3. 기본값 반환
+    // 4. 기본값 반환
     return "REQUESTED"; // 기본 상태
   };
 
@@ -87,7 +92,7 @@ function PurchaseRequestListPage() {
   const getStatusLabel = (statusCode) => {
     switch(statusCode) {
       case 'REQUESTED': return '구매 요청';
-      case 'RECEIVED': return '구매요청 접수';
+      case 'RECEIVED': return '요청 접수';
       case 'VENDOR_SELECTION': return '업체 선정';
       case 'CONTRACT_PENDING': return '계약 대기';
       case 'INSPECTION': return '검수 진행';

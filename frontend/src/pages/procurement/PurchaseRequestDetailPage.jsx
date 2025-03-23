@@ -70,6 +70,74 @@ const PurchaseRequestDetailPage = () => {
     const [error, setError] = useState(null);
     const [approvalLines, setApprovalLines] = useState([]);
     const [hasApprovalAuthority, setHasApprovalAuthority] = useState(false);
+    const extractStatusCode = (request) => {
+        // 1. prStatusChild가 있으면 그대로 사용
+        if (request.prStatusChild) {
+            return request.prStatusChild;
+        }
+
+        // 2. status_child_code가 있으면 사용 (이 부분 추가)
+        if (request.status_child_code) {
+            return request.status_child_code;
+        }
+
+        // 3. status 문자열이 있으면 파싱해서 childCode 부분 추출
+        if (request.status) {
+            const parts = request.status.split('-');
+            // 마지막 부분이 상태 코드일 가능성이 높음
+            if (parts.length >= 2) {
+                return parts[parts.length - 1]; // 마지막 부분 반환
+            }
+        }
+
+        // 4. 기본값 반환
+        return "REQUESTED"; // 기본 상태
+    };
+// 상태 라벨 가져오기
+    const getStatusLabel = (statusCode) => {
+        switch(statusCode) {
+            case 'REQUESTED': return '구매 요청';
+            case 'RECEIVED': return '요청 접수';
+            case 'VENDOR_SELECTION': return '업체 선정';
+            case 'CONTRACT_PENDING': return '계약 대기';
+            case 'INSPECTION': return '검수 진행';
+            case 'INVOICE_ISSUED': return '인보이스 발행';
+            case 'PAYMENT_COMPLETED': return '대금지급 완료';
+            default: return statusCode || '상태 정보 없음';
+        }
+    };
+
+    // useEffect 안에 상태 정보 디버깅 추가
+    useEffect(() => {
+         if (request) {
+             console.log('==== 구매요청 상태 정보 디버깅 ====');
+             console.log('request.status:', request.status);
+             console.log('request.prStatusChild:', request.prStatusChild);
+             console.log('추출된 상태 코드:', extractStatusCode(request));
+             console.log('상태 라벨:', getStatusLabel(extractStatusCode(request)));
+         }
+     }, [request]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (id && !loading) {
+                const refreshData = async () => {
+                    try {
+                        const response = await fetchWithAuth(`${API_URL}purchase-requests/${id}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            setRequest(data);
+                        }
+                    } catch (error) {
+                        console.error('데이터 갱신 중 오류:', error);
+                    }
+                };
+                refreshData();
+            }
+        }, 60000); // 1분마다 갱신
+
+        return () => clearInterval(interval);
+    }, [id, loading]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -258,9 +326,8 @@ const PurchaseRequestDetailPage = () => {
 
     // 구매요청이 수정/삭제 가능한지 확인하는 함수 (개선된 버전)
     const canModifyRequest = () => {
-        // 상태 코드 추출
-        const statusCode = request.prStatusChild ||
-                          (request.status ? request.status.split('-')[2] : '');
+        // 상태 코드 추출 - extractStatusCode 함수 사용
+        const statusCode = extractStatusCode(request);
 
         // 현재 사용자가 요청자인지 확인
         const isRequester = currentUser && request.memberId === currentUser.id;
@@ -313,24 +380,12 @@ const PurchaseRequestDetailPage = () => {
     // 상태 변경 핸들러
     const handleStatusChange = (newStatus) => {
         if (window.confirm(`상태를 '${getStatusLabel(newStatus)}'로 변경하시겠습니까?`)) {
-            const currentStatus = request.prStatusChild;
+            const currentStatus = extractStatusCode(request);
             sendStatusChange(id, currentStatus, newStatus);
         }
     };
 
-    // 상태 라벨 가져오기
-    const getStatusLabel = (statusCode) => {
-        switch(statusCode) {
-            case 'REQUESTED': return '구매 요청';
-            case 'RECEIVED': return '구매요청 접수';
-            case 'VENDOR_SELECTION': return '업체 선정';
-            case 'CONTRACT_PENDING': return '계약 대기';
-            case 'INSPECTION': return '검수 진행';
-            case 'INVOICE_ISSUED': return '인보이스 발행';
-            case 'PAYMENT_COMPLETED': return '대금지급 완료';
-            default: return statusCode || '상태 정보 없음';
-        }
-    };
+
 
 
     // 구매요청 삭제 처리 함수
@@ -355,10 +410,10 @@ const PurchaseRequestDetailPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="h4">{request.requestName}</Typography>
                     <StatusChip
-                        label={getStatusLabel(request.prStatusChild)}
-                        statuscode={request.prStatusChild}
-                        variant="outlined"
-                    />
+                         label={getStatusLabel(extractStatusCode(request))}
+                         statuscode={extractStatusCode(request)}
+                         variant="outlined"
+                     />
                 </Box>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
