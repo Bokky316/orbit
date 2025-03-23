@@ -454,12 +454,272 @@ export default function AdminMemberPage() {
         회원 관리
       </PageTitle>
 
-      {/* 검색 및 필터 */}
-      <SearchFilterPaper elevation={2}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel>상태 필터</InputLabel>
+    // 회원 상태 변경 다이얼로그 열기
+    const openStatusChangeDialog = (member) => {
+      setStatusMemberId(member.id);
+      setStatusAction(member.enabled ? '비활성화' : '활성화');
+      setStatusDialogOpen(true);
+    };
+
+    // 알림 표시
+    const showAlert = (message, severity = 'info') => {
+      setAlert({
+        show: true,
+        message,
+        severity
+      });
+
+      setTimeout(() => {
+        setAlert({ ...alert, show: false });
+      }, 3000);
+    };
+
+    // 역할에 따른 칩 스타일 및 레이블
+    const getRoleChip = (role) => {
+      let color = 'default';
+      let displayRole = role ? role.toUpperCase() : '';  // 대문자로 표시
+
+      switch (displayRole) {
+        case 'ADMIN':
+          color = 'error';
+          break;
+        case 'SUPPLIER':
+          color = 'primary';
+          break;
+        case 'BUYER':
+          color = 'success';
+          break;
+        default:
+          color = 'default';
+      }
+
+      return <Chip label={displayRole} color={color} size="small" />;
+    };
+
+    return (
+      <PageContainer>
+        <PageTitle variant="h4">
+          사용자 목록
+        </PageTitle>
+
+        {/* 검색 및 필터 */}
+        <SearchFilterPaper elevation={2}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>상태 필터</InputLabel>
+                <Select
+                  value={pageRequest.status}
+                  onChange={handleStatusFilterChange}
+                  label="상태 필터"
+                >
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="active">활성</MenuItem>
+                  <MenuItem value="inactive">비활성</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>역할 필터</InputLabel>
+                <Select
+                  value={pageRequest.role}
+                  onChange={handleRoleFilterChange}
+                  label="역할 필터"
+                >
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="employee">직원 (BUYER, ADMIN)</MenuItem>
+                  <MenuItem value="BUYER">구매자 (BUYER)</MenuItem>
+                  <MenuItem value="SUPPLIER">공급자 (SUPPLIER)</MenuItem>
+                  <MenuItem value="ADMIN">관리자 (ADMIN)</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth variant="outlined" size="small">
+                <InputLabel>검색 조건</InputLabel>
+                <Select
+                  value={pageRequest.searchType}
+                  onChange={handleSearchTypeChange}
+                  label="검색 조건"
+                >
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="name">이름</MenuItem>
+                  <MenuItem value="username">아이디</MenuItem>
+                  <MenuItem value="email">이메일</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="검색어 입력 (자동 검색)"
+                name="keyword"
+                value={pageRequest.keyword || ''}
+                onChange={handleKeywordChange}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                InputProps={{
+                  endAdornment: pageRequest.keyword ? (
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setPageRequest(prev => ({
+                          ...prev,
+                          keyword: '',
+                          // 검색어를 지울 때 검색 조건도 초기화할지 여부 (필요에 따라 주석 해제)
+                          // searchType: ''
+                        }));
+
+                        // 상태 업데이트 후 즉시 검색 실행
+                        fetchMembers();
+                      }}
+                    >
+                      <Clear fontSize="small" />
+                    </IconButton>
+                  ) : (
+                    <SearchIcon color="action" fontSize="small" />
+                  )
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={resetFilters}
+                sx={{ minWidth: '120px' }}  // 적절한 최소 너비 지정
+              >
+                필터 초기화
+              </Button>
+            </Grid>
+          </Grid>
+        </SearchFilterPaper>
+
+        {/* 알림 메시지 */}
+        {alert.show && (
+          <AlertStyled severity={alert.severity}>
+            {alert.message}
+          </AlertStyled>
+        )}
+
+        {/* 회원 목록 */}
+        <TablePaper elevation={3}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>아이디</TableCell>
+                  <TableCell>이름</TableCell>
+                  <TableCell>이메일</TableCell>
+                  <TableCell>회사명</TableCell>
+                  <TableCell>역할</TableCell>
+                  <TableCell>상태</TableCell>
+                  <TableCell>관리</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : members.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      회원 정보가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  members.map((member) => (
+                    <TableRow key={member.id}>
+                      <TableCell>{member.id}</TableCell>
+                      <TableCell>{member.username}</TableCell>
+                      <TableCell>{member.name}</TableCell>
+                      <TableCell>{member.email}</TableCell>
+                      <TableCell>{member.companyName}</TableCell>
+                      <TableCell>{getRoleChip(member.role)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={member.enabled ? '활성' : '비활성'}
+                          color={member.enabled ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1}>
+                          <IconButton
+                            size="small"
+                            onClick={() => fetchMemberDetail(member.id)}
+                            title="상세 정보"
+                            color="primary"
+                          >
+                            <SearchIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => openMemberEditDialog(member)}
+                            title="역할 변경"
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => openStatusChangeDialog(member)}
+                            title={member.enabled ? '비활성화' : '활성화'}
+                          >
+                            {member.enabled ? (
+                              <BlockIcon fontSize="small" />
+                            ) : (
+                              <CheckCircleIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* 테이블 페이지네이션 */}
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 15, 30]}
+            component="div"
+            count={totalItems}
+            rowsPerPage={pageRequest.size}
+            page={pageRequest.page}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="페이지당 행 수"
+            labelDisplayedRows={({ from, to, count, page }) => {
+              const totalPages = Math.ceil(count / pageRequest.size);
+              return `${page + 1} / ${totalPages}`;
+            }}
+            sx={{
+              '& .MuiTablePagination-selectLabel': {
+                marginRight: '8px',
+              },
+              '& .MuiTablePagination-select': {
+                marginRight: '16px',
+                minWidth: '45px'
+              }
+            }}
+          />
+        </TablePaper>
+
+        {/* 역할 편집 다이얼로그 */}
+        <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
+          <DialogTitle>회원 역할 수정</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {selectedMember?.name} 회원의 역할을 변경합니다.
+            </DialogContentText>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>역할</InputLabel>
               <Select
                 value={pageRequest.status}
                 onChange={handleStatusFilterChange}
