@@ -56,6 +56,12 @@ const rootReducer = combineReducers({
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
+/**
+ * Redux Store 생성
+ * - Redux Toolkit의 configureStore 사용
+ * - Middleware 설정에서 Redux Persist 관련 액션을 무시하도록 serializableCheck 조정
+ * - websocketMiddleware 추가 - 웹소켓 연결 및 메시지 관리
+ */
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
@@ -78,4 +84,10 @@ export const store = configureStore({
     }).concat(websocketMiddleware) // 웹소켓 미들웨어 추가
 });
 
+/**
+ * Redux Persistor 생성
+ * - persistStore를 사용하여 Redux Store와 Redux Persist를 연결
+ * - 상태가 localStorage에 저장되고 복구될 수 있도록 설정
+ * - approvalAdmin 상태를 포함한 모든 상태가 자동으로 저장되고 복원됨
+ */
 export const persistor = persistStore(store);
