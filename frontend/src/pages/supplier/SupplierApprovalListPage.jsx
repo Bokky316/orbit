@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
-import { fetchSuppliers } from "../../redux/supplier/supplierSlice";
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { fetchSuppliers } from '../../redux/supplier/supplierSlice';
 import {
   Box,
   Typography,
@@ -23,19 +23,15 @@ import {
   DialogContentText,
   DialogTitle,
   Chip
-} from "@mui/material";
-import { Visibility as VisibilityIcon } from "@mui/icons-material";
+} from '@mui/material';
+import { Visibility as VisibilityIcon } from '@mui/icons-material';
 
 const SupplierApprovalListPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // 안전하게 상태 접근
-  const supplierState = useSelector((state) => state.supplier) || {
-    suppliers: [],
-    loading: false,
-    error: null
-  };
+  const supplierState = useSelector((state) => state.supplier) || { suppliers: [], loading: false, error: null };
   const { suppliers = [], loading = false, error = null } = supplierState;
 
   // 안전하게 사용자 정보 접근
@@ -43,7 +39,7 @@ const SupplierApprovalListPage = () => {
   const { user = null } = authState;
 
   const [openModal, setOpenModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionReason, setRejectionReason] = useState('');
   const [accessDenied, setAccessDenied] = useState(false);
 
   // 페이징 관련 상태 추가
@@ -51,7 +47,7 @@ const SupplierApprovalListPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(15); // 페이지당 표시할 항목 수
 
   // ADMIN 권한 체크
-  const isAdmin = user && user.roles && user.roles.includes("ROLE_ADMIN");
+  const isAdmin = user && user.roles && user.roles.includes('ROLE_ADMIN');
 
   // 페이지 접근 시 ADMIN 권한 체크
   useEffect(() => {
@@ -59,26 +55,23 @@ const SupplierApprovalListPage = () => {
       setAccessDenied(true);
       // 3초 후 리다이렉트
       const timer = setTimeout(() => {
-        navigate("/supplier");
+        navigate('/supplier');
       }, 3000);
       return () => clearTimeout(timer);
     }
 
     // ADMIN인 경우에만 API 호출
     try {
-      dispatch(fetchSuppliers({ status: "PENDING" }));
+      dispatch(fetchSuppliers({ status: 'PENDING' }));
     } catch (err) {
-      console.error("Error fetching pending suppliers:", err);
+      console.error('Error fetching pending suppliers:', err);
     }
   }, [dispatch, isAdmin, navigate]);
 
   // 승인 대기 중인 협력업체만 필터링 (안전하게)
   const pendingSuppliers = Array.isArray(suppliers)
-    ? suppliers.filter(
-        (supplier) =>
-          supplier.status?.childCode === "PENDING" ||
-          supplier.status === "PENDING"
-      )
+    ? suppliers.filter(supplier =>
+        supplier.status?.childCode === 'PENDING' || supplier.status === 'PENDING')
     : [];
 
   // 페이지 변경 핸들러
@@ -122,9 +115,7 @@ const SupplierApprovalListPage = () => {
   // 로딩 표시
   if (loading) {
     return (
-      <Container
-        maxWidth="lg"
-        sx={{ mt: 4, mb: 4, display: "flex", justifyContent: "center" }}>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -133,16 +124,13 @@ const SupplierApprovalListPage = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3
-          }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">승인 대기 협력업체 목록</Typography>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <Button variant="outlined" onClick={() => navigate("/supplier")}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/supplier')}
+            >
               전체 목록으로
             </Button>
           </Box>
@@ -155,10 +143,8 @@ const SupplierApprovalListPage = () => {
         )}
 
         {!Array.isArray(suppliers) || pendingSuppliers.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 4 }}>
-            <Typography variant="subtitle1">
-              승인 대기 중인 협력업체가 없습니다.
-            </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="subtitle1">승인 대기 중인 협력업체가 없습니다.</Typography>
           </Box>
         ) : (
           <>
@@ -182,17 +168,14 @@ const SupplierApprovalListPage = () => {
                       <TableCell>
                         <Link
                           to={`/supplier/review/${supplier.id}`}
-                          style={{
-                            textDecoration: "none",
-                            color: "#1976d2",
-                            fontWeight: "bold"
-                          }}>
-                          {supplier.supplierName || "이름 없음"}
+                          style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 'bold' }}
+                        >
+                          {supplier.supplierName || '이름 없음'}
                         </Link>
                       </TableCell>
-                      <TableCell>{supplier.businessNo || "-"}</TableCell>
-                      <TableCell>{supplier.ceoName || "-"}</TableCell>
-                      <TableCell>{supplier.registrationDate || "-"}</TableCell>
+                      <TableCell>{supplier.businessNo || '-'}</TableCell>
+                      <TableCell>{supplier.ceoName || '-'}</TableCell>
+                      <TableCell>{supplier.registrationDate || '-'}</TableCell>
                       <TableCell>
                         <Chip label="심사대기" color="warning" size="small" />
                       </TableCell>
@@ -201,9 +184,8 @@ const SupplierApprovalListPage = () => {
                           variant="outlined"
                           size="small"
                           startIcon={<VisibilityIcon />}
-                          onClick={() =>
-                            navigate(`/supplier/review/${supplier.id}`)
-                          }>
+                          onClick={() => navigate(`/supplier/review/${supplier.id}`)}
+                        >
                           상세보기
                         </Button>
                       </TableCell>
@@ -223,12 +205,18 @@ const SupplierApprovalListPage = () => {
               onPageChange={handlePageChange}
               onRowsPerPageChange={handleChangeRowsPerPage}
               labelRowsPerPage="페이지당 행 수"
-              labelDisplayedRows={({ page, count, rowsPerPage }) => {
-                const totalPages =
-                  rowsPerPage > 0
-                    ? Math.max(1, Math.ceil(count / rowsPerPage))
-                    : 1;
-                return `${Math.max(1, page + 1)} / ${totalPages}`;
+              labelDisplayedRows={({ from, to, count, page }) => {
+                const totalPages = Math.ceil(count / rowsPerPage);
+                return `${page + 1} / ${totalPages}`;
+              }}
+              sx={{
+                '& .MuiTablePagination-selectLabel': {
+                  marginRight: '8px',
+                },
+                '& .MuiTablePagination-select': {
+                  marginRight: '16px',
+                  minWidth: '45px'
+                }
               }}
             />
           </>
@@ -240,7 +228,7 @@ const SupplierApprovalListPage = () => {
         <DialogTitle>거절 사유</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {rejectionReason || "거절 사유가 입력되지 않았습니다."}
+            {rejectionReason || '거절 사유가 입력되지 않았습니다.'}
           </DialogContentText>
         </DialogContent>
         <DialogActions>

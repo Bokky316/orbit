@@ -11,6 +11,7 @@ import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.commonCode.SystemStatus;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.event.event.PurchaseRequestStatusChangeEvent;
 import com.orbit.exception.ApprovalException;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.approval.ApprovalLineRepository;
@@ -21,6 +22,7 @@ import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -46,7 +48,8 @@ public class ApprovalLineService {
     private final MemberRepository memberRepo;
     private final ParentCodeRepository parentCodeRepo;
     private final ChildCodeRepository childCodeRepo;
-    private final DepartmentRepository departmentRepo; // 추가된 Repository
+    private final DepartmentRepository departmentRepo;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final SimpMessagingTemplate messagingTemplate;
     private static final int MAX_APPROVAL_STEPS = 3;
 
@@ -503,12 +506,25 @@ public class ApprovalLineService {
         // 1. 해당 요청의 모든 결재선 조회
         List<ApprovalLine> approvalLines = approvalLineRepo.findAllByRequestId(requestId);
 
-        // 2. 모든 결재선이 승인 상태인지 확인
+        log.info("총 결재선 수: {}", approvalLines.size());
+
+        // 상위 상태 코드 및 승인 상태 코드 조회
         ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
         ChildCode approvedStatus = findChildCode(parentCode, "APPROVED");
 
+        // 모든 결재선의 상태를 상세히 로깅
+        for (ApprovalLine line : approvalLines) {
+            log.info("결재선 ID: {}, 스텝: {}, 현재 상태 ID: {}, 승인 상태 ID: {}",
+                    line.getId(), line.getStep(), line.getStatus().getId(), approvedStatus.getId());
+        }
+
+        // 모든 결재선이 승인 상태인지 확인
         boolean allApproved = approvalLines.stream()
-                .allMatch(line -> line.getStatus().getCodeValue().equals("APPROVED"));
+                .allMatch(line -> {
+                    boolean isApproved = line.getStatus().getId().equals(approvedStatus.getId());
+                    log.info("결재선 {} 승인 상태: {}", line.getId(), isApproved);
+                    return isApproved;
+                });
 
         // 3. 모든 결재선이 승인 상태이면 구매 요청 상태 변경
         if (allApproved) {
@@ -530,8 +546,20 @@ public class ApprovalLineService {
             purchaseRequestRepo.save(purchaseRequest);
             log.info("구매요청 상태가 '구매요청 접수'로 변경되었습니다: 요청 ID={}", requestId);
 
+            // 이벤트 발행 추가
+            PurchaseRequestStatusChangeEvent event = new PurchaseRequestStatusChangeEvent(
+                    this,
+                    requestId,
+                    purchaseRequest.getStatus().getFullCode(),
+                    newStatus.getFullCode(),
+                    "SYSTEM"
+            );
+            applicationEventPublisher.publishEvent(event);
+
             // 구매요청 접수 알림 전송
             sendRequestReceivedNotification(purchaseRequest);
+        } else {
+            log.warn("모든 결재선이 승인되지 않았습니다: 요청 ID={}", requestId);
         }
     }
 

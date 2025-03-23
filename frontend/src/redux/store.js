@@ -12,9 +12,10 @@ import {
 import storage from "redux-persist/lib/storage";
 import { combineReducers } from "redux";
 import projectReducer from "./projectSlice";
-import purchaseRequestReducer from "./purchaseRequestSlice";
+import purchaseRequestReducer, { websocketMiddleware } from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
 import approvalAdminReducer from "./approvalAdminSlice";
+import supplierReducer from "./supplier/supplierSlice";
 import authReducer from "./authSlice";
 import commonCodeReducer from "./commonCodeSlice";
 import itemCategoryReducer from "./itemCategorySlice";
@@ -33,6 +34,7 @@ const persistConfig = {
     "purchaseRequest",
     "approval",
     "approvalAdmin",
+    "supplier",
     "auth",
     "commonCode",
     "itemCategory"
@@ -49,6 +51,7 @@ const rootReducer = combineReducers({
   purchaseRequest: purchaseRequestReducer,
   approval: approvalReducer,
   approvalAdmin: approvalAdminReducer,
+  supplier: supplierReducer,
   auth: authReducer,
   commonCode: commonCodeReducer,
   itemCategory: itemCategoryReducer
@@ -65,7 +68,7 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
  * Redux Store 생성
  * - Redux Toolkit의 configureStore 사용
  * - Middleware 설정에서 Redux Persist 관련 액션을 무시하도록 serializableCheck 조정
- * - approvalAdmin 리듀서가 포함된 persistedReducer를 사용하여 스토어 구성
+ * - websocketMiddleware 추가 - 웹소켓 연결 및 메시지 관리
  */
 export const store = configureStore({
   reducer: persistedReducer,
@@ -80,11 +83,13 @@ export const store = configureStore({
           PURGE,
           REGISTER,
           "persist/PERSIST",
-          "persist/REHYDRATE"
+          "persist/REHYDRATE",
+          // 웹소켓 액션 추가
+          "purchaseRequest/wsUpdate"
         ],
         ignoredActionPaths: ["payload.error", "meta.arg"]
       }
-    })
+    }).concat(websocketMiddleware) // 웹소켓 미들웨어 추가
 });
 
 /**

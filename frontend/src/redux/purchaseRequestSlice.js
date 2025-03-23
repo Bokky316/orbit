@@ -326,100 +326,171 @@ const purchaseRequestSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
-    builder
-      // fetchPurchaseRequests 액션 처리
-      .addCase(fetchPurchaseRequests.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchPurchaseRequests.fulfilled, (state, action) => {
-        state.loading = false;
-        state.purchaseRequests = action.payload;
-      })
-      .addCase(fetchPurchaseRequests.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // createPurchaseRequest 액션 처리
-      .addCase(createPurchaseRequest.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(createPurchaseRequest.fulfilled, (state, action) => {
-        state.loading = false;
-        state.purchaseRequests.push(action.payload); // 새로운 구매 요청을 목록에 추가
-      })
-      .addCase(createPurchaseRequest.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // updatePurchaseRequest 액션 처리
-      .addCase(updatePurchaseRequest.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updatePurchaseRequest.fulfilled, (state, action) => {
-        state.loading = false;
-        state.purchaseRequests = state.purchaseRequests.map((request) =>
-          request.id === action.payload.id ? action.payload : request
-        ); // 구매 요청 업데이트
-      })
-      // extraReducers에 추가
-      .addCase(deletePurchaseRequest.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deletePurchaseRequest.fulfilled, (state, action) => {
-        state.loading = false;
-        state.purchaseRequests = state.purchaseRequests.filter(
-          (request) => request.id !== action.payload
-        );
-      })
-      .addCase(deletePurchaseRequest.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      // fetchItems 액션 처리
-      .addCase(fetchItems.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchItems.fulfilled, (state, action) => {
-        state.loading = false;
-        state.items = action.payload;
-      })
-      .addCase(fetchItems.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
+      builder
+        // fetchPurchaseRequests 액션 처리
+        .addCase(fetchPurchaseRequests.pending, (state) => {
+          state.loading = true;
+          state.error = null;
+        })
+        .addCase(fetchPurchaseRequests.fulfilled, (state, action) => {
+          state.loading = false;
+          state.purchaseRequests = action.payload;
+        })
+        .addCase(fetchPurchaseRequests.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+        })
+        // createPurchaseRequest 액션 처리
+        .addCase(createPurchaseRequest.pending, (state) => {
+          state.loading = true;
+          state.error = null;
+        })
+        .addCase(createPurchaseRequest.fulfilled, (state, action) => {
+          state.loading = false;
+          state.purchaseRequests.push(action.payload); // 새로운 구매 요청을 목록에 추가
+        })
+        .addCase(createPurchaseRequest.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+        })
+        // updatePurchaseRequest 액션 처리
+        .addCase(updatePurchaseRequest.pending, (state) => {
+          state.loading = true;
+          state.error = null;
+        })
+        .addCase(updatePurchaseRequest.fulfilled, (state, action) => {
+          state.loading = false;
+          state.purchaseRequests = state.purchaseRequests.map((request) =>
+            request.id === action.payload.id ? action.payload : request
+          ); // 구매 요청 업데이트
+        })
+        // extraReducers에 추가
+        .addCase(deletePurchaseRequest.pending, (state) => {
+          state.loading = true;
+          state.error = null;
+        })
+        .addCase(deletePurchaseRequest.fulfilled, (state, action) => {
+          state.loading = false;
+          state.purchaseRequests = state.purchaseRequests.filter(
+            (request) => request.id !== action.payload
+          );
+        })
+        .addCase(deletePurchaseRequest.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+        })
+        // fetchItems 액션 처리
+        .addCase(fetchItems.pending, (state) => {
+          state.loading = true;
+          state.error = null;
+        })
+        .addCase(fetchItems.fulfilled, (state, action) => {
+          state.loading = false;
+          state.items = action.payload;
+        })
+        .addCase(fetchItems.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+        })
 
-      // fetchCategories 액션 처리 (추가)
-      .addCase(fetchCategories.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchCategories.fulfilled, (state, action) => {
-        state.loading = false;
-        state.categories = action.payload;
-      })
-      .addCase(fetchCategories.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase(updatePurchaseRequest.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase("purchaseRequest/wsUpdate", (state, action) => {
-        const updated = action.payload;
-        state.purchaseRequests = state.purchaseRequests.map((request) =>
-          request.id === updated.id ? updated : request
-        );
-        if (state.currentRequest?.id === updated.id) {
-          state.currentRequest = updated;
-        }
-      });
-  }
+        // fetchCategories 액션 처리 (추가)
+        .addCase(fetchCategories.pending, (state) => {
+          state.loading = true;
+          state.error = null;
+        })
+        .addCase(fetchCategories.fulfilled, (state, action) => {
+          state.loading = false;
+          state.categories = action.payload;
+        })
+        .addCase(fetchCategories.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+        })
+        .addCase(updatePurchaseRequest.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+        })
+        // WebSocket 메시지 처리를 위한 액션 추가
+        .addCase("purchaseRequest/wsUpdate", (state, action) => {
+          const updatedData = action.payload;
+          console.log('🔄 WebSocket 업데이트 처리:', updatedData);
+
+          // 상태 코드 추출 함수
+          const extractStatusCode = (statusStr) => {
+            if (!statusStr) return null;
+            const parts = String(statusStr).split('-');
+            return parts.length >= 3 ? parts[2] : statusStr;
+          };
+
+          // 업데이트할 데이터 준비
+          const statusCode = updatedData.prStatusChild || extractStatusCode(updatedData.status) || updatedData.toStatus;
+          const requestId = updatedData.id || updatedData.purchaseRequestId;
+
+          console.log(`🔄 추출된 상태 코드: ${statusCode}, 요청 ID: ${requestId}`);
+
+          if (!requestId) {
+            console.error('❌ 유효한 요청 ID가 없습니다:', updatedData);
+            return;
+          }
+
+          // 구매요청 목록 업데이트
+          if (state.purchaseRequests && state.purchaseRequests.length > 0) {
+            state.purchaseRequests = state.purchaseRequests.map((request) => {
+              if (request.id === requestId) {
+                console.log(`🔄 구매요청 #${request.id} 상태 업데이트: ${request.prStatusChild} -> ${statusCode}`);
+                return {
+                  ...request,
+                  prStatusChild: statusCode,
+                  status: updatedData.status || request.status
+                };
+              }
+              return request;
+            });
+          }
+
+          // 현재 보고 있는 구매요청이 업데이트 대상이면 함께 업데이트
+          if (state.currentRequest && state.currentRequest.id === requestId) {
+            console.log(`🔄 현재 보고 있는 구매요청 상태 업데이트: ${state.currentRequest.prStatusChild} -> ${statusCode}`);
+            state.currentRequest = {
+              ...state.currentRequest,
+              prStatusChild: statusCode,
+              status: updatedData.status || state.currentRequest.status
+            };
+          }
+        })
+        // changePurchaseRequestStatus 액션 처리
+        .addCase(changePurchaseRequestStatus.pending, (state) => {
+          state.loading = true;
+        })
+        .addCase(changePurchaseRequestStatus.fulfilled, (state, action) => {
+          const { id, toStatus } = action.payload;
+          state.loading = false;
+
+          // 구매요청 목록에서 상태 업데이트
+          if (state.purchaseRequests && state.purchaseRequests.length > 0) {
+            state.purchaseRequests = state.purchaseRequests.map(request =>
+              request.id === id
+                ? { ...request, prStatusChild: toStatus }
+                : request
+            );
+          }
+
+          // 현재 보고 있는 구매요청인 경우 업데이트
+          if (state.currentRequest && state.currentRequest.id === id) {
+            state.currentRequest = {
+              ...state.currentRequest,
+              prStatusChild: toStatus
+            };
+          }
+
+          console.log(`💾 구매요청 ${id}의 상태가 ${toStatus}로 변경되었습니다.`);
+        })
+        .addCase(changePurchaseRequestStatus.rejected, (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+          console.error('❌ 상태 변경 실패:', action.payload);
+        });
+    }
 });
 
 export const websocketMiddleware = createWebsocketMiddleware();

@@ -29,7 +29,7 @@ import { Delete as DeleteIcon, AttachFile as AttachFileIcon } from '@mui/icons-m
 import moment from 'moment';
 import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
-import { updateProject, updateProjectWithFiles } from '@/redux/projectSlice';
+import { updateProject, updateProjectWithFiles, addAttachmentsToProject } from '@/redux/projectSlice';
 
 /**
  * 프로젝트 수정 페이지 컴포넌트
@@ -238,48 +238,49 @@ function ProjectEditPage() {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
-            // 기존 상태 코드 유지
             basicStatus: project.basicStatus,
             requestDepartment: selectedDepartment ? selectedDepartment.name : '',
             requestDepartmentId: selectedDepartment ? selectedDepartment.id : null,
             requesterName: selectedManager ? selectedManager.name : null,
             requesterId: selectedManager ? selectedManager.id : null,
-            // 업데이트 시 현재 사용자 정보 추가
             updatedBy: localStorage.getItem('username') || '',
         };
 
         try {
-            if (newAttachments.length > 0) {
-                // 파일이 있으면 multipart/form-data로 전송
-                const formData = new FormData();
+            // 1. 먼저 JSON으로 프로젝트 업데이트
+            const result = await dispatch(updateProject({
+                id: project.id,
+                projectData: requestData
+            })).unwrap();
 
-                // 객체 데이터를 JSON 문자열로 변환하여 추가
-                formData.append('ProjectDTO', JSON.stringify(requestData));
+            // 2. 새 첨부파일이 있으면 직접 fetch로 처리
+            if (newAttachments.length > 0) {
+                const fileFormData = new FormData();
 
                 // 파일 추가
                 for (let i = 0; i < newAttachments.length; i++) {
-                    formData.append('files', newAttachments[i]);
+                    fileFormData.append('files', newAttachments[i]);
                 }
 
-                const result = await dispatch(updateProjectWithFiles({
-                    id: project.id,
-                    projectData: formData
-                })).unwrap();
+                try {
+                    // 직접 fetch 사용 (Content-Type 헤더 지정하지 않음)
+                    const fileResponse = await fetch(`${API_URL}projects/${project.id}/attachments`, {
+                        method: 'POST',
+                        credentials: 'include', // 쿠키 포함
+                        body: fileFormData
+                    });
 
-                alert('프로젝트가 성공적으로 수정되었습니다.');
-                navigate(`/projects/${project.id}`);
-            } else {
-                // 파일이 없으면 JSON으로 전송
-                const result = await dispatch(updateProject({
-                    id: project.id,
-                    projectData: requestData
-                })).unwrap();
-
-                alert('프로젝트가 성공적으로 수정되었습니다.');
-                navigate(`/projects/${project.id}`);
+                    if (!fileResponse.ok) {
+                        const errorMsg = await fileResponse.text();
+                        throw new Error(`첨부 파일 업로드에 실패했습니다: ${errorMsg}`);
+                    }
+                } catch (fileError) {
+                    console.error(`첨부 파일 업로드 중 오류 발생:`, fileError);
+                    alert(`첨부 파일 업로드 중 오류: ${fileError.message}`);
+                }
             }
 
-            // 삭제할 첨부파일이 있으면 처리
+            // 3. 삭제할 첨부파일이 있으면 처리
             if (attachmentsToDelete.length > 0) {
                 for (const attachmentId of attachmentsToDelete) {
                     try {
@@ -295,6 +296,9 @@ function ProjectEditPage() {
                     }
                 }
             }
+
+            alert('프로젝트가 성공적으로 수정되었습니다.');
+            navigate(`/projects/${project.id}`);
         } catch (error) {
             alert(`오류 발생: ${error.message}`);
         }

@@ -27,6 +27,9 @@ public class PurchaseRequestEventListener {
         // WebSocket으로 클라이언트에 전파
         webSocketService.sendStatusUpdateEvent(eventDTO);
 
+        // 전체 목록 업데이트를 위한 메시지 발행
+        webSocketService.sendGlobalStatusUpdate();
+
         // Redis Pub/Sub 채널로 이벤트 발행
         redisEventPublisher.publishStatusChangeEvent(eventDTO);
     }

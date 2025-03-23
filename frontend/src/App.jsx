@@ -56,7 +56,7 @@ import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
 import ChartDashboard from '@/pages/statistics/ChartDashboard';
-
+import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
@@ -274,6 +274,13 @@ function AppContent() {
                     path="/common-codes"
                     element={<CommonCodeManagement />}
                   />
+
+                  {/* 사용자 관리 */}
+                  <Route
+                    path="/members"
+                    element={<AdminMemberPage />}
+                  />
+
                 </>
               )}
               {/* 404 페이지 */}
