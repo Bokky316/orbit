@@ -511,4 +511,21 @@ public class BiddingOrderService {
 
         return BiddingOrderDto.fromEntity(order);
     }
+
+    public List<MonthlyOrderStatisticsDto> getMonthlyOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
+        List<Object[]> results = biddingOrderRepository.findMonthlyOrderStatistics(startDate, endDate);
+
+        return results.stream()
+                .map(row -> MonthlyOrderStatisticsDto.builder()
+                        .yearMonth((String) row[0])
+                        .orderCount(((Number) row[1]).longValue())
+                        .totalAmount(((Number) row[2]).doubleValue())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Object[]> getSupplierOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
+        return biddingOrderRepository.findSupplierOrderStatistics(startDate, endDate);
+    }
 }
