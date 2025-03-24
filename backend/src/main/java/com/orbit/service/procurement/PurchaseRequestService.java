@@ -683,42 +683,6 @@ public class PurchaseRequestService {
         }
     }
 
-    // 아이템 전체 조회 메서드 추가
-    @Transactional(readOnly = true)
-    public List<ItemDTO> getAllItems() {
-        List<Item> items = itemRepository.findAll();
-        return items.stream()
-                .map(this::convertToItemDTO)
-                .collect(Collectors.toList());
-    }
-
-    private ItemDTO convertToItemDTO(Item item) {
-        return ItemDTO.builder()
-                .id(item.getId())
-                .name(item.getName())
-                .specification(item.getSpecification())
-                .unitParentCode(
-                        item.getUnitParentCode() != null ?
-                                item.getUnitParentCode().getCodeGroup() : null
-                )
-                .unitChildCode(
-                        item.getUnitChildCode() != null ?
-                                item.getUnitChildCode().getCodeValue() : null
-                )
-                .standardPrice(item.getStandardPrice())
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public List<CategoryDTO> getAllCategories() {
-        // 활성화된 카테고리만 조회 (useYn = 'Y')
-        List<Category> categories = categoryRepository.findAllActive();
-        return categories.stream()
-                .map(CategoryDTO::from)
-                .collect(Collectors.toList());
-    }
-
-
     /**
      * 부서 엔티티를 DTO로 변환
      */

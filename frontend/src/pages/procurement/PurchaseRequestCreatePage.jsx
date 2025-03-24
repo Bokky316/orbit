@@ -173,27 +173,49 @@ function PurchaseRequestCreatePage() {
         fetchAllMembers();
         fetchAllTemplates(); // 템플릿 목록 조회 추가
 
-        // Redux를 통해 아이템과 카테고리 목록 가져오기
-        dispatch(fetchItems());
-        dispatch(fetchCategories());
-    }, [dispatch]);
+        // 컴포넌트 마운트 시 기존 아이템과 카테고리 API를 호출
+          dispatch(fetchItems())
+            .then(response => {
+              console.log("아이템 로드 완료:", response.payload);
+            })
+            .catch(error => console.error("아이템 로드 오류:", error));
+
+          dispatch(fetchCategories())
+            .then(response => {
+              console.log("카테고리 로드 완료:", response.payload);
+            })
+            .catch(error => console.error("카테고리 로드 오류:", error));
+        }, [dispatch]);
+
 
     // 초기에 filteredItems 설정
     useEffect(() => {
         setFilteredItems(availableItems);
     }, [availableItems]);
 
-    // 카테고리 선택 시 아이템 필터링
+    // 카테고리 선택 시 아이템 필터링 로직 개선
     useEffect(() => {
-        if (selectedCategory) {
-            const filtered = availableItems.filter(item => item.categoryId === selectedCategory);
-            setFilteredItems(filtered);
-        } else {
-            setFilteredItems(availableItems);
+      if (selectedCategory) {
+        console.log("선택된 카테고리:", selectedCategory);
+
+        // 백엔드에서 반환하는 id 필드가 String 타입일 수 있으므로 타입 변환
+        const filtered = availableItems.filter(item =>
+          String(item.categoryId) === String(selectedCategory)
+        );
+
+        console.log("필터링된 아이템:", filtered);
+        setFilteredItems(filtered);
+
+        // 필터링된 결과가 없으면 콘솔에 로그
+        if (filtered.length === 0) {
+          console.log('사용 가능한 전체 아이템:', availableItems);
+          console.log('선택한 카테고리에 해당하는 아이템이 없습니다:', selectedCategory);
         }
+      } else {
+        setFilteredItems(availableItems);
+      }
     }, [selectedCategory, availableItems]);
 
-    // 부서 선택 시 해당 부서의 멤버 필터링
     // 부서 선택 시 해당 부서의 멤버 조회
     useEffect(() => {
         if (selectedDepartment) {
@@ -261,34 +283,54 @@ function PurchaseRequestCreatePage() {
         setItems(newItems);
     };
 
-    // 아이템 선택 핸들러
+    // 아이템 선택 핸들러 개선
     const handleItemSelect = (index, event) => {
-        const selectedItemId = event.target.value;
-        const selectedItem = availableItems.find(item => item.id === selectedItemId);
+      const selectedItemId = event.target.value;
+      console.log('선택된 아이템 ID:', selectedItemId);
 
-        if (selectedItem) {
-            const newItems = [...items];
-            newItems[index] = {
-                ...newItems[index],
-                itemId: selectedItem.id,
-                itemName: selectedItem.name,
-                categoryId: selectedItem.categoryId,
-                categoryName: selectedItem.categoryName,
-                specification: selectedItem.specification,
-                unitParentCode: selectedItem.unitParentCode,
-                unitChildCode: selectedItem.unitChildCode,
-                unitPrice: selectedItem.standardPrice || 0,
-            };
+      // String 타입으로 변환하여 ID 비교
+      const selectedItem = availableItems.find(item =>
+        String(item.id) === String(selectedItemId)
+      );
 
-            // 가격이 있으면 총액 자동 계산
-            if (selectedItem.standardPrice && newItems[index].quantity) {
-                const quantity = Number(newItems[index].quantity) || 0;
-                const unitPrice = Number(selectedItem.standardPrice) || 0;
-                newItems[index].totalPrice = quantity * unitPrice;
-            }
+      console.log('선택된 아이템 정보:', selectedItem);
 
-            setItems(newItems);
+      if (selectedItem) {
+        const newItems = [...items];
+        newItems[index] = {
+          ...newItems[index],
+          itemId: selectedItem.id,
+          itemName: selectedItem.name || '',
+          categoryId: selectedItem.categoryId || '',
+          categoryName: selectedItem.categoryName || '미지정',
+          specification: selectedItem.specification || '',
+          unitParentCode: selectedItem.unitParentCode || '',
+          unitChildCode: selectedItem.unitChildCode || '',
+          unitPrice: selectedItem.standardPrice || 0,
+        };
+
+        // 가격이 있으면 총액 자동 계산
+        if (selectedItem.standardPrice && newItems[index].quantity) {
+          const quantity = Number(newItems[index].quantity) || 0;
+          const unitPrice = Number(selectedItem.standardPrice) || 0;
+          newItems[index].totalPrice = quantity * unitPrice;
+        } else {
+          // 수량이 없으면 기본값 1 설정
+          const quantity = Number(newItems[index].quantity) || 1;
+          const unitPrice = Number(selectedItem.standardPrice) || 0;
+          newItems[index].totalPrice = quantity * unitPrice;
+
+          // 수량이 없었다면 기본값 설정
+          if (!newItems[index].quantity) {
+            newItems[index].quantity = 1;
+          }
         }
+
+        setItems(newItems);
+      } else {
+        console.error(`ID가 ${selectedItemId}인 아이템을 찾을 수 없습니다.`);
+        console.log('사용 가능한 아이템 목록:', availableItems);
+      }
     };
 
     // 숫자 입력 핸들러
