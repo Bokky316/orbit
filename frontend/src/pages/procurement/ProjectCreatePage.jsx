@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -35,6 +35,10 @@ function ProjectCreatePage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    // Redux에서 사용자 정보 가져오기
+    const { user } = useSelector((state) => state.auth);
+    console.log('현재 로그인한 사용자 정보:', user);
+
     // 상태 관리
     const [projectName, setProjectName] = useState('');
     const [businessCategory, setBusinessCategory] = useState('');
@@ -66,6 +70,14 @@ function ProjectCreatePage() {
                 if (response.ok) {
                     const data = await response.json();
                     setDepartments(data);
+
+                    // Redux에서 가져온 사용자 정보에 부서 정보가 있다면 자동 선택
+                    if (user && user.department) {
+                        const userDept = data.find(dept => dept.id === user.department.id);
+                        if (userDept) {
+                            setSelectedDepartment(userDept);
+                        }
+                    }
                 } else {
                     console.error('부서 목록을 가져오는데 실패했습니다.');
                 }
@@ -107,30 +119,39 @@ function ProjectCreatePage() {
         fetchDepartments();
         fetchBudgetCodes();
         fetchBusinessCategories();
-    }, []);
+    }, [user]);
 
     // 부서 선택 시 해당 부서의 멤버 조회
     useEffect(() => {
-        if (selectedDepartment) {
-            const fetchDepartmentMembers = async () => {
-                try {
-                    const response = await fetchWithAuth(`${API_URL}organization/members/department/${selectedDepartment.id}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        setDepartmentMembers(data);
-                    } else {
-                        console.error('부서 멤버를 가져오는데 실패했습니다.');
-                    }
-                } catch (error) {
-                    console.error('부서 멤버 조회 중 오류 발생:', error);
-                }
-            };
+            if (selectedDepartment) {
+                const fetchDepartmentMembers = async () => {
+                    try {
+                        const response = await fetchWithAuth(`${API_URL}organization/members/department/${selectedDepartment.id}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            setDepartmentMembers(data);
 
-            fetchDepartmentMembers();
-        } else {
-            setDepartmentMembers([]);
-        }
-    }, [selectedDepartment]);
+                            // 현재 로그인한 사용자가 이 부서의 멤버라면 자동 선택
+                            if (user && user.id) {
+                                const currentMember = data.find(member => member.id === user.id);
+                                if (currentMember) {
+                                    setSelectedManager(currentMember);
+                                }
+                            }
+                        } else {
+                            console.error('부서 멤버를 가져오는데 실패했습니다.');
+                        }
+                    } catch (error) {
+                        console.error('부서 멤버 조회 중 오류 발생:', error);
+                    }
+                };
+
+                fetchDepartmentMembers();
+            } else {
+                setDepartmentMembers([]);
+                setSelectedManager(null);
+            }
+        }, [selectedDepartment, user]);
 
     /**
      * 폼 제출 핸들러
@@ -251,17 +272,19 @@ function ProjectCreatePage() {
                             <Autocomplete
                                 id="request-department-select"
                                 options={departments}
-                                getOptionLabel={(option) => option.name}
+                                getOptionLabel={(option) => option.name || ''}
                                 isOptionEqualToValue={(option, value) => option.id === value.id}
                                 value={selectedDepartment}
                                 onChange={(event, newValue) => {
                                     setSelectedDepartment(newValue);
-                                    setSelectedManager(null);
                                 }}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
                                         label="요청 부서"
+                                        helperText={selectedDepartment && user && user.department &&
+                                                  selectedDepartment.id === user.department.id ?
+                                                  "현재 로그인한 사용자의 부서입니다." : ""}
                                     />
                                 )}
                             />
@@ -272,7 +295,7 @@ function ProjectCreatePage() {
                             <Autocomplete
                                 id="requester-select"
                                 options={departmentMembers}
-                                getOptionLabel={(option) => `${option.name} (${option.position ? option.position.name : '직급없음'})`}
+                                getOptionLabel={(option) => option.name || ''}
                                 isOptionEqualToValue={(option, value) => option.id === value.id}
                                 value={selectedManager}
                                 onChange={(event, newValue) => {
@@ -283,7 +306,9 @@ function ProjectCreatePage() {
                                     <TextField
                                         {...params}
                                         label="담당자"
-                                        helperText={!selectedDepartment ? "먼저 요청 부서를 선택해주세요" : ""}
+                                        helperText={!selectedDepartment ? "먼저 요청 부서를 선택해주세요" :
+                                                  (selectedManager && user && selectedManager.id === user.id) ?
+                                                  "현재 로그인한 사용자입니다." : ""}
                                     />
                                 )}
                             />

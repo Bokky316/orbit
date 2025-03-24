@@ -84,44 +84,28 @@ export default function Login() {
 
       console.log("응답 상태:", response.status);
 
-      const text = await response.text();
-      console.log("응답 본문:", text);
-
-      // 직접 파싱
-      const parsedData = {
-        message: text.match(/"message":"(.*?)"/)?.[1],
-        status: text.match(/"status":"(.*?)"/)?.[1],
-        id: parseInt(text.match(/"id":(\d+)/)?.[1]),
-        username: text.match(/"username":"(.*?)"/)?.[1],
-        name: text.match(/"name":"(.*?)"/)?.[1],
-        roles: text
-          .match(/"roles":\[(.*?)\]/)?.[1]
-          ?.split(",")
-          .map((role) => role.replace(/"/g, ""))
-      };
-
+      // JSON으로 직접 파싱
+      const parsedData = await response.json();
       console.log("파싱된 데이터:", parsedData);
 
       if (response.ok && parsedData.status === "success") {
-        // 역할 정보 처리
-        const roles = Array.isArray(parsedData.roles)
-          ? parsedData.roles
-          : (typeof parsedData.roles === "string"
-              ? [parsedData.roles]
-              : []
-            ).filter(Boolean);
-
         const userData = {
           id: parsedData.id,
           username: parsedData.username,
           name: parsedData.name,
-          roles: roles, // 배열 형태로 저장
-          isLoggedIn: true,
-          isSocialLogin: false
+          email: parsedData.email,
+          companyName: parsedData.companyName,
+          contactNumber: parsedData.contactNumber,
+          postalCode: parsedData.postalCode,
+          roadAddress: parsedData.roadAddress,
+          detailAddress: parsedData.detailAddress,
+          department: parsedData.department,
+          roles: parsedData.roles || [],
+          isLoggedIn: true
         };
 
         // 로컬 스토리지에 저장
-        localStorage.setItem("loggedInUser", JSON.stringify(userData));
+        localStorage.setItem("user", JSON.stringify(userData));
 
         // Redux 스토어에 저장
         dispatch(setUser(userData));
