@@ -222,6 +222,14 @@ public void calculateTotalScore() {
             totalPoints += this.reliabilityScore;
             count++;
         }
+        if (this.serviceScore != null) {
+            totalPoints += this.serviceScore;
+            count++;
+        }
+        if (this.additionalScore != null) {
+            totalPoints += this.additionalScore;
+            count++;
+        }
         
         if (count > 0) {
             this.totalScore = totalPoints / count;
@@ -240,6 +248,9 @@ public void calculateTotalScore() {
         this.updatedAt = LocalDateTime.now();
         this.evaluatedAt = LocalDateTime.now(); // 평가 일시 설정
         calculateTotalScore();
+        
+        if (this.isSelectedBidder == null) this.isSelectedBidder = false;
+        if (this.selectedForOrder == null) this.selectedForOrder = false;
     }
 
     /**

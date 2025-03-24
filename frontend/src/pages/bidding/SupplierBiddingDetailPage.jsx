@@ -459,6 +459,12 @@ function SupplierBiddingDetailPage() {
     }
   }
 
+  // 참여 가능 여부 확인
+  const isParticipationPossible = canParticipateInBidding(
+    bidding,
+    currentUser.supplierId
+  );
+
   return (
     <Box sx={{ p: 4 }}>
       {/* 페이지 헤더 */}

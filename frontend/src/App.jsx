@@ -59,14 +59,16 @@ import DeliveryListPage from "@/pages/delivery/DeliveryListPage";
 import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage";
 import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage";
 import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage";
-import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
-import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
-import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
-import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
-import PaymentListPage from '@/pages/payment/PaymentListPage';
-import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
-import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
-import AdminMemberPage from "@/pages/member/AdminMemberPage";
+
+import NotificationPage from "./pages/member/NotificationPage";
+import NotificationToast from "./components/notification/NotificationToast";
+import SupplierDashboard from "./pages/dashboard/SupplierDashboard";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+
+/**
+ * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
+ * @returns {JSX.Element} - 전체 앱 콘텐츠
+ */
 
 function AppContent() {
   const { isLoggedIn, roles, user } = useSelector((state) => state.auth);
@@ -81,6 +83,9 @@ function AppContent() {
   return (
     <BrowserRouter>
       <div className="App">
+        {/* 알림 토스트 컴포넌트는 Routes 외부에 배치 */}
+        {isLoggedIn && <NotificationToast />}
+
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<RegisterMember />} />
@@ -153,11 +158,23 @@ function AppContent() {
                   <Route path="/categories/new" element={<CategoryFormPage mode="create" />} />
                   <Route path="/categories/edit/:id" element={<CategoryFormPage mode="edit" />} />
                   <Route path="/items" element={<ItemListPage />} />
-                  <Route path="/items/new" element={<ItemFormPage mode="create" />} />
-                  <Route path="/items/edit/:id" element={<ItemFormPage mode="edit" />} />
-                  <Route path="/chart" element={<ChartDashboard />} />
-                  <Route path="/common-codes" element={<CommonCodeManagement />} />
-                  <Route path="/members" element={<AdminMemberPage />} />
+                  <Route
+                    path="/items/new"
+                    element={<ItemFormPage mode="create" />}
+                  />
+                  <Route
+                    path="/items/edit/:id"
+                    element={<ItemFormPage mode="edit" />}
+                  />
+
+                  {/* 공통 코드 관리 */}
+                  <Route
+                    path="/common-codes"
+                    element={<CommonCodeManagement />}
+                  />
+
+                  {/* 알림 페이지 */}
+                  <Route path="/notifications" element={<NotificationPage />} />
                 </>
               )}
               <Route path="*" element={<ErrorPage type="notFound" />} />

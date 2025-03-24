@@ -34,7 +34,6 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.GenericGenerator;
 
 @Entity
 @Getter @Setter
@@ -101,19 +100,18 @@ public abstract class PurchaseRequest {
         this.attachments.add(attachment);
     }
 
-    // Bidding 과 맴핑
-    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
+ // Bidding 과 맴핑
+ @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+ private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
 
-    public List<PurchaseRequestItem> getPurchaseRequestItems() {
-        return this.purchaseRequestItems;
-    }
+ public List<PurchaseRequestItem> getPurchaseRequestItems() {
+     return this.purchaseRequestItems;
+ }
 
-    public void addPurchaseRequestItem(PurchaseRequestItem item) {
-        if (this.purchaseRequestItems == null) {
-            this.purchaseRequestItems = new ArrayList<>();
-        }
-        item.setPurchaseRequest(this);
-        this.purchaseRequestItems.add(item);
-    }
-}
+ public void addPurchaseRequestItem(PurchaseRequestItem item) {
+     if (this.purchaseRequestItems == null) {
+         this.purchaseRequestItems = new ArrayList<>();
+     }
+     item.setPurchaseRequest(this);
+     this.purchaseRequestItems.add(item);
+ }}

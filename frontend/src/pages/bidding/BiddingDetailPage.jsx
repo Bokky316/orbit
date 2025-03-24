@@ -340,7 +340,7 @@ function BiddingDetailPage() {
       alert("입찰 공고가 성공적으로 삭제되었습니다.");
       navigate("/biddings");
     } catch (error) {
-      console.error("상태 변경 중 오류:", error);
+      console.error("입찰 마감 중 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
