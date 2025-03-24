@@ -2,20 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
-    Box, Typography, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Button, Grid,
-    CircularProgress, Card, CardContent, Divider, Chip,
-    Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-    Container
+    Box,
+    Container,
+    Typography,
+    Paper,
+    Grid,
+    Button,
+    Divider,
+    Chip,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
+    Snackbar,
+    Alert,
+    Card,
+    CardContent
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import moment from 'moment';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
 import {
     ArrowBack as ArrowBackIcon,
     Edit as EditIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    Print as PrintIcon
 } from '@mui/icons-material';
+
+// 스타일 컴포넌트
+const InfoRow = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    margin: theme.spacing(1, 0),
+    '& .label': {
+        width: '30%',
+        fontWeight: 500,
+        color: theme.palette.text.secondary
+    },
+    '& .value': {
+        width: '70%'
+    }
+}));
+
+const SectionTitle = styled(Typography)(({ theme }) => ({
+    fontWeight: 600,
+    margin: theme.spacing(2, 0, 1)
+}));
+
+// 금액 형식 변환 함수
+const formatCurrency = (amount) => {
+    if (!amount) return '0원';
+    return new Intl.NumberFormat('ko-KR').format(amount) + '원';
+};
 
 function DeliveryDetailPage() {
     const { id } = useParams();
@@ -23,10 +69,13 @@ function DeliveryDetailPage() {
     const [delivery, setDelivery] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showError, setShowError] = useState(false);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [userInfo, setUserInfo] = useState(null);
     const [companyName, setCompanyName] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [showSuccess, setShowSuccess] = useState(false);
 
     // Redux 상태에서 인증 정보 가져오기
     const auth = useSelector((state) => state.auth);
@@ -216,6 +265,7 @@ function DeliveryDetailPage() {
             } catch (error) {
                 console.error('입고 상세를 불러오는 중 오류 발생:', error);
                 setError(error.message);
+                setShowError(true);
             } finally {
                 setLoading(false);
             }
@@ -255,33 +305,25 @@ function DeliveryDetailPage() {
             });
 
             if (response.ok) {
-                alert('입고 정보가 성공적으로 삭제되었습니다.');
-                navigate('/deliveries');
+                setSuccessMessage('입고 정보가 성공적으로 삭제되었습니다.');
+                setShowSuccess(true);
+
+                // 삭제 후 목록 페이지로 이동 (타이머 설정)
+                setTimeout(() => {
+                    navigate('/deliveries');
+                }, 2000);
             } else {
                 const errorData = await response.text();
                 throw new Error(`입고 삭제 실패: ${errorData}`);
             }
         } catch (error) {
-            alert(`오류 발생: ${error.message}`);
-            setOpenDeleteDialog(false);
+            setError(`오류 발생: ${error.message}`);
+            setShowError(true);
         } finally {
             setDeleting(false);
+            setOpenDeleteDialog(false);
         }
     };
-
-    // 디버깅용 - 사용자 정보 및 권한 상태 출력
-    useEffect(() => {
-        console.log('권한 상태:', {
-            userInfo,
-            currentUser,
-            companyName,
-            isAdmin: isAdmin(),
-            isBuyer: isBuyer(),
-            isSupplier: isSupplier(),
-            isPurchaseDept: isPurchaseDept(),
-            canAccessDelivery: delivery ? canAccessDelivery() : false
-        });
-    }, [userInfo, currentUser, delivery, companyName]);
 
     // 수정 버튼 표시 여부 확인
     const canEdit = () => {
@@ -316,6 +358,15 @@ function DeliveryDetailPage() {
         return isAdminUser;
     };
 
+    // 메시지 닫기 핸들러
+    const handleCloseError = () => {
+        setShowError(false);
+    };
+
+    const handleCloseSuccess = () => {
+        setShowSuccess(false);
+    };
+
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -324,242 +375,228 @@ function DeliveryDetailPage() {
         );
     }
 
-    if (error) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Typography variant="h6" color="error" gutterBottom>
-                    오류 발생: {error}
-                </Typography>
-                <Button variant="contained" startIcon={<ArrowBackIcon />} onClick={handleBackToList}>
-                    목록으로 돌아가기
-                </Button>
-            </Box>
-        );
-    }
-
-    if (!delivery) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                    해당 입고 정보를 찾을 수 없습니다.
-                </Typography>
-                <Button variant="contained" startIcon={<ArrowBackIcon />} onClick={handleBackToList}>
-                    목록으로 돌아가기
-                </Button>
-            </Box>
-        );
-    }
-
     return (
-        <Container maxWidth="lg">
-            <Box sx={{ mt: 4, mb: 4 }}>
-                {/* 헤더 영역 */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" component="h1">
-                        입고 상세 정보
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
-                            variant="outlined"
-                            startIcon={<ArrowBackIcon />}
-                            onClick={handleBackToList}
-                        >
-                            목록으로
-                        </Button>
-                    </Box>
-                </Box>
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }} id="delivery-detail-container">
+            {/* 에러 메시지 */}
+            <Snackbar
+                open={showError}
+                autoHideDuration={6000}
+                onClose={handleCloseError}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+                    {error}
+                </Alert>
+            </Snackbar>
 
-                <Card>
-                    <CardContent>
-                        <Grid container spacing={3}>
-                            {/* 입고 기본 정보 */}
-                            <Grid item xs={12}>
-                                <Typography variant="h6" gutterBottom>
-                                    입고 기본 정보
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
-
-                                <Card variant="outlined" sx={{ bgcolor: "#f9f9f9" }}>
-                                    <CardContent>
-                                        <Grid container spacing={2}>
-                                            <Grid item xs={12} sm={6} md={3}>
-                                                <Typography variant="subtitle2" color="text.secondary">
-                                                    입고번호
-                                                </Typography>
-                                                <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                                    {delivery.deliveryNumber || '-'}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={12} sm={6} md={3}>
-                                                <Typography variant="subtitle2" color="text.secondary">
-                                                    발주번호
-                                                </Typography>
-                                                <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                                    {delivery.orderNumber || '-'}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={12} sm={6} md={3}>
-                                                <Typography variant="subtitle2" color="text.secondary">
-                                                    입고일
-                                                </Typography>
-                                                <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                                    {delivery.deliveryDate ? moment(delivery.deliveryDate).format('YYYY-MM-DD') : '-'}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={12} sm={6} md={3}>
-                                                <Typography variant="subtitle2" color="text.secondary">
-                                                    공급업체명
-                                                </Typography>
-                                                <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                                    {delivery.supplierName || '-'}
-                                                </Typography>
-                                            </Grid>
-                                        </Grid>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-
-                            {/* 품목 정보 테이블 */}
-                            <Grid item xs={12}>
-                                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                                    품목 정보
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
-
-                                <TableContainer component={Paper} variant="outlined">
-                                    <Table>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell width="10%" align="center">품목ID</TableCell>
-                                                <TableCell width="10%" align="center">품목명</TableCell>
-                                                <TableCell width="10%" align="center">발주수량</TableCell>
-                                                <TableCell width="10%" align="center">입고수량</TableCell>
-                                                <TableCell width="10%" align="center">단가</TableCell>
-                                                <TableCell width="10%" align="center">총액</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            <TableRow>
-                                                <TableCell align="center">{delivery.deliveryItemId || '-'}</TableCell>
-                                                <TableCell align="center">{delivery.itemName || '-'}</TableCell>
-                                                <TableCell align="center">{delivery.itemQuantity || '-'}</TableCell>
-                                                <TableCell align="center">{delivery.itemQuantity || '-'}</TableCell>
-                                                <TableCell align="center">
-                                                    {delivery.itemUnitPrice ? delivery.itemUnitPrice.toLocaleString() : '-'}
-                                                </TableCell>
-                                                <TableCell align="center">
-                                                    {delivery.totalAmount ? delivery.totalAmount.toLocaleString() : '-'}
-                                                </TableCell>
-                                            </TableRow>
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            </Grid>
-
-                            {/* 입고 처리 정보 */}
-                            <Grid item xs={12}>
-                                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                                    입고 처리 정보
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
-                            </Grid>
-
-                            <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    입고 담당자
-                                </Typography>
-                                <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                    {delivery.receiverName || '-'}
-                                </Typography>
-                            </Grid>
-
-                            <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    입고 처리 시간
-                                </Typography>
-                                <Typography variant="body1" sx={{ mt: 0.5 }}>
-                                    {delivery.createdAt ? moment(delivery.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
-                                </Typography>
-                            </Grid>
-
-                            <Grid item xs={12}>
-                                <Typography variant="subtitle2" color="text.secondary">
-                                    비고
-                                </Typography>
-                                <Typography variant="body1" sx={{ mt: 0.5, p: 2, border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: '#fafafa', minHeight: '80px' }}>
-                                    {delivery.notes || '비고 사항이 없습니다.'}
-                                </Typography>
-                            </Grid>
-
-                           {/* 버튼 영역 */}
-                           <Grid item xs={12}>
-                             <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
-                               {/* 공급업체가 아닐 때만 버튼 표시 */}
-                               {!isSupplier() && (
-                                 <>
-                                   {/* 조건부 수정 버튼 표시 */}
-                                   <Button
-                                     variant="outlined"
-                                     color="primary"
-                                     startIcon={<EditIcon />}
-                                     onClick={handleEdit}
-                                     sx={{ minWidth: 120 }}
-                                     disabled={!canEdit()}
-                                   >
-                                     수정 {!canEdit() && '(권한 없음)'}
-                                   </Button>
-
-                                   {/* 조건부 삭제 버튼 표시 */}
-                                   <Button
-                                     variant="outlined"
-                                     color="error"
-                                     startIcon={<DeleteIcon />}
-                                     onClick={handleOpenDeleteDialog}
-                                     sx={{ minWidth: 120 }}
-                                     disabled={!canDelete()}
-                                   >
-                                     삭제 {!canDelete() && '(권한 없음)'}
-                                   </Button>
-                                 </>
-                               )}
-                             </Box>
-                           </Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-            </Box>
+            {/* 성공 메시지 */}
+            <Snackbar
+                open={showSuccess}
+                autoHideDuration={6000}
+                onClose={handleCloseSuccess}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert onClose={handleCloseSuccess} severity="success" sx={{ width: '100%' }}>
+                    {successMessage}
+                </Alert>
+            </Snackbar>
 
             {/* 삭제 확인 다이얼로그 */}
             <Dialog
                 open={openDeleteDialog}
                 onClose={handleCloseDeleteDialog}
-                aria-labelledby="alert-dialog-title"
-                aria-describedby="alert-dialog-description"
             >
-                <DialogTitle id="alert-dialog-title">
-                    {"입고 정보 삭제"}
-                </DialogTitle>
+                <DialogTitle>입고 정보 삭제 확인</DialogTitle>
                 <DialogContent>
-                    <DialogContentText id="alert-dialog-description">
-                        입고번호 <strong>{delivery.deliveryNumber}</strong>의 정보를 삭제하시겠습니까?
-                        <br />
-                        이 작업은 되돌릴 수 없습니다.
+                    <DialogContentText>
+                        {delivery && (
+                            <>
+                                입고번호 <strong>{delivery.deliveryNumber}</strong>의 정보를 삭제하시겠습니까?
+                                <br />
+                                이 작업은 되돌릴 수 없습니다.
+                            </>
+                        )}
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDeleteDialog} color="primary">
                         취소
                     </Button>
-                    <Button
-                        onClick={handleDelete}
-                        color="error"
-                        disabled={deleting}
-                        autoFocus
-                    >
+                    <Button onClick={handleDelete} color="error" autoFocus disabled={deleting}>
                         {deleting ? <CircularProgress size={24} /> : "삭제"}
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* 상단 네비게이션 */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 3 }}>
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={handleBackToList}
+                >
+                    목록으로
+                </Button>
+            </Box>
+
+            {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+                    <CircularProgress />
+                </Box>
+            ) : delivery ? (
+                <Box className="delivery-detail-content">
+                    {/* 입고 제목 및 상태 */}
+                    <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="h5" component="h1">
+                                입고 번호 : {delivery.deliveryNumber}
+                            </Typography>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', mt: 2, flexWrap: 'wrap' }}>
+                            <Box sx={{ display: 'flex', mr: 4, alignItems: 'center' }}>
+                                <Typography sx={{ fontWeight: 500, color: 'text.secondary', mr: 1 }}>담당자:</Typography>
+                                <Typography>{delivery.receiverName || '-'}</Typography>
+                            </Box>
+
+                            {/* <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography sx={{ fontWeight: 500, color: 'text.secondary', mr: 1 }}>처리 일시:</Typography>
+                                <Typography>
+                                    {delivery.createdAt ? moment(delivery.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                                </Typography>
+                            </Box> */}
+                        </Box>
+                    </Paper>
+
+                    {/* 기본 정보 */}
+                    <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                        <SectionTitle variant="h6">기본 정보</SectionTitle>
+                        <Divider sx={{ mb: 2 }} />
+
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} md={6}>
+                                <InfoRow>
+                                    <Typography className="label">발주 번호:</Typography>
+                                    <Typography className="value">{delivery.orderNumber || '-'}</Typography>
+                                </InfoRow>
+                                <InfoRow>
+                                    <Typography className="label">입고일:</Typography>
+                                    <Typography className="value">
+                                        {delivery.deliveryDate ? moment(delivery.deliveryDate).format('YYYY-MM-DD') : '-'}
+                                    </Typography>
+                                </InfoRow>
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <InfoRow>
+                                    <Typography className="label">공급업체명:</Typography>
+                                    <Typography className="value">{delivery.supplierName || '-'}</Typography>
+                                </InfoRow>
+                                <InfoRow>
+                                    <Typography className="label">입고 처리 시간:</Typography>
+                                    <Typography className="value">
+                                        {delivery.createdAt ? moment(delivery.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                                    </Typography>
+                                </InfoRow>
+                            </Grid>
+                        </Grid>
+                    </Paper>
+
+                    {/* 품목 정보 */}
+                    <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                        <SectionTitle variant="h6">품목 정보</SectionTitle>
+                        <Divider sx={{ mb: 2 }} />
+
+                        <TableContainer>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>품목ID</TableCell>
+                                        <TableCell>품목명</TableCell>
+                                        <TableCell>발주수량</TableCell>
+                                        <TableCell>입고수량</TableCell>
+                                        <TableCell>단가</TableCell>
+                                        <TableCell>총액</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    <TableRow>
+                                        <TableCell>{delivery.deliveryItemId || '-'}</TableCell>
+                                        <TableCell>{delivery.itemName || '-'}</TableCell>
+                                        <TableCell>{delivery.itemQuantity || '-'}</TableCell>
+                                        <TableCell>{delivery.itemQuantity || '-'}</TableCell>
+                                        <TableCell>
+                                            {delivery.itemUnitPrice ? formatCurrency(delivery.itemUnitPrice) : '-'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {delivery.totalAmount ? formatCurrency(delivery.totalAmount) : '-'}
+                                        </TableCell>
+                                    </TableRow>
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Paper>
+
+                    {/* 금액 요약 */}
+                    <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            borderRadius: 1,
+                        }}>
+                            <Typography variant="body1" sx={{ fontWeight: 500, color: 'primary.main' }}>
+                                총액: <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                                    {delivery.totalAmount ? formatCurrency(delivery.totalAmount) : '0원'}
+                                </span>
+                            </Typography>
+                        </Box>
+                    </Paper>
+
+                    {/* 비고 */}
+                    {delivery.notes && (
+                        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+                            <SectionTitle variant="h6">비고</SectionTitle>
+                            <Divider sx={{ mb: 2 }} />
+                            <Typography>{delivery.notes || '비고 사항이 없습니다.'}</Typography>
+                        </Paper>
+                    )}
+
+                    {/* 하단 버튼 영역 */}
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap', mt: 3 }}>
+                        {canEdit() && (
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<EditIcon />}
+                                onClick={handleEdit}
+                            >
+                                수정
+                            </Button>
+                        )}
+                        {canDelete() && (
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={handleOpenDeleteDialog}
+                            >
+                                삭제
+                            </Button>
+                        )}
+                    </Box>
+                </Box>
+            ) : (
+                <Paper variant="outlined" sx={{ p: 5, textAlign: 'center' }}>
+                    <Typography variant="h6">입고 정보를 찾을 수 없습니다.</Typography>
+                    <Button
+                        variant="contained"
+                        onClick={handleBackToList}
+                        sx={{ mt: 2 }}
+                    >
+                        입고 목록으로
+                    </Button>
+                </Paper>
+            )}
         </Container>
     );
 }
