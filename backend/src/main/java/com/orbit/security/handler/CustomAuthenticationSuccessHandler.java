@@ -112,6 +112,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         responseData.put("postalCode", userDetails.getPostalCode());
         responseData.put("roadAddress", userDetails.getRoadAddress());
         responseData.put("detailAddress", userDetails.getDetailAddress());
+        responseData.put("departmentId", userDetails.getDepartmentId());
         responseData.put("roles", roles);
 
         response.getWriter().write(objectMapper.writeValueAsString(responseData));
