@@ -89,23 +89,20 @@ export default function Login() {
       console.log("파싱된 데이터:", parsedData);
 
       if (response.ok && parsedData.status === "success") {
-       const userData = {
-         id: parsedData.id,
-         username: parsedData.username,
-         name: parsedData.name,
-         email: parsedData.email,
-         companyName: parsedData.companyName,
-         contactNumber: parsedData.contactNumber,
-         postalCode: parsedData.postalCode,
-         roadAddress: parsedData.roadAddress,
-         detailAddress: parsedData.detailAddress,
-         department: {
-           id: parsedData.department?.id || null,
-           name: parsedData.department?.name || null
-         },
-         roles: parsedData.roles || [],
-         isLoggedIn: true
-       };
+        const userData = {
+          id: parsedData.id,
+          username: parsedData.username,
+          name: parsedData.name,
+          email: parsedData.email,
+          companyName: parsedData.companyName,
+          contactNumber: parsedData.contactNumber,
+          postalCode: parsedData.postalCode,
+          roadAddress: parsedData.roadAddress,
+          detailAddress: parsedData.detailAddress,
+          department: parsedData.department,
+          roles: parsedData.roles || [],
+          isLoggedIn: true
+        };
 
         // 로컬 스토리지에 저장
         localStorage.setItem("user", JSON.stringify(userData));
