@@ -181,7 +181,8 @@ public class ApprovalLineService {
         return approvers;
     }
 
-    // createAutoApprovalLine 메서드 수정
+
+    // createAutoApprovalLine 메서드
     public ApprovalLineResponseDTO createAutoApprovalLine(ApprovalLineCreateDTO dto) {
         // 구매 요청 조회
         PurchaseRequest request = purchaseRequestRepo.findById(dto.getPurchaseRequestId())
@@ -231,6 +232,9 @@ public class ApprovalLineService {
 
         // 실시간 업데이트
         sendRealTimeUpdate(request.getId());
+
+        // 여기에 추가: 모든 결재가 완료되었는지 확인하고 구매요청 상태 업데이트
+        checkAndUpdateRequestStatus(request.getId());
 
         // 생성된 첫 번째 결재선 응답 DTO 반환
         return convertToDTO(lines.get(0));
@@ -509,6 +513,11 @@ public class ApprovalLineService {
         List<ApprovalLine> approvalLines = approvalLineRepo.findAllByRequestId(requestId);
 
         log.info("총 결재선 수: {}", approvalLines.size());
+        // 결재선이 없는 경우 처리
+        if (approvalLines.isEmpty()) {
+            log.warn("결재선이 없습니다: 요청 ID={}", requestId);
+            return;
+        }
 
         // 상위 상태 코드 및 승인 상태 코드 조회
         ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
@@ -516,17 +525,16 @@ public class ApprovalLineService {
 
         // 모든 결재선의 상태를 상세히 로깅
         for (ApprovalLine line : approvalLines) {
-            log.info("결재선 ID: {}, 스텝: {}, 현재 상태 ID: {}, 승인 상태 ID: {}",
-                    line.getId(), line.getStep(), line.getStatus().getId(), approvedStatus.getId());
+            log.info("결재선 ID: {}, 스텝: {}, 상태: {}, 승인 상태일치: {}",
+                    line.getId(), line.getStep(), line.getStatus().getCodeValue(),
+                    line.getStatus().getId().equals(approvedStatus.getId()));
         }
 
         // 모든 결재선이 승인 상태인지 확인
         boolean allApproved = approvalLines.stream()
-                .allMatch(line -> {
-                    boolean isApproved = line.getStatus().getId().equals(approvedStatus.getId());
-                    log.info("결재선 {} 승인 상태: {}", line.getId(), isApproved);
-                    return isApproved;
-                });
+                .allMatch(line -> line.getStatus().getId().equals(approvedStatus.getId()));
+
+        log.info("모든 결재선 승인 확인 결과: {}", allApproved);
 
         // 3. 모든 결재선이 승인 상태이면 구매 요청 상태 변경
         if (allApproved) {
@@ -670,6 +678,9 @@ public class ApprovalLineService {
 
         // 실시간 업데이트
         sendRealTimeUpdate(request.getId());
+
+        // 여기에 추가: 모든 결재가 완료되었는지 확인하고 구매요청 상태 업데이트
+        checkAndUpdateRequestStatus(request.getId());
 
         // 생성된 첫 번째 결재선 응답 DTO 반환
         return convertToDTO(lines.get(0));
