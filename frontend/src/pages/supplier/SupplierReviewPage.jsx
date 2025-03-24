@@ -1000,7 +1000,7 @@ const SupplierReviewPage = () => {
             type="text"
             fullWidth
             multiline
-            variant="filled"
+            /* variant="filled" */
             value={rejectionReason}
             onChange={handleRejectionReasonChange}
             error={!!rejectionError}
@@ -1060,7 +1060,7 @@ const SupplierReviewPage = () => {
             type="text"
             fullWidth
             multiline
-            variant="filled"
+            /* variant="filled" */
             value={inactivateReason}
             onChange={(e) => setInactivateReason(e.target.value)}
             variant="outlined"
@@ -1128,7 +1128,7 @@ const SupplierReviewPage = () => {
             type="text"
             fullWidth
             multiline
-            variant="filled"
+            /* variant="filled" */
             value={blacklistReason}
             onChange={(e) => setBlacklistReason(e.target.value)}
             variant="outlined"
@@ -1166,7 +1166,7 @@ const SupplierReviewPage = () => {
             type="text"
             fullWidth
             multiline
-            variant="filled"
+            /* variant="filled" */
             value={suspendReason}
             onChange={(e) => setSuspendReason(e.target.value)}
             variant="outlined"
