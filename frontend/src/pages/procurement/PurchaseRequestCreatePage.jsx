@@ -5,7 +5,7 @@ import {
     Box, Typography, Paper, TextField, Button, Grid, Alert,
     IconButton, List, ListItem, ListItemAvatar, ListItemText,
     Avatar, InputAdornment, FormControl, InputLabel, Select, MenuItem,
-    Chip, Divider, Autocomplete
+    Chip, Divider, Autocomplete, Checkbox, FormControlLabel, FormHelperText
 } from '@mui/material';
 import { Delete as DeleteIcon, AttachFile as AttachFileIcon, Add as AddIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -16,6 +16,7 @@ import { API_URL } from '@/utils/constants';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { fetchItems, fetchCategories } from '@/redux/purchaseRequestSlice';
 import ApprovalLineSetupComponent from '@/pages/approval/ApprovalLineSetupComponent';
+import { fetchApprovalTemplates } from '@/redux/approvalAdminSlice';
 
 const initItem = {
     itemId: '',
@@ -55,6 +56,11 @@ function PurchaseRequestCreatePage() {
     // 결재선 상태
     const [showApprovalSetup, setShowApprovalSetup] = useState(false);
     const [approvalLines, setApprovalLines] = useState([]);
+
+    // 결재선 템플릿 상태 추가
+    const [approvalTemplates, setApprovalTemplates] = useState([]);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [includeRequesterAsApprover, setIncludeRequesterAsApprover] = useState(false);
 
     // 공통 필드 상태
     const [businessType, setBusinessType] = useState('');
@@ -143,9 +149,29 @@ function PurchaseRequestCreatePage() {
             }
         };
 
+        // 결재선 템플릿 목록 가져오기
+        const fetchAllTemplates = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}approvals/templates`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`결재선 템플릿 목록을 가져오는데 실패했습니다: ${response.status}`);
+                }
+                const templatesData = await response.json();
+                setApprovalTemplates(templatesData);
+            } catch (error) {
+                console.error(`결재선 템플릿 목록을 가져오는 중 오류가 발생했습니다: ${error.message}`);
+            }
+        };
+
         fetchAllProjects();
         fetchDepartments();
         fetchAllMembers();
+        fetchAllTemplates(); // 템플릿 목록 조회 추가
 
         // Redux를 통해 아이템과 카테고리 목록 가져오기
         dispatch(fetchItems());
@@ -308,7 +334,11 @@ function PurchaseRequestCreatePage() {
 
             // status 필드 대신 직접 매핑된 컬럼 이름으로 지정
             prStatusParent: 'PURCHASE_REQUEST',
-            prStatusChild: 'REQUESTED'
+            prStatusChild: 'REQUESTED',
+
+            // 결재선 템플릿 정보 추가
+            approvalTemplateId: selectedTemplateId || null,
+            includeRequesterAsApprover: includeRequesterAsApprover
         };
 
         // 사업 구분별 데이터 추가
@@ -710,76 +740,119 @@ function PurchaseRequestCreatePage() {
                         </Grid>
                         {/* 사업 담당자 Autocomplete 추가 */}
                         <Grid item xs={6}>
-                            <Autocomplete
-                                id="business-manager-select"
-                                options={departmentMembers}
-                                getOptionLabel={(option) => `${option.name} (${option.position ? option.position.name : '직급없음'})`}
-                                isOptionEqualToValue={(option, value) => option.id === value.id}
-                                value={selectedManager}
-                                onChange={(event, newValue) => {
-                                    setSelectedManager(newValue);
-                                }}
-                                disabled={!selectedDepartment}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="사업 담당자 *"
-                                        required
-                                        helperText={!selectedDepartment ? "먼저 사업 부서를 선택해주세요" : ""}
-                                    />
-                                )}
-                            />
+                         <Autocomplete
+                           id="business-manager-select"
+                           options={departmentMembers}
+                           getOptionLabel={(option) => `${option.name} (${option.position ? option.position.name : '직급없음'})`}
+                           isOptionEqualToValue={(option, value) => option.id === value.id}
+                           value={selectedManager}
+                           onChange={(event, newValue) => {
+                             setSelectedManager(newValue);
+                           }}
+                           disabled={!selectedDepartment}
+                           renderInput={(params) => (
+                             <TextField
+                               {...params}
+                               label="사업 담당자 *"
+                               required
+                               helperText={!selectedDepartment ? "먼저 사업 부서를 선택해주세요" : ""}
+                             />
+                           )}
+                         />
                         </Grid>
                         <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel id="business-type-label">사업 구분 *</InputLabel>
-                                <Select
-                                    labelId="business-type-label"
-                                    value={businessType}
-                                    onChange={(e) => setBusinessType(e.target.value)}
-                                    required
-                                >
-                                    <MenuItem value="SI">SI</MenuItem>
-                                    <MenuItem value="MAINTENANCE">유지보수</MenuItem>
-                                    <MenuItem value="GOODS">물품</MenuItem>
-                                </Select>
-                            </FormControl>
+                         <FormControl fullWidth>
+                           <InputLabel id="business-type-label">사업 구분 *</InputLabel>
+                           <Select
+                             labelId="business-type-label"
+                             value={businessType}
+                             onChange={(e) => setBusinessType(e.target.value)}
+                             required
+                           >
+                             <MenuItem value="SI">SI</MenuItem>
+                             <MenuItem value="MAINTENANCE">유지보수</MenuItem>
+                             <MenuItem value="GOODS">물품</MenuItem>
+                           </Select>
+                         </FormControl>
+                        </Grid>
+
+                        {/* 결재선 템플릿 선택 */}
+                        <Grid item xs={6}>
+                         <FormControl fullWidth>
+                           <InputLabel id="approval-template-label">결재선 템플릿</InputLabel>
+                           <Select
+                             labelId="approval-template-label"
+                             id="approval-template-select"
+                             value={selectedTemplateId}
+                             onChange={(e) => setSelectedTemplateId(e.target.value)}
+                             label="결재선 템플릿"
+                           >
+                             <MenuItem value="">자동 결재선 생성</MenuItem>
+                             {approvalTemplates.map((template) => (
+                               <MenuItem key={template.id} value={template.id}>
+                                 {template.name}
+                               </MenuItem>
+                             ))}
+                           </Select>
+                           <FormHelperText>
+                             템플릿을 선택하지 않으면 자동으로 결재선이 생성됩니다.
+                           </FormHelperText>
+                         </FormControl>
+                        </Grid>
+
+                        {/* 기안자 결재선 포함 옵션 */}
+                        <Grid item xs={6}>
+                         <FormControlLabel
+                           control={
+                             <Checkbox
+                               checked={includeRequesterAsApprover}
+                               onChange={(e) => setIncludeRequesterAsApprover(e.target.checked)}
+                               name="includeRequesterAsApprover"
+                               color="primary"
+                             />
+                           }
+                           label="기안자를 결재선에 포함 (자동 승인 처리)"
+                         />
+                         <FormHelperText>
+                           기안자를 결재선의 첫 단계로 포함시키고 자동 승인 처리합니다.
+                         </FormHelperText>
+                        </Grid>
+
+                        <Grid item xs={6}>
+                         <TextField
+                           fullWidth
+                           label="사업 예산"
+                           name="businessBudget"
+                           value={businessBudget}
+                           onChange={(e) => setBusinessBudget(e.target.value.replace(/[^0-9]/g, ''))}
+                           InputProps={{
+                             startAdornment: <InputAdornment position="start">₩</InputAdornment>,
+                             inputProps: { maxLength: 15 }
+                           }}
+                         />
                         </Grid>
                         <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="사업 예산"
-                                name="businessBudget"
-                                value={businessBudget}
-                                onChange={(e) => setBusinessBudget(e.target.value.replace(/[^0-9]/g, ''))}
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start">₩</InputAdornment>,
-                                    inputProps: { maxLength: 15 }
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="담당자 핸드폰"
-                                name="managerPhoneNumber"
-                                value={managerPhoneNumber}
-                                onChange={(e) => setManagerPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start">+82</InputAdornment>
-                                }}
-                            />
+                         <TextField
+                           fullWidth
+                           label="담당자 핸드폰"
+                           name="managerPhoneNumber"
+                           value={managerPhoneNumber}
+                           onChange={(e) => setManagerPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                           InputProps={{
+                             startAdornment: <InputAdornment position="start">+82</InputAdornment>
+                           }}
+                         />
                         </Grid>
                         <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="특이 사항"
-                                name="specialNotes"
-                                multiline
-                                rows={4}
-                                value={specialNotes}
-                                onChange={(e) => setSpecialNotes(e.target.value)}
-                            />
+                         <TextField
+                           fullWidth
+                           label="특이 사항"
+                           name="specialNotes"
+                           multiline
+                           rows={4}
+                           value={specialNotes}
+                           onChange={(e) => setSpecialNotes(e.target.value)}
+                         />
                         </Grid>
 
                         {/* 동적 필드 렌더링 */}
@@ -787,62 +860,62 @@ function PurchaseRequestCreatePage() {
 
                         {/* 파일 첨부 */}
                         <Grid item xs={12}>
-                            <input
-                                type="file"
-                                multiple
-                                onChange={(e) => setAttachments(Array.from(e.target.files))}
-                                id="file-upload"
-                                style={{ display: 'none' }}
-                            />
-                            <label htmlFor="file-upload">
-                                <Button variant="outlined" component="span" startIcon={<AttachFileIcon />}>
-                                    파일 첨부
-                                </Button>
-                            </label>
-                            {attachments.length > 0 && (
-                                <>
-                                    {attachments.map((file, index) => (
-                                        <List key={index} sx={{ mt: 2 }}>
-                                            <ListItem>
-                                                <ListItemAvatar>
-                                                    <Avatar><AttachFileIcon /></Avatar>
-                                                </ListItemAvatar>
-                                                <ListItemText
-                                                    primary={file.name}
-                                                    secondary={`${(file.size / 1024).toFixed(2)} KB`}
-                                                />
-                                                {/* 삭제 버튼 */}
-                                                <IconButton edge="end" aria-label="delete" onClick={() => {
-                                                    const newFiles = [...attachments];
-                                                    newFiles.splice(index, 1);
-                                                    setAttachments(newFiles);
-                                                }}>
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </ListItem>
-                                        </List>
-                                    ))}
-                                </>
-                            )}
+                         <input
+                           type="file"
+                           multiple
+                           onChange={(e) => setAttachments(Array.from(e.target.files))}
+                           id="file-upload"
+                           style={{ display: 'none' }}
+                         />
+                         <label htmlFor="file-upload">
+                           <Button variant="outlined" component="span" startIcon={<AttachFileIcon />}>
+                             파일 첨부
+                           </Button>
+                         </label>
+                         {attachments.length > 0 && (
+                           <>
+                             {attachments.map((file, index) => (
+                               <List key={index} sx={{ mt: 2 }}>
+                                 <ListItem>
+                                   <ListItemAvatar>
+                                     <Avatar><AttachFileIcon /></Avatar>
+                                   </ListItemAvatar>
+                                   <ListItemText
+                                     primary={file.name}
+                                     secondary={`${(file.size / 1024).toFixed(2)} KB`}
+                                   />
+                                   {/* 삭제 버튼 */}
+                                   <IconButton edge="end" aria-label="delete" onClick={() => {
+                                     const newFiles = [...attachments];
+                                     newFiles.splice(index, 1);
+                                     setAttachments(newFiles);
+                                   }}>
+                                     <DeleteIcon />
+                                   </IconButton>
+                                 </ListItem>
+                               </List>
+                             ))}
+                           </>
+                         )}
                         </Grid>
 
                         {/* 제출 버튼 */}
                         <Grid item xs={12} sx={{ textAlign: 'right' }}>
-                            <Button
-                                type="submit"
-                                variant="contained"
-                                color="primary"
-                                size="large"
-                                sx={{ mt: 2 }}
-                            >
-                                제출하기
-                            </Button>
+                         <Button
+                           type="submit"
+                           variant="contained"
+                           color="primary"
+                           size="large"
+                           sx={{ mt: 2 }}
+                         >
+                           제출하기
+                         </Button>
                         </Grid>
-                    </Grid>
-                </Paper>
-            </Box>
-        </LocalizationProvider>
-    );
-}
+                        </Grid>
+                        </Paper>
+                        </Box>
+                        </LocalizationProvider>
+                        );
+                        }
 
-export default PurchaseRequestCreatePage;
+                        export default PurchaseRequestCreatePage;

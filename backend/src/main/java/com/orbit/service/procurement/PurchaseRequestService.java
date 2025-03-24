@@ -75,8 +75,10 @@ public class PurchaseRequestService {
 
     /**
      * 구매 요청 생성 (핵심 로직)
+     *
+     * 구매 요청 생성 시 결재선 템플릿을 선택하거나 자동 생성할 수 있으며,
+     * 기안자를 결재선에 포함시킬지 여부도 선택 가능합니다.
      */
-    // createPurchaseRequest 메소드 수정
     @Transactional
     public PurchaseRequestDTO createPurchaseRequest(PurchaseRequestDTO purchaseRequestDTO, MultipartFile[] files) {
         // 1. DTO -> Entity 변환
@@ -118,12 +120,41 @@ public class PurchaseRequestService {
             processGoodsRequestItems((GoodsRequest) savedRequest, (GoodsRequestDTO) purchaseRequestDTO);
         }
 
-        // 8. 결재선 자동 생성
-        approvalLineService.createAutoApprovalLine(
-                ApprovalLineCreateDTO.builder()
-                        .purchaseRequestId(savedRequest.getId())
-                        .build()
-        );
+        // 8. 결재선 생성 방식 결정
+        if (purchaseRequestDTO.getApprovalTemplateId() != null) {
+            try {
+                log.info("템플릿 기반 결재선 생성. 템플릿 ID: {}, 기안자 포함 여부: {}",
+                        purchaseRequestDTO.getApprovalTemplateId(),
+                        purchaseRequestDTO.isIncludeRequesterAsApprover());
+
+                // 템플릿 기반 결재선 생성
+                approvalLineService.createApprovalLineFromTemplate(
+                        ApprovalLineCreateDTO.builder()
+                                .purchaseRequestId(savedRequest.getId())
+                                .templateId(purchaseRequestDTO.getApprovalTemplateId())
+                                .includeRequesterAsApprover(purchaseRequestDTO.isIncludeRequesterAsApprover())
+                                .build()
+                );
+            } catch (Exception e) {
+                log.error("템플릿 기반 결재선 생성 실패: {}", e.getMessage());
+
+                // 템플릿 기반 생성 실패 시 자동 결재선 생성으로 폴백
+                log.info("자동 결재선 생성으로 전환 (폴백)");
+                approvalLineService.createAutoApprovalLine(
+                        ApprovalLineCreateDTO.builder()
+                                .purchaseRequestId(savedRequest.getId())
+                                .build()
+                );
+            }
+        } else {
+            // 자동 결재선 생성 (기존 로직)
+            log.info("자동 결재선 생성");
+            approvalLineService.createAutoApprovalLine(
+                    ApprovalLineCreateDTO.builder()
+                            .purchaseRequestId(savedRequest.getId())
+                            .build()
+            );
+        }
 
         return convertToDto(savedRequest);
     }

@@ -3,7 +3,9 @@ package com.orbit.controller.approval;
 import com.orbit.dto.approval.ApprovalLineCreateDTO;
 import com.orbit.dto.approval.ApprovalLineResponseDTO;
 import com.orbit.dto.approval.ApprovalProcessDTO;
+import com.orbit.dto.approval.ApprovalTemplateDTO;
 import com.orbit.service.procurement.ApprovalLineService;
+import com.orbit.service.procurement.ApprovalTemplateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,6 +20,7 @@ import java.util.List;
 public class ApprovalController {
 
     private final ApprovalLineService approvalLineService;
+    private final ApprovalTemplateService approvalTemplateService;
 
     @PostMapping
     public ResponseEntity<ApprovalLineResponseDTO> createApprovalLine(
@@ -59,5 +62,35 @@ public class ApprovalController {
     public ResponseEntity<List<ApprovalLineResponseDTO>> getCompletedApprovals() {
         List<ApprovalLineResponseDTO> completedApprovals = approvalLineService.getCompletedApprovals();
         return ResponseEntity.ok(completedApprovals);
+    }
+
+    /**
+     * 활성화된 결재선 템플릿 목록 조회
+     */
+    @GetMapping("/templates")
+    public ResponseEntity<List<ApprovalTemplateDTO>> getAvailableTemplates() {
+        List<ApprovalTemplateDTO> templates = approvalTemplateService.getActiveTemplates();
+        return ResponseEntity.ok(templates);
+    }
+
+    /**
+     * 템플릿 기반 결재선 생성
+     */
+    @PostMapping("/from-template")
+    public ResponseEntity<ApprovalLineResponseDTO> createApprovalLineFromTemplate(
+            @Valid @RequestBody ApprovalLineCreateDTO dto) {
+        ApprovalLineResponseDTO createdLine = approvalLineService.createApprovalLineFromTemplate(dto);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(createdLine);
+    }
+
+    /**
+     * 템플릿 상세 정보 조회
+     */
+    @GetMapping("/templates/{id}")
+    public ResponseEntity<ApprovalTemplateDTO> getTemplateDetail(@PathVariable Long id) {
+        ApprovalTemplateDTO template = approvalTemplateService.getTemplateById(id);
+        return ResponseEntity.ok(template);
     }
 }
