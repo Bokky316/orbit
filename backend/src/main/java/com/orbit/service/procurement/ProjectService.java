@@ -374,6 +374,42 @@ public class ProjectService {
         }
         projectPeriod.setStartDate(dto.getProjectPeriod().getStartDate());
         projectPeriod.setEndDate(dto.getProjectPeriod().getEndDate());
+
+        // 프로젝트 상태 코드 업데이트 (추가)
+        if (dto.getBasicStatus() != null) {
+            setCodeForProject(project, dto.getBasicStatus(), true);
+        }
+    }
+
+    // 상태 코드 설정 메서드 추가
+    private void setCodeForProject(Project project, String statusCode, boolean isBasicStatus) {
+        try {
+            String[] parts = statusCode.split("-");
+            if (parts.length != 3) {
+                throw new IllegalArgumentException("잘못된 상태 코드 형식입니다: " + statusCode);
+            }
+
+            // 1. ParentCode 조회
+            ParentCode parentCode = parentCodeRepository.findByEntityTypeAndCodeGroup(parts[0], parts[1])
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "ParentCode(" + parts[0] + ", " + parts[1] + ")를 찾을 수 없습니다."));
+
+            // 2. ChildCode 조회
+            ChildCode childCode = childCodeRepository.findByParentCodeAndCodeValue(parentCode, parts[2])
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "ChildCode(" + parts[2] + ")를 찾을 수 없습니다."));
+
+            // 3. 프로젝트에 코드 설정
+            if (isBasicStatus) {
+                project.setBasicStatusParent(parentCode);
+                project.setBasicStatusChild(childCode);
+            } else {
+                project.setProcurementStatusParent(parentCode);
+                project.setProcurementStatusChild(childCode);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("상태 코드 설정 중 오류 발생: " + e.getMessage(), e);
+        }
     }
 
     /**

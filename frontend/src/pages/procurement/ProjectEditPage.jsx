@@ -52,6 +52,7 @@ function ProjectEditPage() {
     const [remarks, setRemarks] = useState('');
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+    const [projectStatus, setProjectStatus] = useState(''); // 프로젝트 상태 추가
 
     // 부서 및 멤버 관련 상태
     const [departments, setDepartments] = useState([]);
@@ -62,6 +63,7 @@ function ProjectEditPage() {
     // 예산 코드와 사업 유형을 위한 공통 코드 상태
     const [budgetCodes, setBudgetCodes] = useState([]);
     const [businessCategories, setBusinessCategories] = useState([]);
+    const [statusCodes, setStatusCodes] = useState([]); // 상태 코드 추가
 
     // 첨부 파일 상태
     const [existingAttachments, setExistingAttachments] = useState([]);
@@ -87,6 +89,7 @@ function ProjectEditPage() {
                 setTotalBudget(projectData.totalBudget ? projectData.totalBudget.toString() : '');
                 setBudgetCode(projectData.budgetCode || '');
                 setRemarks(projectData.remarks || '');
+                setProjectStatus(projectData.basicStatus || ''); // 상태 설정
 
                 // 날짜 데이터 설정
                 if (projectData.projectPeriod) {
@@ -166,10 +169,26 @@ function ProjectEditPage() {
             }
         };
 
+        // 프로젝트 상태 코드 가져오기
+        const fetchStatusCodes = async () => {
+            try {
+                const response = await fetchWithAuth(`${API_URL}common-codes/PROJECT/BASIC_STATUS`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setStatusCodes(data);
+                } else {
+                    console.error('프로젝트 상태 코드를 가져오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('프로젝트 상태 코드 조회 중 오류 발생:', error);
+            }
+        };
+
         if (!loading && project) {
             fetchDepartments();
             fetchBudgetCodes();
             fetchBusinessCategories();
+            fetchStatusCodes(); // 상태 코드 조회 추가
         }
     }, [project, loading]);
 
@@ -238,7 +257,7 @@ function ProjectEditPage() {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
-            basicStatus: project.basicStatus,
+            basicStatus: projectStatus ? `PROJECT-BASIC_STATUS-${projectStatus}` :  '',
             requestDepartment: selectedDepartment ? selectedDepartment.name : '',
             requestDepartmentId: selectedDepartment ? selectedDepartment.id : null,
             requesterName: selectedManager ? selectedManager.name : null,
@@ -339,6 +358,25 @@ function ProjectEditPage() {
                                 onChange={(e) => setProjectName(e.target.value)}
                                 required
                             />
+                        </Grid>
+
+                        {/* 프로젝트 상태 드롭다운 추가 */}
+                        <Grid item xs={6}>
+                            <FormControl fullWidth>
+                                <InputLabel id="project-status-label">프로젝트 상태</InputLabel>
+                                <Select
+                                    labelId="project-status-label"
+                                    value={projectStatus}
+                                    label="프로젝트 상태"
+                                    onChange={(e) => setProjectStatus(e.target.value)}
+                                >
+                                    {statusCodes.map(status => (
+                                        <MenuItem key={status.id} value={status.codeValue}>
+                                            {status.codeName}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Grid>
 
                         {/* 사업 유형 드롭다운 */}

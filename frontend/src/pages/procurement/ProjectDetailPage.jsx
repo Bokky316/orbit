@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { deleteProject } from '@/redux/projectSlice';
+import { styled } from '@mui/material/styles';
 import {
     Box,
     Typography,
@@ -22,18 +23,65 @@ import {
     Link,
     Divider
 } from '@mui/material';
-import { AttachFile as AttachFileIcon } from '@mui/icons-material';
+import {
+    AttachFile as AttachFileIcon,
+    Add as AddIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon
+} from '@mui/icons-material';
 
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { API_URL } from '@/utils/constants';
-import { formatDate } from '@/utils/dateUtils'; // 날짜 포맷 유틸리티 추가
+import { formatDate } from '@/utils/dateUtils';
 
-// 상태 표시용 칩 스타일
-const statusChipStyle = {
-    margin: '2px',
-    fontWeight: 'bold',
-    minWidth: '80px'
-};
+// 상태 칩 스타일 커스터마이징
+const StatusChip = styled(Chip)(({ theme, statuscode }) => {
+    // statuscode 소문자로 변환하여 비교
+    const status = String(statuscode).toLowerCase();
+
+    // 상태별 색상 지정
+    let color = theme.palette.grey[500]; // 기본값
+
+    if (status.includes('approved') || status.includes('승인')) {
+        color = theme.palette.success.main;
+    } else if (status.includes('rejected') || status.includes('반려')) {
+        color = theme.palette.error.main;
+    } else if (status.includes('requested') || status.includes('요청')) {
+        color = theme.palette.info.main;
+    } else if (status.includes('received') || status.includes('접수')) {
+        color = theme.palette.primary.main;
+    } else if (status.includes('vendor_selection') || status.includes('업체')) {
+        color = theme.palette.secondary.main;
+    } else if (status.includes('contract_pending') || status.includes('계약')) {
+        color = theme.palette.warning.light;
+    } else if (status.includes('inspection') || status.includes('검수')) {
+        color = theme.palette.warning.main;
+    } else if (status.includes('invoice') || status.includes('인보이스')) {
+        color = theme.palette.info.dark;
+    } else if (status.includes('payment') || status.includes('지급')) {
+        color = theme.palette.success.dark;
+    } else if (status.includes('registered') || status.includes('등록')) {
+        color = theme.palette.info.light;
+    } else if (status.includes('reregistered') || status.includes('정정등록')) {
+        color = theme.palette.info.light;
+    }
+
+    return {
+        backgroundColor: color,
+        color: theme.palette.getContrastText(color),
+        fontWeight: 'bold',
+        minWidth: '80px'
+    };
+});
+
+// 클릭 가능한 텍스트 스타일링
+const ClickableCell = styled(TableCell)(({ theme }) => ({
+    cursor: 'pointer',
+    '&:hover': {
+        textDecoration: 'underline',
+        color: theme.palette.primary.main,
+    },
+}));
 
 function ProjectDetailPage() {
     const dispatch = useDispatch();
@@ -86,12 +134,101 @@ function ProjectDetailPage() {
         fetchData();
     }, [id]);
 
+    // 상태 코드 추출 함수 (프로젝트용)
+    const extractProjectStatusCode = (project) => {
+        if (!project || !project.basicStatus) return 'UNKNOWN';
+
+        // 상태 코드 추출 (예: PROJECT-STATUS-REGISTERED => REGISTERED)
+        const parts = project.basicStatus.split('-');
+        if (parts.length >= 3) {
+            return parts[2]; // 세 번째 부분이 실제 상태 코드
+        }
+        return project.basicStatus;
+    };
+
+    // 상태 코드 추출 함수 (구매요청용)
+    const extractStatusCode = (request) => {
+        // 1. prStatusChild가 있으면 그대로 사용
+        if (request.prStatusChild) {
+            return request.prStatusChild;
+        }
+
+        // 2. status_child_code가 있으면 사용
+        if (request.status_child_code) {
+            return request.status_child_code;
+        }
+
+        // 3. status 문자열이 있으면 파싱해서 childCode 부분 추출
+        if (request.status) {
+            const parts = request.status.split('-');
+            // 마지막 부분이 상태 코드일 가능성이 높음
+            if (parts.length >= 2) {
+                return parts[parts.length - 1]; // 마지막 부분 반환
+            }
+        }
+
+        // 4. 기본값 반환
+        return "REQUESTED"; // 기본 상태
+    };
+
+    // 프로젝트 상태 라벨 가져오기
+    const getProjectStatusLabel = (statusCode) => {
+        switch(statusCode) {
+            case 'REGISTERED': return '등록';
+            case 'REREGISTERED': return '정정등록';
+            case 'IN_PROGRESS': return '진행중';
+            case 'COMPLETED': return '완료';
+            case 'CANCELLED': return '취소';
+            default: return statusCode || '상태 정보 없음';
+        }
+    };
+
+    // 구매요청 상태 라벨 가져오기
+    const getPurchaseStatusLabel = (statusCode) => {
+        switch(statusCode) {
+            case 'REQUESTED': return '구매 요청';
+            case 'RECEIVED': return '요청 접수';
+            case 'VENDOR_SELECTION': return '업체 선정';
+            case 'CONTRACT_PENDING': return '계약 대기';
+            case 'INSPECTION': return '검수 진행';
+            case 'INVOICE_ISSUED': return '인보이스 발행';
+            case 'PAYMENT_COMPLETED': return '대금지급 완료';
+            default: return statusCode || '상태 정보 없음';
+        }
+    };
+
+    // 비즈니스 유형 한글 표시
+    const getBusinessTypeLabel = (type) => {
+        switch(type) {
+            case 'SI': return 'SI';
+            case 'MAINTENANCE': return '유지보수';
+            case 'IMPLEMENTATION': return '구축';
+            case 'CONSULTING': return '컨설팅';
+            case 'OUTSOURCING': return '아웃소싱';
+            case 'OTHER': return '기타';
+            default: return type || '정보 없음';
+        }
+    };
+
+    // 예산 코드 한글 표시
+    const getBudgetCodeLabel = (code) => {
+        switch(code) {
+            case 'R_AND_D': return '연구개발';
+            case 'CAPEX': return '자본적지출';
+            case 'OPEX': return '운영비용';
+            case 'MARKETING': return '마케팅';
+            case 'TRAINING': return '교육훈련';
+            case 'OTHER': return '기타';
+            default: return code || '정보 없음';
+        }
+    };
+
     // 프로젝트가 수정 가능한지 확인하는 함수
     const canEditProject = () => {
         if (!project || !project.basicStatus) return false;
 
         // 상태 코드 추출
-        const statusCode = project.basicStatus.split('-')[2];
+        const statusCode = extractProjectStatusCode(project);
 
         // '등록' 또는 '정정등록' 상태일 때만 수정 가능
         return statusCode === 'REGISTERED' || statusCode === 'REREGISTERED';
@@ -102,7 +239,7 @@ function ProjectDetailPage() {
         if (!project || !project.basicStatus) return false;
 
         // 상태 코드 추출
-        const statusCode = project.basicStatus.split('-')[2];
+        const statusCode = extractProjectStatusCode(project);
 
         // '등록' 또는 '정정등록' 상태이고, 연결된 구매요청이 없을 때만 삭제 가능
         return (statusCode === 'REGISTERED' || statusCode === 'REREGISTERED') &&
@@ -119,6 +256,11 @@ function ProjectDetailPage() {
         } catch (err) {
             alert(`삭제 오류: ${err}`);
         }
+    };
+
+    // 구매요청 상세 페이지로 이동하는 함수
+    const navigateToPurchaseRequest = (requestId) => {
+        navigate(`/purchase-requests/${requestId}`);
     };
 
     // 첨부파일 다운로드 함수
@@ -181,8 +323,53 @@ function ProjectDetailPage() {
     if (loading) return <Typography>로딩 중...</Typography>;
     if (error) return <Typography color="error">{error}</Typography>;
 
+    // 프로젝트 상태 코드 추출
+    const projectStatusCode = extractProjectStatusCode(project);
+    // 프로젝트 상태 라벨 가져오기
+    const projectStatusLabel = getProjectStatusLabel(projectStatusCode);
+
     return (
         <Box sx={{ p: 4 }}>
+            {/* 상단 헤더 및 상태 표시 */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="h4">{project.projectName}</Typography>
+                    <StatusChip
+                        label={projectStatusLabel}
+                        statuscode={projectStatusCode}
+                    />
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {canEditProject() && (
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<EditIcon />}
+                            onClick={() => navigate(`/projects/edit/${id}`)}
+                        >
+                            수정
+                        </Button>
+                    )}
+                    {canDeleteProject() && (
+                        <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={handleDelete}
+                        >
+                            삭제
+                        </Button>
+                    )}
+                    <Button
+                        variant="outlined"
+                        onClick={() => navigate('/projects')}
+                    >
+                        목록
+                    </Button>
+                </Box>
+            </Box>
+
             {/* 기본 정보 섹션 */}
             <Paper sx={{ p: 3, mb: 3 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>기본 정보</Typography>
@@ -198,38 +385,24 @@ function ProjectDetailPage() {
                         <Typography><strong>요청 부서:</strong> {project.requestDepartment || '정보 없음'}</Typography>
                     </Grid>
                     <Grid item xs={4}>
-                        <Typography><strong>기본 상태:</strong></Typography>
-                        <Chip
-                            label={project.basicStatus ? project.basicStatus.split('-')[2] : '미설정'}
-                            sx={{...statusChipStyle, backgroundColor: '#e3f2fd'}}
-                        />
+                        <Typography><strong>사업 유형:</strong> {getBusinessTypeLabel(project.businessCategory || '')}</Typography>
+                        <Typography><strong>총 예산:</strong> {project.totalBudget ? project.totalBudget.toLocaleString() + ' 원' : '정보 없음'}</Typography>
+                        <Typography><strong>예산 코드:</strong> {getBudgetCodeLabel(project.budgetCode || '')}</Typography>
                     </Grid>
                 </Grid>
             </Paper>
 
             {/* 상세 정보 섹션 */}
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>상세 정보</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                        <Typography><strong>사업 유형:</strong> {project.businessCategory || '정보 없음'}</Typography>
-                        <Typography><strong>총 예산:</strong> {project.totalBudget ? project.totalBudget.toLocaleString() + ' 원' : '정보 없음'}</Typography>
-                        <Typography><strong>예산 코드:</strong> {project.budgetCode || '정보 없음'}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                        <Typography><strong>특이 사항:</strong></Typography>
-                        <Typography sx={{ whiteSpace: 'pre-line' }}>
-                            {project.remarks || '없음'}
-                        </Typography>
-                    </Grid>
-                </Grid>
+                <Typography variant="h6" sx={{ mb: 2 }}>특이 사항</Typography>
+                <Typography sx={{ whiteSpace: 'pre-line' }}>
+                    {project.remarks || '없음'}
+                </Typography>
             </Paper>
 
             {/* 첨부 파일 섹션 */}
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6">첨부 파일</Typography>
-                </Box>
+                <Typography variant="h6" sx={{ mb: 2 }}>첨부 파일</Typography>
 
                 {project.attachments && project.attachments.length > 0 ? (
                     <List>
@@ -259,7 +432,17 @@ function ProjectDetailPage() {
 
             {/* 연관 구매 요청 테이블 */}
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>관련 구매 요청</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6">관련 구매 요청</Typography>
+                    <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<AddIcon />}
+                        onClick={() => navigate('/purchase-requests/new', { state: { projectId: id } })}
+                    >
+                        구매 요청 생성
+                    </Button>
+                </Box>
                 <TableContainer>
                     <Table>
                         <TableHead>
@@ -268,68 +451,45 @@ function ProjectDetailPage() {
                                 <TableCell>유형</TableCell>
                                 <TableCell>요청명</TableCell>
                                 <TableCell>상태</TableCell>
-                                <TableCell>액션</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {purchaseRequests.length > 0 ? (
-                                purchaseRequests.map(req => (
-                                    <TableRow key={req.id}>
-                                        <TableCell>{req.requestNumber}</TableCell>
-                                        <TableCell>{req.businessType}</TableCell>
-                                        <TableCell>{req.requestName}</TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                label={req.status ? req.status.split('-')[2] : '미설정'}
-                                                sx={statusChipStyle}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                size="small"
-                                                onClick={() => navigate(`/purchase-requests/${req.id}`)}
+                                purchaseRequests.map(req => {
+                                    // 상태 코드 추출
+                                    const statusCode = extractStatusCode(req);
+                                    // 상태 라벨 가져오기
+                                    const statusLabel = getPurchaseStatusLabel(statusCode);
+                                    // 비즈니스 유형 라벨 가져오기
+                                    const businessTypeLabel = getBusinessTypeLabel(req.businessType);
+
+                                    return (
+                                        <TableRow key={req.id}>
+                                            <TableCell>{req.requestNumber || req.id}</TableCell>
+                                            <TableCell>{businessTypeLabel}</TableCell>
+                                            <ClickableCell
+                                                onClick={() => navigateToPurchaseRequest(req.id)}
                                             >
-                                                상세보기
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                                {req.requestName}
+                                            </ClickableCell>
+                                            <TableCell>
+                                                <StatusChip
+                                                    label={statusLabel}
+                                                    statuscode={statusCode}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} align="center">관련 구매 요청이 없습니다.</TableCell>
+                                    <TableCell colSpan={4} align="center">관련 구매 요청이 없습니다.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                     </Table>
                 </TableContainer>
             </Paper>
-
-            {/* 액션 버튼 그룹 */}
-            <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                {canEditProject() && (
-                    <Button
-                        variant="contained"
-                        onClick={() => navigate(`/projects/edit/${id}`)}
-                    >
-                        수정
-                    </Button>
-                )}
-                {canDeleteProject() && (
-                    <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={handleDelete}
-                    >
-                        삭제
-                    </Button>
-                )}
-                <Button
-                    variant="outlined"
-                    onClick={() => navigate('/projects')}
-                >
-                    목록
-                </Button>
-            </Box>
         </Box>
     );
 }
