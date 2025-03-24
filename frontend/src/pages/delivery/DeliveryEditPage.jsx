@@ -4,8 +4,6 @@ import { useSelector } from "react-redux";
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Container,
   Grid,
   TextField,
@@ -19,15 +17,45 @@ import {
   Paper,
   CircularProgress,
   Divider,
-  Alert
+  Alert,
+  Chip
 } from "@mui/material";
+import { styled } from '@mui/material/styles';
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterMoment } from "@mui/x-date-pickers/AdapterMoment";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from "@mui/icons-material";
+import {
+  ArrowBack as ArrowBackIcon,
+  Save as SaveIcon
+} from "@mui/icons-material";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { API_URL } from "@/utils/constants";
 import moment from "moment";
+
+// 스타일 컴포넌트
+const InfoRow = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  margin: theme.spacing(1, 0),
+  '& .label': {
+    width: '30%',
+    fontWeight: 500,
+    color: theme.palette.text.secondary
+  },
+  '& .value': {
+    width: '70%'
+  }
+}));
+
+const SectionTitle = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  margin: theme.spacing(2, 0, 1)
+}));
+
+// 금액 형식 변환 함수
+const formatCurrency = (amount) => {
+  if (!amount) return '0원';
+  return new Intl.NumberFormat('ko-KR').format(amount) + '원';
+};
 
 const DeliveryEditPage = () => {
   const { id } = useParams();
@@ -182,19 +210,16 @@ const DeliveryEditPage = () => {
   }
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mt: 4, mb: 4 }}>
-        {/* 헤더 영역 */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-          <Typography variant="h4" component="h1">
-            입고 정보 수정
-          </Typography>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
+      <form onSubmit={handleSubmit}>
+        {/* 상단 네비게이션 */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 3 }}>
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
             onClick={handleCancel}
           >
-            취소
+            입고 상세로 돌아가기
           </Button>
         </Box>
 
@@ -202,172 +227,168 @@ const DeliveryEditPage = () => {
           입고일, 담당자, 비고 정보만 수정 가능합니다. 다른 정보를 수정하려면 입고를 삭제 후 다시 등록해주세요.
         </Alert>
 
-        <Card>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              <Grid container spacing={3}>
-                {/* 입고 기본 정보 */}
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    입고 기본 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
+        {/* 입고 제목 및 상태 */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h5" component="h1">
+              입고 번호 : {delivery.deliveryNumber}
+            </Typography>
+            <Chip
+              label="수정 중"
+              color="warning"
+              size="medium"
+              sx={{ fontSize: '1rem', fontWeight: 'bold' }}
+            />
+          </Box>
 
-                  <Card variant="outlined" sx={{ bgcolor: "#f9f9f9" }}>
-                    <CardContent>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            입고번호
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.deliveryNumber || "-"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            발주번호
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.orderNumber || "-"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            공급업체명
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.supplierName || "-"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            총액
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {delivery.totalAmount ? delivery.totalAmount.toLocaleString() + " 원" : "-"}
-                          </Typography>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Card>
-                </Grid>
+          <Box sx={{ display: 'flex', mt: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', mr: 4, alignItems: 'center' }}>
+              <Typography sx={{ fontWeight: 500, color: 'text.secondary', mr: 1 }}>담당자:</Typography>
+              <TextField
+                value={receiverName}
+                onChange={(e) => setReceiverName(e.target.value)}
+                size="small"
+                required
+                variant="standard"
+                sx={{ minWidth: 150 }}
+              />
+            </Box>
+          </Box>
+        </Paper>
 
-                {/* 품목 정보 테이블 */}
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                    품목 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
+        {/* 기본 정보 - 수정 가능 필드 통합 */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <SectionTitle variant="h6">기본 정보</SectionTitle>
+          <Divider sx={{ mb: 2 }} />
 
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell width="10%" align="center">품목ID</TableCell>
-                          <TableCell width="10%" align="center">품목명</TableCell>
-                          <TableCell width="10%" align="center">발주수량</TableCell>
-                          <TableCell width="10%" align="center">입고수량</TableCell>
-                          <TableCell width="10%" align="center">단가</TableCell>
-                          <TableCell width="10%" align="center">총액</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell align="center">{delivery.deliveryItemId || "-"}</TableCell>
-                          <TableCell align="center">{delivery.itemName || "-"}</TableCell>
-                          <TableCell align="center">{delivery.itemQuantity || "-"}</TableCell>
-                          <TableCell align="center">{delivery.itemQuantity || "-"}</TableCell>
-                          <TableCell align="center">
-                            {delivery.itemUnitPrice ? delivery.itemUnitPrice.toLocaleString() : "-"}
-                          </TableCell>
-                          <TableCell align="center">
-                            {delivery.totalAmount ? delivery.totalAmount.toLocaleString() : "-"}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Grid>
-
-                {/* 입고 정보 입력 영역 */}
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                    수정 가능한 정보
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <LocalizationProvider dateAdapter={AdapterMoment}>
-                    <DatePicker
-                      label="입고일"
-                      value={deliveryDate}
-                      onChange={(date) => setDeliveryDate(date)}
-                      format="YYYY-MM-DD"
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          required: true,
-                          helperText: "실제 입고된 날짜를 선택하세요",
-                        },
-                      }}
-                    />
-                  </LocalizationProvider>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="입고 담당자"
-                    value={receiverName}
-                    onChange={(e) => setReceiverName(e.target.value)}
-                    required
-                    helperText="입고를 처리한 담당자 이름을 입력하세요"
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <InfoRow>
+                <Typography className="label">발주 번호:</Typography>
+                <Typography className="value">{delivery.orderNumber || '-'}</Typography>
+              </InfoRow>
+              <InfoRow>
+                <Typography className="label">입고일:</Typography>
+                <LocalizationProvider dateAdapter={AdapterMoment}>
+                  <DatePicker
+                    value={deliveryDate}
+                    onChange={(date) => setDeliveryDate(date)}
+                    format="YYYY-MM-DD"
+                    slotProps={{
+                      textField: {
+                        size: "small",
+                        variant: "standard",
+                        sx: { width: '70%' }
+                      },
+                    }}
                   />
-                </Grid>
+                </LocalizationProvider>
+              </InfoRow>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <InfoRow>
+                <Typography className="label">공급업체명:</Typography>
+                <Typography className="value">{delivery.supplierName || '-'}</Typography>
+              </InfoRow>
+              <InfoRow>
+                <Typography className="label">입고 처리 시간:</Typography>
+                <Typography className="value">
+                  {delivery.createdAt ? moment(delivery.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                </Typography>
+              </InfoRow>
+            </Grid>
+          </Grid>
+        </Paper>
 
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="비고"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    multiline
-                    variant="filled"
-                    minRows={3}
-                    maxRows={6}
-                    helperText="추가 정보가 있으면 입력하세요"
-                    margin="normal"
-                  />
-                </Grid>
+        {/* 품목 정보 */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <SectionTitle variant="h6">품목 정보</SectionTitle>
+          <Divider sx={{ mb: 2 }} />
 
-                {/* 버튼 영역 */}
-                <Grid item xs={12}>
-                  <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      color="primary"
-                      disabled={submitting}
-                      sx={{ minWidth: 120 }}
-                    >
-                      {submitting ? <CircularProgress size={24} /> : "저장"}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={handleCancel}
-                      sx={{ minWidth: 120 }}
-                    >
-                      취소
-                    </Button>
-                  </Box>
-                </Grid>
-              </Grid>
-            </form>
-          </CardContent>
-        </Card>
-      </Box>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>품목ID</TableCell>
+                  <TableCell>품목명</TableCell>
+                  <TableCell>발주수량</TableCell>
+                  <TableCell>입고수량</TableCell>
+                  <TableCell>단가</TableCell>
+                  <TableCell>총액</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell>{delivery.deliveryItemId || "-"}</TableCell>
+                  <TableCell>{delivery.itemName || "-"}</TableCell>
+                  <TableCell>{delivery.itemQuantity || "-"}</TableCell>
+                  <TableCell>{delivery.itemQuantity || "-"}</TableCell>
+                  <TableCell>
+                    {formatCurrency(delivery.itemUnitPrice)}
+                  </TableCell>
+                  <TableCell>
+                    {formatCurrency(delivery.totalAmount)}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+
+        {/* 금액 요약 */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            borderRadius: 1,
+          }}>
+            <Typography variant="body1" sx={{ fontWeight: 500, color: 'primary.main' }}>
+              총액: <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+                {formatCurrency(delivery.totalAmount)}
+              </span>
+            </Typography>
+          </Box>
+        </Paper>
+
+        {/* 비고 */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
+          <SectionTitle variant="h6">비고</SectionTitle>
+          <Divider sx={{ mb: 2 }} />
+          <TextField
+            fullWidth
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            multiline
+            variant="filled"
+            minRows={3}
+            maxRows={6}
+            placeholder="추가 정보가 있으면 입력하세요"
+            margin="normal"
+          />
+        </Paper>
+
+        {/* 하단 버튼 영역 */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            startIcon={<SaveIcon />}
+            disabled={submitting}
+            sx={{ minWidth: 120 }}
+          >
+            {submitting ? <CircularProgress size={24} /> : "저장"}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleCancel}
+            sx={{ minWidth: 120 }}
+          >
+            취소
+          </Button>
+        </Box>
+      </form>
     </Container>
   );
 };
