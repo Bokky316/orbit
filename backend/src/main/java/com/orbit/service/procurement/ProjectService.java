@@ -543,4 +543,32 @@ public class ProjectService {
         }
     }
 
+    /**
+     * 첨부파일 삭제
+     */
+    @Transactional
+    public void deleteAttachment(Long attachmentId, String username) {
+        // 1. 첨부파일 조회
+        ProjectAttachment attachment = projectAttachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("ID " + attachmentId + "에 해당하는 첨부파일이 없습니다."));
+
+        // 2. 삭제 권한 확인 (프로젝트 요청자 또는 관리자, 또는 파일 업로더)
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        Project project = attachment.getProject();
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = project.getRequester() != null && project.getRequester().getId().equals(currentUser.getId());
+        boolean isUploader = attachment.getUploadedBy() != null && attachment.getUploadedBy().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester || isUploader)) {
+            throw new SecurityException("첨부파일 삭제 권한이 없습니다.");
+        }
+
+        // 3. 첨부파일 삭제 (DB에서만 삭제, 실제 파일은 보관)
+        projectAttachmentRepository.delete(attachment);
+
+        // 4. 프로젝트에서 첨부파일 참조 제거
+        project.getAttachments().remove(attachment);
+    }
 }

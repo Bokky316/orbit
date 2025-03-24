@@ -39,6 +39,9 @@ public class ApprovalTemplate {
     @Column(nullable = false)
     private boolean active;
 
+    @Column(name = "include_requester_by_default", nullable = false, columnDefinition = "boolean default false")
+    private boolean includeRequesterByDefault;
+
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ApprovalTemplateStep> steps = new ArrayList<>();
