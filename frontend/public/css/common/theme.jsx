@@ -337,6 +337,7 @@ const theme = createTheme({
             color: "#9CA3AF"
           }
         },
+        // 두 개의 outlined 키를 하나로 병합
         outlined: {
           "&:hover .MuiOutlinedInput-notchedOutline": {
             borderColor: "#FC8D4D"
@@ -344,11 +345,7 @@ const theme = createTheme({
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
             borderColor: "#FF7F3E",
             borderWidth: "1px"
-          }
-        },
-
-        // 텍스트 위치 추가 조정
-        outlined: {
+          },
           display: "flex",
           alignItems: "center",
           justifyContent: "flex-start",
