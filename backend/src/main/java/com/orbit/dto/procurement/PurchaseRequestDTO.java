@@ -73,4 +73,11 @@ public abstract class PurchaseRequestDTO {
 
     @Valid // GoodsRequestDTO에서만 사용
     private List<PurchaseRequestItemDTO> items; // 품목 목록 (GoodsRequestDTO에서만 사용)
+
+    // 결재선 템플릿 관련 필드 추가
+    @Schema(description = "선택한 결재선 템플릿 ID", example = "1")
+    private Long approvalTemplateId; // 선택한 결재선 템플릿 ID
+
+    @Schema(description = "기안자를 결재선에 포함할지 여부", example = "true", defaultValue = "false")
+    private boolean includeRequesterAsApprover; // 기안자를 결재선에 포함할지 여부
 }

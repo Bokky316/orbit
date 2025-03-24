@@ -164,7 +164,13 @@ public class SecurityConfig {
 
                 // 시스템 설정 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/settings/**").hasRole("ADMIN")
-                .requestMatchers("/api/common-codes/**").hasRole("ADMIN")
+
+                // READ 작업은 인증된 모든 사용자에게 허용
+                .requestMatchers(HttpMethod.GET, "/api/common-codes/**").authenticated()
+                // CUD 작업은 관리자만 허용
+                .requestMatchers(HttpMethod.POST, "/api/common-codes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/common-codes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/common-codes/**").hasRole("ADMIN")
 
                 // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
