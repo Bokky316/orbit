@@ -326,55 +326,66 @@ const PurchaseRequestDetailPage = () => {
 
     // 구매요청이 수정/삭제 가능한지 확인하는 함수 (개선된 버전)
     const canModifyRequest = () => {
-        // 상태 코드 추출 - extractStatusCode 함수 사용
-        const statusCode = extractStatusCode(request);
+      // 상태 코드 추출
+      const statusCode = extractStatusCode(request);
 
-        // 현재 사용자가 요청자인지 확인
-        const isRequester = currentUser && request.memberId === currentUser.id;
-        const isAdmin = currentUser && currentUser.role === 'ADMIN';
+      // 현재 사용자가 요청자인지 확인
+      const isRequester = currentUser && request.memberId === currentUser.id;
+      const isAdmin = currentUser && currentUser.role === 'ADMIN';
 
-        // 결재 상태 확인
-        const approvalStatus = getApprovalStatus();
+      // 결재 상태 확인
+      const approvalStatus = getApprovalStatus();
 
-        // 1. '구매 요청' 상태이거나
-        // 2. 결재가 1단계(자동 승인) 또는 2단계 검토중 상태이고
-        // 3. 사용자가 요청자이거나 관리자인 경우
-        return (statusCode === 'REQUESTED' ||
-                ['FIRST_LEVEL', 'SECOND_LEVEL_REVIEW'].includes(approvalStatus)) &&
-               (isRequester || isAdmin);
+      // 1. '구매 요청' 상태이거나
+      // 2. 결재가 진행 중이지만 최종 승인되지 않은 상태이고
+      // 3. 사용자가 요청자이거나 관리자인 경우
+      const isInReviewStatus = approvalStatus.includes('REVIEW') || approvalStatus === 'FIRST_LEVEL';
+      const isNotFullyApproved = approvalStatus !== 'FULLY_APPROVED';
+
+      return (statusCode === 'REQUESTED' ||
+              (isInReviewStatus && isNotFullyApproved)) &&
+             (isRequester || isAdmin);
     };
 
-    // 결재 상태 확인 함수
+    // 결재 상태 확인 함수 - 유연한 결재 단계를 지원하도록 수정
     const getApprovalStatus = () => {
-        if (!approvalLines || approvalLines.length === 0) {
-            return 'NO_APPROVAL';
-        }
+      if (!approvalLines || approvalLines.length === 0) {
+        return 'NO_APPROVAL';
+      }
 
-        // 1단계 결재 상태 확인
-        const firstLevel = approvalLines.find(line => line.step === 1);
-        if (!firstLevel || firstLevel.statusCode !== 'APPROVED') {
-            return 'FIRST_LEVEL';
-        }
+      // 단계별로 정렬된 결재선
+      const sortedLines = [...approvalLines].sort((a, b) => a.step - b.step);
 
-        // 2단계 결재 상태 확인
-        const secondLevel = approvalLines.find(line => line.step === 2);
-        if (!secondLevel) {
-            return 'NO_SECOND_LEVEL';
-        }
+      // 첫 번째 단계 결재 상태 확인
+      const firstLevel = sortedLines[0];
+      if (!firstLevel || firstLevel.statusCode !== 'APPROVED') {
+        return 'FIRST_LEVEL';
+      }
 
-        if (secondLevel.statusCode === 'IN_REVIEW' || secondLevel.statusCode === 'PENDING' || secondLevel.statusCode === 'REQUESTED') {
-            return 'SECOND_LEVEL_REVIEW';
-        }
+      // 마지막 단계 결재 상태 확인 (최종 승인 여부)
+      const lastLevel = sortedLines[sortedLines.length - 1];
+      if (lastLevel.statusCode === 'APPROVED') {
+        return 'FULLY_APPROVED';
+      }
 
-        if (secondLevel.statusCode === 'APPROVED') {
-            return 'SECOND_LEVEL_APPROVED';
-        }
+      // 현재 검토 중인 단계 찾기
+      const currentReviewIndex = sortedLines.findIndex(line =>
+        line.statusCode === 'IN_REVIEW' ||
+        line.statusCode === 'PENDING' ||
+        line.statusCode === 'REQUESTED'
+      );
 
-        if (secondLevel.statusCode === 'REJECTED') {
-            return 'SECOND_LEVEL_REJECTED';
-        }
+      if (currentReviewIndex !== -1) {
+        return `LEVEL_${currentReviewIndex + 1}_REVIEW`;
+      }
 
-        return 'UNKNOWN';
+      // 반려된 단계 찾기
+      const rejectedIndex = sortedLines.findIndex(line => line.statusCode === 'REJECTED');
+      if (rejectedIndex !== -1) {
+        return `LEVEL_${rejectedIndex + 1}_REJECTED`;
+      }
+
+      return 'UNKNOWN';
     };
 
     // 상태 변경 핸들러
