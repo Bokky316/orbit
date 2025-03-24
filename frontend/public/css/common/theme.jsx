@@ -411,6 +411,7 @@ const theme = createTheme({
             color: "#9CA3AF"
           }
         },
+        // 두 개의 outlined 키를 하나로 병합
         outlined: {
           "&:hover .MuiOutlinedInput-notchedOutline": {
             borderColor: "#FC8D4D"
