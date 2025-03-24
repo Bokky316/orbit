@@ -164,4 +164,17 @@ public class PurchaseRequestController {
 
         return ResponseEntity.ok(updatedRequest);
     }
+
+    /**
+     * 첨부파일 삭제
+     */
+    @DeleteMapping("/attachments/{attachmentId}")
+    public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) {
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        purchaseRequestService.deleteAttachment(attachmentId, currentUserName);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
 }
