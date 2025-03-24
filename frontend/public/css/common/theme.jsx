@@ -269,8 +269,7 @@ const theme = createTheme({
           height: "42px",
           fontSize: "14px",
           boxSizing: "border-box",
-          backgroundColor: "transparent",
-          overflow: "hidden",
+          // 중복 제거: backgroundColor: "transparent", overflow: "hidden" 제거
           "& .MuiOutlinedInput-notchedOutline": {
             top: 0,
             bottom: 0,

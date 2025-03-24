@@ -18,7 +18,7 @@ import approvalAdminReducer from "./approvalAdminSlice";
 import supplierReducer from "./supplier/supplierSlice";
 import authReducer from "./authSlice";
 import commonCodeReducer from "./commonCodeSlice";
-import itemCategoryReducer from "./ItemCategorySlice";
+import itemCategoryReducer from "./itemCategorySlice";
 
 /**
  * Redux Persist의 설정을 정의합니다.
