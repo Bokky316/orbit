@@ -61,17 +61,18 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     private MemberSecurityDto createMemberSecurityDto(Member member) {
         return new MemberSecurityDto(
-                member.getId(), // 사용자 ID
-                member.getEmail(), // 이메일
-                member.getPassword(), // 비밀번호 (암호화된 상태)
+                member.getId(),                // 사용자 ID
+                member.getEmail(),             // 이메일
+                member.getPassword(),          // 비밀번호 (암호화된 상태)
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())), // 권한 정보
-                member.getUsername(), // 사용자명 (username)
-                member.getName(), // 이름
-                member.getCompanyName(), // 회사명
-                member.getContactNumber(), // 연락처
-                member.getPostalCode(), // 우편번호
-                member.getRoadAddress(), // 도로명 주소
-                member.getDetailAddress() // 상세 주소
+                member.getUsername(),          // 사용자명 (username)
+                member.getName(),              // 이름
+                member.getCompanyName(),       // 회사명
+                member.getContactNumber(),     // 연락처
+                member.getPostalCode(),        // 우편번호
+                member.getRoadAddress(),       // 도로명 주소
+                member.getDetailAddress(),     // 상세 주소
+                member.getDepartment()         // 부서 정보 추가
         );
     }
 }

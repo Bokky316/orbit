@@ -114,6 +114,14 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         responseData.put("detailAddress", userDetails.getDetailAddress());
         responseData.put("roles", roles);
 
+        // 부서 정보 추가
+        if (userDetails.getDepartment() != null) {
+            Map<String, Object> departmentData = new HashMap<>();
+            departmentData.put("id", userDetails.getDepartment().getId());
+            departmentData.put("name", userDetails.getDepartment().getName());
+            responseData.put("department", departmentData);
+        }
+
         response.getWriter().write(objectMapper.writeValueAsString(responseData));
     }
 }
