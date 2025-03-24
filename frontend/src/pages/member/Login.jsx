@@ -8,7 +8,10 @@ import {
   Box,
   Typography,
   Link,
-  FormHelperText
+  FormHelperText,
+  Grid,
+  Card,
+  CardContent
 } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setUser, setLoading } from "@/redux/authSlice";
@@ -16,7 +19,9 @@ import {
   Visibility,
   VisibilityOff,
   CheckCircle,
-  Cancel
+  Cancel,
+  PersonAdd,
+  Business
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "@utils/constants";
@@ -39,21 +44,21 @@ export default function Login() {
   const navigate = useNavigate();
 
   // 비밀번호 유효성 검사
-  // useEffect(() => {
-  //   const { password } = credentials;
-  //   // 영문/숫자/특수문자 중 1가지 이상 포함 검사
-  //   const hasRequiredChars =
-  //     /^(?=.*[a-zA-Z])|(?=.*\d)|(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])/.test(
-  //       password
-  //     );
-  //   // 6자 이상 검사
-  //   const hasMinLength = password.length >= 6;
+  useEffect(() => {
+    const { password } = credentials;
+    // 영문/숫자/특수문자 중 1가지 이상 포함 검사
+    const hasRequiredChars =
+      /^(?=.*[a-zA-Z])|(?=.*\d)|(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?])/.test(
+        password
+      );
+    // 4자 이상 검사
+    const hasMinLength = password.length >= 4;
 
-  //   setPasswordValidation({
-  //     hasRequiredChars,
-  //     hasMinLength
-  //   });
-  // }, [credentials.password]);
+    setPasswordValidation({
+      hasRequiredChars,
+      hasMinLength
+    });
+  }, [credentials.password]);
 
   // 로그인 버튼 활성화 여부
   const isLoginEnabled =
@@ -167,8 +172,12 @@ export default function Login() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [credentials, isLoginEnabled]);
 
-  const handleSignupNavigation = () => {
+  const handleMemberSignup = () => {
     navigate("/signup");
+  };
+
+  const handleSupplierSignup = () => {
+    navigate("/signup/supplier");
   };
 
   return (
@@ -260,7 +269,7 @@ export default function Login() {
                 ) : (
                   <Cancel fontSize="small" sx={{ mr: 0.5, color: "#FA6B6B" }} />
                 )}
-                6자 이상
+                4자 이상
               </FormHelperText>
             </Box>
           )}
@@ -279,16 +288,71 @@ export default function Login() {
       </Box>
 
       <div className="registration_section">
-        <h4>Join Our Network</h4>
-        <div>
-          <span>
-            지금 바로 협력사 가입하고, <br />
-            새로운 성장의 길을 열어보세요!
-          </span>
-          <Link component="button" onClick={handleSignupNavigation}>
-            회원가입
-          </Link>
-        </div>
+        <h4 style={{ marginBottom: '15px' }}>Join Our Network</h4>
+        <Grid container spacing={2} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Grid item xs={12} sm={6} sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Card sx={{ height: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ textAlign: 'center', p: 2, display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between' }}>
+                <div>
+                  <PersonAdd sx={{ fontSize: 40, color: '#FF7F3E', mb: 1 }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    일반회원으로 가입
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 2, whiteSpace: 'normal', wordBreak: 'keep-all' }}>
+                    일반 회원으로 가입하고 플랫폼의 서비스를 이용하세요!
+                  </Typography>
+                </div>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={handleMemberSignup}
+                  sx={{
+                    borderColor: '#FF7F3E',
+                    color: '#FF7F3E',
+                    '&:hover': {
+                      backgroundColor: '#FFF0E8',
+                      borderColor: '#FF7F3E'
+                    },
+                    mt: 'auto'
+                  }}
+                >
+                  일반 회원가입
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Card sx={{ height: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ textAlign: 'center', p: 2, display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between' }}>
+                <div>
+                  <Business sx={{ fontSize: 40, color: '#4284F3', mb: 1 }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    협력업체로 가입
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 2, whiteSpace: 'normal', wordBreak: 'keep-all' }}>
+                    협력업체로 가입하고 새로운 성장의 길을 열어보세요!
+                  </Typography>
+                </div>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={handleSupplierSignup}
+                  sx={{
+                    borderColor: '#4284F3',
+                    color: '#4284F3',
+                    '&:hover': {
+                      backgroundColor: '#EBF2FF',
+                      borderColor: '#4284F3'
+                    },
+                    mt: 'auto'
+                  }}
+                >
+                  협력업체 가입
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </div>
 
       <Snackbar
