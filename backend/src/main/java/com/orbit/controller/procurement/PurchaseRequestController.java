@@ -136,18 +136,6 @@ public class PurchaseRequestController {
         }
     }
 
-    @GetMapping("/items")
-    public ResponseEntity<List<ItemDTO>> getAllItems() {
-        List<ItemDTO> items = purchaseRequestService.getAllItems();
-        return new ResponseEntity<>(items, HttpStatus.OK);
-    }
-
-    @GetMapping("/categories")
-    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
-        List<CategoryDTO> categories = purchaseRequestService.getAllCategories();
-        return new ResponseEntity<>(categories, HttpStatus.OK);
-    }
-
     @PatchMapping("/{id}/status")
     public ResponseEntity<PurchaseRequestDTO> updatePurchaseRequestStatus(
             @PathVariable Long id,
