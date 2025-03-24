@@ -610,13 +610,6 @@ public class ApprovalLineService {
         ApprovalTemplate template = templateRepository.findById(dto.getTemplateId())
                 .orElseThrow(() -> new ResourceNotFoundException("결재선 템플릿을 찾을 수 없습니다. ID: " + dto.getTemplateId()));
 
-        // 템플릿 단계 조회 (단계 순서대로 정렬)
-        List<ApprovalTemplateStep> templateSteps = templateStepRepository.findByTemplateIdOrderByStepAsc(template.getId());
-
-        if (templateSteps.isEmpty()) {
-            throw new IllegalStateException("템플릿에 단계가 정의되어 있지 않습니다. 템플릿 ID: " + template.getId());
-        }
-
         // 상위 상태 코드 조회
         ParentCode parentCode = findParentCode(ENTITY_TYPE, CODE_GROUP);
 
@@ -624,57 +617,55 @@ public class ApprovalLineService {
         List<ApprovalLine> lines = new ArrayList<>();
         int step = 1;
 
-        // 기안자를 결재선에 포함하는 옵션
-        if (dto.isIncludeRequesterAsApprover()) {
-            Member requester = request.getMember();
-            ChildCode approvedStatus = findChildCode(parentCode, "APPROVED"); // 승인 상태 사용
+        // 템플릿 단계에 따른 결재선 생성
+        for (ApprovalTemplateStep templateStep : template.getSteps()) {
+            // 이 단계가 기안자 역할인 경우 - 부서, 레벨 무시하고 기안자 할당
+            if ("REQUESTER".equals(templateStep.getApproverRole())) {
+                Member requester = request.getMember();
+                ChildCode approvedStatus = findChildCode(parentCode, "APPROVED");
 
-            ApprovalLine requesterLine = ApprovalLine.builder()
-                    .purchaseRequest(request)
-                    .approver(requester)
-                    .step(step++)
-                    .status(approvedStatus) // 바로 승인 상태로 설정
-                    .approvedAt(LocalDateTime.now()) // 승인 시간 현재로 설정
-                    .comment("구매 요청 작성자(기안자) 자동 승인") // 기본 코멘트 설정
-                    .build();
-            lines.add(requesterLine);
-        }
-
-        // 템플릿의 단계들을 기반으로 결재선 생성
-        for (ApprovalTemplateStep templateStep : templateSteps) {
-            // 부서와 직급 레벨 범위에 해당하는 사용자 찾기
-            List<Member> eligibleMembers = memberRepo.findByDepartmentAndPositionLevelBetween(
-                    templateStep.getDepartment(),
-                    templateStep.getMinLevel(),
-                    templateStep.getMaxLevel()
-            );
-
-            // 해당 부서에 적합한 승인자가 있는 경우에만 결재선 추가
-            if (!eligibleMembers.isEmpty()) {
-                // 첫 번째 적합한 멤버를 선택 (필요에 따라 로직 변경 가능)
-                Member approver = eligibleMembers.get(0);
-
-                // 결재 상태 설정: 첫 번째 단계는 검토 중, 나머지는 대기
-                ChildCode lineStatus = step == (dto.isIncludeRequesterAsApprover() ? 2 : 1)
-                        ? findChildCode(parentCode, "IN_REVIEW")
-                        : findChildCode(parentCode, "PENDING");
-
-                ApprovalLine line = ApprovalLine.builder()
+                ApprovalLine requesterLine = ApprovalLine.builder()
                         .purchaseRequest(request)
-                        .approver(approver)
+                        .approver(requester)
                         .step(step++)
-                        .status(lineStatus)
+                        .status(approvedStatus)
+                        .approvedAt(LocalDateTime.now())
+                        .comment("구매 요청 작성자(기안자) 자동 승인")
                         .build();
+                lines.add(requesterLine);
+            } else {
+                // 일반 결재자 로직 (부서/직급 기반)
+                List<Member> eligibleMembers = memberRepo.findByDepartmentAndPositionLevelBetween(
+                        templateStep.getDepartment(),
+                        templateStep.getMinLevel(),
+                        templateStep.getMaxLevel()
+                );
 
-                lines.add(line);
+                if (!eligibleMembers.isEmpty()) {
+                    Member approver = eligibleMembers.get(0);
+
+                    ChildCode lineStatus = step == 1
+                            ? findChildCode(parentCode, "IN_REVIEW")
+                            : findChildCode(parentCode, "PENDING");
+
+                    ApprovalLine line = ApprovalLine.builder()
+                            .purchaseRequest(request)
+                            .approver(approver)
+                            .step(step++)
+                            .status(lineStatus)
+                            .build();
+
+                    lines.add(line);
+                }
             }
         }
 
-        // 결재선이 생성되지 않았을 경우 예외 처리
+        // 결재선이 비어있는지 확인
         if (lines.isEmpty()) {
-            throw new IllegalStateException("선택한 템플릿으로 결재선을 생성할 수 없습니다. 적합한 승인자가 없습니다.");
+            throw new IllegalStateException("결재선을 생성할 수 없습니다. 적합한 승인자가 없습니다.");
         }
 
+        // 결재선 저장
         approvalLineRepo.saveAll(lines);
 
         // 실시간 업데이트

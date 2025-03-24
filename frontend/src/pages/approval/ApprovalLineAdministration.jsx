@@ -30,7 +30,9 @@ import {
   Chip,
   Divider,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControlLabel,
+   Checkbox
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -507,7 +509,8 @@ function ApprovalTemplateManagement() {
     name: "",
     description: "",
     steps: [],
-    active: true
+    active: true,
+    includeRequesterByDefault: true
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -598,12 +601,14 @@ function ApprovalTemplateManagement() {
   };
 
   const handleDeleteStep = (index) => {
-    const updatedSteps = currentTemplate.steps.filter((_, i) => i !== index);
+    // 먼저 필터링
+    let updatedSteps = currentTemplate.steps.filter((_, i) => i !== index);
 
-    // Renumber steps
-    updatedSteps.forEach((step, i) => {
-      step.step = i + 1;
-    });
+    // 새 배열을 만들어 step 속성 업데이트
+    updatedSteps = updatedSteps.map((step, i) => ({
+      ...step,
+      step: i + 1
+    }));
 
     setCurrentTemplate({
       ...currentTemplate,
@@ -619,23 +624,26 @@ function ApprovalTemplateManagement() {
       return;
     }
 
-    const updatedSteps = [...currentTemplate.steps];
     const newIndex = direction === "up" ? index - 1 : index + 1;
 
-    // Swap steps
+    // 배열의 얕은 복사본 생성
+    const updatedSteps = [...currentTemplate.steps];
+
+    // 스왑
     [updatedSteps[index], updatedSteps[newIndex]] = [
       updatedSteps[newIndex],
       updatedSteps[index]
     ];
 
-    // Update step numbers
-    updatedSteps.forEach((step, i) => {
-      step.step = i + 1;
-    });
+    // 불변성을 유지하며 step 속성 업데이트
+    const reorderedSteps = updatedSteps.map((step, i) => ({
+      ...step,
+      step: i + 1
+    }));
 
     setCurrentTemplate({
       ...currentTemplate,
-      steps: updatedSteps
+      steps: reorderedSteps
     });
   };
 
@@ -812,6 +820,21 @@ function ApprovalTemplateManagement() {
                 </label>
               </FormControl>
             </Grid>
+            {/* 기안자 기본 포함 옵션 추가 */}
+            <Grid item xs={4} sx={{ display: "flex", alignItems: "center" }}>
+              <FormControl component="fieldset">
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="includeRequesterByDefault"
+                      checked={currentTemplate.includeRequesterByDefault || false}
+                      onChange={handleInputChange}
+                    />
+                  }
+                  label="기안자를 기본적으로 결재선에 포함"
+                />
+              </FormControl>
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 name="description"
@@ -857,6 +880,7 @@ function ApprovalTemplateManagement() {
                       <TableCell>최소 레벨</TableCell>
                       <TableCell>최대 레벨</TableCell>
                       <TableCell>설명</TableCell>
+                      <TableCell>역할</TableCell>
                       <TableCell width="150">관리</TableCell>
                     </TableRow>
                   </TableHead>
@@ -926,6 +950,18 @@ function ApprovalTemplateManagement() {
                               )
                             }
                           />
+                        </TableCell>
+                        <TableCell>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>역할</InputLabel>
+                            <Select
+                              value={step.approverRole || "REGULAR"}
+                              onChange={(e) => handleUpdateStep(index, "approverRole", e.target.value)}
+                            >
+                              <MenuItem value="REGULAR">일반 결재자</MenuItem>
+                              <MenuItem value="REQUESTER">기안자</MenuItem>
+                            </Select>
+                          </FormControl>
                         </TableCell>
                         <TableCell>
                           <IconButton

@@ -800,23 +800,23 @@ function PurchaseRequestCreatePage() {
                          </FormControl>
                         </Grid>
 
-                        {/* 기안자 결재선 포함 옵션 */}
-                        <Grid item xs={6}>
-                         <FormControlLabel
-                           control={
-                             <Checkbox
-                               checked={includeRequesterAsApprover}
-                               onChange={(e) => setIncludeRequesterAsApprover(e.target.checked)}
-                               name="includeRequesterAsApprover"
-                               color="primary"
-                             />
-                           }
-                           label="기안자를 결재선에 포함 (자동 승인 처리)"
-                         />
-                         <FormHelperText>
-                           기안자를 결재선의 첫 단계로 포함시키고 자동 승인 처리합니다.
-                         </FormHelperText>
-                        </Grid>
+{/*                          */}{/* 기안자 결재선 포함 옵션 */}
+{/*                         <Grid item xs={6}> */}
+{/*                          <FormControlLabel */}
+{/*                            control={ */}
+{/*                              <Checkbox */}
+{/*                                checked={includeRequesterAsApprover} */}
+{/*                                onChange={(e) => setIncludeRequesterAsApprover(e.target.checked)} */}
+{/*                                name="includeRequesterAsApprover" */}
+{/*                                color="primary" */}
+{/*                              /> */}
+{/*                            } */}
+{/*                            label="기안자를 결재선에 포함 (자동 승인 처리)" */}
+{/*                          /> */}
+{/*                          <FormHelperText> */}
+{/*                            기안자를 결재선의 첫 단계로 포함시키고 자동 승인 처리합니다. */}
+{/*                          </FormHelperText> */}
+{/*                         </Grid> */}
 
                         <Grid item xs={6}>
                          <TextField
