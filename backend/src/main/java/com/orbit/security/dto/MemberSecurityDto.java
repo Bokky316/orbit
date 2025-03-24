@@ -26,6 +26,7 @@ public class MemberSecurityDto extends User {
     private String postalCode;    // 우편번호
     private String roadAddress;   // 도로명 주소
     private String detailAddress; // 상세 주소
+    private Long departmentId;
 
     /**
      * MemberSecurityDto 생성자
@@ -51,7 +52,8 @@ public class MemberSecurityDto extends User {
                              String contactNumber,
                              String postalCode,
                              String roadAddress,
-                             String detailAddress) {
+                             String detailAddress,
+                             Long departmentId) {
         super(username, password, authorities); // username을 사용자 식별자로 사용
         this.id = id;
         this.email = email;
@@ -62,6 +64,7 @@ public class MemberSecurityDto extends User {
         this.postalCode = postalCode;
         this.roadAddress = roadAddress;
         this.detailAddress = detailAddress;
+        this.departmentId = departmentId;
     }
 
     /**

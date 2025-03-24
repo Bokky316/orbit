@@ -59,19 +59,23 @@ public class CustomUserDetailsService implements UserDetailsService {
      * @param member Member 엔티티 객체
      * @return MemberSecurityDto 객체
      */
+    // CustomUserDetailsService.java의 createMemberSecurityDto 메서드 수정
     private MemberSecurityDto createMemberSecurityDto(Member member) {
+        Long departmentId = member.getDepartment() != null ? member.getDepartment().getId() : null;
+
         return new MemberSecurityDto(
-                member.getId(), // 사용자 ID
-                member.getEmail(), // 이메일
-                member.getPassword(), // 비밀번호 (암호화된 상태)
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())), // 권한 정보
-                member.getUsername(), // 사용자명 (username)
-                member.getName(), // 이름
-                member.getCompanyName(), // 회사명
-                member.getContactNumber(), // 연락처
-                member.getPostalCode(), // 우편번호
-                member.getRoadAddress(), // 도로명 주소
-                member.getDetailAddress() // 상세 주소
+                member.getId(),
+                member.getEmail(),
+                member.getPassword(),
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())),
+                member.getUsername(),
+                member.getName(),
+                member.getCompanyName(),
+                member.getContactNumber(),
+                member.getPostalCode(),
+                member.getRoadAddress(),
+                member.getDetailAddress(),
+                departmentId
         );
     }
 }
