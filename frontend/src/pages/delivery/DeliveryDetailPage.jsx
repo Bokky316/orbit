@@ -451,12 +451,6 @@ function DeliveryDetailPage() {
                             <Typography variant="h5" component="h1">
                                 입고 번호 : {delivery.deliveryNumber}
                             </Typography>
-                            <Chip
-                                label="처리완료"
-                                color="success"
-                                size="medium"
-                                sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-                            />
                         </Box>
 
                         <Box sx={{ display: 'flex', mt: 2, flexWrap: 'wrap' }}>

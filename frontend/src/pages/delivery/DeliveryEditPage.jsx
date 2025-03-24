@@ -233,12 +233,6 @@ const DeliveryEditPage = () => {
             <Typography variant="h5" component="h1">
               입고 번호 : {delivery.deliveryNumber}
             </Typography>
-            <Chip
-              label="수정 중"
-              color="warning"
-              size="medium"
-              sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-            />
           </Box>
 
           <Box sx={{ display: 'flex', mt: 2, flexWrap: 'wrap' }}>

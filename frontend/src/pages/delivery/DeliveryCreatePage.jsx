@@ -228,12 +228,6 @@ const DeliveryCreatePage = () => {
           <Typography variant="h5" component="h1">
             입고 등록
           </Typography>
-          <Chip
-            label="작성 중"
-            color="warning"
-            size="medium"
-            sx={{ fontSize: '1rem', fontWeight: 'bold' }}
-          />
         </Box>
       </Paper>
 
