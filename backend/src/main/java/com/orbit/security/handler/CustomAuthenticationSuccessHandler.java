@@ -98,8 +98,6 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
     private void sendJsonResponse(HttpServletResponse response, MemberSecurityDto userDetails, List<String> roles) throws IOException {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
 
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> responseData = new HashMap<>();
@@ -108,9 +106,14 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         responseData.put("id", userDetails.getId());
         responseData.put("username", userDetails.getUsername());
         responseData.put("name", userDetails.getRealName());
+        responseData.put("email", userDetails.getEmail());
+        responseData.put("companyName", userDetails.getCompanyName());
+        responseData.put("contactNumber", userDetails.getContactNumber());
+        responseData.put("postalCode", userDetails.getPostalCode());
+        responseData.put("roadAddress", userDetails.getRoadAddress());
+        responseData.put("detailAddress", userDetails.getDetailAddress());
         responseData.put("roles", roles);
 
         response.getWriter().write(objectMapper.writeValueAsString(responseData));
-
     }
 }
