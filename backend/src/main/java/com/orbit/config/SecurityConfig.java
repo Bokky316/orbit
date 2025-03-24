@@ -1,16 +1,9 @@
 package com.orbit.config;
 
-import com.orbit.config.jwt.RefreshTokenCheckFilter;
-import com.orbit.config.jwt.TokenAuthenticationFilter;
-import com.orbit.config.jwt.TokenProvider;
-import com.orbit.security.CustomUserDetailsService;
-import com.orbit.security.handler.CustomAuthenticationEntryPoint;
-import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
-import com.orbit.security.handler.CustomLogoutSuccessHandler;
-import lombok.RequiredArgsConstructor;
+import java.util.Arrays;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -21,16 +14,19 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.List;
+import com.orbit.config.jwt.RefreshTokenCheckFilter;
+import com.orbit.config.jwt.TokenAuthenticationFilter;
+import com.orbit.config.jwt.TokenProvider;
+import com.orbit.security.CustomUserDetailsService;
+import com.orbit.security.handler.CustomAuthenticationEntryPoint;
+import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
+import com.orbit.security.handler.CustomLogoutSuccessHandler;
 
-import static com.orbit.constant.Role.BUYER;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Spring Security 설정 파일
@@ -106,7 +102,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(request -> request
 
                 // 공개 접근 가능한 API 엔드포인트
-                .requestMatchers(
+                        .requestMatchers(
                         "/",
                         "/api/auth/login",
                         "/api/auth/logout",

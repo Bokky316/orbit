@@ -327,28 +327,23 @@ function BiddingDetailPage() {
       const response = await fetchWithAuth(
         `${API_URL}biddings/${biddingId}/participations`
       );
-
-      if (!response.ok) {
-        throw new Error("참여 목록을 가져오는데 실패했습니다.");
+      if (response.ok) {
+        const data = await response.json();
+        setParticipations(data);
       }
-
-      const data = await response.json();
-      setParticipations(data);
     } catch (error) {
-      console.error("참여 목록 가져오기 실패:", error);
-      // 주요 데이터가 아니므로 전체 페이지 오류로 처리하지 않음
+      console.error("참여 목록 로딩 실패:", error);
     }
   };
 
-  // 상태 이력 가져오기
-  const fetchStatusHistories = async (biddingId) => {
+  const fetchSuppliers = async (biddingId) => {
     try {
       const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/status-histories`
+        `${API_URL}biddings/${biddingId}/suppliers`
       );
-
-      if (!response.ok) {
-        throw new Error("상태 이력을 가져오는데 실패했습니다.");
+      if (response.ok) {
+        const data = await response.json();
+        setSuppliers(data);
       }
 
       // 응답을 텍스트로 가져오기
@@ -419,12 +414,11 @@ function BiddingDetailPage() {
         }
       }
     } catch (error) {
-      console.error("상태 이력 가져오기 실패:", error);
-      setStatusHistories([]);
+      console.error("공급사 목록 로딩 실패:", error);
     }
   };
 
-  // 컴포넌트 마운트 시 데이터 가져오기
+  // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     if (id) {
       fetchBiddingDetail();
@@ -479,7 +473,7 @@ function BiddingDetailPage() {
       alert("입찰 공고가 성공적으로 삭제되었습니다.");
       navigate("/biddings");
     } catch (error) {
-      console.error("상태 변경 중 오류:", error);
+      console.error("입찰 마감 중 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);

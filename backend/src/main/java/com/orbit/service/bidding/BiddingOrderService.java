@@ -181,7 +181,7 @@ public class BiddingOrderService {
     }
 
     /**
-     * 발주 승인
+     * 발주 취소
      */
     @Transactional
     public BiddingOrderDto approveOrder(Long orderId, Member currentMember) {

@@ -484,6 +484,24 @@ function BiddingListPage() {
         </CardContent>
       </Card>
 
+      {/* 데모 데이터 알림 */}
+      {useMockData && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={handleRetryConnection}>
+              재시도
+            </Button>
+          }>
+          서버 연결 문제로 현재 데모 데이터를 표시하고 있습니다. 실제 데이터는
+          백엔드 서버가 정상화된 후 표시됩니다.
+        </Alert>
+      )}
+
       {/* 에러 메시지 */}
       {error && (
         <Alert severity="error" sx={{ my: 2 }}>
@@ -571,7 +589,7 @@ function BiddingListPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">
+                    <TableCell colSpan={8} align="center">
                       데이터가 없습니다.
                     </TableCell>
                   </TableRow>

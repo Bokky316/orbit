@@ -625,12 +625,39 @@ function BiddingFormPage() {
           const biddingData = await response.json();
           console.log("서버에서 받은 데이터:", biddingData);
 
+          // DB 필드명과 클라이언트 필드명 매핑 보강
+          if (biddingData.purchaseRequest) {
+            biddingData.purchaseRequest.request_number =
+              biddingData.purchaseRequest.requestNumber ||
+              biddingData.purchaseRequest.id;
+          }
+
+          if (biddingData.purchaseRequestItem) {
+            biddingData.purchaseRequestItem.purchase_request_item_id =
+              biddingData.purchaseRequestItem.id;
+            biddingData.purchaseRequestItem.delivery_location =
+              biddingData.purchaseRequestItem.deliveryLocation;
+            biddingData.purchaseRequestItem.delivery_request_date =
+              biddingData.purchaseRequestItem.deliveryRequestDate;
+          }
+
           // biddingHelpers의 mapBiddingDataToFormData 함수 사용
           const mappedFormData = mapBiddingDataToFormData(biddingData);
 
           // 입찰 조건 필드 매핑 보장
           if (biddingData.conditions && !mappedFormData.biddingConditions) {
             mappedFormData.biddingConditions = biddingData.conditions;
+          }
+
+          // 납품 관련 정보 매핑
+          if (biddingData.deliveryLocation) {
+            mappedFormData.deliveryLocation = biddingData.deliveryLocation;
+            mappedFormData.delivery_location = biddingData.deliveryLocation;
+          }
+
+          if (biddingData.deliveryDate) {
+            mappedFormData.deliveryDate = biddingData.deliveryDate;
+            mappedFormData.delivery_date = biddingData.deliveryDate;
           }
 
           console.log("매핑된 데이터:", mappedFormData);
@@ -847,6 +874,15 @@ function BiddingFormPage() {
     </>
   );
 
+  // 로딩 중 표시
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 4 }}>
       <Typography variant="h4" sx={{ mb: 4 }}>
@@ -904,6 +940,7 @@ function BiddingFormPage() {
                 margin="normal"
               />
             </Grid>
+
             {/* 공급자 선택 */}
             <Grid item xs={12}>
               <Typography variant="subtitle1" gutterBottom>

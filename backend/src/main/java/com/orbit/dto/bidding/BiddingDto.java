@@ -15,9 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 입찰 공고 응답용 DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -48,7 +45,6 @@ public class BiddingDto {
 
     // 입찰 기간 정보
     private BiddingPeriodDto biddingPeriod;
-
     // 수량 및 가격 정보
     private Integer quantity;
     private BigDecimal unitPrice;
@@ -78,7 +74,6 @@ public class BiddingDto {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime closedAt;
     private String closedBy;
-
     // 공급자 및 참여 정보
     private List<BiddingSupplierDto> suppliers;
     private List<BiddingParticipationDto> participations;
@@ -95,7 +90,6 @@ public class BiddingDto {
     public static class BiddingPeriodDto {
         @JsonFormat(pattern = "yyyy-MM-dd")
         private LocalDate startDate;
-
         @JsonFormat(pattern = "yyyy-MM-dd")
         private LocalDate endDate;
     }
