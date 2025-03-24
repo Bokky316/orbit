@@ -75,8 +75,10 @@ public class PurchaseRequestService {
 
     /**
      * 구매 요청 생성 (핵심 로직)
+     *
+     * 구매 요청 생성 시 결재선 템플릿을 선택하거나 자동 생성할 수 있으며,
+     * 기안자를 결재선에 포함시킬지 여부도 선택 가능합니다.
      */
-    // createPurchaseRequest 메소드 수정
     @Transactional
     public PurchaseRequestDTO createPurchaseRequest(PurchaseRequestDTO purchaseRequestDTO, MultipartFile[] files) {
         // 1. DTO -> Entity 변환
@@ -118,12 +120,41 @@ public class PurchaseRequestService {
             processGoodsRequestItems((GoodsRequest) savedRequest, (GoodsRequestDTO) purchaseRequestDTO);
         }
 
-        // 8. 결재선 자동 생성
-        approvalLineService.createAutoApprovalLine(
-                ApprovalLineCreateDTO.builder()
-                        .purchaseRequestId(savedRequest.getId())
-                        .build()
-        );
+        // 8. 결재선 생성 방식 결정
+        if (purchaseRequestDTO.getApprovalTemplateId() != null) {
+            try {
+                log.info("템플릿 기반 결재선 생성. 템플릿 ID: {}, 기안자 포함 여부: {}",
+                        purchaseRequestDTO.getApprovalTemplateId(),
+                        purchaseRequestDTO.isIncludeRequesterAsApprover());
+
+                // 템플릿 기반 결재선 생성
+                approvalLineService.createApprovalLineFromTemplate(
+                        ApprovalLineCreateDTO.builder()
+                                .purchaseRequestId(savedRequest.getId())
+                                .templateId(purchaseRequestDTO.getApprovalTemplateId())
+                                .includeRequesterAsApprover(purchaseRequestDTO.isIncludeRequesterAsApprover())
+                                .build()
+                );
+            } catch (Exception e) {
+                log.error("템플릿 기반 결재선 생성 실패: {}", e.getMessage());
+
+                // 템플릿 기반 생성 실패 시 자동 결재선 생성으로 폴백
+                log.info("자동 결재선 생성으로 전환 (폴백)");
+                approvalLineService.createAutoApprovalLine(
+                        ApprovalLineCreateDTO.builder()
+                                .purchaseRequestId(savedRequest.getId())
+                                .build()
+                );
+            }
+        } else {
+            // 자동 결재선 생성 (기존 로직)
+            log.info("자동 결재선 생성");
+            approvalLineService.createAutoApprovalLine(
+                    ApprovalLineCreateDTO.builder()
+                            .purchaseRequestId(savedRequest.getId())
+                            .build()
+            );
+        }
 
         return convertToDto(savedRequest);
     }
@@ -652,42 +683,6 @@ public class PurchaseRequestService {
         }
     }
 
-    // 아이템 전체 조회 메서드 추가
-    @Transactional(readOnly = true)
-    public List<ItemDTO> getAllItems() {
-        List<Item> items = itemRepository.findAll();
-        return items.stream()
-                .map(this::convertToItemDTO)
-                .collect(Collectors.toList());
-    }
-
-    private ItemDTO convertToItemDTO(Item item) {
-        return ItemDTO.builder()
-                .id(item.getId())
-                .name(item.getName())
-                .specification(item.getSpecification())
-                .unitParentCode(
-                        item.getUnitParentCode() != null ?
-                                item.getUnitParentCode().getCodeGroup() : null
-                )
-                .unitChildCode(
-                        item.getUnitChildCode() != null ?
-                                item.getUnitChildCode().getCodeValue() : null
-                )
-                .standardPrice(item.getStandardPrice())
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public List<CategoryDTO> getAllCategories() {
-        // 활성화된 카테고리만 조회 (useYn = 'Y')
-        List<Category> categories = categoryRepository.findAllActive();
-        return categories.stream()
-                .map(CategoryDTO::from)
-                .collect(Collectors.toList());
-    }
-
-
     /**
      * 부서 엔티티를 DTO로 변환
      */
@@ -1081,5 +1076,40 @@ public class PurchaseRequestService {
         applicationEventPublisher.publishEvent(event);
 
         return convertToDto(purchaseRequest);
+    }
+
+    /**
+     * 첨부파일 삭제
+     */
+    @Transactional
+    public void deleteAttachment(Long attachmentId, String username) {
+        // 1. 첨부파일 조회
+        PurchaseRequestAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("ID " + attachmentId + "에 해당하는 첨부파일이 없습니다."));
+
+        // 2. 삭제 권한 확인 (구매요청 작성자 또는 관리자)
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        PurchaseRequest purchaseRequest = attachment.getPurchaseRequest();
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = purchaseRequest.getMember() != null &&
+                purchaseRequest.getMember().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("첨부파일 삭제 권한이 없습니다.");
+        }
+
+        // 3. 구매요청 상태 확인 - 요청 상태일 때만 삭제 가능
+        if (purchaseRequest.getStatus() != null &&
+                !"REQUESTED".equals(purchaseRequest.getStatus().getChildCode())) {
+            throw new IllegalStateException("현재 구매요청 상태에서는 첨부파일을 삭제할 수 없습니다.");
+        }
+
+        // 4. 첨부파일 삭제 (DB에서만 삭제, 실제 파일은 보관)
+        attachmentRepository.delete(attachment);
+
+        // 5. 구매요청에서 첨부파일 참조 제거
+        purchaseRequest.getAttachments().remove(attachment);
     }
 }

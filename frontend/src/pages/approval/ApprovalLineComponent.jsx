@@ -28,7 +28,8 @@ const StatusChip = styled(Chip)(({ theme, status }) => {
   };
 });
 
-function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSteps = 4 }) {
+// totalSteps 파라미터 제거 - 실제 결재 데이터 기반으로 단계 결정
+function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete }) {
   const theme = useTheme();
   const { user } = useSelector(state => state.auth);
   const currentUserId = user?.id;
@@ -199,35 +200,23 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
     );
   }
 
-  // 전체 단계 생성 (기본 4단계)
-  const fullApprovalSteps = [];
-  for (let i = 1; i <= totalSteps; i++) {
-    const stepData = approvalLines.find(line => line.step === i);
-    fullApprovalSteps.push(stepData || {
-      step: i,
-      statusCode: stepData ? stepData.statusCode : 'PENDING',
-      approverName: stepData?.approverName,
-      department: stepData?.department,
-      approvedAt: stepData?.approvedAt,
-      comment: stepData?.comment,
-      approverId: stepData?.approverId,
-      requestId: stepData?.requestId
-    });
-  }
+  // 동적으로 결재 단계 결정
+  // approvalLines 배열에 있는 실제 결재 단계만 표시
+  const sortedApprovalLines = [...approvalLines].sort((a, b) => a.step - b.step);
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" gutterBottom>결재선 정보</Typography>
 
-      {/* 전체 단계를 보여주는 스텝퍼 */}
+      {/* 동적 단계를 보여주는 스텝퍼 */}
       <Box sx={{ mb: 4 }}>
         <Stepper activeStep={-1} orientation="horizontal">
-          {fullApprovalSteps.map((step, index) => {
-            const stepInfo = getStepInfo(step.statusCode);
+          {sortedApprovalLines.map((line) => {
+            const stepInfo = getStepInfo(line.statusCode);
             return (
               <Step
-                key={index}
-                completed={step.statusCode === 'APPROVED'}
+                key={line.id}
+                completed={line.statusCode === 'APPROVED'}
                 sx={{
                   '& .MuiStepIcon-root': {
                     color: stepInfo.color
@@ -235,14 +224,14 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
                 }}
               >
                 <StepLabel
-                  error={step.statusCode === 'REJECTED'}
+                  error={line.statusCode === 'REJECTED'}
                   optional={
                     <Typography variant="caption">
-                      {step.approverName ? `${step.approverName} (${step.department})` : '미지정'}
+                      {line.approverName ? `${line.approverName} (${line.department})` : '미지정'}
                     </Typography>
                   }
                 >
-                  {`${index + 1}단계`}
+                  {`${line.step}단계`}
                 </StepLabel>
               </Step>
             );
@@ -266,27 +255,27 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
             </TableRow>
           </TableHead>
           <TableBody>
-            {fullApprovalSteps.map((step) => (
-              <TableRow key={step.step}>
-                <TableCell>{step.step}</TableCell>
-                <TableCell>{step.approverName || '-'}</TableCell>
-                <TableCell>{step.department || '-'}</TableCell>
+            {sortedApprovalLines.map((line) => (
+              <TableRow key={line.id}>
+                <TableCell>{line.step}</TableCell>
+                <TableCell>{line.approverName || '-'}</TableCell>
+                <TableCell>{line.department || '-'}</TableCell>
                 <TableCell>
                   <StatusChip
-                    label={getStepInfo(step.statusCode).label}
-                    status={step.statusCode}
+                    label={getStepInfo(line.statusCode).label}
+                    status={line.statusCode}
                     size="small"
                   />
                 </TableCell>
                 <TableCell>
-                  {step.approvedAt
-                    ? formatDateTime(step.approvedAt)
-                    : (step.rejectedAt
-                      ? formatDateTime(step.rejectedAt)
+                  {line.approvedAt
+                    ? formatDateTime(line.approvedAt)
+                    : (line.rejectedAt
+                      ? formatDateTime(line.rejectedAt)
                       : '-')
                   }
                 </TableCell>
-                <TableCell>{step.comment || '-'}</TableCell>
+                <TableCell>{line.comment || '-'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -295,7 +284,6 @@ function ApprovalLineComponent({ purchaseRequestId, onApprovalComplete, totalSte
 
       {/* 현재 사용자의 결재 처리 폼 */}
       {currentUserApprovalLine && currentUserApprovalLine.statusCode !== 'APPROVED' && (
-        // 현재 사용자의 결재 처리 폼
         <Box sx={{ mt: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
           <Typography variant="subtitle1" gutterBottom>결재 처리</Typography>
           <TextField

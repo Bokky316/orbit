@@ -1,7 +1,6 @@
 package com.orbit.dto.approval;
 
-import java.util.List;
-
+import com.orbit.dto.approval.ApprovalTemplateStepDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -10,6 +9,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @Builder
@@ -26,6 +27,9 @@ public class ApprovalTemplateDTO {
     private String description;
 
     private boolean active;
+
+    // 기안자 자동 포함 옵션 추가
+    private boolean includeRequesterByDefault;
 
     @NotEmpty(message = "결재 단계가 하나 이상 필요합니다")
     @Valid

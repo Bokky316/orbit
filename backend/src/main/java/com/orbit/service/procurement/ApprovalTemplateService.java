@@ -62,12 +62,16 @@ public class ApprovalTemplateService {
     /**
      * 결재 템플릿 생성
      */
+    /**
+     * 결재 템플릿 생성
+     */
     public ApprovalTemplateDTO createTemplate(ApprovalTemplateDTO dto) {
         // 1. 템플릿 기본 정보 저장
         ApprovalTemplate template = ApprovalTemplate.builder()
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .active(dto.isActive())
+                .includeRequesterByDefault(dto.isIncludeRequesterByDefault())
                 .build();
 
         ApprovalTemplate savedTemplate = templateRepository.save(template);
@@ -76,21 +80,29 @@ public class ApprovalTemplateService {
         List<ApprovalTemplateStep> steps = new ArrayList<>();
         if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
             for (ApprovalTemplateStepDTO stepDTO : dto.getSteps()) {
-                // DepartmentDTO에서 ID만 추출하여 실제 부서 엔티티 조회
-                Long departmentId = stepDTO.getDepartment().getId();
-                Department department = departmentRepository.findById(departmentId)
-                        .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + departmentId));
-
-                ApprovalTemplateStep step = ApprovalTemplateStep.builder()
+                ApprovalTemplateStep.ApprovalTemplateStepBuilder stepBuilder = ApprovalTemplateStep.builder()
                         .template(savedTemplate)
                         .step(stepDTO.getStep())
-                        .department(department)
                         .minLevel(stepDTO.getMinLevel())
                         .maxLevel(stepDTO.getMaxLevel())
                         .description(stepDTO.getDescription())
-                        .build();
+                        .approverRole(stepDTO.getApproverRole())
+                        .includeRequester(stepDTO.isIncludeRequester());
 
-                steps.add(step);
+                // "REQUESTER" 역할이 아닌 경우에만 부서 정보 설정
+                if (!"REQUESTER".equals(stepDTO.getApproverRole())) {
+                    if (stepDTO.getDepartment() == null || stepDTO.getDepartment().getId() == null) {
+                        throw new IllegalArgumentException("일반 결재자 단계에는 부서 정보가 필요합니다. 단계: " + stepDTO.getStep());
+                    }
+
+                    Long departmentId = stepDTO.getDepartment().getId();
+                    Department department = departmentRepository.findById(departmentId)
+                            .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + departmentId));
+
+                    stepBuilder.department(department);
+                }
+
+                steps.add(stepBuilder.build());
             }
             stepRepository.saveAll(steps);
         }
@@ -111,6 +123,7 @@ public class ApprovalTemplateService {
         template.setName(dto.getName());
         template.setDescription(dto.getDescription());
         template.setActive(dto.isActive());
+        template.setIncludeRequesterByDefault(dto.isIncludeRequesterByDefault());
 
         templateRepository.save(template);
 
@@ -121,21 +134,29 @@ public class ApprovalTemplateService {
         List<ApprovalTemplateStep> steps = new ArrayList<>();
         if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
             for (ApprovalTemplateStepDTO stepDTO : dto.getSteps()) {
-                // DepartmentDTO에서 ID만 추출하여 실제 부서 엔티티 조회
-                Long departmentId = stepDTO.getDepartment().getId();
-                Department department = departmentRepository.findById(departmentId)
-                        .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + departmentId));
-
-                ApprovalTemplateStep step = ApprovalTemplateStep.builder()
+                ApprovalTemplateStep.ApprovalTemplateStepBuilder stepBuilder = ApprovalTemplateStep.builder()
                         .template(template)
                         .step(stepDTO.getStep())
-                        .department(department)
                         .minLevel(stepDTO.getMinLevel())
                         .maxLevel(stepDTO.getMaxLevel())
                         .description(stepDTO.getDescription())
-                        .build();
+                        .approverRole(stepDTO.getApproverRole())
+                        .includeRequester(stepDTO.isIncludeRequester());
 
-                steps.add(step);
+                // "REQUESTER" 역할이 아닌 경우에만 부서 정보 설정
+                if (!"REQUESTER".equals(stepDTO.getApproverRole())) {
+                    if (stepDTO.getDepartment() == null || stepDTO.getDepartment().getId() == null) {
+                        throw new IllegalArgumentException("일반 결재자 단계에는 부서 정보가 필요합니다. 단계: " + stepDTO.getStep());
+                    }
+
+                    Long departmentId = stepDTO.getDepartment().getId();
+                    Department department = departmentRepository.findById(departmentId)
+                            .orElseThrow(() -> new ResourceNotFoundException("부서를 찾을 수 없습니다. ID: " + departmentId));
+
+                    stepBuilder.department(department);
+                }
+
+                steps.add(stepBuilder.build());
             }
             stepRepository.saveAll(steps);
         }
@@ -175,33 +196,38 @@ public class ApprovalTemplateService {
     }
 
     /**
-     * 엔티티를 DTO로 변환 - 수정된 부분
+     * 엔티티를 DTO로 변환
      */
     private ApprovalTemplateDTO convertToDTO(ApprovalTemplate template) {
         // 단계 정보 변환
         List<ApprovalTemplateStepDTO> steps = template.getSteps().stream()
                 .map(step -> {
-                    // Department 엔티티를 DepartmentDTO로 변환
-                    Department dept = step.getDepartment();
-                    DepartmentDTO deptDTO = DepartmentDTO.builder()
-                            .id(dept.getId())
-                            .name(dept.getName())
-                            .code(dept.getCode())
-                            .description(dept.getDescription())
-                            .teamLeaderLevel(dept.getTeamLeaderLevel())
-                            .middleManagerLevel(dept.getMiddleManagerLevel())
-                            .upperManagerLevel(dept.getUpperManagerLevel())
-                            .executiveLevel(dept.getExecutiveLevel())
-                            .build();
-
-                    // ApprovalTemplateStepDTO 생성 시 DepartmentDTO 사용
-                    return ApprovalTemplateStepDTO.builder()
+                    ApprovalTemplateStepDTO.ApprovalTemplateStepDTOBuilder stepDTOBuilder = ApprovalTemplateStepDTO.builder()
                             .step(step.getStep())
-                            .department(deptDTO)  // Department 엔티티 대신 DepartmentDTO 사용
                             .minLevel(step.getMinLevel())
                             .maxLevel(step.getMaxLevel())
                             .description(step.getDescription())
-                            .build();
+                            .approverRole(step.getApproverRole())
+                            .includeRequester(step.isIncludeRequester());
+
+                    // Department가 있는 경우에만 DepartmentDTO 설정
+                    if (step.getDepartment() != null) {
+                        Department dept = step.getDepartment();
+                        DepartmentDTO deptDTO = DepartmentDTO.builder()
+                                .id(dept.getId())
+                                .name(dept.getName())
+                                .code(dept.getCode())
+                                .description(dept.getDescription())
+                                .teamLeaderLevel(dept.getTeamLeaderLevel())
+                                .middleManagerLevel(dept.getMiddleManagerLevel())
+                                .upperManagerLevel(dept.getUpperManagerLevel())
+                                .executiveLevel(dept.getExecutiveLevel())
+                                .build();
+
+                        stepDTOBuilder.department(deptDTO);
+                    }
+
+                    return stepDTOBuilder.build();
                 })
                 .sorted((s1, s2) -> s1.getStep() - s2.getStep())
                 .collect(Collectors.toList());
@@ -211,6 +237,7 @@ public class ApprovalTemplateService {
                 .name(template.getName())
                 .description(template.getDescription())
                 .active(template.isActive())
+                .includeRequesterByDefault(template.isIncludeRequesterByDefault())
                 .steps(steps)
                 .build();
     }

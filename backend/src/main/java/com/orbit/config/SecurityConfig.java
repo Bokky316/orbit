@@ -133,9 +133,17 @@ public class SecurityConfig {
                 .requestMatchers("/api/members/search").hasRole("ADMIN")
                 .requestMatchers("/api/members/deactivate/{id}").hasRole("ADMIN")
 
-                // 품목 관리 (SUPPLIER 및 ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/items/**").hasAnyRole("SUPPLIER", "ADMIN")
-                .requestMatchers("/api/categories/**").hasAnyRole("SUPPLIER", "ADMIN")
+                // 아이템 관리 - READ는 인증된 모든 사용자에게 허용, CUD는 관리자만 허용
+                .requestMatchers(HttpMethod.GET, "/api/items/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/items/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/items/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/items/**").hasRole("ADMIN")
+
+                // 카테고리 관리 - READ는 인증된 모든 사용자에게 허용, CUD는 관리자만 허용
+                .requestMatchers(HttpMethod.GET, "/api/categories/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
 
                 // 구매 요청 관리 (BUYER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/purchase-requests/**", "/api/organization/**").hasAnyRole("BUYER", "ADMIN")
@@ -163,7 +171,13 @@ public class SecurityConfig {
 
                 // 시스템 설정 (ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/settings/**").hasRole("ADMIN")
-                .requestMatchers("/api/common-codes/**").hasRole("ADMIN")
+
+                // READ 작업은 인증된 모든 사용자에게 허용
+                .requestMatchers(HttpMethod.GET, "/api/common-codes/**").authenticated()
+                // CUD 작업은 관리자만 허용
+                .requestMatchers(HttpMethod.POST, "/api/common-codes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/common-codes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/common-codes/**").hasRole("ADMIN")
 
                 // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
