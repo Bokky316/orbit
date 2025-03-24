@@ -241,6 +241,15 @@ input.password {
   font-weight: 500;
 }
 
+.search_box.MuiGrid-root.MuiGrid-item.MuiGrid-grid-xs-12.MuiGrid-grid-md-3.css-1dgdp6r-MuiGrid-root {
+  padding-top: 21px !important;
+}
+
+.search-input .MuiOutlinedInput-root {
+  height: 36px !important;
+  border-radius: 4px;
+}
+
 input::placeholder {
   color: #9ca3af;
   font-weight: 200;

@@ -15,6 +15,7 @@ import com.orbit.repository.bidding.BiddingRepository;
 import com.orbit.repository.bidding.BiddingSupplierRepository;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.supplier.SupplierRegistrationRepository;
+import com.orbit.service.NotificationService;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class BiddingSupplierService {
     private final BiddingSupplierRepository supplierRepository;
     private final BiddingRepository biddingRepository;
     private final MemberRepository memberRepository;
+    private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
     private final SupplierRegistrationRepository supplierRegistrationRepository;
 
@@ -93,8 +95,7 @@ public class BiddingSupplierService {
         
         // 알림 발송
         biddingSupplier.sendNotification(
-            notificationRepository,
-            memberRepository,
+            notificationService,
             "새로운 입찰 공고 초대",
             "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
         );
@@ -109,7 +110,7 @@ public class BiddingSupplierService {
     public BiddingSupplierDto respondWithParticipation(Long biddingId, Long supplierId) {
         BiddingSupplier supplier = getSupplierByBiddingIdAndSupplierId(biddingId, supplierId);
         
-        supplier.participate(notificationRepository, memberRepository);
+        supplier.participate(notificationService, memberRepository); 
         supplier = supplierRepository.save(supplier);
         
         return BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository);
@@ -122,7 +123,7 @@ public class BiddingSupplierService {
     public BiddingSupplierDto respondWithRejection(Long biddingId, Long supplierId, String reason) {
         BiddingSupplier supplier = getSupplierByBiddingIdAndSupplierId(biddingId, supplierId);
         
-        supplier.reject(reason, notificationRepository, memberRepository);
+        supplier.reject(reason, notificationService, memberRepository);
         supplier = supplierRepository.save(supplier);
         
         return BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository);
@@ -202,8 +203,7 @@ public class BiddingSupplierService {
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
         
         supplier.sendNotification(
-            notificationRepository, 
-            memberRepository, 
+            notificationService, 
             "입찰 공고 초대 알림",
             "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
         );

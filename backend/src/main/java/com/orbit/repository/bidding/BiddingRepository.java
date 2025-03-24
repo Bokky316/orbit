@@ -1,5 +1,6 @@
 package com.orbit.repository.bidding;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -20,10 +21,10 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
      */
     @Query("SELECT b FROM Bidding b WHERE " +
            "(:statusChild IS NULL OR b.statusChild = :statusChild) AND " +
-           "(:startDate IS NULL OR b.startDate >= :startDate) AND " +
-           "(:endDate IS NULL OR b.endDate <= :endDate) " +
+           "(:startDate IS NULL OR b.biddingPeriod.startDate >= :startDate) AND " +
+           "(:endDate IS NULL OR b.biddingPeriod.endDate <= :endDate) " +
            "ORDER BY b.id DESC")
-    List<Bidding> findByStatusChildAndStartDateGreaterThanEqualAndEndDateLessThanEqual(
+    List<Bidding> findByStatusChildAndBiddingPeriodStartDateGreaterThanEqualAndBiddingPeriodEndDateLessThanEqual(
             @Param("statusChild") ChildCode statusChild,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
@@ -32,10 +33,10 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
      * 날짜 범위로 입찰 공고 필터링
      */
     @Query("SELECT b FROM Bidding b WHERE " +
-           "(:startDate IS NULL OR b.startDate >= :startDate) AND " +
-           "(:endDate IS NULL OR b.endDate <= :endDate) " +
+           "(:startDate IS NULL OR b.biddingPeriod.startDate >= :startDate) AND " +
+           "(:endDate IS NULL OR b.biddingPeriod.endDate <= :endDate) " +
            "ORDER BY b.id DESC")
-    List<Bidding> findByStartDateGreaterThanEqualAndEndDateLessThanEqual(
+    List<Bidding> findByBiddingPeriodStartDateGreaterThanEqualAndBiddingPeriodEndDateLessThanEqual(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 
@@ -88,11 +89,14 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
     /**
      * 만료 예정인 입찰 공고 목록 조회 (종료일이 현재부터 n일 이내)
      */
-    @Query("SELECT b FROM Bidding b WHERE b.statusChild.codeValue = 'ONGOING' AND b.endDate BETWEEN :now AND :expiry ORDER BY b.endDate ASC")
-    List<Bidding> findExpiringBiddings(
-            @Param("now") LocalDateTime now,
-            @Param("expiry") LocalDateTime expiry);
-    
+    @Query("SELECT b FROM Bidding b WHERE " +
+       "b.statusChild.codeValue = 'ONGOING' AND " +
+       "b.biddingPeriod.endDate BETWEEN :startDate AND :endDate " +
+       "ORDER BY b.biddingPeriod.endDate ASC")
+        List<Bidding> findExpiringBiddings(
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate);
+
     /**
      * 구매 요청에 연결된 입찰 공고 목록 조회
      */
@@ -118,7 +122,10 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
             @Param("status") ChildCode status);
     
     // 특정 공급사가 낙찰받은 입찰 공고 목록 조회
-        @Query("SELECT DISTINCT b FROM Bidding b JOIN b.evaluations e JOIN e.participation p WHERE e.isSelectedBidder = true AND p.supplierId = :supplierId")
+        @Query("SELECT DISTINCT b FROM Bidding b " +
+        "JOIN BiddingEvaluation e ON e.biddingId = b.id " +
+        "WHERE e.isSelectedBidder = true " +
+        "AND e.participation.supplierId = :supplierId")
         List<Bidding> findBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
 
         // 특정 공급사가 낙찰받은 입찰 공고 개수 조회
@@ -126,20 +133,25 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
         long countBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
 
     // 특정 공급사가 최근에 초대받은 입찰 공고 목록 조회 (최신순, 제한 개수)
-    @Query(value = "SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId ORDER BY b.startDate DESC",
-           countQuery = "SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId")
-    List<Bidding> findRecentBiddingsInvitedSupplier(
-            @Param("supplierId") Long supplierId, 
-            Pageable pageable);
+    @Query("SELECT b FROM Bidding b " +
+       "JOIN b.suppliers s " +
+       "WHERE s.supplier.id = :supplierId")
+List<Bidding> findRecentBiddingsInvitedSupplier(
+        @Param("supplierId") Long supplierId, 
+        Pageable pageable);
             
     
     // 특정 공급사가 초대받은 입찰 공고 중 특정 기간 내 마감되는 목록 조회
-    @Query(value = "SELECT DISTINCT b FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId AND b.endDate BETWEEN :startDate AND :endDate ORDER BY b.endDate ASC",
-           countQuery = "SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId AND b.endDate BETWEEN :startDate AND :endDate")
-    List<Bidding> findBiddingsInvitedSupplierWithDeadlineBetween(
-            @Param("supplierId") Long supplierId, 
-            @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate,
-            Pageable pageable);
+    @Query(value = "SELECT DISTINCT b FROM Bidding b " +
+       "JOIN b.suppliers s " +
+       "WHERE s.supplier.id = :supplierId " +
+       "AND b.biddingPeriod.endDate BETWEEN :startDate AND :endDate " +
+       "ORDER BY b.biddingPeriod.endDate ASC",
+       countQuery = "SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.suppliers s WHERE s.supplier.id = :supplierId AND b.biddingPeriod.endDate BETWEEN :startDate AND :endDate")
+List<Bidding> findBiddingsInvitedSupplierWithDeadlineBetween(
+        @Param("supplierId") Long supplierId, 
+        @Param("startDate") LocalDate startDate, 
+        @Param("endDate") LocalDate endDate,    
+        Pageable pageable);
 
 }

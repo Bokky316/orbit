@@ -50,6 +50,14 @@ public class BiddingParticipation extends BaseEntity {
 
     @Column(name = "company_name")
     private String companyName;
+    
+    @Column(name = "business_no")
+    private String businessNo;
+    
+    @Column(name = "proposal_text", columnDefinition = "TEXT")
+    private String proposalText;
+
+    public Integer quantity;
 
     @Column(name = "unit_price", precision = 19, scale = 2)
     private BigDecimal unitPrice;
@@ -67,31 +75,29 @@ public class BiddingParticipation extends BaseEntity {
     private LocalDateTime submittedAt;
 
     @Column(name = "is_confirmed", columnDefinition = "boolean default false")
-    private boolean isConfirmed;
+    private Boolean isConfirmed;
 
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
     @Column(name = "is_evaluated", columnDefinition = "boolean default false")
-    private boolean isEvaluated;
+    private Boolean isEvaluated;
 
     @Column(name = "evaluation_score")
     private Integer evaluationScore;
 
     @Column(name = "is_order_created", columnDefinition = "boolean default false")
-    private boolean isOrderCreated;
+    private Boolean isOrderCreated;
     
     @Column(name = "is_selected_bidder", columnDefinition = "boolean default false")
-    private boolean isSelectedBidder;
+    private Boolean isSelectedBidder;
     
     @Column(name = "selected_at")
     private LocalDateTime selectedAt;
 
-
     @OneToMany(mappedBy = "participation", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<BiddingEvaluation> evaluations = new ArrayList<>();
-
     
     /**
      * 평가 완료 상태 설정 (오버로딩)
@@ -113,25 +119,7 @@ public class BiddingParticipation extends BaseEntity {
         // 알림 발송
         if (notificationRepo != null) {
             try {
-                // Member 객체를 직접 조회하는 방식
-                // 이 메서드는 서비스 레이어에서 MemberRepository를 주입받아 사용해야 함
-                // Member 객체를 직접 생성하는 방식은 오류를 유발할 수 있음
                 if (getSupplierId() != null && bidding != null) {
-                    // 실제로는 MemberRepository를 통해 Member 객체를 조회해야 함
-                    // 여기서는 임시로 MemberRepository가 없어 비즈니스 로직 주석 처리
-                    /*
-                    Member supplier = memberRepository.findById(getSupplierId()).orElse(null);
-                    if (supplier != null) {
-                        Notification notification = Notification.createBiddingNotification(
-                            supplier,
-                            "입찰 평가 완료",
-                            "입찰 공고 '" + bidding.getTitle() + "'에 대한 평가가 완료되었습니다.",
-                            this.id
-                        );
-                        notificationRepo.save(notification);
-                    }
-                    */
-                    
                     // 로그만 출력
                     System.out.println("평가 완료 알림 발송 필요: supplierId=" + getSupplierId() + 
                                     ", biddingTitle=" + bidding.getTitle());
@@ -158,9 +146,25 @@ public class BiddingParticipation extends BaseEntity {
         this.isConfirmed = false;
         this.confirmedAt = null;
     }
+    
+    /**
+     * 낙찰자로 설정
+     */
+    public void setSelectedBidder(boolean isSelected) {
+        this.isSelectedBidder = isSelected;
+        if (isSelected) {
+            this.selectedAt = LocalDateTime.now();
+        } else {
+            this.selectedAt = null;
+        }
+    }
 
     @PrePersist
     protected void onCreate() {
         this.submittedAt = LocalDateTime.now();
+        if (this.isConfirmed == null) this.isConfirmed = false;
+        if (this.isEvaluated == null) this.isEvaluated = false;
+        if (this.isOrderCreated == null) this.isOrderCreated = false;
+        if (this.isSelectedBidder == null) this.isSelectedBidder = false;
     }
 }

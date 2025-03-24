@@ -4,12 +4,15 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.orbit.constant.BiddingStatus;
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.Notification;
+import com.orbit.entity.commonCode.ChildCode;
+import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.member.Member;
+import com.orbit.entity.notification.NotificationRequest;
 import com.orbit.entity.procurement.PurchaseRequestItem;
-import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.service.NotificationService;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,6 +52,9 @@ public class BiddingOrder extends BaseEntity {
     
     @Column(name = "bidding_id", nullable = false)
     private Long biddingId; // 입찰 ID
+
+    @Column(name = "contract_id")
+    private Long contractId; // 계약 ID
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bidding_participation_id", insertable = false, updatable = false)
@@ -71,7 +77,7 @@ public class BiddingOrder extends BaseEntity {
     private String supplierName; // 공급자명
     
     @Column(name = "is_selected_bidder", columnDefinition = "boolean default true")
-    private boolean isSelectedBidder; // 낙찰자 여부
+    private Boolean isSelectedBidder; // 낙찰자 여부
     
     @Column(name = "bidder_selected_at")
     private LocalDateTime bidderSelectedAt; // 낙찰자 선정 일시
@@ -107,12 +113,21 @@ public class BiddingOrder extends BaseEntity {
     
     @Column(name = "approval_by_id")
     private Long approvalById; // 승인자 ID
+    
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt; // 완료 일시
+    
+    @Column(name = "completed_by")
+    private String completedBy; // 완료 처리자
+    
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt; // 배송 완료 일시
 
     @Column(name = "evaluation_id")
     private Long evaluationId; // 평가 ID
     
     @Column(name = "created_by")
-    private String createdBy; // // 생성자 ID
+    private String createdBy; // 생성자 ID
     
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // 생성일시
@@ -124,46 +139,47 @@ public class BiddingOrder extends BaseEntity {
     @Builder.Default
     private Boolean deleted = false; // 삭제 여부 필드
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_parent_id")
+    private ParentCode statusParent;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_child_id")
+    private ChildCode statusChild;
     
     /**
-     * 발주 승인 + 알림 발송
+     * 발주 승인
      */
-    public void approve(Member approver, NotificationRepository notificationRepo, MemberRepository memberRepository) {
+    public void approve(Member approver, NotificationService notificationService, MemberRepository memberRepository) {
         this.approvedAt = LocalDateTime.now();
         this.approvalById = approver.getId();
         this.updatedAt = LocalDateTime.now();
         
-        
         // 알림 발송
-        if (notificationRepo != null && memberRepository != null) {
+        if (notificationService != null && memberRepository != null) {
             try {
                 // 공급자에게 알림
-                Member supplier = memberRepository.findById(this.supplierId).orElse(null);
-                if (supplier != null) {
-                    Notification notification = Notification.builder()
-                        .user(supplier)
-                        .title("발주 승인 완료")
-                        .content("발주 '" + this.orderNumber + "'이(가) 승인되었습니다.")
-                        .type(Notification.NotificationType.입찰공고)
-                        .relatedId(this.id)
-                        .isRead(false)
-                        .build();
-                    notificationRepo.save(notification);
-                }
+                NotificationRequest supplierNotification = new NotificationRequest();
+                supplierNotification.setType(BiddingStatus.NotificationType.ORDER_APPROVED);
+                supplierNotification.setReferenceId(this.id);
+                supplierNotification.setTitle("발주 승인 완료");
+                supplierNotification.setContent("발주 '" + this.orderNumber + "'이(가) 승인되었습니다.");
+                supplierNotification.setRecipientId(this.supplierId);
+                supplierNotification.setPriority(BiddingStatus.NotificationPriority.HIGH);
+                notificationService.sendNotification(supplierNotification);
 
                 // 생성자에게도 알림 (생성자와 승인자가 다른 경우)
-                if (!approver.getId().equals(this.createdBy)) {
+                if (!approver.getUsername().equals(this.createdBy)) {
                     Member creator = memberRepository.findByUsername(this.createdBy).orElse(null);
                     if (creator != null) {
-                        Notification notification = Notification.builder()
-                            .user(creator)
-                            .title("발주 승인 완료")
-                            .content("발주 '" + this.orderNumber + "'이(가) " + approver.getName() + "님에 의해 승인되었습니다.")
-                            .type(Notification.NotificationType.입찰공고)
-                            .relatedId(this.id)
-                            .isRead(false)
-                            .build();
-                        notificationRepo.save(notification);
+                        NotificationRequest creatorNotification = new NotificationRequest();
+                        creatorNotification.setType(BiddingStatus.NotificationType.ORDER_APPROVED);
+                        creatorNotification.setReferenceId(this.id);
+                        creatorNotification.setTitle("발주 승인 완료");
+                        creatorNotification.setContent("발주 '" + this.orderNumber + "'이(가) " + approver.getName() + "님에 의해 승인되었습니다.");
+                        creatorNotification.setRecipientId(creator.getId());
+                        creatorNotification.setPriority(BiddingStatus.NotificationPriority.NORMAL);
+                        notificationService.sendNotification(creatorNotification);
                     }
                 }
             } catch (Exception e) {
@@ -173,14 +189,13 @@ public class BiddingOrder extends BaseEntity {
         }
     }
     
-    
     /**
-     * 납품 예정일 업데이트 + 알림 발송
+     * 납품 예정일 업데이트
      */
     public void updateDeliveryDate(
         LocalDate newDeliveryDate, 
         Member updatedBy,
-        NotificationRepository notificationRepo, 
+        NotificationService notificationService, 
         MemberRepository memberRepository
     ) {
         LocalDate oldDeliveryDate = this.expectedDeliveryDate;
@@ -188,40 +203,34 @@ public class BiddingOrder extends BaseEntity {
         this.updatedAt = LocalDateTime.now();
         
         // 알림 발송
-        if (notificationRepo != null && memberRepository != null) {
+        if (notificationService != null && memberRepository != null) {
             try {
                 // 공급자에게 알림
-                Member supplier = memberRepository.findById(this.supplierId).orElse(null);
-                if (supplier != null) {
-                    Notification notification = Notification.builder()
-                        .user(supplier)
-                        .title("납품 예정일 변경")
-                        .content("발주 '" + this.orderNumber + "'의 납품 예정일이 " + 
-                                oldDeliveryDate + "에서 " + newDeliveryDate + "(으)로 변경되었습니다.")
-                        .type(Notification.NotificationType.입찰공고)
-                        .relatedId(this.id)
-                        .isRead(false)
-                        .build();
-                    notificationRepo.save(notification);
-                }
+                NotificationRequest supplierNotification = new NotificationRequest();
+                supplierNotification.setType(BiddingStatus.NotificationType.CONTRACT_STATUS_CHANGED);
+                supplierNotification.setReferenceId(this.id);
+                supplierNotification.setTitle("납품 예정일 변경");
+                supplierNotification.setContent("발주 '" + this.orderNumber + "'의 납품 예정일이 " + 
+                        oldDeliveryDate + "에서 " + newDeliveryDate + "(으)로 변경되었습니다.");
+                supplierNotification.setRecipientId(this.supplierId);
+                supplierNotification.setPriority(BiddingStatus.NotificationPriority.HIGH);
+                notificationService.sendNotification(supplierNotification);
 
                 // 생성자에게도 알림 (생성자와 변경자가 다른 경우)
-                if (this.createdBy != null && !updatedBy.getId().equals(this.supplierId)) {
+                if (this.createdBy != null && !updatedBy.getUsername().equals(this.createdBy)) {
                     Member creator = memberRepository.findByUsername(this.createdBy).orElse(null);
                     if (creator != null) {
-                        Notification notification = Notification.builder()
-                        .user(creator)
-                        .title("납품 예정일 변경")
-                        .content("발주 '" + this.orderNumber + "'의 납품 예정일이 " + 
-                                oldDeliveryDate + "에서 " + newDeliveryDate + "(으)로 변경되었습니다.")
-                        .type(Notification.NotificationType.입찰공고)
-                        .relatedId(this.id)
-                        .isRead(false)
-                        .build();
-                        notificationRepo.save(notification);
+                        NotificationRequest creatorNotification = new NotificationRequest();
+                        creatorNotification.setType(BiddingStatus.NotificationType.CONTRACT_STATUS_CHANGED);
+                        creatorNotification.setReferenceId(this.id);
+                        creatorNotification.setTitle("납품 예정일 변경");
+                        creatorNotification.setContent("발주 '" + this.orderNumber + "'의 납품 예정일이 " + 
+                                oldDeliveryDate + "에서 " + newDeliveryDate + "(으)로 변경되었습니다.");
+                        creatorNotification.setRecipientId(creator.getId());
+                        creatorNotification.setPriority(BiddingStatus.NotificationPriority.NORMAL);
+                        notificationService.sendNotification(creatorNotification);
                     }
                 }
-
             } catch (Exception e) {
                 // 알림 발송 실패 (로깅 필요)
                 System.err.println("납품 예정일 변경 알림 발송 실패: " + e.getMessage());
@@ -229,6 +238,57 @@ public class BiddingOrder extends BaseEntity {
         }
     }
     
+    /**
+     * 상태 변경
+     */
+    public void changeStatus(
+        ChildCode newStatus, 
+        String reason, 
+        Member changedBy,
+        NotificationService notificationService, 
+        MemberRepository memberRepository
+    ) {
+        ChildCode oldStatus = this.statusChild;
+        this.statusChild = newStatus;
+        this.updatedAt = LocalDateTime.now();
+        
+        // 알림 발송
+        if (notificationService != null && memberRepository != null) {
+            try {
+                // 공급자에게 알림
+                NotificationRequest supplierNotification = new NotificationRequest();
+                supplierNotification.setType(BiddingStatus.NotificationType.CONTRACT_STATUS_CHANGED);
+                supplierNotification.setReferenceId(this.id);
+                supplierNotification.setTitle("발주 상태 변경");
+                supplierNotification.setContent("발주 '" + this.orderNumber + "'의 상태가 '" + 
+                        (oldStatus != null ? oldStatus.getCodeName() : "없음") + "'에서 '" + 
+                        newStatus.getCodeName() + "'(으)로 변경되었습니다.");
+                supplierNotification.setRecipientId(this.supplierId);
+                supplierNotification.setPriority(BiddingStatus.NotificationPriority.NORMAL);
+                notificationService.sendNotification(supplierNotification);
+
+                // 생성자에게도 알림 (생성자와 변경자가 다른 경우)
+                if (this.createdBy != null && !changedBy.getUsername().equals(this.createdBy)) {
+                    Member creator = memberRepository.findByUsername(this.createdBy).orElse(null);
+                    if (creator != null) {
+                        NotificationRequest creatorNotification = new NotificationRequest();
+                        creatorNotification.setType(BiddingStatus.NotificationType.CONTRACT_STATUS_CHANGED);
+                        creatorNotification.setReferenceId(this.id);
+                        creatorNotification.setTitle("발주 상태 변경");
+                        creatorNotification.setContent("발주 '" + this.orderNumber + "'의 상태가 '" + 
+                                (oldStatus != null ? oldStatus.getCodeName() : "없음") + "'에서 '" + 
+                                newStatus.getCodeName() + "'(으)로 변경되었습니다.");
+                        creatorNotification.setRecipientId(creator.getId());
+                        creatorNotification.setPriority(BiddingStatus.NotificationPriority.NORMAL);
+                        notificationService.sendNotification(creatorNotification);
+                    }
+                }
+            } catch (Exception e) {
+                // 알림 발송 실패 (로깅 필요)
+                System.err.println("발주 상태 변경 알림 발송 실패: " + e.getMessage());
+            }
+        }
+    }
     
     @PrePersist
     protected void onCreate() {
@@ -242,6 +302,9 @@ public class BiddingOrder extends BaseEntity {
             this.orderNumber = "ORD-" + datePart + "-" + randomPart;
         }
         
+        // 기본값 설정
+        if (this.isSelectedBidder == null) this.isSelectedBidder = true;
+        if (this.deleted == null) this.deleted = false;
     }
     
     @PreUpdate

@@ -56,6 +56,11 @@ import DeliveryCreatePage from "@/pages/delivery/DeliveryCreatePage";
 import DeliveryDetailPage from "@/pages/delivery/DeliveryDetailPage";
 import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage";
 
+import NotificationPage from "./pages/member/NotificationPage";
+import NotificationToast from "./components/notification/NotificationToast";
+import SupplierDashboard from "./pages/dashboard/SupplierDashboard";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
  * @returns {JSX.Element} - 전체 앱 콘텐츠
@@ -68,10 +73,6 @@ function AppContent() {
     (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
   );
 
-  // 대시보드 페이지 임시 컴포넌트
-  const DashboardPage = () => <div>대시보드 페이지</div>;
-  // 공급자 대시보드 임시 컴포넌트
-  const SupplierDashboard = () => <div>공급자 대시보드 페이지</div>;
   // 임시 페이지 컴포넌트들
   const SupplierContractsPage = () => <div>공급사 계약 페이지 (개발 중)</div>;
   const SupplierOrdersPage = () => <div>공급사 주문 페이지 (개발 중)</div>;
@@ -79,6 +80,9 @@ function AppContent() {
   return (
     <BrowserRouter>
       <div className="App">
+        {/* 알림 토스트 컴포넌트는 Routes 외부에 배치 */}
+        {isLoggedIn && <NotificationToast />}
+
         <Routes>
           {/* 로그인/회원가입 페이지는 로그인 여부와 상관없이 접근 가능 */}
           <Route path="/login" element={<Login />} />
@@ -290,6 +294,9 @@ function AppContent() {
                     path="/common-codes"
                     element={<CommonCodeManagement />}
                   />
+
+                  {/* 알림 페이지 */}
+                  <Route path="/notifications" element={<NotificationPage />} />
                 </>
               )}
               {/* 404 페이지 */}

@@ -85,7 +85,7 @@ const theme = createTheme({
           fontFamily: fontFamily,
           textTransform: "none",
           borderRadius: 4,
-          minHeight: "42px",
+          minHeight: "38px",
           padding: "7px 16px",
           fontWeight: 500,
           boxShadow: "none",
@@ -133,12 +133,28 @@ const theme = createTheme({
             backgroundColor: "transparent",
             borderRadius: 4,
             padding: "7px 16px",
-            minHeight: "42px",
+            minHeight: "38px",
             fontWeight: 400,
             boxShadow: "none",
             "&:hover": {
               boxShadow: "none",
               fontWeight: 500
+            }
+          }
+        },
+        {
+          props: { variant: "restartThick" },
+          style: {
+            backgroundColor: "#F4F4F6",
+            borderRadius: "4px",
+            minWidth: "38px",
+            minHeight: "38px",
+            padding: "8px",
+            "& .MuiSvgIcon-root": {
+              fontSize: "18px",
+              "& path": {
+                fill: "#aaa"
+              }
             }
           }
         },
@@ -209,11 +225,21 @@ const theme = createTheme({
             height: "42px",
             fontSize: "14px",
             boxSizing: "border-box",
-            overflow: "hidden",
+            "&.MuiTextField-root": {
+              "& .MuiFilledInput-root": {
+                backgroundColor: "transparent",
+                borderColor: "#E0E0E0"
+              },
+              "& .MuiFilledInput-underline:before": {
+                borderBottomColor: "#E0E0E0" // 언더라인 색상
+              },
+              "& .MuiFilledInput-underline:after": {
+                borderBottomColor: "#FF7F3E" // 포커스 시 언더라인 색상
+              }
+            },
             "& fieldset": {
               border: "1px solid #E5E7EB",
               borderRadius: 4,
-              top: 0, // fieldset 위치 조정
               backgroundColor: "transparent"
             },
             "&:hover fieldset": {
@@ -229,13 +255,14 @@ const theme = createTheme({
           },
           "& .MuiInputLabel-root": {
             fontFamily: fontFamily,
-            transform: "translate(12px, 12px) scale(1)",
+            transform: "translate(14px, 40%) scale(1)",
             fontSize: "14px",
             backgroundColor: "transparent",
             padding: "0 4px",
-            top: "4px",
+
             "&.MuiInputLabel-shrink": {
-              transform: "translate(12px, -6px) scale(0.75)"
+              transform: "translate(12px, -12px) scale(0.75)",
+              backgroundColor: "transparent"
             },
             color: "#9CA3AF",
             "&.Mui-focused": {
@@ -255,8 +282,7 @@ const theme = createTheme({
             "&::placeholder": {
               color: "#9CA3AF",
               opacity: 1,
-              position: "relative",
-              top: "0"
+              position: "relative"
             }
           }
         }
@@ -269,13 +295,8 @@ const theme = createTheme({
           height: "42px",
           fontSize: "14px",
           boxSizing: "border-box",
-          backgroundColor: "transparent",
-          overflow: "hidden",
+          backgroundColor: "#fff",
           "& .MuiOutlinedInput-notchedOutline": {
-            top: 0,
-            bottom: 0,
-            left: 0,
-            right: 0,
             backgroundColor: "transparent",
             borderWidth: "1px",
             borderRadius: 4
@@ -287,18 +308,16 @@ const theme = createTheme({
             borderColor: "#FF7F3E", // 포커스 시 테두리 색상
             borderWidth: "1px" // 포커스 시 테두리 두께 유지
           },
-          backgroundColor: "#fff",
-          overflow: "hidden"
+          backgroundColor: "#fff"
         },
         input: {
           height: "24px",
-          padding: "9px 12px",
+          padding: "9px 16px",
           fontSize: "14px",
           boxSizing: "border-box",
           "&::placeholder": {
             opacity: 1, // 플레이스홀더 투명도
             position: "relative",
-            top: "0", // 플레이스홀더 위치 조정
             color: "#9CA3AF"
           }
         },
@@ -349,16 +368,28 @@ const theme = createTheme({
 
         // 텍스트 위치 추가 조정
         outlined: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          textAlign: "left",
-          paddingLeft: "12px"
+          transform: "translate(14px, 0) scale(1)",
+          fontSize: "14px",
+          backgroundColor: "transparent",
+          padding: "0 4px",
+          top: "0"
         },
         icon: {
           right: "12px",
           top: "calc(50% - 0.5em)",
           color: "#666"
+        }
+      }
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          fontFamily: fontFamily,
+          transform: "translate(14px, 0) scale(1)",
+          fontSize: "14px",
+          backgroundColor: "transparent",
+          padding: "0 4px",
+          top: "4px"
         }
       }
     },
@@ -369,26 +400,6 @@ const theme = createTheme({
           fontFamily: fontFamily,
           fontSize: "12px",
           marginTop: "4px"
-        }
-      }
-    },
-    // InputLabel 스타일 조정
-    MuiInputLabel: {
-      styleOverrides: {
-        root: {
-          fontFamily: fontFamily,
-          fontSize: "14px",
-          "&.MuiInputLabel-outlined": {
-            transform: "translate(12px, 12px) scale(1)",
-            backgroundColor: "#fff",
-            overflow: "hidden",
-            "&.MuiInputLabel-shrink": {
-              transform: "translate(12px, -6px) scale(0.75)",
-              backgroundColor: "#fff",
-              padding: "0 4px",
-              zIndex: 1
-            }
-          }
         }
       }
     },
@@ -468,10 +479,11 @@ const theme = createTheme({
           "& .MuiInputLabel-root": {
             // 셀렉트 박스용 레이블 위치 조정
             "&.MuiInputLabel-formControl": {
-              transform: "translate(14px, 50%) scale(1)",
+              transform: "translate(14px, 40%) scale(1)",
               backgroundColor: "transparent",
               "&.MuiInputLabel-shrink": {
-                transform: "translate(14px, -6px) scale(0.75)"
+                backgroundColor: "transparent",
+                transform: "translate(12px, -12px) scale(0.75)"
               }
             }
           }

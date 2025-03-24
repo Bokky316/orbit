@@ -1,13 +1,11 @@
 package com.orbit.controller.bidding;
 
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.core.io.Resource;
@@ -32,15 +30,16 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
 
 import com.orbit.dto.bidding.BiddingDto;
-import com.orbit.dto.bidding.BiddingEvaluationDto;
 import com.orbit.dto.bidding.BiddingFormDto;
 import com.orbit.dto.bidding.BiddingParticipationDto;
 import com.orbit.dto.bidding.BiddingSupplierDto;
 import com.orbit.entity.commonCode.StatusHistory;
 import com.orbit.entity.member.Member;
 import com.orbit.entity.procurement.PurchaseRequest;
+import com.orbit.entity.procurement.PurchaseRequestItem;
 import com.orbit.entity.supplier.SupplierRegistration;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.procurement.PurchaseRequestItemRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.service.bidding.BiddingService;
 import com.orbit.service.supplier.SupplierRegistrationService;
@@ -57,6 +56,7 @@ public class BiddingController {
     private final BiddingService biddingService;
     private final SupplierRegistrationService supplierRegistrationService;
     private final PurchaseRequestRepository purchaseRequestRepository;
+    private final PurchaseRequestItemRepository purchaseRequestItemRepository;
     private final MemberRepository memberRepository;
 
    
@@ -93,6 +93,22 @@ public class BiddingController {
             
             log.info("활성 구매 요청 수: {}", activeRequests.size());
             
+            // 모든 구매 요청 품목을 한번에 조회 (N+1 문제 방지)
+            List<Long> activeRequestIds = activeRequests.stream()
+                .map(PurchaseRequest::getId)
+                .collect(Collectors.toList());
+                
+            // 모든 품목을 조회
+            List<PurchaseRequestItem> allItems = purchaseRequestItemRepository.findAll();
+            
+            // 활성 요청 ID에 해당하는 품목만 필터링
+            Map<Long, List<PurchaseRequestItem>> itemsByRequestId = allItems.stream()
+                .filter(item -> item.getPurchaseRequest() != null && 
+                    activeRequestIds.contains(item.getPurchaseRequest().getId()))
+                .collect(Collectors.groupingBy(
+                    item -> item.getPurchaseRequest().getId()
+                ));
+            
             // PurchaseRequest를 Map으로 변환
             List<Map<String, Object>> result = activeRequests.stream()
                 .map(request -> {
@@ -105,23 +121,26 @@ public class BiddingController {
                     requestMap.put("requestDate", request.getRequestDate());
                     requestMap.put("businessDepartment", request.getBusinessDepartment());
                     
+                    // 해당 요청 ID에 매핑된 품목 리스트 가져오기
+                    List<PurchaseRequestItem> requestItems = itemsByRequestId.getOrDefault(request.getId(), Collections.emptyList());
+                    
                     // 품목 정보 변환
-                    List<Map<String, Object>> items = Optional.ofNullable(request.getPurchaseRequestItems())
-                        .map(requestItems -> requestItems.stream()
-                            .map(item -> {
-                                Map<String, Object> itemMap = new HashMap<>();
-                                itemMap.put("id", item.getId());
-                                itemMap.put("quantity", item.getQuantity());
-                                itemMap.put("unitPrice", item.getUnitPrice());
-                                itemMap.put("supplyPrice", item.getTotalPrice());
-                                itemMap.put("vat", item.getTotalPrice() != null 
-                                    ? item.getTotalPrice().multiply(BigDecimal.valueOf(0.1)) 
-                                    : BigDecimal.ZERO);
-                                return itemMap;
-                            })
-                            .collect(Collectors.toList())
-                        )
-                        .orElse(new ArrayList<>());
+                    List<Map<String, Object>> items = requestItems.stream()
+                    .map(item -> {
+                        Map<String, Object> itemMap = new HashMap<>();
+                        itemMap.put("id", item.getId());
+                        itemMap.put("itemName", item.getItem() != null ? item.getItem().getName() : "");
+                        itemMap.put("specification", item.getSpecification());
+                        itemMap.put("quantity", item.getQuantity());
+                        itemMap.put("unitPrice", item.getUnitPrice());
+                        itemMap.put("totalPrice", item.getTotalPrice());
+                        itemMap.put("unitChildCode", item.getUnitChildCode() != null ? 
+                            item.getUnitChildCode().getCodeValue() : "49");
+                        itemMap.put("deliveryLocation", item.getDeliveryLocation());
+                        itemMap.put("deliveryRequestDate", item.getDeliveryRequestDate());
+                        return itemMap;
+                    })
+                    .collect(Collectors.toList());
                     
                     requestMap.put("items", items);
                     
@@ -306,25 +325,37 @@ public class BiddingController {
      * 입찰 공고 생성
      */
     @PostMapping
-    public ResponseEntity<BiddingDto> createBidding(
-            @Valid @RequestBody BiddingFormDto formDto,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        log.info("입찰 공고 생성 요청 - 제목: {}", formDto.getTitle());
-        
-        try {
-            // 현재 사용자 정보 설정은 Service 레이어에서 처리하도록 수정
-            
-            // 금액 필드 안전 처리 및 재계산
-            formDto.recalculateAllPrices();
-            
-            BiddingDto createdBidding = biddingService.createBidding(formDto);
-            return new ResponseEntity<>(createdBidding, HttpStatus.CREATED);
-        } catch (Exception e) {
-            log.error("입찰 공고 생성 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+public ResponseEntity<?> createBidding(
+    @Valid @RequestBody BiddingFormDto formDto,
+    @AuthenticationPrincipal UserDetails userDetails
+) {
+    if (userDetails == null) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(Map.of("message", "로그인이 필요합니다."));
     }
+
+    try {
+        Member currentMember = memberRepository.findByUsername(userDetails.getUsername())
+            .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
+        
+        // 권한 체크 로직 
+        if (currentMember.getRole() != Member.Role.ADMIN && 
+            currentMember.getRole() != Member.Role.BUYER) {
+            return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(Map.of("message", "입찰 공고 생성 권한이 없습니다."));
+        }
+        
+        BiddingDto createdBidding = biddingService.createBidding(formDto, currentMember);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdBidding);
+
+    } catch (Exception e) {
+        log.error("입찰 공고 생성 중 오류: ", e);
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(Map.of("message", "입찰 공고 생성에 실패했습니다.", "error", e.getMessage()));
+    }
+}
     
     /**
      * 입찰 공고 수정
@@ -505,84 +536,8 @@ public class BiddingController {
         }
     }
     
-    /**
-     * 낙찰자 선정 (최고 점수 기준)
-     */
-    @PostMapping("/{biddingId}/select-winner")
-    public ResponseEntity<BiddingEvaluationDto> selectWinningBidder(
-            @PathVariable Long biddingId,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        log.info("입찰 낙찰자 선정 요청 (자동) - 입찰 ID: {}", biddingId);
-        
-        try {
-            // 권한 체크 로직 - 구매자 또는 관리자만 가능하도록
-            if (userDetails != null) {
-                Member member = memberRepository.findByUsername(userDetails.getUsername())
-                        .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
-                
-                // 여기에 역할 확인 로직을 추가할 수 있습니다.
-                // 예: if (!"BUYER".equals(member.getRole()) && !"ADMIN".equals(member.getRole())) { ... }
-            }
-            
-            BiddingEvaluationDto winner = biddingService.selectWinningBidder(biddingId);
-            return ResponseEntity.ok(winner);
-        } catch (IllegalStateException e) {
-            log.error("낙찰자 선정 불가: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        } catch (Exception e) {
-            log.error("낙찰자 선정 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
     
-    /**
-     * 수동 낙찰자 선정
-     */
-    @PostMapping("/{biddingId}/select-winner/{evaluationId}")
-    public ResponseEntity<BiddingEvaluationDto> selectBidderManually(
-            @PathVariable Long biddingId, 
-            @PathVariable Long evaluationId,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        log.info("입찰 낙찰자 선정 요청 (수동) - 입찰 ID: {}, 평가 ID: {}", biddingId, evaluationId);
-        
-        try {
-            // 권한 체크 로직 - 구매자 또는 관리자만 가능하도록
-            if (userDetails != null) {
-                Member member = memberRepository.findByUsername(userDetails.getUsername())
-                        .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
-                
-                // 여기에 역할 확인 로직을 추가할 수 있습니다.
-                // 예: if (!"BUYER".equals(member.getRole()) && !"ADMIN".equals(member.getRole())) { ... }
-            }
-            
-            BiddingEvaluationDto winner = biddingService.selectBidderManually(biddingId, evaluationId);
-            return ResponseEntity.ok(winner);
-        } catch (IllegalStateException e) {
-            log.error("낙찰자 선정 불가: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        } catch (Exception e) {
-            log.error("낙찰자 선정 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
     
-    /**
-     * 낙찰자 목록 조회
-     */
-    @GetMapping("/{biddingId}/winners")
-    public ResponseEntity<List<BiddingEvaluationDto>> getWinningBidders(@PathVariable Long biddingId) {
-        log.info("입찰 낙찰자 목록 조회 요청 - 입찰 ID: {}", biddingId);
-        
-        try {
-            List<BiddingEvaluationDto> winners = biddingService.getWinningBidders(biddingId);
-            return ResponseEntity.ok(winners);
-        } catch (Exception e) {
-            log.error("낙찰자 목록 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
     
     /**
      * 초대된 공급사 목록 조회
@@ -632,66 +587,4 @@ public class BiddingController {
         }
     }
     
-    /**
-     * 계약 초안 생성
-     */
-    @PostMapping("/{biddingId}/create-contract/{participationId}")
-    public ResponseEntity<Map<String, Long>> createContractDraft(
-            @PathVariable Long biddingId,
-            @PathVariable Long participationId,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        log.info("계약 초안 생성 요청 - 입찰 ID: {}, 참여 ID: {}", biddingId, participationId);
-        
-        try {
-            // 권한 체크 로직 - 구매자 또는 관리자만 가능하도록
-            if (userDetails != null) {
-                Member member = memberRepository.findByUsername(userDetails.getUsername())
-                        .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
-                
-                // 여기에 역할 확인 로직을 추가할 수 있습니다.
-                // 예: if (!"BUYER".equals(member.getRole()) && !"ADMIN".equals(member.getRole())) { ... }
-            }
-            
-            Long contractId = biddingService.createContractDraft(biddingId, participationId);
-            Map<String, Long> response = new HashMap<>();
-            response.put("contractId", contractId);
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-        } catch (Exception e) {
-            log.error("계약 초안 생성 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * 발주 생성
-     */
-    @PostMapping("/{biddingId}/create-order/{participationId}")
-    public ResponseEntity<Map<String, Long>> createOrder(
-            @PathVariable Long biddingId,
-            @PathVariable Long participationId,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        log.info("발주 생성 요청 - 입찰 ID: {}, 참여 ID: {}", biddingId, participationId);
-        
-        try {
-            // 권한 체크 로직 - 구매자 또는 관리자만 가능하도록
-            if (userDetails != null) {
-                Member member = memberRepository.findByUsername(userDetails.getUsername())
-                        .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
-                
-                // 여기에 역할 확인 로직을 추가할 수 있습니다.
-                // 예: if (!"BUYER".equals(member.getRole()) && !"ADMIN".equals(member.getRole())) { ... }
-            }
-            
-            String createdById = userDetails != null ? userDetails.getUsername() : null;
-            Long orderId = biddingService.createOrder(biddingId, participationId, createdById);
-            Map<String, Long> response = new HashMap<>();
-            response.put("orderId", orderId);
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-        } catch (Exception e) {
-            log.error("발주 생성 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
 }

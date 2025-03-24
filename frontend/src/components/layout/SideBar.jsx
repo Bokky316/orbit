@@ -25,7 +25,7 @@ const buyerAdminMenuItems = [
 
 // 공급업체(SUPPLIER) 메뉴
 const supplierMenuItems = [
-  { label: "대시보드", path: "/suppliers/dashboard" },
+  { label: "대시보드", path: "/supplierDashboard" },
   { label: "입찰 정보", path: "/suppliers/biddings" },
   { label: "계약 정보", path: "/suppliers/contracts" },
   { label: "주문 정보", path: "/suppliers/orders" },

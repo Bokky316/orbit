@@ -11,6 +11,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 발주 정보 DTO 클래스
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,11 +22,12 @@ public class BiddingOrderDto {
     private Long id;
     private String orderNumber;
     private Long biddingId;
+    private Long contractId; 
     private Long biddingParticipationId;
     private Long purchaseRequestItemId;
     private Long supplierId;
     private String supplierName;
-    private boolean isSelectedBidder;
+    private Boolean isSelectedBidder;
     private LocalDateTime bidderSelectedAt;
     private String title;
     private String description;
@@ -34,8 +38,15 @@ public class BiddingOrderDto {
     private BigDecimal totalAmount;
     private String terms;
     private LocalDate expectedDeliveryDate;
-    private Long evaluationId;
     private LocalDateTime approvedAt;
+    private Long approvalById;
+    private String approvalByName;
+    private LocalDateTime completedAt;
+    private String completedBy;
+    private LocalDateTime deliveredAt;
+    private Long evaluationId;
+    private String statusCode;
+    private String statusName;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -44,17 +55,22 @@ public class BiddingOrderDto {
     private String bidNumber;
     private String bidTitle;
     private String itemName;
+    private String itemCode;
     
+    /**
+     * 엔티티를 DTO로 변환
+     */
     public static BiddingOrderDto fromEntity(BiddingOrder entity) {
-        return BiddingOrderDto.builder()
+        BiddingOrderDto dto = BiddingOrderDto.builder()
                 .id(entity.getId())
                 .orderNumber(entity.getOrderNumber())
                 .biddingId(entity.getBiddingId())
+                .contractId(entity.getContractId())
                 .biddingParticipationId(entity.getBiddingParticipationId())
                 .purchaseRequestItemId(entity.getPurchaseRequestItemId())
                 .supplierId(entity.getSupplierId())
                 .supplierName(entity.getSupplierName())
-                .isSelectedBidder(entity.isSelectedBidder())
+                .isSelectedBidder(entity.getIsSelectedBidder())
                 .bidderSelectedAt(entity.getBidderSelectedAt())
                 .title(entity.getTitle())
                 .description(entity.getDescription())
@@ -65,19 +81,48 @@ public class BiddingOrderDto {
                 .totalAmount(entity.getTotalAmount())
                 .terms(entity.getTerms())
                 .expectedDeliveryDate(entity.getExpectedDeliveryDate())
-                .evaluationId(entity.getEvaluationId())
                 .approvedAt(entity.getApprovedAt())
+                .approvalById(entity.getApprovalById())
+                .completedAt(entity.getCompletedAt())
+                .completedBy(entity.getCompletedBy())
+                .deliveredAt(entity.getDeliveredAt())
+                .evaluationId(entity.getEvaluationId())
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+                
+        // 상태 정보 설정
+        if (entity.getStatusChild() != null) {
+            dto.setStatusCode(entity.getStatusChild().getCodeValue());
+            dto.setStatusName(entity.getStatusChild().getCodeName());
+        }
+        
+        // 연관된 입찰 정보 설정
+        if (entity.getBidding() != null) {
+            dto.setBidNumber(entity.getBidding().getBidNumber());
+            dto.setBidTitle(entity.getBidding().getTitle());
+        }
+        
+        // 아이템 정보 설정
+        dto.setItemName(entity.getItemName());
+        if (entity.getPurchaseRequestItem() != null && 
+            entity.getPurchaseRequestItem().getItem() != null) {
+            dto.setItemCode(entity.getPurchaseRequestItem().getItem().getCode());
+        }
+        
+        return dto;
     }
     
+    /**
+     * DTO를 엔티티로 변환
+     */
     public BiddingOrder toEntity() {
         return BiddingOrder.builder()
                 .id(this.id)
                 .orderNumber(this.orderNumber)
                 .biddingId(this.biddingId)
+                .contractId(this.contractId)
                 .biddingParticipationId(this.biddingParticipationId)
                 .purchaseRequestItemId(this.purchaseRequestItemId)
                 .supplierId(this.supplierId)
@@ -93,8 +138,12 @@ public class BiddingOrderDto {
                 .totalAmount(this.totalAmount)
                 .terms(this.terms)
                 .expectedDeliveryDate(this.expectedDeliveryDate)
-                .evaluationId(this.evaluationId)
                 .approvedAt(this.approvedAt)
+                .approvalById(this.approvalById)
+                .completedAt(this.completedAt)
+                .completedBy(this.completedBy)
+                .deliveredAt(this.deliveredAt)
+                .evaluationId(this.evaluationId)
                 .createdBy(this.createdBy)
                 .build();
     }

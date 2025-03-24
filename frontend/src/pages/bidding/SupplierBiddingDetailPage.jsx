@@ -1,32 +1,51 @@
 import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { API_URL } from "@/utils/constants";
+
+import {
+  Box,
+  Typography,
+  Paper,
+  Grid,
+  Button,
+  TextField,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
+} from "@mui/material";
+
+import { BiddingStatus, BiddingMethod } from "./helpers/biddingTypes";
+
+import { canParticipateInBidding } from "./helpers/SupplierBiddingHelpers";
+
 import {
   getStatusText,
   getBidMethodText
 } from "./helpers/commonBiddingHelpers";
-import { canParticipateInBidding } from "./helpers/SupplierBiddingHelpers";
-import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { API_URL } from "@/utils/constants";
 
 function SupplierBiddingDetailPage() {
-  // 상태 관리
+  const { id } = useParams();
+  const navigate = useNavigate();
+
   const [bidding, setBidding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // 참여 관련 상태
   const [participationData, setParticipationData] = useState({
     unitPrice: 0,
-    quantity: 0,
-    note: ""
+    quantity: 1,
+    proposalText: ""
   });
-
-  // 사용자 정보 (컨텍스트나 훅에서 가져올 수 있음)
-  const [userSupplierInfo, setUserSupplierInfo] = useState(null);
+  const [participationDialogOpen, setParticipationDialogOpen] = useState(false);
 
   // 입찰 공고 상세 정보 가져오기
   const fetchBiddingDetail = async () => {
     try {
-      const response = await fetchWithAuth(`${API_URL}/biddings/${id}`);
+      const response = await fetchWithAuth(
+        `${API_URL}/supplier/biddings/${id}`
+      );
       if (!response.ok) {
         throw new Error("입찰 공고 정보를 불러올 수 없습니다.");
       }
@@ -42,21 +61,15 @@ function SupplierBiddingDetailPage() {
   // 입찰 참여 처리
   const handleParticipate = async () => {
     try {
-      // 참여 가능 여부 확인
-      if (!canParticipateInBidding(bidding, userSupplierInfo)) {
-        throw new Error("현재 입찰에 참여할 수 없습니다.");
-      }
-
       const participationPayload = {
         biddingId: bidding.id,
-        supplierId: userSupplierInfo.id,
         unitPrice: participationData.unitPrice,
         quantity: participationData.quantity,
-        note: participationData.note
+        proposalText: participationData.proposalText
       };
 
       const response = await fetchWithAuth(
-        `${API_URL}/biddings/${bidding.id}/participate`,
+        `${API_URL}/supplier/bidding-participations/${bidding.id}`,
         {
           method: "POST",
           headers: {
@@ -72,142 +85,143 @@ function SupplierBiddingDetailPage() {
 
       // 성공 처리
       alert("입찰에 성공적으로 참여했습니다.");
-
-      // 상세 정보 새로고침
-      fetchBiddingDetail();
+      setParticipationDialogOpen(false);
+      fetchBiddingDetail(); // 상세 정보 새로고침
     } catch (error) {
       alert(error.message);
     }
   };
 
-  // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
     fetchBiddingDetail();
-  }, []);
+  }, [id]);
 
-  // 참여 데이터 변경 핸들러
-  const handleParticipationChange = (e) => {
-    const { name, value } = e.target;
-    setParticipationData((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // 로딩 상태
+  // 로딩 및 에러 상태 처리
   if (loading) return <div>로딩 중...</div>;
-
-  // 오류 상태
   if (error) return <div>오류: {error}</div>;
-
-  // 입찰 공고가 없는 경우
   if (!bidding) return <div>입찰 공고를 찾을 수 없습니다.</div>;
 
+  // 참여 가능 여부 확인
+  const isParticipationPossible = canParticipateInBidding(
+    bidding,
+    currentUser.supplierId
+  );
+
   return (
-    <div className="supplier-bidding-detail-container">
-      {/* 기본 입찰 공고 정보 */}
-      <section className="bidding-info">
-        <h1>{bidding.title}</h1>
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h4" sx={{ mb: 4 }}>
+        입찰 공고 상세
+      </Typography>
 
-        <div className="bidding-meta">
-          <p>공고번호: {bidding.bidNumber}</p>
-          <p>상태: {getStatusText(bidding.status)}</p>
-          <p>입찰 방식: {getBidMethodText(bidding.bidMethod)}</p>
-          <p>
-            공고 기간: {new Date(bidding.startDate).toLocaleDateString()} ~
-            {new Date(bidding.endDate).toLocaleDateString()}
-          </p>
-        </div>
-
-        {/* 입찰 조건 */}
-        <div className="bidding-conditions">
-          <h2>입찰 조건</h2>
-          <p>{bidding.conditions || "특별한 입찰 조건이 없습니다."}</p>
-        </div>
-      </section>
+      {/* 기본 정보 섹션 */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={4}>
+            <Typography variant="subtitle2" color="text.secondary">
+              공고 번호
+            </Typography>
+            <Typography variant="body1">{bidding.bidNumber}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Typography variant="subtitle2" color="text.secondary">
+              공고명
+            </Typography>
+            <Typography variant="body1">{bidding.title}</Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Typography variant="subtitle2" color="text.secondary">
+              상태
+            </Typography>
+            <Chip
+              label={getStatusText(bidding.status)}
+              color={
+                bidding.status?.childCode === BiddingStatus.ONGOING
+                  ? "primary"
+                  : bidding.status?.childCode === BiddingStatus.CLOSED
+                  ? "success"
+                  : "default"
+              }
+            />
+          </Grid>
+          {/* 추가 상세 정보 렌더링 */}
+        </Grid>
+      </Paper>
 
       {/* 참여 섹션 */}
-      {canParticipateInBidding(bidding, userSupplierInfo) && (
-        <section className="participation-section">
-          <h2>입찰 참여</h2>
+      {isParticipationPossible && (
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setParticipationDialogOpen(true)}>
+          입찰 참여
+        </Button>
+      )}
 
-          {/* 입찰 방식에 따른 참여 폼 */}
-          {bidding.bidMethod === "정가제안" ? (
-            <div className="fixed-price-participation">
-              <label>
-                수량:
-                <input
-                  type="number"
-                  name="quantity"
-                  value={participationData.quantity}
-                  onChange={handleParticipationChange}
-                  min="1"
-                />
-              </label>
-            </div>
-          ) : (
-            <div className="price-suggestion-participation">
-              <label>
-                제안 단가:
-                <input
-                  type="number"
-                  name="unitPrice"
-                  value={participationData.unitPrice}
-                  onChange={handleParticipationChange}
-                  min="0"
-                />
-              </label>
-            </div>
-          )}
-
-          {/* 참고 사항 */}
-          <div className="participation-note">
-            <label>
-              참고 사항:
-              <textarea
-                name="note"
-                value={participationData.note}
-                onChange={handleParticipationChange}
-                placeholder="추가적인 설명이 있다면 작성해주세요."
+      {/* 참여 대화상자 */}
+      <Dialog
+        open={participationDialogOpen}
+        onClose={() => setParticipationDialogOpen(false)}>
+        <DialogTitle>입찰 참여</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="단가"
+                type="number"
+                value={participationData.unitPrice}
+                onChange={(e) =>
+                  setParticipationData((prev) => ({
+                    ...prev,
+                    unitPrice: Number(e.target.value)
+                  }))
+                }
               />
-            </label>
-          </div>
-
-          {/* 참여 버튼 */}
-          <button
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="수량"
+                type="number"
+                value={participationData.quantity}
+                onChange={(e) =>
+                  setParticipationData((prev) => ({
+                    ...prev,
+                    quantity: Number(e.target.value)
+                  }))
+                }
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="제안 내용"
+                multiline
+                rows={4}
+                value={participationData.proposalText}
+                onChange={(e) =>
+                  setParticipationData((prev) => ({
+                    ...prev,
+                    proposalText: e.target.value
+                  }))
+                }
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setParticipationDialogOpen(false)}>
+            취소
+          </Button>
+          <Button
             onClick={handleParticipate}
-            disabled={!canParticipateInBidding(bidding, userSupplierInfo)}>
-            입찰 참여
-          </button>
-        </section>
-      )}
-
-      {/* 이미 참여한 경우 참여 정보 표시 */}
-      {bidding.participations?.some(
-        (p) => p.supplierId === userSupplierInfo?.id
-      ) && (
-        <section className="existing-participation">
-          <h2>나의 참여 정보</h2>
-          {/* 참여 정보 상세 렌더링 */}
-        </section>
-      )}
-
-      {/* 첨부 파일 섹션 */}
-      {bidding.attachmentPaths && bidding.attachmentPaths.length > 0 && (
-        <section className="attachments">
-          <h2>첨부 파일</h2>
-          <ul>
-            {bidding.attachmentPaths.map((filePath, index) => (
-              <li key={index}>
-                <a href="#" onClick={() => downloadFile(filePath)}>
-                  첨부파일 {index + 1}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
+            color="primary"
+            variant="contained">
+            참여
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
 

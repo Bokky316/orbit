@@ -1,3 +1,5 @@
+//frontend/src/utils/notificationTypes.js
+
 // 알림 타입 정의
 export const NOTIFICATION_TYPES = {
   // 입찰 관련 알림

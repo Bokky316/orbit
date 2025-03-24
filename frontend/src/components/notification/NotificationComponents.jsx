@@ -1,13 +1,7 @@
+//frontend/src/components/notification/NotificationComponents.jsx
+
 import React from "react";
-import {
-  useNotifications,
-  useWebSocketNotifications,
-  useNotificationInteractions
-} from "@/hooks/useNotifications";
-import {
-  NOTIFICATION_TYPES,
-  getNotificationStyle
-} from "@/utils/notificationTypes";
+import useWebSocket from "@/hooks/useWebSocket";
 
 // 알림 패널 컴포넌트
 function NotificationPanel() {
@@ -15,20 +9,18 @@ function NotificationPanel() {
     notifications,
     unreadCount,
     markNotificationAsRead,
-    deleteNotification
+    removeNotification,
+    handleNotificationClick
   } = useNotifications();
 
-  const { handleNotificationClick } =
-    useNotificationInteractions(notifications);
-
   return (
-    <div className="notification-panel">
-      <div className="notification-header">
+    <div className="notification_panel">
+      <div className="notification_header">
         <h3>알림</h3>
-        <span className="unread-count">{unreadCount}</span>
+        <span className="unread_count">{unreadCount}</span>
       </div>
 
-      <div className="notification-list">
+      <div className="notification_list">
         {notifications.map((notification) => {
           const { icon, color, title } = getNotificationStyle(
             notification.type
@@ -37,21 +29,21 @@ function NotificationPanel() {
           return (
             <div
               key={notification.id}
-              className={`notification-item ${
+              className={`notification_item ${
                 notification.isRead ? "read" : "unread"
               }`}
               onClick={() => handleNotificationClick(notification)}>
-              <div className="notification-icon">{icon}</div>
-              <div className="notification-content">
-                <div className="notification-title">{title}</div>
-                <div className="notification-message">
+              <div className="notification_icon">{icon}</div>
+              <div className="notification_content">
+                <div className="notification_title">{title}</div>
+                <div className="notification_message">
                   {notification.content}
                 </div>
-                <div className="notification-time">
+                {/* <div className="notification_time">
                   {formatRelativeTime(notification.createdAt)}
-                </div>
+                </div> */}
               </div>
-              <div className="notification-actions">
+              <div className="notification_actions">
                 {!notification.isRead && (
                   <button
                     onClick={(e) => {
@@ -64,7 +56,7 @@ function NotificationPanel() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteNotification(notification.id);
+                    removeNotification(notification.id); // 이름 수정
                   }}>
                   삭제
                 </button>
@@ -79,28 +71,30 @@ function NotificationPanel() {
 
 // 실시간 알림 토스트 컴포넌트
 function NotificationToast() {
-  const { notifications } = useWebSocketNotifications();
-  const { handleNotificationClick } =
-    useNotificationInteractions(notifications);
+  const { toast, closeToast } = useToastNotifications(); // 올바른 훅 사용
+  const { handleNotificationClick } = useNotifications(); // 직접 가져오기
 
-  // 가장 최근 알림만 표시
-  const latestNotification = notifications[0];
+  if (!toast) return null;
 
-  if (!latestNotification) return null;
-
-  const { icon, color, title } = getNotificationStyle(latestNotification.type);
+  const { icon, color, title } = getNotificationStyle(toast.type);
 
   return (
     <div
-      className="notification-toast"
-      onClick={() => handleNotificationClick(latestNotification)}>
-      <div className="notification-toast-icon">{icon}</div>
-      <div className="notification-toast-content">
-        <div className="notification-toast-title">{title}</div>
-        <div className="notification-toast-message">
-          {latestNotification.content}
-        </div>
+      className="notification_toast"
+      onClick={() => handleNotificationClick(toast)}>
+      <div className="notification_toast_icon">{icon}</div>
+      <div className="notification_toast_content">
+        <div className="notification_toast_title">{title}</div>
+        <div className="notification_toast_message">{toast.content}</div>
       </div>
+      <button
+        className="notification_toast_close"
+        onClick={(e) => {
+          e.stopPropagation();
+          closeToast();
+        }}>
+        ×
+      </button>
     </div>
   );
 }

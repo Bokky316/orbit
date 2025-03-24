@@ -1,16 +1,9 @@
 package com.orbit.config;
 
-import com.orbit.config.jwt.RefreshTokenCheckFilter;
-import com.orbit.config.jwt.TokenAuthenticationFilter;
-import com.orbit.config.jwt.TokenProvider;
-import com.orbit.security.CustomUserDetailsService;
-import com.orbit.security.handler.CustomAuthenticationEntryPoint;
-import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
-import com.orbit.security.handler.CustomLogoutSuccessHandler;
-import lombok.RequiredArgsConstructor;
+import java.util.Arrays;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -21,16 +14,19 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.List;
+import com.orbit.config.jwt.RefreshTokenCheckFilter;
+import com.orbit.config.jwt.TokenAuthenticationFilter;
+import com.orbit.config.jwt.TokenProvider;
+import com.orbit.security.CustomUserDetailsService;
+import com.orbit.security.handler.CustomAuthenticationEntryPoint;
+import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
+import com.orbit.security.handler.CustomLogoutSuccessHandler;
 
-import static com.orbit.constant.Role.BUYER;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Spring Security 설정 파일
@@ -106,7 +102,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(request -> request
 
                 // 공개 접근 가능한 API 엔드포인트
-                .requestMatchers(
+                        .requestMatchers(
                         "/",
                         "/api/auth/login",
                         "/api/auth/logout",
@@ -119,7 +115,12 @@ public class SecurityConfig {
                         "/members/login",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
-                        "/swagger-ui.html"
+                        "/swagger-ui.html",
+                        "/api/notifications",
+                        "/api/notifications/unread-count",
+                        "/ws/purchase-requests/**",
+                        "/ws/biddings/**",
+                        "/ws/notifications/**"
                 ).permitAll()
 
 
@@ -171,14 +172,19 @@ public class SecurityConfig {
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
 
                 // 입찰 공고 관리 (BUYER 및 ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/biddings/**").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/biddings/**","/api/bidding-evaluations/**","/api/bidding-contracts/**","/api/bidding-participations/**").hasAnyRole("BUYER", "ADMIN")
 
-                 // 구매요청 목록 조회 엔드포인트
-                 .requestMatchers("/api/biddings/purchase-requests/active").hasAnyRole("BUYER", "ADMIN", "SUPPLIER")
+                .requestMatchers(
+                        "/api/buyer/**",
+                        "/api/buyer/recent-biddings",
+                        "/api/buyer/purchase-request-summary",
+                        "/api/buyer/bidding-summary",
+                        "/api/buyer/recent-purchase-requests",
+                        "/api/buyer/performance-metrics"
+                ).hasAnyRole("BUYER", "ADMIN")
 
-                // 공급사 목록 조회 엔드포인트
-                .requestMatchers("/api/biddings/suppliers/active").hasAnyRole("BUYER", "ADMIN", "SUPPLIER")
-                
+                // 구매요청목록, 공급사목록 조회 엔드포인트
+                .requestMatchers("/api/biddings/purchase-requests/active", "/api/biddings/suppliers/active").hasAnyRole("BUYER", "ADMIN", "SUPPLIER")
 
                 // 정적 리소스는 모두 허용
                 .requestMatchers(

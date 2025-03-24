@@ -18,7 +18,7 @@ import {
   LinearProgress
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
-import BiddingEvaluationDialog from "./BiddingEvaluationDialog";
+import BiddingEvaluationDialog from "./biddingComponent/BiddingEvaluationDialog";
 import { API_URL } from "@/utils/constants";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 

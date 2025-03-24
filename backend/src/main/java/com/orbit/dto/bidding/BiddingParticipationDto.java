@@ -3,7 +3,7 @@ package com.orbit.dto.bidding;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import com.orbit.entity.bidding.Bidding;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.entity.bidding.BiddingParticipation;
 
 import lombok.AllArgsConstructor;
@@ -19,38 +19,31 @@ import lombok.Setter;
 @Builder
 public class BiddingParticipationDto {
     private Long id;
-    
-    // 연관 엔티티
-    private Bidding bidding;
     private Long biddingId;
-    
-    // 공급자 정보
     private Long supplierId;
     private String companyName;
+    private String businessNo;
     
-    // 금액 정보
+    private String proposalText;
     private BigDecimal unitPrice;
     private BigDecimal supplyPrice;
     private BigDecimal vat;
     private BigDecimal totalAmount;
     
-    // 참여 상태
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime submittedAt;
-    private boolean isConfirmed;
-    private LocalDateTime confirmedAt;
-    
-    // 평가 정보
-    private boolean isEvaluated;
+    private Boolean isConfirmed;
+    private Boolean isEvaluated;
     private Integer evaluationScore;
+    private Boolean isWinner;
+    private Boolean orderCreated;
     
-    // 발주 정보
-    private boolean isOrderCreated;
-    
-    // 낙찰자 정보
-    private boolean isSelectedBidder;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime selectedAt;
     
-    // Entity -> DTO 변환
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime confirmedAt;
+    
     public static BiddingParticipationDto fromEntity(BiddingParticipation entity) {
         if (entity == null) {
             return null;
@@ -58,37 +51,45 @@ public class BiddingParticipationDto {
         
         return BiddingParticipationDto.builder()
                 .id(entity.getId())
-                .bidding(entity.getBidding())
-                .biddingId(entity.getBiddingId())
+                .biddingId(entity.getBidding() != null ? entity.getBidding().getId() : null)
                 .supplierId(entity.getSupplierId())
                 .companyName(entity.getCompanyName())
+                .businessNo(entity.getBusinessNo())
+                .proposalText(entity.getProposalText())
                 .unitPrice(entity.getUnitPrice())
                 .supplyPrice(entity.getSupplyPrice())
                 .vat(entity.getVat())
                 .totalAmount(entity.getTotalAmount())
                 .submittedAt(entity.getSubmittedAt())
-                .isConfirmed(entity.isConfirmed())
-                .confirmedAt(entity.getConfirmedAt())
-                .isEvaluated(entity.isEvaluated())
+                .isConfirmed(entity.getIsConfirmed())
+                .isEvaluated(entity.getIsEvaluated())
                 .evaluationScore(entity.getEvaluationScore())
-                .isOrderCreated(entity.isOrderCreated())
-                .isSelectedBidder(entity.isSelectedBidder())
+                .isWinner(entity.getIsSelectedBidder())
+                .orderCreated(entity.getIsOrderCreated())
                 .selectedAt(entity.getSelectedAt())
+                .confirmedAt(entity.getConfirmedAt())
                 .build();
     }
     
-    // DTO -> Entity 변환
     public BiddingParticipation toEntity() {
-        return BiddingParticipation.builder()
-                .id(this.id)
-                .bidding(this.bidding)
-                .biddingId(this.biddingId)
-                .supplierId(this.supplierId)
-                .companyName(this.companyName)
-                .unitPrice(this.unitPrice)
-                .supplyPrice(this.supplyPrice)
-                .vat(this.vat)
-                .totalAmount(this.totalAmount)
-                .build();
+        BiddingParticipation entity = new BiddingParticipation();
+        entity.setId(this.id);
+        entity.setSupplierId(this.supplierId);
+        entity.setCompanyName(this.companyName);
+        entity.setBusinessNo(this.businessNo);
+        entity.setProposalText(this.proposalText);
+        entity.setUnitPrice(this.unitPrice);
+        entity.setSupplyPrice(this.supplyPrice);
+        entity.setVat(this.vat);
+        entity.setTotalAmount(this.totalAmount);
+        entity.setSubmittedAt(this.submittedAt != null ? this.submittedAt : LocalDateTime.now());
+        entity.setIsConfirmed(this.isConfirmed);
+        entity.setIsEvaluated(this.isEvaluated);
+        entity.setEvaluationScore(this.evaluationScore);
+        entity.setIsSelectedBidder(this.isWinner);
+        entity.setIsOrderCreated(this.orderCreated);
+        entity.setSelectedAt(this.selectedAt);
+        entity.setConfirmedAt(this.confirmedAt);
+        return entity;
     }
 }

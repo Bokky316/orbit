@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +16,11 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.UrlResource;
@@ -23,32 +28,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.orbit.constant.BiddingStatus;
+import com.orbit.constant.BiddingStatus.NotificationType;
 import com.orbit.dto.bidding.BiddingDto;
-import com.orbit.dto.bidding.BiddingEvaluationDto;
 import com.orbit.dto.bidding.BiddingFormDto;
 import com.orbit.dto.bidding.BiddingParticipationDto;
 import com.orbit.dto.bidding.BiddingSupplierDto;
 import com.orbit.entity.bidding.Bidding;
-import com.orbit.entity.bidding.BiddingContract;
-import com.orbit.entity.bidding.BiddingEvaluation;
-import com.orbit.entity.bidding.BiddingOrder;
 import com.orbit.entity.bidding.BiddingParticipation;
 import com.orbit.entity.bidding.BiddingSupplier;
 import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.ParentCode;
 import com.orbit.entity.commonCode.StatusHistory;
 import com.orbit.entity.member.Member;
-import com.orbit.repository.NotificationRepository;
-import com.orbit.repository.bidding.BiddingContractRepository;
-import com.orbit.repository.bidding.BiddingEvaluationRepository;
-import com.orbit.repository.bidding.BiddingOrderRepository;
+import com.orbit.event.event.BiddingStatusChangeEvent;
 import com.orbit.repository.bidding.BiddingParticipationRepository;
 import com.orbit.repository.bidding.BiddingRepository;
 import com.orbit.repository.bidding.BiddingSupplierRepository;
 import com.orbit.repository.commonCode.ChildCodeRepository;
 import com.orbit.repository.commonCode.ParentCodeRepository;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.repository.procurement.PurchaseRequestItemRepository;
+import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.repository.supplier.SupplierRegistrationRepository;
+import com.orbit.service.NotificationService;
+import com.orbit.service.NotificationWebSocketService;
 import com.orbit.util.BiddingNumberUtil;
 import com.orbit.util.PriceCalculator;
 import com.orbit.util.PriceCalculator.PriceResult;
@@ -63,17 +67,19 @@ import lombok.extern.slf4j.Slf4j;
 public class BiddingService {
     private final BiddingRepository biddingRepository;
     private final BiddingParticipationRepository participationRepository;
-    private final BiddingEvaluationRepository evaluationRepository;
-    private final BiddingContractRepository contractRepository;
     private final BiddingSupplierRepository supplierRepository;
-    private final BiddingOrderRepository orderRepository;
-    private final BiddingEvaluationService evaluationService;
     private final MemberRepository memberRepository;
-    private final NotificationRepository notificationRepository;
+    private final PurchaseRequestRepository purchaseRequestRepository;
+    private final PurchaseRequestItemRepository purchaseRequestItemRepository;
     private final ParentCodeRepository parentCodeRepository;
     private final ChildCodeRepository childCodeRepository;
     private final SupplierRegistrationRepository supplierRegistrationRepository;
-    private final ResourceLoader resourceLoader;
+    private final NotificationService notificationService;
+    private final BiddingAuthorizationService biddingAuthorizationService;
+    private final NotificationWebSocketService notificationWebSocketService;
+    private final ApplicationEventPublisher applicationEventPublisher; 
+
+    
 
     @Value("${uploadPath}")
     private String uploadPath;
@@ -166,7 +172,7 @@ public class BiddingService {
                 file.transferTo(targetPath);
 
                 // 파일 경로 저장
-                bidding.addAttachment(targetPath.toString());
+                bidding.getAttachmentPaths().add(targetPath.toString());
             } catch (IOException e) {
                 throw new RuntimeException("파일 저장 중 오류 발생: " + file.getOriginalFilename(), e);
             }
@@ -253,9 +259,9 @@ public class BiddingService {
                 throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + statusCode);
             }
             
-            biddings = biddingRepository.findByStatusChildAndStartDateGreaterThanEqualAndEndDateLessThanEqual(status.get(), startDate, endDate);
+            biddings = biddingRepository.findByStatusChildAndBiddingPeriodStartDateGreaterThanEqualAndBiddingPeriodEndDateLessThanEqual(status.get(), startDate, endDate);
         } else {
-            biddings = biddingRepository.findByStartDateGreaterThanEqualAndEndDateLessThanEqual(startDate, endDate);
+            biddings = biddingRepository.findByBiddingPeriodStartDateGreaterThanEqualAndBiddingPeriodEndDateLessThanEqual(startDate, endDate);
         }
         
         return biddings.stream()
@@ -299,7 +305,7 @@ public class BiddingService {
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * 특정 공급사가 참여한 입찰 공고 목록 조회
      */
@@ -310,7 +316,7 @@ public class BiddingService {
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * 입찰 공고 상세 조회
      */
@@ -323,113 +329,184 @@ public class BiddingService {
     }
 
     /**
+     * 입찰 공고 상태 조회
+     * @param biddingId 입찰 공고 ID
+     * @return 입찰 공고 상태 코드
+     */
+    @Transactional(readOnly = true)
+    public String getBiddingStatus(Long biddingId) {
+        Bidding bidding = biddingRepository.findById(biddingId)
+                .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
+        
+        return bidding.getStatusChild() != null ? bidding.getStatusChild().getCodeValue() : null;
+    }
+
+
+
+
+    /**
      * 입찰 공고 생성
      */
     @Transactional
-    public BiddingDto createBidding(BiddingFormDto formDto) {
-        // 입찰 번호 생성
-        String bidNumber = BiddingNumberUtil.generateBidNumber();
-        
-        // 입찰 공고 엔티티 생성
-        Bidding bidding = formDto.toEntity();
-        
-        // 입찰 번호 설정
-        bidding.setBidNumber(bidNumber);
-        
-        // 상태 코드 설정
-        Optional<ParentCode> statusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
-        if (statusParent.isEmpty()) {
-            throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
+    public BiddingDto createBidding(BiddingFormDto formDto, Member currentMember) {
+        // ChildCode 조회
+        ChildCode statusChild = childCodeRepository.findByParentCodeAndCodeValue(
+            parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS")
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS")),
+            formDto.getStatus() // formDto에서 상태 코드 문자열 가져오기
+        ).orElseThrow(() -> new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + formDto.getStatus()));
+
+        // 권한 체크
+        if (!biddingAuthorizationService.canCreateOrUpdateBidding(currentMember, statusChild)) {
+            throw new AccessDeniedException("입찰 공고 생성 권한이 없습니다.");
+        }
+
+    // 입찰 번호 생성
+    String bidNumber = BiddingNumberUtil.generateBidNumber();
+    
+    // 입찰 공고 엔티티 생성
+    Bidding bidding = Bidding.builder()
+            .bidNumber(bidNumber)
+            .title(formDto.getTitle())
+            .description(formDto.getDescription())
+            .biddingPeriod(Bidding.BiddingPeriod.builder()
+                    .startDate(formDto.getBiddingPeriod().getStartDate())
+                    .endDate(formDto.getBiddingPeriod().getEndDate())
+                    .build())
+            .unitPrice(formDto.getUnitPrice())
+            .quantity(formDto.getQuantity())
+            .purchaseRequest(formDto.getPurchaseRequestId() != null ? 
+                    purchaseRequestRepository.findById(formDto.getPurchaseRequestId()).orElse(null) : null)
+            .purchaseRequestItem(formDto.getPurchaseRequestItemId() != null ?
+                    purchaseRequestItemRepository.findById(formDto.getPurchaseRequestItemId()).orElse(null) : null)
+            .attachmentPaths(formDto.getAttachmentPaths() != null ? formDto.getAttachmentPaths() : new ArrayList<>())
+            .conditions(formDto.getConditions())
+            .internalNote(formDto.getInternalNote())
+            .build();
+    
+    // 입찰 기간 유효성 검사
+    validateBiddingPeriod(bidding.getBiddingPeriod());
+    
+    // 상태 코드 설정
+    Optional<ParentCode> statusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
+    if (statusParent.isEmpty()) {
+        throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
+    }
+    
+    Optional<ChildCode> pendingStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent.get(), "PENDING");
+    if (pendingStatus.isEmpty()) {
+        throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: PENDING");
+    }
+    
+    bidding.setStatusParent(statusParent.get());
+    bidding.setStatusChild(pendingStatus.get());
+    
+    // 입찰 방식 코드 설정
+    String methodCode = formDto.getMethod();
+    if (methodCode != null) {
+        Optional<ParentCode> methodParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "METHOD");
+        if (methodParent.isEmpty()) {
+            throw new IllegalArgumentException("유효하지 않은 방식 코드 그룹입니다: BIDDING_METHOD");
         }
         
-        Optional<ChildCode> pendingStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent.get(), "PENDING");
-        if (pendingStatus.isEmpty()) {
-            throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: PENDING");
+        Optional<ChildCode> methodChild = childCodeRepository.findByParentCodeAndCodeValue(methodParent.get(), methodCode);
+        if (methodChild.isEmpty()) {
+            throw new IllegalArgumentException("유효하지 않은 방식 코드입니다: " + methodCode);
         }
         
-        bidding.setStatusParent(statusParent.get());
-        bidding.setStatusChild(pendingStatus.get());
-        
-        // 입찰 방식 코드 설정
-        String methodCode = formDto.getMethodChild() != null ? formDto.getMethodChild().getCodeValue() : null;
-        if (methodCode != null) {
-            Optional<ParentCode> methodParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "METHOD");
-            if (methodParent.isEmpty()) {
-                throw new IllegalArgumentException("유효하지 않은 방식 코드 그룹입니다: BIDDING_METHOD");
+        bidding.setMethodParent(methodParent.get());
+        bidding.setMethodChild(methodChild.get());
+    }
+    
+    // 가격 재계산
+    bidding.recalculatePrices();
+    
+    // 다중 공급자 정보 처리
+    if (formDto.getSupplierIds() != null && !formDto.getSupplierIds().isEmpty()) {
+        bidding.setDescription("공급자 ID: " + String.join(", ", 
+            formDto.getSupplierIds().stream()
+                .map(Object::toString)
+                .collect(Collectors.toList())));
+    }
+    
+    // 엔티티 저장
+    bidding = biddingRepository.save(bidding);
+    
+    // 상태 이력 추가
+    StatusHistory history = StatusHistory.builder()
+            .entityType(StatusHistory.EntityType.BIDDING)
+            .bidding(bidding)
+            .fromStatus(null)
+            .toStatus(pendingStatus.get())
+            .reason("입찰 공고 생성")
+            .changedAt(LocalDateTime.now())
+            .build();
+    
+    bidding.getStatusHistories().add(history);
+    
+    // 공급사 초대 처리
+    if (formDto.getSupplierIds() != null && !formDto.getSupplierIds().isEmpty()) {
+        for (Long supplierId : formDto.getSupplierIds()) {
+            try {
+                // 공급사 조회
+                Member supplier = memberRepository.findById(supplierId)
+                        .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
+                
+                // 공급사 초대 생성
+                BiddingSupplier supplierInvitation = new BiddingSupplier();
+                supplierInvitation.setBidding(bidding);
+                supplierInvitation.setSupplier(supplier);
+                supplierInvitation.setCompanyName(supplier.getCompanyName());
+                supplierInvitation.setNotificationSent(false);
+                
+                // 초대 저장
+                bidding.getSuppliers().add(supplierInvitation);
+                supplierRepository.save(supplierInvitation);
+                
+                // 알림 발송 
+                supplierInvitation.sendNotification(
+                    notificationService,
+                    "새로운 입찰 공고 초대",
+                    "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
+                );
+            } catch (Exception e) {
+                log.error("공급사 초대 중 오류 발생: {}", e.getMessage());
             }
-            
-            Optional<ChildCode> methodChild = childCodeRepository.findByParentCodeAndCodeValue(methodParent.get(), methodCode);
-            if (methodChild.isEmpty()) {
-                throw new IllegalArgumentException("유효하지 않은 방식 코드입니다: " + methodCode);
-            }
-            
-            bidding.setMethodParent(methodParent.get());
-            bidding.setMethodChild(methodChild.get());
         }
-        
-        // 가격 재계산
-        bidding.recalculatePrices();
-        
-        // 다중 공급자 정보 처리
-        if (formDto.getSupplierIds() != null && !formDto.getSupplierIds().isEmpty()) {
-            bidding.setDescription("공급자 ID: " + String.join(", ", 
-                formDto.getSupplierIds().stream()
-                    .map(Object::toString)
-                    .collect(Collectors.toList())));
-        }
-        
-        // 엔티티 저장
-        bidding = biddingRepository.save(bidding);
-        
-        // 상태 이력 추가
-        StatusHistory history = StatusHistory.builder()
-                .entityType(StatusHistory.EntityType.BIDDING)
-                .bidding(bidding)
-                .fromStatus(null)
-                .toStatus(pendingStatus.get())
-                .reason("입찰 공고 생성")
-                .changedAt(LocalDateTime.now())
-                .build();
-        
-        bidding.getStatusHistories().add(history);
-        
-        // 공급사 초대 처리
-        if (formDto.getSupplierIds() != null && !formDto.getSupplierIds().isEmpty()) {
-            for (Long supplierId : formDto.getSupplierIds()) {
-                try {
-                    // 공급사 조회
-                    Member supplier = memberRepository.findById(supplierId)
-                            .orElseThrow(() -> new EntityNotFoundException("공급사를 찾을 수 없습니다. ID: " + supplierId));
-                    
-                    // 공급사 초대 생성 (수정된 메서드 사용)
-                    BiddingSupplier supplierInvitation = new BiddingSupplier();
-                    supplierInvitation.setBidding(bidding);
-                    supplierInvitation.setSupplier(supplier);
-                    supplierInvitation.setCompanyName(supplier.getCompanyName());
-                    supplierInvitation.setNotificationSent(false);
-                    
-                    // 초대 저장
-                    bidding.getSuppliers().add(supplierInvitation);
-                    supplierRepository.save(supplierInvitation);
-                    
-                    // 알림 발송 (새로운 방식)
-                    supplierInvitation.sendNotification(
-                        notificationRepository,
-                        memberRepository,
-                        "새로운 입찰 공고 초대",
-                        "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
-                    );
-                } catch (Exception e) {
-                    log.error("공급사 초대 중 오류 발생: {}", e.getMessage());
-                }
-            }
-        }
-        
+    }
+    
         // 최종 저장
         bidding = biddingRepository.save(bidding);
+
+        // 알림 전송
+        notificationWebSocketService.sendNotificationToDepartmentLevel(BiddingStatus.NotificationType.BIDDING_CREATED, 
+                "새로운 입찰 공고 '" + bidding.getTitle() + "'이 생성되었습니다.", 
+                BiddingStatus.ASSISTANT_MANAGER_LEVEL);
+
+        notificationWebSocketService.sendAdminNotification(BiddingStatus.NotificationType.BIDDING_CREATED,
+                "새로운 입찰 공고 '" + bidding.getTitle() + "'이 생성되었습니다.");
         
         return convertToDto(bidding);
     }
+
+
+    /**
+     * 입찰 기간 유효성 검사
+     */
+    private void validateBiddingPeriod(Bidding.BiddingPeriod period) {
+        if (period == null) {
+            throw new IllegalArgumentException("입찰 기간 정보가 필요합니다.");
+        }
+        
+        if (period.getStartDate() == null || period.getEndDate() == null) {
+            throw new IllegalArgumentException("입찰 시작일과 종료일은 필수 입력 항목입니다.");
+        }
+
+        if (period.getStartDate().isAfter(period.getEndDate())) {
+            throw new IllegalArgumentException("입찰 종료일은 시작일 이후여야 합니다.");
+        }
+    }
+
 
     /**
      * 입찰 공고 수정
@@ -445,12 +522,15 @@ public class BiddingService {
         // 기본 정보 업데이트
         bidding.setTitle(formDto.getTitle());
         bidding.setDescription(formDto.getDescription());
-        bidding.setStartDate(formDto.getStartDate());
-        bidding.setEndDate(formDto.getEndDate());
-        bidding.setConditions(formDto.getConditions());
-        bidding.setInternalNote(formDto.getInternalNote());
         bidding.setQuantity(formDto.getQuantity());
         bidding.setUnitPrice(formDto.getUnitPrice());
+        
+        // 입찰 기간 업데이트
+        updateBiddingPeriod(bidding, formDto);
+        
+        // 기타 정보 업데이트 
+        bidding.setConditions(formDto.getConditions());
+        bidding.setInternalNote(formDto.getInternalNote());
         
         // 첨부파일 처리
         if (formDto.getAttachmentPaths() != null) {
@@ -458,7 +538,7 @@ public class BiddingService {
         }
         
         // 상태 코드 업데이트 (변경이 있는 경우)
-        String statusCode = formDto.getStatusChild() != null ? formDto.getStatusChild().getCodeValue() : null;
+        String statusCode = formDto.getStatus();
         if (statusCode != null) {
             Optional<ParentCode> statusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
             if (statusParent.isEmpty()) {
@@ -484,7 +564,7 @@ public class BiddingService {
         }
         
         // 입찰 방식 코드 업데이트 (변경이 있는 경우)
-        String methodCode = formDto.getMethodChild() != null ? formDto.getMethodChild().getCodeValue() : null;
+        String methodCode = formDto.getMethod();
         if (methodCode != null) {
             Optional<ParentCode> methodParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "METHOD");
             if (methodParent.isEmpty()) {
@@ -507,6 +587,26 @@ public class BiddingService {
     }
 
     /**
+     * 입찰 기간 업데이트
+     */
+    private void updateBiddingPeriod(Bidding bidding, BiddingFormDto formDto) {
+        Bidding.BiddingPeriod period = bidding.getBiddingPeriod();
+        if (period == null) {
+            period = new Bidding.BiddingPeriod();
+            bidding.setBiddingPeriod(period);
+        }
+        
+        if (formDto.getBiddingPeriod() != null) {
+            period.setStartDate(formDto.getBiddingPeriod().getStartDate());
+            period.setEndDate(formDto.getBiddingPeriod().getEndDate());
+            
+            // 유효성 검사
+            validateBiddingPeriod(period);
+        }
+    }
+
+
+    /**
      * 입찰 공고 삭제
      */
     @Transactional
@@ -523,11 +623,24 @@ public class BiddingService {
      */
     @Transactional
     public BiddingDto changeBiddingStatus(Long id, String status, String reason) {
+        // 입찰 공고 조회
         Bidding bidding = biddingRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + id));
         
         // 이전 상태 저장
         ChildCode oldStatus = bidding.getStatusChild();
+        String oldStatusCode = oldStatus != null ? oldStatus.getCodeValue() : null;
+        
+        // 현재 인증된 사용자 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        Member currentMember = memberRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new EntityNotFoundException("사용자 정보를 찾을 수 없습니다."));
+        
+        // 상태 변경 권한 확인
+        if (!biddingAuthorizationService.canChangeBiddingStatus(currentMember, oldStatusCode, status)) {
+            throw new AccessDeniedException("입찰 공고 상태 변경 권한이 없습니다.");
+        }
         
         // ParentCode 객체 먼저 찾기
         Optional<ParentCode> parentCode = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
@@ -541,13 +654,102 @@ public class BiddingService {
             throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: " + status);
         }
         
-        // 상태 변경 및 알림 발송 (수정된 메서드 사용)
-        bidding.changeStatus(newStatus.get(), reason, null, memberRepository, notificationRepository);
+        // 상태 변경 및 알림 발송 
+        bidding.setStatusChild(newStatus.get());
+        
+        // 상태 변경 이력 추가
+        StatusHistory history = StatusHistory.builder()
+                .entityType(StatusHistory.EntityType.BIDDING)
+                .bidding(bidding)
+                .fromStatus(oldStatus)
+                .toStatus(newStatus.get())
+                .reason(reason)
+                .changedById(memberRepository.findByUsername(currentUsername)
+                .map(Member::getId)
+                .orElse(null))
+                .changedAt(LocalDateTime.now())
+                .build();
+        
+        bidding.getStatusHistories().add(history);
         
         // 엔티티 저장
         bidding = biddingRepository.save(bidding);
         
+        // 상태 변경 이벤트 발행 - 웹소켓 및 Redis 통합
+        applicationEventPublisher.publishEvent(new BiddingStatusChangeEvent(
+            this,
+            bidding.getId(),
+            oldStatusCode,
+            status,
+            currentUsername
+        ));
+        
+        // 상태 변경에 따른 알림 처리
+        //sendStatusChangeNotifications(bidding, oldStatusCode, status);
+        
         return convertToDto(bidding);
+    }
+
+    /**
+     * 상태 변경에 따른 적절한 알림 발송
+     */
+    private void sendStatusChangeNotifications(Bidding bidding, String oldStatus, String newStatus) {
+        // 입찰 공고 제목
+        String biddingTitle = bidding.getTitle();
+        
+        // 상태 변경 유형에 따른 알림 처리
+        if (BiddingStatus.BiddingStatusCode.PENDING.equals(oldStatus) 
+                && BiddingStatus.BiddingStatusCode.ONGOING.equals(newStatus)) {
+            // 대기 -> 진행: 공급사에게 알림
+            List<Long> supplierIds = bidding.getSuppliers().stream()
+                    .map(s -> s.getSupplier().getId())
+                    .collect(Collectors.toList());
+            
+            notificationWebSocketService.sendNotificationToSuppliers(
+                    NotificationType.BIDDING_STARTED,
+                    "입찰 공고 '" + biddingTitle + "'가 시작되었습니다. 참여를 검토해주세요.",
+                    supplierIds
+            );
+            
+            // 관리자에게도 알림
+            notificationWebSocketService.sendAdminNotification(
+                    NotificationType.BIDDING_STARTED,
+                    "입찰 공고 '" + biddingTitle + "'가 시작되었습니다."
+            );
+        } 
+        else if (BiddingStatus.BiddingStatusCode.ONGOING.equals(oldStatus)
+                && BiddingStatus.BiddingStatusCode.CLOSED.equals(newStatus)) {
+            // 진행 -> 마감: 참여 공급사, 구매 부서 이상에게 알림
+            List<Long> supplierIds = bidding.getSuppliers().stream()
+                    .map(s -> s.getSupplier().getId())
+                    .collect(Collectors.toList());
+            
+            notificationWebSocketService.sendNotificationToSuppliers(
+                    NotificationType.BIDDING_CLOSED,
+                    "입찰 공고 '" + biddingTitle + "'가 마감되었습니다. 결과를 기다려주세요.",
+                    supplierIds
+            );
+            
+            // 구매 부서 대리급 이상에게 알림
+            notificationWebSocketService.sendNotificationToDepartmentLevel(
+                    NotificationType.BIDDING_CLOSED,
+                    "입찰 공고 '" + biddingTitle + "'가 마감되었습니다. 평가를 진행해주세요.",
+                    BiddingStatus.ASSISTANT_MANAGER_LEVEL
+            );
+        }
+        else if (BiddingStatus.BiddingStatusCode.ONGOING.equals(oldStatus)
+                && BiddingStatus.BiddingStatusCode.CANCELED.equals(newStatus)) {
+            // 진행 -> 취소: 참여 공급사에게 알림
+            List<Long> supplierIds = bidding.getSuppliers().stream()
+                    .map(s -> s.getSupplier().getId())
+                    .collect(Collectors.toList());
+            
+            notificationWebSocketService.sendNotificationToSuppliers(
+                    NotificationType.BIDDING_CANCELED,
+                    "입찰 공고 '" + biddingTitle + "'가 취소되었습니다.",
+                    supplierIds
+            );
+        }
     }
 
     /**
@@ -586,7 +788,6 @@ public class BiddingService {
         
         // 가격 계산
         calculateParticipationPrices(participation, bidding.getQuantity());
-        
         participation = participationRepository.save(participation);
         
         // 입찰 공고에 참여 추가
@@ -594,7 +795,7 @@ public class BiddingService {
         
         return BiddingParticipationDto.fromEntity(participation);
     }
-    
+
     /**
      * 입찰 참여 목록 조회
      */
@@ -606,7 +807,7 @@ public class BiddingService {
                 .map(BiddingParticipationDto::fromEntity)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * 입찰 참여 상세 조회
      */
@@ -636,7 +837,7 @@ public class BiddingService {
         }
         
         // 마감일이 지났는지 확인
-        if (LocalDateTime.now().isAfter(bidding.getEndDate())) {
+        if (LocalDateTime.now().isAfter(bidding.getBiddingPeriod().getEndDate().atStartOfDay())) {
             throw new IllegalStateException("입찰 마감일이 지났습니다.");
         }
         
@@ -677,130 +878,7 @@ public class BiddingService {
         return BiddingParticipationDto.fromEntity(participation);
     }
 
-    /**
-     * 낙찰자 선정 (최고 점수 기준)
-     */
-    @Transactional
-    public BiddingEvaluationDto selectWinningBidder(Long biddingId) {
-        // 해당 입찰의 모든 평가 중 최고 점수 평가 조회
-        List<BiddingEvaluation> evaluations = evaluationRepository.findByBiddingId(biddingId);
-        
-        if (evaluations.isEmpty()) {
-            throw new IllegalStateException("해당 입찰의 평가 정보가 없습니다.");
-        }
-        
-        // 최고 점수 평가 찾기
-        BiddingEvaluation highestScoringEvaluation = evaluations.stream()
-                .max((e1, e2) -> {
-                    // null 처리 및 점수 비교
-                    final Integer score1 = e1.getTotalScore() != null ? e1.getTotalScore() : 0;
-                    final Integer score2 = e2.getTotalScore() != null ? e2.getTotalScore() : 0;
-                    return score1.compareTo(score2);
-                })
-                .orElseThrow(() -> new EntityNotFoundException("해당 입찰의 평가 정보를 찾을 수 없습니다. ID: " + biddingId));
-        
-        // 기존 낙찰자 초기화
-        List<BiddingEvaluation> previousWinners = evaluationRepository.findByBiddingIdAndIsSelectedBidderTrue(biddingId);
-        previousWinners.forEach(BiddingEvaluation::cancelSelectedBidder);
-        evaluationRepository.saveAll(previousWinners);
-        
-        // 새 낙찰자 선정
-        highestScoringEvaluation.selectAsBidder(notificationRepository, memberRepository);
-        BiddingEvaluation savedEvaluation = evaluationRepository.save(highestScoringEvaluation);
-        
-        // 입찰 공고에서도 낙찰자 선정 처리
-        Bidding bidding = biddingRepository.findById(biddingId)
-                .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
-        
-        // 참여 정보 조회
-        BiddingParticipation participation = participationRepository.findById(savedEvaluation.getBiddingParticipationId())
-                .orElseThrow(() -> new EntityNotFoundException("참여 정보를 찾을 수 없습니다. ID: " + savedEvaluation.getBiddingParticipationId()));
-        
-        // 낙찰자 선정
-        bidding.selectBidder(participation, savedEvaluation, memberRepository, notificationRepository);
-        
-        // 입찰 상태 변경 (마감 상태로)
-        Optional<ParentCode> statusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
-        if (statusParent.isEmpty()) {
-            throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
-        }
-        
-        Optional<ChildCode> closedStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent.get(), "CLOSED");
-        if (closedStatus.isPresent() && !closedStatus.get().equals(bidding.getStatusChild())) {
-            bidding.changeStatus(closedStatus.get(), "낙찰자 선정으로 인한 마감", null, memberRepository, notificationRepository);
-        }
-        
-        biddingRepository.save(bidding);
-        
-        return BiddingEvaluationDto.fromEntity(savedEvaluation);
-    }
 
-    /**
-     * 수동으로 낙찰자 선정
-     */
-    @Transactional
-    public BiddingEvaluationDto selectBidderManually(Long biddingId, Long evaluationId) {
-        Bidding bidding = biddingRepository.findById(biddingId)
-                .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
-                
-        BiddingEvaluation originalEvaluation = evaluationRepository.findById(evaluationId)
-                .orElseThrow(() -> new EntityNotFoundException("평가 정보를 찾을 수 없습니다. ID: " + evaluationId));
-                
-        final Long participationId = originalEvaluation.getBiddingParticipationId();
-        BiddingParticipation participation = participationRepository.findById(participationId)
-                .orElseThrow(() -> new EntityNotFoundException("참여 정보를 찾을 수 없습니다. ID: " + participationId));
-        
-        // 기존 낙찰자 초기화
-        List<BiddingEvaluation> previousWinners = evaluationRepository.findByBiddingIdAndIsSelectedBidderTrue(biddingId);
-        previousWinners.forEach(BiddingEvaluation::cancelSelectedBidder);
-        evaluationRepository.saveAll(previousWinners);
-        
-        // 새 낙찰자 선정
-        originalEvaluation.selectAsBidder(notificationRepository, memberRepository);
-        BiddingEvaluation savedEvaluation = evaluationRepository.save(originalEvaluation);
-        
-        bidding.selectBidder(participation, savedEvaluation, memberRepository, notificationRepository);
-        
-        // 입찰 상태 변경 (마감 상태로)
-        Optional<ParentCode> statusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS");
-        if (statusParent.isEmpty()) {
-            throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS");
-        }
-        
-        Optional<ChildCode> closedStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent.get(), "CLOSED");
-        if (closedStatus.isPresent() && !closedStatus.get().equals(bidding.getStatusChild())) {
-            bidding.changeStatus(closedStatus.get(), "수동 낙찰자 선정으로 인한 마감", null, memberRepository, notificationRepository);
-        }
-        
-        biddingRepository.save(bidding);
-        
-        return BiddingEvaluationDto.fromEntity(savedEvaluation);
-    }
-
-    /**
-     * 입찰 공고별 낙찰자 목록 조회
-     */
-    @Transactional(readOnly = true)
-    public List<BiddingEvaluationDto> getWinningBidders(Long biddingId) {
-        List<BiddingEvaluation> winningBidders = evaluationRepository.findByBiddingIdAndIsSelectedBidderTrue(biddingId);
-        
-        return winningBidders.stream()
-                .map(BiddingEvaluationDto::fromEntity)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 특정 입찰에 초대된 공급사 목록 조회
-     */
-    @Transactional(readOnly = true)
-    public List<BiddingSupplierDto> getInvitedSuppliers(Long biddingId) {
-        List<BiddingSupplier> suppliers = supplierRepository.findByBiddingId(biddingId);
-        
-        return suppliers.stream()
-                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
-                .collect(Collectors.toList());
-    }
-    
     /**
      * 공급사 초대
      */
@@ -831,8 +909,7 @@ public class BiddingService {
         
         // 알림 발송
         supplierInvitation.sendNotification(
-            notificationRepository,
-            memberRepository,
+            notificationService,
             "새로운 입찰 공고 초대",
             "입찰 공고 '" + bidding.getTitle() + "'에 참여 요청이 왔습니다. 확인해주세요."
         );
@@ -841,98 +918,78 @@ public class BiddingService {
     }
 
     /**
-     * 계약 초안 생성
+     * 특정 입찰 공고에 초대된 공급사 목록 조회
      */
-    @Transactional
-    public Long createContractDraft(Long biddingId, Long participationId) {
+    @Transactional(readOnly = true)
+    public List<BiddingSupplierDto> getInvitedSuppliers(Long biddingId) {
         Bidding bidding = biddingRepository.findById(biddingId)
                 .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
-                
-        BiddingParticipation participation = participationRepository.findById(participationId)
-                .orElseThrow(() -> new EntityNotFoundException("참여 정보를 찾을 수 없습니다. ID: " + participationId));
         
-        // 계약 초안 생성
-        BiddingContract contract = bidding.createContractDraft(participation, memberRepository, notificationRepository);
-        
-        // 계약 번호 생성 및 설정
-        String contractNumber = BiddingNumberUtil.generateContractNumberFromBidNumber(bidding.getBidNumber());
-        contract.setTransactionNumber(contractNumber);
-        
-        // 계약 상태 설정
-        Optional<ParentCode> contractStatusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING_CONTRACT", "STATUS");
-        if (contractStatusParent.isEmpty()) {
-            throw new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_CONTRACT_STATUS");
-        }
-        
-        Optional<ChildCode> draftStatus = childCodeRepository.findByParentCodeAndCodeValue(contractStatusParent.get(), "DRAFT");
-        if (draftStatus.isEmpty()) {
-            throw new IllegalArgumentException("유효하지 않은 상태 코드입니다: DRAFT");
-        }
-        
-        contract.setStatusParent(contractStatusParent.get());
-        contract.setStatusChild(draftStatus.get());
-        
-        contract = contractRepository.save(contract);
-        
-        // 상태 이력 추가
-        StatusHistory history = StatusHistory.builder()
-                .entityType(StatusHistory.EntityType.CONTRACT)
-                .biddingContract(contract)
-                .fromStatus(null)
-                .toStatus(draftStatus.get())
-                .reason("계약 초안 생성")
-                .changedAt(LocalDateTime.now())
-                .build();
-        
-        contract.getStatusHistories().add(history);
-        contractRepository.save(contract);
-        
-        return contract.getId();
+        return bidding.getSuppliers().stream()
+                .map(supplier -> BiddingSupplierDto.fromEntityWithBusinessNo(supplier, supplierRegistrationRepository))
+                .collect(Collectors.toList());
     }
-    
-    /**
-     * 발주 생성
-     */
-    @Transactional
-    public Long createOrder(Long biddingId, Long participationId, String createdById) {
-        Bidding bidding = biddingRepository.findById(biddingId)
-                .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
-                
-        BiddingParticipation participation = participationRepository.findById(participationId)
-                .orElseThrow(() -> new EntityNotFoundException("참여 정보를 찾을 수 없습니다. ID: " + participationId));
-        
-        // 발주 생성
-        BiddingOrder order = bidding.createOrder(participation, createdById, memberRepository, notificationRepository);
-        
-        // 발주 번호 자동 생성
-        String orderNumber = BiddingNumberUtil.generateOrderNumber();
-        order.setOrderNumber(orderNumber);
-        
-        // 발주 상태 설정 우선 주석
-        /*
-        Optional<ParentCode> orderStatusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING_ORDER", "STATUS");
-        if (orderStatusParent.isPresent()) {
-            Optional<ChildCode> draftStatus = childCodeRepository.findByParentCodeAndCodeValue(orderStatusParent.get(), "DRAFT");
-            if (draftStatus.isPresent()) {
-                // 상태 설정 로직 필요
-            }
-        }
-        */
-        
-        order = orderRepository.save(order);
-        
-        // 참여 정보 발주 상태 업데이트
-        participation.setOrderCreated(true);
-        participationRepository.save(participation);
-        
-        return order.getId();
-    }
-    
+
+
     /**
      * Bidding 엔티티를 BiddingDto로 변환 (공급사 정보 포함)
      */
     private BiddingDto convertToDto(Bidding bidding) {
-        BiddingDto dto = BiddingDto.fromEntity(bidding);
+        BiddingDto dto = new BiddingDto();
+        
+        // 기본 정보 설정
+        dto.setId(bidding.getId());
+        dto.setBidNumber(bidding.getBidNumber());
+        dto.setTitle(bidding.getTitle());
+        dto.setDescription(bidding.getDescription());
+        dto.setConditions(bidding.getConditions());
+        dto.setInternalNote(bidding.getInternalNote());
+        dto.setQuantity(bidding.getQuantity());
+        dto.setUnitPrice(bidding.getUnitPrice());
+        dto.setSupplyPrice(bidding.getSupplyPrice());
+        dto.setVat(bidding.getVat());
+        dto.setTotalAmount(bidding.getTotalAmount());
+        
+        // 입찰 기간 정보 설정
+        if (bidding.getBiddingPeriod() != null) {
+            BiddingDto.BiddingPeriodDto periodDto = new BiddingDto.BiddingPeriodDto(
+                bidding.getBiddingPeriod().getStartDate(),
+                bidding.getBiddingPeriod().getEndDate()
+            );
+            dto.setBiddingPeriod(periodDto);
+        }
+        
+        // 상태 코드 설정
+        if (bidding.getStatusChild() != null) {
+            dto.setStatus(bidding.getStatusChild().getCodeValue());
+            dto.setStatusName(bidding.getStatusChild().getCodeName());
+        }
+        
+        // 입찰 방식 코드 설정
+        if (bidding.getMethodChild() != null) {
+            dto.setMethod(bidding.getMethodChild().getCodeValue());
+            dto.setMethodName(bidding.getMethodChild().getCodeName());
+        }
+        
+        // 첨부파일 목록 설정
+        dto.setAttachmentPaths(bidding.getAttachmentPaths());
+        
+        // 생성 및 수정 정보 설정
+        dto.setRegTime(bidding.getRegTime());
+        dto.setUpdateTime(bidding.getUpdateTime());
+        dto.setCreatedBy(bidding.getCreatedBy());
+        dto.setModifiedBy(bidding.getModifiedBy());
+        
+        // 구매 요청 정보 설정
+        if (bidding.getPurchaseRequest() != null) {
+            dto.setPurchaseRequestId(bidding.getPurchaseRequest().getId());
+            dto.setPurchaseRequestName(bidding.getPurchaseRequest().getRequestName());
+        }
+        
+        // 구매 요청 품목 정보 설정
+        if (bidding.getPurchaseRequestItem() != null) {
+            dto.setPurchaseRequestItemId(bidding.getPurchaseRequestItem().getId());
+        }
         
         // 공급사 정보 변환 (사업자번호 포함)
         if (bidding.getSuppliers() != null && !bidding.getSuppliers().isEmpty()) {
@@ -955,5 +1012,6 @@ public class BiddingService {
         }
         
         return dto;
-    }
+        }
+
 }

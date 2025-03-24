@@ -1,31 +1,16 @@
 package com.orbit.entity.procurement;
 
+import com.orbit.entity.member.Member;
+import com.orbit.entity.commonCode.SystemStatus;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.orbit.entity.commonCode.SystemStatus;
-import com.orbit.entity.member.Member;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorColumn;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.PositiveOrZero;
-import lombok.Getter;
-import lombok.Setter;
 
 @Entity
 @Getter @Setter
@@ -88,20 +73,4 @@ public abstract class PurchaseRequest {
         attachment.setPurchaseRequest(this);
         this.attachments.add(attachment);
     }
-
-     //Bidding 과 맴핑
-     @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
-     private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
- 
-     public List<PurchaseRequestItem> getPurchaseRequestItems() {
-         return this.purchaseRequestItems;
-     }
- 
-     public void addPurchaseRequestItem(PurchaseRequestItem item) {
-         if (this.purchaseRequestItems == null) {
-             this.purchaseRequestItems = new ArrayList<>();
-         }
-         item.setPurchaseRequest(this);
-         this.purchaseRequestItems.add(item);
-     }
 }

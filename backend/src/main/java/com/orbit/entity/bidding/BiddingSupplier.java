@@ -3,10 +3,10 @@ package com.orbit.entity.bidding;
 import java.time.LocalDateTime;
 
 import com.orbit.entity.BaseEntity;
-import com.orbit.entity.Notification;
 import com.orbit.entity.member.Member;
-import com.orbit.repository.NotificationRepository;
+import com.orbit.entity.notification.NotificationRequest;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.service.NotificationService;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -88,23 +88,24 @@ public class BiddingSupplier extends BaseEntity {
     /**
      * 알림 발송 처리 + 알림 발송
      */
-    public void sendNotification(NotificationRepository notificationRepo, MemberRepository memberRepo, String title, String content) {
+    public void sendNotification(NotificationService notificationService, String title, String content) {
         // 알림 발송 기록
         this.notificationSent = true;
         this.notificationDate = LocalDateTime.now();
         
         // 실제 알림 발송
-        if (notificationRepo != null && memberRepo != null && supplier != null) {
+        if (notificationService != null && supplier != null) {
             try {
-                Notification notification = Notification.builder()
-                    .user(supplier)
+                NotificationRequest request = NotificationRequest.builder()
+                    .type("BIDDING_INVITE")
+                    .referenceId(this.bidding != null ? this.bidding.getId() : null)
                     .title(title)
                     .content(content)
-                    .type(Notification.NotificationType.입찰공고)
-                    .relatedId(this.bidding != null ? this.bidding.getId() : null)
-                    .isRead(false)
+                    .recipientId(supplier.getId())
+                    .priority("NORMAL")
                     .build();
-                notificationRepo.save(notification);
+                
+                notificationService.sendNotification(request);
             } catch (Exception e) {
                 // 알림 발송 실패 (로깅 필요)
                 System.err.println("공급사 알림 발송 실패: " + e.getMessage());
@@ -117,26 +118,27 @@ public class BiddingSupplier extends BaseEntity {
     /**
      * 참여 처리 + 알림 발송
      */
-    public void participate(NotificationRepository notificationRepo, MemberRepository memberRepo) {
+    public void participate(NotificationService notificationService, MemberRepository memberRepo) {
         this.isParticipating = true;
         this.participationDate = LocalDateTime.now();
         
         // 알림 발송 (구매자에게)
-        if (notificationRepo != null && memberRepo != null && bidding != null) {
+        if (notificationService != null && memberRepo != null && bidding != null) {
             try {
                 String creatorUsername = bidding.getCreatedBy();
                 if (creatorUsername != null && !creatorUsername.isEmpty()) {
                     Member buyer = memberRepo.findByUsername(creatorUsername).orElse(null);
                     if (buyer != null) {
-                        Notification notification = Notification.builder()
-                        .user(buyer)
-                        .title("입찰 참여 확인")
-                        .content(this.companyName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여 의사를 확인했습니다.")
-                        .type(Notification.NotificationType.입찰공고)
-                        .relatedId(this.bidding != null ? this.bidding.getId() : null)
-                        .isRead(false)
-                        .build();
-                        notificationRepo.save(notification);
+                        NotificationRequest request = NotificationRequest.builder()
+                            .type("BIDDING_STATUS_CHANGE")
+                            .referenceId(this.bidding.getId())
+                            .title("입찰 참여 확인")
+                            .content(this.companyName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여 의사를 확인했습니다.")
+                            .recipientId(buyer.getId())
+                            .priority("NORMAL")
+                            .build();
+                        
+                        notificationService.sendNotification(request);
                     }
                 }
             } catch (Exception e) {
@@ -149,27 +151,28 @@ public class BiddingSupplier extends BaseEntity {
     /**
      * 참여 거부 처리 + 알림 발송
      */
-    public void reject(String reason, NotificationRepository notificationRepo, MemberRepository memberRepo) {
+    public void reject(String reason, NotificationService notificationService, MemberRepository memberRepo) {
         this.isRejected = true;
         this.rejectionDate = LocalDateTime.now();
         this.rejectionReason = reason;
         
         // 알림 발송 (구매자에게)
-        if (notificationRepo != null && memberRepo != null && bidding != null) {
+        if (notificationService != null && memberRepo != null && bidding != null) {
             try {
                 String creatorUsername = bidding.getCreatedBy();
                 if (creatorUsername != null && !creatorUsername.isEmpty()) {
                     Member buyer = memberRepo.findByUsername(creatorUsername).orElse(null);
                     if (buyer != null) {
-                        Notification notification = Notification.builder()
-                            .user(buyer)
+                        NotificationRequest request = NotificationRequest.builder()
+                            .type("BIDDING_STATUS_CHANGE")
+                            .referenceId(this.bidding.getId())
                             .title("입찰 참여 거부")
                             .content(this.companyName + " 공급사가 입찰 공고 '" + bidding.getTitle() + "'에 참여를 거부했습니다. 사유: " + reason)
-                            .type(Notification.NotificationType.입찰공고)
-                            .relatedId(this.bidding != null ? this.bidding.getId() : null)
-                            .isRead(false)
+                            .recipientId(buyer.getId())
+                            .priority("HIGH")
                             .build();
-                        notificationRepo.save(notification);
+                        
+                        notificationService.sendNotification(request);
                     }
                 }
             } catch (Exception e) {

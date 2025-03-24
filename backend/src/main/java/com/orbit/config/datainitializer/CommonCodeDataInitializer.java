@@ -99,6 +99,13 @@ public class CommonCodeDataInitializer {
                List.of("DRAFT", "IN_PROGRESS", "CLOSED", "CANCELED"),
                List.of("초안", "진행중", "완료", "취소")
        );
+
+       // 발주 상태 코드 (단일 상태)
+        ParentCode biddingOrderStatus = initParentCode("ORDER", "STATUS", "발주 상태");
+        initChildCodes(biddingOrderStatus,
+                List.of("COMPLETED"),
+                List.of("발주완료")
+        );
    }
 
     //▶▶▶ 결재 코드
@@ -126,6 +133,8 @@ public class CommonCodeDataInitializer {
                 List.of("개", "박스", "봉지", "세트", "킬로그램", "미터")
         );
     }
+
+    
 
     //━━━━ 공통 메서드 ━━━━━━
     private ParentCode initParentCode(String entityType, String codeGroup, String codeName) {

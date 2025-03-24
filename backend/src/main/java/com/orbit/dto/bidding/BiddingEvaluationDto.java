@@ -2,100 +2,114 @@ package com.orbit.dto.bidding;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.entity.bidding.BiddingEvaluation;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class BiddingEvaluationDto {
     private Long id;
     private Long biddingParticipationId;
     private Long biddingId;
     private Long evaluatorId;
+    private String evaluatorName;
     private String supplierName;
-    
-    // 점수 항목별 상세 정보
-    private Integer priceScore;       // 가격 (30%)
-    private Integer qualityScore;     // 품질 (40%)
-    private Integer deliveryScore;    // 납품 (20%)
-    private Integer reliabilityScore; // 신뢰도 (10%)
-    
-    // 가중치 적용된 점수
-    private Double weightedTotalScore;
+    private Integer priceScore;
+    private Integer qualityScore;
+    private Integer deliveryScore;
+    private Integer reliabilityScore;
+    private Integer serviceScore;
+    private Integer additionalScore;
     private Integer totalScore;
+    private String comment;
     
-    private String comments;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime selectedAt;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime evaluatedAt;
-    private boolean isSelectedBidder;
-    private boolean selectedForOrder;
+    
+    private Boolean isSelectedBidder;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime bidderSelectedAt;
+    
+    private Boolean selectedForOrder;
 
-    // 가중치 상수
-    private static final double PRICE_WEIGHT = 0.3;
-    private static final double QUALITY_WEIGHT = 0.4;
-    private static final double DELIVERY_WEIGHT = 0.2;
-    private static final double RELIABILITY_WEIGHT = 0.1;
-
-    // 가중치 점수 계산 메서드
-    public double calculateWeightedScore() {
-        if (priceScore == null || qualityScore == null || 
-            deliveryScore == null || reliabilityScore == null) {
-            return 0.0;
-        }
-
-        return (priceScore * PRICE_WEIGHT) +
-               (qualityScore * QUALITY_WEIGHT) +
-               (deliveryScore * DELIVERY_WEIGHT) +
-               (reliabilityScore * RELIABILITY_WEIGHT);
-    }
-
-    // 엔티티 변환 메서드
+    /**
+     * 엔티티로 변환
+     */
     public BiddingEvaluation toEntity() {
-        BiddingEvaluation evaluation = new BiddingEvaluation();
-        evaluation.setId(this.id);
-        // participation 관계는 서비스 레이어에서 설정
-        // biddingParticipationId 필드는 양방향 매핑을 위해 유지
-        evaluation.setBiddingId(this.biddingId);
-        evaluation.setEvaluatorId(this.evaluatorId);
-        evaluation.setSupplierName(this.supplierName);
-        evaluation.setPriceScore(this.priceScore);
-        evaluation.setQualityScore(this.qualityScore);
-        evaluation.setDeliveryScore(this.deliveryScore);
-        evaluation.setReliabilityScore(this.reliabilityScore);
-        evaluation.setComments(this.comments);
-        evaluation.setSelectedBidder(this.isSelectedBidder);
-        evaluation.setSelectedForOrder(this.selectedForOrder);
-        evaluation.setEvaluatedAt(this.evaluatedAt);
-        return evaluation;
+        final Long biddingParticipationId = this.biddingParticipationId;
+        final Long biddingId = this.biddingId;
+        
+        return BiddingEvaluation.builder()
+                .id(this.id)
+                .biddingParticipationId(biddingParticipationId)
+                .biddingId(biddingId)
+                .evaluatorId(this.evaluatorId)
+                .evaluatorName(this.evaluatorName)
+                .supplierName(this.supplierName)
+                .priceScore(this.priceScore)
+                .qualityScore(this.qualityScore)
+                .deliveryScore(this.deliveryScore)
+                .reliabilityScore(this.reliabilityScore)
+                .serviceScore(this.serviceScore)
+                .additionalScore(this.additionalScore)
+                .totalScore(this.totalScore)
+                .comment(this.comment)
+                .selectedAt(this.selectedAt)
+                .isSelectedBidder(this.isSelectedBidder)
+                .bidderSelectedAt(this.bidderSelectedAt)
+                .selectedForOrder(this.selectedForOrder)
+                .build();
     }
-
-    // 엔티티로부터 DTO 생성 메서드
-    public static BiddingEvaluationDto fromEntity(BiddingEvaluation evaluation) {
-        if (evaluation == null) return null;
+    
+    /**
+     * 엔티티에서 DTO로 변환
+     */
+    public static BiddingEvaluationDto fromEntity(BiddingEvaluation entity) {
+        if (entity == null) {
+            return null;
+        }
         
-        BiddingEvaluationDto dto = new BiddingEvaluationDto();
-        dto.setId(evaluation.getId());
-        // participation 객체를 통해 ID 가져오기
-        dto.setBiddingParticipationId(evaluation.getParticipation() != null ? 
-                                     evaluation.getParticipation().getId() : 
-                                     evaluation.getBiddingParticipationId());
-        dto.setBiddingId(evaluation.getBiddingId());
-        dto.setEvaluatorId(evaluation.getEvaluatorId());
-        dto.setSupplierName(evaluation.getSupplierName());
-        dto.setPriceScore(evaluation.getPriceScore());
-        dto.setQualityScore(evaluation.getQualityScore());
-        dto.setDeliveryScore(evaluation.getDeliveryScore());
-        dto.setReliabilityScore(evaluation.getReliabilityScore());
-        dto.setComments(evaluation.getComments());
-        dto.setSelectedBidder(evaluation.isSelectedBidder());
-        dto.setSelectedForOrder(evaluation.isSelectedForOrder());
-        dto.setEvaluatedAt(evaluation.getEvaluatedAt());
-        
-        // 총점 설정
-        dto.setTotalScore(evaluation.getTotalScore());
-        
-        // 가중치 점수 계산
-        dto.setWeightedTotalScore(dto.calculateWeightedScore());
-        
-        return dto;
+        return BiddingEvaluationDto.builder()
+                .id(entity.getId())
+                .biddingParticipationId(entity.getBiddingParticipationId())
+                .biddingId(entity.getBiddingId())
+                .evaluatorId(entity.getEvaluatorId())
+                .evaluatorName(entity.getEvaluatorName())
+                .supplierName(entity.getSupplierName())
+                .priceScore(entity.getPriceScore())
+                .qualityScore(entity.getQualityScore())
+                .deliveryScore(entity.getDeliveryScore())
+                .reliabilityScore(entity.getReliabilityScore())
+                .serviceScore(entity.getServiceScore())
+                .additionalScore(entity.getAdditionalScore())
+                .totalScore(entity.getTotalScore())
+                .comment(entity.getComment())
+                .selectedAt(entity.getSelectedAt())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .evaluatedAt(entity.getEvaluatedAt())
+                .isSelectedBidder(entity.getIsSelectedBidder())
+                .bidderSelectedAt(entity.getBidderSelectedAt())
+                .selectedForOrder(entity.getSelectedForOrder())
+                .build();
     }
 }

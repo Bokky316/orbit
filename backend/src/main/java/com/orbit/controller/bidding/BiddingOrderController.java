@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping("/api/bidding-orders")
 @RequiredArgsConstructor
 public class BiddingOrderController {
     private final BiddingOrderService orderService;
@@ -42,7 +42,7 @@ public class BiddingOrderController {
         log.info("발주 목록 조회 요청");
         
         try {
-            List<BiddingOrderDto> orders = orderService.getAllOrders();
+            List<BiddingOrderDto> orders = orderService.getAllBiddingOrders();
             return ResponseEntity.ok(orders);
         } catch (Exception e) {
             log.error("발주 목록 조회 중 오류 발생", e);
@@ -51,14 +51,14 @@ public class BiddingOrderController {
     }
     
     /**
-     * 특정 입찰 공고의 발주 목록 조회
+     * 특정 계약의 발주 목록 조회
      */
-    @GetMapping("/{biddingId}")
-    public ResponseEntity<List<BiddingOrderDto>> getOrdersByBiddingId(@PathVariable Long biddingId) {
-        log.info("특정 입찰 공고의 발주 목록 조회 요청 - 입찰 ID: {}", biddingId);
+    @GetMapping("/contract/{contractId}")
+    public ResponseEntity<List<BiddingOrderDto>> getOrdersByContractId(@PathVariable Long contractId) {
+        log.info("특정 계약의 발주 목록 조회 요청 - 계약 ID: {}", contractId);
         
         try {
-            List<BiddingOrderDto> orders = orderService.getOrdersByBiddingId(biddingId);
+            List<BiddingOrderDto> orders = orderService.getOrdersByContractId(contractId);
             return ResponseEntity.ok(orders);
         } catch (Exception e) {
             log.error("발주 목록 조회 중 오류 발생", e);
@@ -69,7 +69,7 @@ public class BiddingOrderController {
     /**
      * 특정 공급사의 발주 목록 조회
      */
-    @GetMapping("/{supplierId}")
+    @GetMapping("/supplier/{supplierId}")
     public ResponseEntity<List<BiddingOrderDto>> getOrdersBySupplierId(@PathVariable Long supplierId) {
         log.info("특정 공급사의 발주 목록 조회 요청 - 공급사 ID: {}", supplierId);
         
@@ -99,120 +99,27 @@ public class BiddingOrderController {
     }
     
     /**
-     * 발주 번호로 발주 조회
-     */
-    @GetMapping("/{orderNumber}")
-    public ResponseEntity<BiddingOrderDto> getOrderByOrderNumber(@PathVariable String orderNumber) {
-        log.info("발주 번호로 발주 조회 요청 - 발주번호: {}", orderNumber);
-        
-        try {
-            BiddingOrderDto order = orderService.getOrderByOrderNumber(orderNumber);
-            return ResponseEntity.ok(order);
-        } catch (Exception e) {
-            log.error("발주 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * 기간 내 납품 예정 발주 목록 조회
-     */
-    @GetMapping("/delivery-date")
-    public ResponseEntity<List<BiddingOrderDto>> getOrdersByDeliveryDateBetween(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
-    ) {
-        log.info("기간 내 납품 예정 발주 목록 조회 요청 - 시작일: {}, 종료일: {}", startDate, endDate);
-        
-        try {
-            List<BiddingOrderDto> orders = orderService.getOrdersByDeliveryDateBetween(startDate, endDate);
-            return ResponseEntity.ok(orders);
-        } catch (Exception e) {
-            log.error("발주 목록 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * 승인된 발주 목록 조회
-     */
-    @GetMapping("/approved")
-    public ResponseEntity<List<BiddingOrderDto>> getApprovedOrders() {
-        log.info("승인된 발주 목록 조회 요청");
-        
-        try {
-            List<BiddingOrderDto> orders = orderService.getApprovedOrders();
-            return ResponseEntity.ok(orders);
-        } catch (Exception e) {
-            log.error("발주 목록 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * 승인되지 않은 발주 목록 조회
-     */
-    @GetMapping("/unapproved")
-    public ResponseEntity<List<BiddingOrderDto>> getUnapprovedOrders() {
-        log.info("승인되지 않은 발주 목록 조회 요청");
-        
-        try {
-            List<BiddingOrderDto> orders = orderService.getUnapprovedOrders();
-            return ResponseEntity.ok(orders);
-        } catch (Exception e) {
-            log.error("발주 목록 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
      * 발주 생성
      */
-    @PostMapping
+    @PostMapping("/contract/{contractId}")
     public ResponseEntity<BiddingOrderDto> createOrder(
+            @PathVariable Long contractId,
             @Valid @RequestBody BiddingOrderDto orderDto,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        log.info("발주 생성 요청 - 제목: {}", orderDto.getTitle());
+        log.info("발주 생성 요청 - 계약 ID: {}", contractId);
         
         try {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            // TODO: 권한 체크 로직 추가 (구매자 또는 관리자만 가능하도록)
-            
-            BiddingOrderDto createdOrder = orderService.createOrder(orderDto, member.getId());
-            return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
-        } catch (Exception e) {
-            log.error("발주 생성 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * 발주 정보 업데이트
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<BiddingOrderDto> updateOrder(
-            @PathVariable Long id,
-            @Valid @RequestBody BiddingOrderDto orderDto,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        log.info("발주 정보 업데이트 요청 - ID: {}", id);
-        
-        try {
-            // 현재 사용자 정보 조회
-            Member member = getUserFromUserDetails(userDetails);
-            
-            // TODO: 권한 체크 로직 추가 (구매자 또는 관리자만 가능하도록)
-            
-            BiddingOrderDto updatedOrder = orderService.updateOrder(id, orderDto);
-            return ResponseEntity.ok(updatedOrder);
+            BiddingOrderDto createdOrder = orderService.createOrder(contractId, orderDto, member);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
         } catch (IllegalStateException e) {
-            log.error("발주 업데이트 불가: {}", e.getMessage());
+            log.error("발주 생성 불가: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (Exception e) {
-            log.error("발주 업데이트 중 오류 발생", e);
+            log.error("발주 생성 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -231,9 +138,7 @@ public class BiddingOrderController {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            // TODO: 권한 체크 로직 추가 (승인권자만 가능하도록)
-            
-            BiddingOrderDto approvedOrder = orderService.approveOrder(id, member.getId());
+            BiddingOrderDto approvedOrder = orderService.approveOrder(id, member);
             return ResponseEntity.ok(approvedOrder);
         } catch (IllegalStateException e) {
             log.error("발주 승인 불가: {}", e.getMessage());
@@ -245,7 +150,7 @@ public class BiddingOrderController {
     }
     
     /**
-     * 납품 예정일 업데이트
+     * 납품 예정일 변경
      */
     @PutMapping("/{id}/delivery-date")
     public ResponseEntity<BiddingOrderDto> updateDeliveryDate(
@@ -253,50 +158,19 @@ public class BiddingOrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate newDeliveryDate,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        log.info("납품 예정일 업데이트 요청 - ID: {}, 예정일: {}", id, newDeliveryDate);
+        log.info("납품 예정일 변경 요청 - ID: {}, 새 납품일: {}", id, newDeliveryDate);
         
         try {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            // TODO: 권한 체크 로직 추가 (구매자, 공급자 또는 관리자만 가능하도록)
-            
-            BiddingOrderDto updatedOrder = orderService.updateDeliveryDate(id, newDeliveryDate, member.getId());
+            BiddingOrderDto updatedOrder = orderService.updateDeliveryDate(id, newDeliveryDate, member);
             return ResponseEntity.ok(updatedOrder);
+        } catch (IllegalStateException e) {
+            log.error("납품 예정일 변경 불가: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (Exception e) {
-            log.error("납품 예정일 업데이트 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * 특정 참여에 대한 발주 조회
-     */
-    @GetMapping("/participation/{participationId}")
-    public ResponseEntity<List<BiddingOrderDto>> getOrdersByParticipationId(@PathVariable Long participationId) {
-        log.info("특정 참여에 대한 발주 조회 요청 - 참여 ID: {}", participationId);
-        
-        try {
-            List<BiddingOrderDto> orders = orderService.getOrdersByParticipationId(participationId);
-            return ResponseEntity.ok(orders);
-        } catch (Exception e) {
-            log.error("발주 목록 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
-    /**
-     * 특정 평가에 대한 발주 조회
-     */
-    @GetMapping("/evaluation/{evaluationId}")
-    public ResponseEntity<List<BiddingOrderDto>> getOrdersByEvaluationId(@PathVariable Long evaluationId) {
-        log.info("특정 평가에 대한 발주 조회 요청 - 평가 ID: {}", evaluationId);
-        
-        try {
-            List<BiddingOrderDto> orders = orderService.getOrdersByEvaluationId(evaluationId);
-            return ResponseEntity.ok(orders);
-        } catch (Exception e) {
-            log.error("발주 목록 조회 중 오류 발생", e);
+            log.error("납품 예정일 변경 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -316,15 +190,40 @@ public class BiddingOrderController {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            // TODO: 권한 체크 로직 추가 (구매자 또는 관리자만 가능하도록)
-            
-            BiddingOrderDto cancelledOrder = orderService.cancelOrder(id, reason, member.getId());
+            BiddingOrderDto cancelledOrder = orderService.cancelOrder(id, reason, member);
             return ResponseEntity.ok(cancelledOrder);
         } catch (IllegalStateException e) {
             log.error("발주 취소 불가: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (Exception e) {
             log.error("발주 취소 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * 발주 상태 변경
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<BiddingOrderDto> changeOrderStatus(
+            @PathVariable Long id,
+            @RequestParam String newStatus,
+            @RequestParam String reason,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        log.info("발주 상태 변경 요청 - ID: {}, 상태: {}, 사유: {}", id, newStatus, reason);
+        
+        try {
+            // 현재 사용자 정보 조회
+            Member member = getUserFromUserDetails(userDetails);
+            
+            BiddingOrderDto updatedOrder = orderService.changeOrderStatus(id, newStatus, reason, member);
+            return ResponseEntity.ok(updatedOrder);
+        } catch (IllegalStateException e) {
+            log.error("발주 상태 변경 불가: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("발주 상태 변경 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

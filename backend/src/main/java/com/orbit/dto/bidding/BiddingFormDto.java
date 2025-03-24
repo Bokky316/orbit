@@ -1,46 +1,65 @@
 package com.orbit.dto.bidding;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
-import com.orbit.entity.bidding.Bidding;
-import com.orbit.entity.commonCode.ChildCode;
-import com.orbit.entity.commonCode.ParentCode;
-import com.orbit.entity.procurement.PurchaseRequest;
-import com.orbit.entity.procurement.PurchaseRequestItem;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.orbit.util.PriceCalculator;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * 입찰 공고 등록/수정 폼 데이터 DTO
- */
+@Builder
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Slf4j
 public class BiddingFormDto {
     private Long id;
     
     // 구매 요청 관련 정보
-    @NotNull(message = "구매 요청은 필수 선택 항목입니다.")
-    private PurchaseRequest purchaseRequest;
+    private Long purchaseRequestId; 
     
     @NotNull(message = "구매 요청 품목은 필수 선택 항목입니다.")
-    private PurchaseRequestItem purchaseRequestItem;
+    private Long purchaseRequestItemId; 
+ 
+    private String requestNumber;
+ 
+    private String requestName; 
+ 
+    private String deliveryLocation;
+    
+    // 구매 요청 상태
+    private String prStatusChild;
+    
+    // 구매 요청 고객
+    private String customer;
+    
+    // 구매 요청 날짜
+    private LocalDate requestDate;
+    
+    // 사업부
+    private String businessDepartment;
+    
+    // 입찰 기간 정보
+    @NotNull(message = "입찰 기간은 필수입니다")
+    @Valid
+    private BiddingPeriod biddingPeriod;
+    
+    // 납품 요청일
+    private LocalDate deliveryRequestDate;
     
     // 입찰 기본 정보
     @NotBlank(message = "제목은 필수 입력값입니다.")
@@ -48,12 +67,6 @@ public class BiddingFormDto {
     private String title;
     
     private String description;
-    
-    @NotNull(message = "시작일은 필수 입력값입니다.")
-    private LocalDateTime startDate;
-    
-    @NotNull(message = "마감일은 필수 입력값입니다.")
-    private LocalDateTime endDate;
     
     @NotBlank(message = "입찰 조건은 필수 입력값입니다.")
     private String conditions;
@@ -71,58 +84,40 @@ public class BiddingFormDto {
     private BigDecimal totalAmount;
     
     // 상태 정보
-    private ParentCode statusParent;
-    private ChildCode statusChild;
+    private String status; 
     
     // 입찰 방식
-    private ParentCode methodParent;
-    private ChildCode methodChild;
-    
+    private String method;
+
     private List<Long> supplierIds;
 
     private List<String> attachmentPaths;
     
-    /**
-     * 수량 설정 (안전한 방식)
-     */
-    public void setQuantity(Integer quantity) {
-        this.quantity = (quantity != null && quantity > 0) ? quantity : 1;
+    // 상태 코드 메서드
+    public String getStatusChild() {
+        return this.status;
+    }
+
+    // 입찰 방식 메서드 추가
+    public String getMethod() {
+        return this.method;
     }
     
     /**
-     * 단가 설정 (안전한 방식)
+     * 입찰 기간 정보
      */
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = (unitPrice != null && unitPrice.compareTo(BigDecimal.ZERO) >= 0) 
-            ? unitPrice.setScale(0, RoundingMode.HALF_UP) 
-            : BigDecimal.ZERO;
-    }
-    
-    /**
-     * 공급가 설정 (안전한 방식)
-     */
-    public void setSupplyPrice(BigDecimal supplyPrice) {
-        this.supplyPrice = (supplyPrice != null && supplyPrice.compareTo(BigDecimal.ZERO) >= 0)
-            ? supplyPrice.setScale(0, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
-    }
-    
-    /**
-     * 부가세 설정 (안전한 방식)
-     */
-    public void setVat(BigDecimal vat) {
-        this.vat = (vat != null && vat.compareTo(BigDecimal.ZERO) >= 0)
-            ? vat.setScale(0, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
-    }
-    
-    /**
-     * 총액 설정 (안전한 방식)
-     */
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = (totalAmount != null && totalAmount.compareTo(BigDecimal.ZERO) >= 0)
-            ? totalAmount.setScale(0, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class BiddingPeriod {
+        @NotNull(message = "시작일은 필수입니다")
+        @JsonFormat(pattern = "yyyy-MM-dd")
+        private LocalDate startDate;
+        
+        @NotNull(message = "종료일은 필수입니다")
+        @JsonFormat(pattern = "yyyy-MM-dd")
+        private LocalDate endDate;
     }
     
     /**
@@ -150,73 +145,5 @@ public class BiddingFormDto {
             this.vat = this.vat == null ? BigDecimal.ZERO : this.vat;
             this.totalAmount = this.totalAmount == null ? BigDecimal.ZERO : this.totalAmount;
         }
-    }
-    
-    /**
-     * DTO -> 엔티티 변환
-     */
-    public Bidding toEntity() {
-        // 금액 재계산
-        recalculateAllPrices();
-        
-        // 엔티티 생성
-        Bidding bidding = Bidding.builder()
-                .purchaseRequest(this.purchaseRequest)
-                .purchaseRequestItem(this.purchaseRequestItem)
-                .title(this.title)
-                .description(this.description)
-                .startDate(this.startDate)
-                .endDate(this.endDate)
-                .conditions(this.conditions)
-                .internalNote(this.internalNote)
-                .quantity(this.quantity)
-                .unitPrice(this.unitPrice)
-                .supplyPrice(this.supplyPrice)
-                .vat(this.vat)
-                .totalAmount(this.totalAmount)
-                .statusParent(this.statusParent)
-                .statusChild(this.statusChild)
-                .methodParent(this.methodParent)
-                .methodChild(this.methodChild)
-                .attachmentPaths(this.attachmentPaths)
-                .build();
-        
-        // ID가 있는 경우 (수정 시) ID 설정
-        if (this.id != null) {
-            bidding.setId(this.id);
-        }
-        
-        return bidding;
-    }
-    
-    /**
-     * 엔티티 -> DTO 변환
-     */
-    public static BiddingFormDto fromEntity(Bidding entity) {
-        if (entity == null) {
-            return null;
-        }
-        
-        return BiddingFormDto.builder()
-                .id(entity.getId())
-                .purchaseRequest(entity.getPurchaseRequest())
-                .purchaseRequestItem(entity.getPurchaseRequestItem())
-                .title(entity.getTitle())
-                .description(entity.getDescription())
-                .startDate(entity.getStartDate())
-                .endDate(entity.getEndDate())
-                .conditions(entity.getConditions())
-                .internalNote(entity.getInternalNote())
-                .quantity(entity.getQuantity())
-                .unitPrice(entity.getUnitPrice())
-                .supplyPrice(entity.getSupplyPrice())
-                .vat(entity.getVat())
-                .totalAmount(entity.getTotalAmount())
-                .statusParent(entity.getStatusParent())
-                .statusChild(entity.getStatusChild())
-                .methodParent(entity.getMethodParent())
-                .methodChild(entity.getMethodChild())
-                .attachmentPaths(entity.getAttachmentPaths())
-                .build();
     }
 }

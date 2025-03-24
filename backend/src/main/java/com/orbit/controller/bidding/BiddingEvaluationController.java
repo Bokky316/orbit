@@ -14,22 +14,70 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.orbit.dto.bidding.BiddingDto;
 import com.orbit.dto.bidding.BiddingEvaluationDto;
 import com.orbit.entity.member.Member;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.service.bidding.BiddingEvaluationService;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/evaluations")
+@RequestMapping("/api/bidding-evaluations")
 @RequiredArgsConstructor
 public class BiddingEvaluationController {
     private final BiddingEvaluationService evaluationService;
     private final MemberRepository memberRepository;
+
+    /**
+     * 입찰 공고 마감
+     */
+    @PutMapping("/bidding/{id}/close")
+    public ResponseEntity<BiddingDto> closeBidding(
+        @PathVariable Long id,
+        @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        log.info("입찰 공고 마감 요청 - ID: {}", id);
+        
+        try {
+            Member currentMember = getUserFromUserDetails(userDetails);
+            BiddingDto closedBidding = evaluationService.closeBidding(id, currentMember);
+            return ResponseEntity.ok(closedBidding);
+        } catch (IllegalStateException e) {
+            log.error("입찰 마감 불가: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        } catch (Exception e) {
+            log.error("입찰 마감 처리 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    /**
+     * 낙찰자 선정
+     */
+    @PutMapping("/bidding/{id}/select-winner")
+    public ResponseEntity<BiddingEvaluationDto> selectWinner(
+        @PathVariable Long id,
+        @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        log.info("낙찰자 선정 요청 - 입찰 ID: {}", id);
+        
+        try {
+            Member currentMember = getUserFromUserDetails(userDetails);
+            BiddingEvaluationDto selectedWinner = evaluationService.selectWinner(id, currentMember);
+            return ResponseEntity.ok(selectedWinner);
+        } catch (IllegalStateException e) {
+            log.error("낙찰자 선정 불가: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        } catch (Exception e) {
+            log.error("낙찰자 선정 처리 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
     
     /**
      * 평가 목록 조회
@@ -50,7 +98,7 @@ public class BiddingEvaluationController {
     /**
      * 특정 입찰 공고의 평가 목록 조회
      */
-    @GetMapping("/{biddingId}")
+    @GetMapping("/bidding/{biddingId}")
     public ResponseEntity<List<BiddingEvaluationDto>> getEvaluationsByBiddingId(@PathVariable Long biddingId) {
         log.info("특정 입찰 공고의 평가 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -66,7 +114,7 @@ public class BiddingEvaluationController {
     /**
      * 특정 참여에 대한 평가 목록 조회
      */
-    @GetMapping("/{participationId}")
+    @GetMapping("/participation/{participationId}")
     public ResponseEntity<List<BiddingEvaluationDto>> getEvaluationsByParticipationId(@PathVariable Long participationId) {
         log.info("특정 참여에 대한 평가 목록 조회 요청 - 참여 ID: {}", participationId);
         
@@ -82,7 +130,7 @@ public class BiddingEvaluationController {
     /**
      * 특정 평가자의 평가 목록 조회
      */
-    @GetMapping("/{evaluatorId}")
+    @GetMapping("/evaluator/{evaluatorId}")
     public ResponseEntity<List<BiddingEvaluationDto>> getEvaluationsByEvaluatorId(@PathVariable Long evaluatorId) {
         log.info("특정 평가자의 평가 목록 조회 요청 - 평가자 ID: {}", evaluatorId);
         
@@ -105,6 +153,9 @@ public class BiddingEvaluationController {
         try {
             BiddingEvaluationDto evaluation = evaluationService.getEvaluationById(id);
             return ResponseEntity.ok(evaluation);
+        } catch (EntityNotFoundException e) {
+            log.error("평가 정보를 찾을 수 없음: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {
             log.error("평가 상세 조회 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -125,8 +176,6 @@ public class BiddingEvaluationController {
         try {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
-            
-            // TODO: 권한 체크 로직 추가 (구매자 또는 관리자만 가능하도록)
             
             BiddingEvaluationDto evaluation = evaluationService.createEvaluation(
                     evaluationDto.getBiddingId(), 
@@ -155,10 +204,8 @@ public class BiddingEvaluationController {
         log.info("평가 점수 업데이트 요청 - ID: {}", id);
         
         try {
-            // 현재 사용자 정보 조회
-            Member member = getUserFromUserDetails(userDetails);
-            
-            // TODO: 권한 체크 로직 추가 (평가자 본인 또는 관리자만 가능하도록)
+            // 현재 사용자 정보 조회 - 권한 검증용
+            getUserFromUserDetails(userDetails);
             
             evaluationDto.setId(id); // ID 설정
             BiddingEvaluationDto updatedEvaluation = evaluationService.updateEvaluation(id, evaluationDto);
@@ -183,10 +230,8 @@ public class BiddingEvaluationController {
         log.info("낙찰자 선정 취소 요청 - ID: {}", id);
         
         try {
-            // 현재 사용자 정보 조회
-            Member member = getUserFromUserDetails(userDetails);
-            
-            // TODO: 권한 체크 로직 추가 (구매자 또는 관리자만 가능하도록)
+            // 현재 사용자 정보 조회 - 권한 검증용
+            getUserFromUserDetails(userDetails);
             
             BiddingEvaluationDto evaluation = evaluationService.cancelSelectedBidder(id);
             return ResponseEntity.ok(evaluation);

@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/contracts")
+@RequestMapping("/api/bidding-contracts")
 @RequiredArgsConstructor
 public class BiddingContractController {
     private final BiddingContractService contractService;
@@ -72,7 +73,7 @@ public class BiddingContractController {
     /**
      * 특정 입찰 공고의 계약 목록 조회
      */
-    @GetMapping("/{biddingId}")
+    @GetMapping("/bidding/{biddingId}")
     public ResponseEntity<List<BiddingContractDto>> getContractsByBiddingId(@PathVariable Long biddingId) {
         log.info("특정 입찰 공고의 계약 목록 조회 요청 - 입찰 ID: {}", biddingId);
         
@@ -88,7 +89,7 @@ public class BiddingContractController {
     /**
      * 특정 공급사의 계약 목록 조회
      */
-    @GetMapping("/{supplierId}")
+    @GetMapping("/supplier/{supplierId}")
     public ResponseEntity<List<BiddingContractDto>> getContractsBySupplierId(@PathVariable Long supplierId) {
         log.info("특정 공급사의 계약 목록 조회 요청 - 공급사 ID: {}", supplierId);
         
@@ -120,7 +121,7 @@ public class BiddingContractController {
     /**
      * 계약 번호로 계약 조회
      */
-    @GetMapping("/{transactionNumber}")
+    @GetMapping("/transaction/{transactionNumber}")
     public ResponseEntity<BiddingContractDto> getContractByTransactionNumber(@PathVariable String transactionNumber) {
         log.info("계약 번호로 계약 조회 요청 - 계약번호: {}", transactionNumber);
         
@@ -150,6 +151,32 @@ public class BiddingContractController {
     }
     
     /**
+     * 계약 초안 생성
+     */
+    @PostMapping("/draft")
+    public ResponseEntity<BiddingContractDto> createContractDraft(
+            @RequestParam Long biddingId,
+            @RequestParam Long participationId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        log.info("계약 초안 생성 요청 - 입찰 ID: {}, 참여 ID: {}", biddingId, participationId);
+        
+        try {
+            // 현재 사용자 정보 조회
+            Member member = getUserFromUserDetails(userDetails);
+            
+            BiddingContractDto createdContract = contractService.createContractDraft(biddingId, participationId, member);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdContract);
+        } catch (IllegalStateException e) {
+            log.error("계약 초안 생성 불가: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("계약 초안 생성 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
      * 계약 세부 정보 업데이트
      */
     @PutMapping("/{id}")
@@ -161,9 +188,10 @@ public class BiddingContractController {
         log.info("계약 세부 정보 업데이트 요청 - ID: {}", id);
         
         try {
-            // TODO: 권한 체크 로직 추가 (구매자 또는 관리자만 가능하도록)
+            // 현재 사용자 정보 조회
+            Member member = getUserFromUserDetails(userDetails);
             
-            BiddingContractDto updatedContract = contractService.updateContractDetails(id, contractDto);
+            BiddingContractDto updatedContract = contractService.updateContractDetails(id, contractDto, member);
             return ResponseEntity.ok(updatedContract);
         } catch (IllegalStateException e) {
             log.error("계약 업데이트 불가: {}", e.getMessage());
@@ -188,7 +216,7 @@ public class BiddingContractController {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            BiddingContractDto startedContract = contractService.startContract(id, member.getId());
+            BiddingContractDto startedContract = contractService.startContract(id, member);
             return ResponseEntity.ok(startedContract);
         } catch (IllegalStateException e) {
             log.error("계약 진행 시작 불가: {}", e.getMessage());
@@ -214,9 +242,7 @@ public class BiddingContractController {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            // TODO: 권한 체크 로직 추가 (구매자 역할을 가진 사용자만 가능하도록)
-            
-            BiddingContractDto signedContract = contractService.signByBuyer(id, signature, member.getId());
+            BiddingContractDto signedContract = contractService.signByBuyer(id, signature, member);
             return ResponseEntity.ok(signedContract);
         } catch (IllegalStateException e) {
             log.error("구매자 서명 불가: {}", e.getMessage());
@@ -242,9 +268,7 @@ public class BiddingContractController {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            // TODO: 권한 체크 로직 추가 (계약 연관 공급자만 가능하도록)
-            
-            BiddingContractDto signedContract = contractService.signBySupplier(id, signature);
+            BiddingContractDto signedContract = contractService.signBySupplier(id, signature, member);
             return ResponseEntity.ok(signedContract);
         } catch (IllegalStateException e) {
             log.error("공급자 서명 불가: {}", e.getMessage());
@@ -270,15 +294,40 @@ public class BiddingContractController {
             // 현재 사용자 정보 조회
             Member member = getUserFromUserDetails(userDetails);
             
-            // TODO: 권한 체크 로직 추가 (구매자 또는 관리자만 가능하도록)
-            
-            BiddingContractDto cancelledContract = contractService.cancelContract(id, reason, member.getId());
+            BiddingContractDto cancelledContract = contractService.cancelContract(id, reason, member);
             return ResponseEntity.ok(cancelledContract);
         } catch (IllegalStateException e) {
             log.error("계약 취소 불가: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (Exception e) {
             log.error("계약 취소 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * 계약 상태 변경
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<BiddingContractDto> changeContractStatus(
+            @PathVariable Long id,
+            @RequestParam String status,
+            @RequestParam String reason,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        log.info("계약 상태 변경 요청 - ID: {}, 상태: {}, 사유: {}", id, status, reason);
+        
+        try {
+            // 현재 사용자 정보 조회
+            Member member = getUserFromUserDetails(userDetails);
+            
+            BiddingContractDto updatedContract = contractService.changeStatus(id, status, reason, member);
+            return ResponseEntity.ok(updatedContract);
+        } catch (IllegalStateException e) {
+            log.error("계약 상태 변경 불가: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("계약 상태 변경 중 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

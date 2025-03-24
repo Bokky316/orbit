@@ -1,69 +1,155 @@
-import React, { useState, useEffect } from "react";
-import { useNotifications } from "@/hooks/useNotifications";
+// frontend/src/components/notification/NotificationBadgeIcon.jsx
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import useWebSocket from "@/hooks/useWebSocket";
+import { useSelector } from "react-redux";
+import "/public/css/layout/Notification.css";
 
 function NotificationBadgeIcon() {
-  const { notifications, unreadCount } = useNotifications();
-  const [displayCount, setDisplayCount] = useState(0);
+  const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
+  const {
+    isConnected,
+    notifications = [],
+    unreadCount = 0,
+    markNotificationAsRead
+  } = useWebSocket(user);
 
-  // 최대 99개까지 표시
-  useEffect(() => {
-    setDisplayCount(Math.min(unreadCount, 99));
-  }, [unreadCount]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  // 알림 목록 토글
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-
-  const toggleNotifications = () => {
-    setIsNotificationOpen(!isNotificationOpen);
+  // 알림 토글
+  const toggleDropdown = (e) => {
+    e.stopPropagation();
+    setIsDropdownOpen(!isDropdownOpen);
   };
 
+  // 알림 클릭 핸들러
+  const handleNotificationClick = (notification) => {
+    // 알림 읽음 처리
+    markNotificationAsRead(notification.id);
+
+    // 알림 타입에 따라 적절한 페이지로 이동
+    if (notification.referenceId) {
+      if (notification.type?.includes("BIDDING")) {
+        navigate(`/biddings/${notification.referenceId}`);
+      } else if (notification.type?.includes("CONTRACT")) {
+        navigate(`/contracts/${notification.referenceId}`);
+      } else if (notification.type?.includes("ORDER")) {
+        navigate(`/orders/${notification.referenceId}`);
+      } else {
+        navigate(`/notifications`);
+      }
+    } else {
+      navigate("/notifications");
+    }
+
+    // 드롭다운 닫기
+    setIsDropdownOpen(false);
+  };
+
+  // 모든 알림 보기 클릭 핸들러
+  const handleViewAllNotifications = () => {
+    navigate("/notifications");
+    setIsDropdownOpen(false);
+  };
+
+  // 외부 클릭 감지하여 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // 웹소켓 연결 상태 표시용 (개발 중에만 사용, 실제로는 제거 가능)
+  const connectionStatus = isConnected ? "connected" : "disconnected";
+
   return (
-    <div className="notification_container" onClick={toggleNotifications}>
-      <svg
-        width="26"
-        height="28"
-        viewBox="0 0 26 28"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M9.45264 25.6682C10.0608 27.0357 11.4092 28 13.0008 28C14.5923 28 15.9408 27.0357 16.549 25.6682C15.4267 25.7231 14.2597 25.76 13.0008 25.76C11.7419 25.76 10.5749 25.7231 9.45264 25.6682Z"
-          fill="black"
-        />
-        <path
-          d="M25.3532 19.74C23.877 17.8785 21.3996 14.2195 21.3996 10.64C21.3996 7.09073 19.1193 3.89758 15.7996 2.72382C15.7593 1.21406 14.5183 0 13.0007 0C11.482 0 10.2422 1.21406 10.2018 2.72382C6.88101 3.89758 4.6007 7.09073 4.6007 10.64C4.6007 14.2207 2.1244 17.8785 0.647123 19.74C0.154334 20.3616 0.00197428 21.1825 0.240576 21.9363C0.473545 22.6721 1.05367 23.2422 1.79288 23.4595C3.08761 23.8415 5.20997 24.2715 8.44682 24.491C9.84791 24.5851 11.3543 24.64 13.0008 24.64C14.646 24.64 16.1525 24.5851 17.5535 24.491C20.7915 24.2715 22.9128 23.8415 24.2086 23.4595C24.9478 23.2422 25.5268 22.6722 25.7598 21.9363C25.9983 21.1825 25.8449 20.3616 25.3532 19.74Z"
-          fill="black"
-        />
-      </svg>
+    <div className="notification_wrapper" ref={dropdownRef}>
+      <div className="notification_icon" onClick={toggleDropdown}>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"
+            fill="currentColor"
+          />
+          {unreadCount > 0 && <circle cx="18" cy="6" r="6" fill="#F44336" />}
+        </svg>
+        {unreadCount > 0 && (
+          <span className="notification_badge">
+            {Math.min(unreadCount, 99)}
+          </span>
+        )}
+      </div>
 
-      {displayCount > 0 && (
-        <div className="notification_badge">{displayCount}</div>
-      )}
-
-      {/* 알림 드롭다운 */}
-      {isNotificationOpen && (
+      {isDropdownOpen && (
         <div className="notification_dropdown">
           <div className="notification_header">
             <h3>알림</h3>
-            <span>총 {displayCount}개의 새 알림</span>
+            <span className="unread_count">
+              {unreadCount}개의 읽지 않은 알림
+            </span>
           </div>
-          <ul className="notification_list">
-            {notifications.slice(0, 5).map((notification) => (
-              <li key={notification.id} className="notification_item">
-                <div className="notification_content">
-                  <h4>{notification.title}</h4>
-                  <p>{notification.content}</p>
-                  <small>
-                    {new Date(notification.createdAt).toLocaleString()}
-                  </small>
+
+          <div className="notification_list">
+            {notifications.length > 0 ? (
+              notifications.slice(0, 5).map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`notification_item ${
+                    !notification.isRead ? "unread" : ""
+                  }`}
+                  onClick={() => handleNotificationClick(notification)}>
+                  <div className="notification_icon_type">
+                    {notification.type?.includes("BIDDING") && "📋"}
+                    {notification.type?.includes("CONTRACT") && "📝"}
+                    {notification.type?.includes("ORDER") && "🚚"}
+                    {notification.type?.includes("EVALUATION") && "📊"}
+                    {(!notification.type ||
+                      !notification.type.match(
+                        /(BIDDING|CONTRACT|ORDER|EVALUATION)/
+                      )) &&
+                      "🔔"}
+                  </div>
+                  <div className="notification_content">
+                    <div className="notification_title">
+                      {notification.title}
+                    </div>
+                    <div className="notification_message">
+                      {notification.content}
+                    </div>
+                    {/* <div className="notification_time">
+                      {formatRelativeTime(notification.createdAt)}
+                    </div> */}
+                  </div>
+                  {!notification.isRead && (
+                    <div className="notification_unread_marker"></div>
+                  )}
                 </div>
-              </li>
-            ))}
-          </ul>
-          {/* <div className="notification_footer">
-            <button onClick={() => navigate("/notifications")}>
+              ))
+            ) : (
+              <div className="notification_empty">알림이 없습니다</div>
+            )}
+          </div>
+
+          <div className="notification_footer">
+            <button
+              onClick={handleViewAllNotifications}
+              className="view_all_button">
               모든 알림 보기
             </button>
-          </div> */}
+          </div>
         </div>
       )}
     </div>

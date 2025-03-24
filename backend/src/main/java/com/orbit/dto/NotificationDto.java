@@ -2,38 +2,28 @@ package com.orbit.dto;
 
 import java.time.LocalDateTime;
 
-import com.orbit.entity.Notification;
-import com.orbit.entity.Notification.NotificationType;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
+/**
+ * 알림 정보 DTO 클래스
+ */
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationDto {
     private Long id;
+    private String type;
+    private Long referenceId;
     private String title;
     private String content;
-    private NotificationType type;
-    private Long relatedId;
+    private Long recipientId;
+    private String recipientName;
     private boolean isRead;
+    private String priority;
     private LocalDateTime createdAt;
-
-    public static NotificationDto fromEntity(Notification notification) {
-        return NotificationDto.builder()
-            .id(notification.getId())
-            .title(notification.getTitle())
-            .content(notification.getContent())
-            .type(notification.getType())
-            .relatedId(notification.getRelatedId())
-            .isRead(notification.isRead())
-            .createdAt(notification.getCreatedAt())
-            .build();
-    }
+    private LocalDateTime readAt;
 }

@@ -17,6 +17,12 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
     List<BiddingOrder> findByBiddingId(Long biddingId);
     
     /**
+     * 특정 계약에 대한 발주 목록 조회
+     */
+    @Query("SELECT o FROM BiddingOrder o WHERE o.contractId = :contractId")
+    List<BiddingOrder> findByContractId(Long contractId);
+    
+    /**
      * 특정 공급사의 발주 목록 조회
      */
     List<BiddingOrder> findBySupplierId(Long supplierId);
@@ -61,11 +67,8 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
     /**
      * 삭제되지 않은 발주 목록 조회
      */
-        //     @Query("SELECT o FROM BiddingOrder o WHERE (o.deleted = false OR o.deleted IS NULL)")
-        //     List<BiddingOrder> findNonDeletedOrders();
-        @Query("SELECT o FROM BiddingOrder o") // deleted 필드 조건 제거
-        List<BiddingOrder> findNonDeletedOrders();
-
+    @Query("SELECT o FROM BiddingOrder o WHERE (o.deleted = false OR o.deleted IS NULL)")
+    List<BiddingOrder> findNonDeletedOrders();
     
     /**
      * 특정 기간 내에 납품 예정인 발주 중 승인된 것 조회

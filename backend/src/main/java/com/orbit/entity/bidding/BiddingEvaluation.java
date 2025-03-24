@@ -2,9 +2,12 @@ package com.orbit.entity.bidding;
 
 import java.time.LocalDateTime;
 
+import com.orbit.constant.BiddingStatus;
 import com.orbit.entity.BaseEntity;
-import com.orbit.repository.NotificationRepository;
+import com.orbit.entity.member.Member;
+import com.orbit.entity.notification.NotificationRequest;
 import com.orbit.repository.member.MemberRepository;
+import com.orbit.service.NotificationService;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,32 +45,44 @@ public class BiddingEvaluation extends BaseEntity {
     @Column(name = "bidding_participation_id", insertable = false, updatable = false)
     private Long biddingParticipationId;
 
-    @Column(name = "bidding_id", nullable = false)
+    @Column(name = "bidding_id", insertable = false, updatable = false)
     private Long biddingId;
 
     @Column(name = "evaluator_id", nullable = false)
     private Long evaluatorId;
+    
+    @Column(name = "evaluator_name")
+    private String evaluatorName;
 
     @Column(name = "supplier_name")
     private String supplierName;
 
-    @Column(name = "price_score", nullable = false)
+    @Column(name = "price_score")
     private Integer priceScore;
 
-    @Column(name = "quality_score", nullable = false)
+    @Column(name = "quality_score")
     private Integer qualityScore;
 
-    @Column(name = "delivery_score", nullable = false)
+    @Column(name = "delivery_score")
     private Integer deliveryScore;
 
-    @Column(name = "reliability_score", nullable = false)
+    @Column(name = "reliability_score")
     private Integer reliabilityScore;
+    
+    @Column(name = "service_score")
+    private Integer serviceScore;
+    
+    @Column(name = "additional_score")
+    private Integer additionalScore;
 
     @Column(name = "total_score")
     private Integer totalScore;
 
     @Column(name = "comments", columnDefinition = "TEXT")
-    private String comments;
+    private String comment;
+
+    @Column(name = "selected_at")
+    private LocalDateTime selectedAt;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -79,43 +94,54 @@ public class BiddingEvaluation extends BaseEntity {
     private LocalDateTime evaluatedAt; 
 
     @Column(name = "is_selected_bidder", columnDefinition = "boolean default false")
-    private boolean isSelectedBidder;
+    private Boolean isSelectedBidder;
 
     @Column(name = "bidder_selected_at")
     private LocalDateTime bidderSelectedAt;
 
     @Column(name = "selected_for_order", columnDefinition = "boolean default false")
-    private boolean selectedForOrder;
+    private Boolean selectedForOrder;
 
-
-    // 헬퍼 메서드를 추가하여 호환성 유지
-    // public Long getBiddingParticipationId() {
-    //     return participation != null ? participation.getId() : null;
-    // }
-
-    public void setParticipation(BiddingParticipation participation) {
-        this.participation = participation;
-        if (participation != null) {
-            this.biddingParticipationId = participation.getId();
-        }
-    }
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bidding_id", nullable = false)
+    private Bidding bidding;
 
     /**
      * 낙찰자로 선정
-     * 수정버전: 레포지토리 파라미터를 받도록 수정
      */
-    public void selectAsBidder(NotificationRepository notificationRepo, MemberRepository memberRepo) {
+    public void selectAsBidder(NotificationService notificationService, MemberRepository memberRepository) {
         this.isSelectedBidder = true;
         this.bidderSelectedAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
         
-        // 참여 정보도 낙찰자로 업데이트
-        if (this.participation != null) {
-            this.participation.setSelectedBidder(true);
-            this.participation.setSelectedAt(LocalDateTime.now());
+        // 알림 발송 로직
+        try {
+            // 낙찰자 선정 알림 발송
+            BiddingParticipation participation = this.getParticipation();
+            if (participation != null && participation.getSupplierId() != null) {
+                Member supplier = memberRepository.findById(participation.getSupplierId()).orElse(null);
+                if (supplier != null) {
+                    NotificationRequest request = NotificationRequest.builder()
+                        .type(BiddingStatus.NotificationType.BIDDING_WINNER_SELECTED)
+                        .referenceId(this.getBiddingId())
+                        .title("낙찰자 선정")
+                        .content("귀사가 입찰에서 낙찰자로 선정되었습니다.")
+                        .recipientId(supplier.getId())
+                        .priority("HIGH")
+                        .build();
+                        
+                    notificationService.sendNotification(request);
+                }
+            }
+        } catch (Exception e) {
+            // 알림 발송 실패 (로깅 필요)
+            System.err.println("낙찰자 선정 알림 발송 실패: " + e.getMessage());
         }
         
-        // 알림 발송은 Bidding.selectBidder 메서드에서 처리됨
+        // 참여 정보도 낙찰자로 표시
+        if (participation != null) {
+            participation.setSelectedBidder(true);
+            participation.setSelectedAt(LocalDateTime.now());
+        }
     }
 
     /**
@@ -124,7 +150,6 @@ public class BiddingEvaluation extends BaseEntity {
     public void cancelSelectedBidder() {
         this.isSelectedBidder = false;
         this.bidderSelectedAt = null;
-        this.updatedAt = LocalDateTime.now();
         
         // 참여 정보도 낙찰자 취소
         if (this.participation != null) {
@@ -156,6 +181,14 @@ public class BiddingEvaluation extends BaseEntity {
             totalPoints += this.reliabilityScore;
             count++;
         }
+        if (this.serviceScore != null) {
+            totalPoints += this.serviceScore;
+            count++;
+        }
+        if (this.additionalScore != null) {
+            totalPoints += this.additionalScore;
+            count++;
+        }
         
         if (count > 0) {
             this.totalScore = totalPoints / count;
@@ -170,6 +203,9 @@ public class BiddingEvaluation extends BaseEntity {
         this.updatedAt = LocalDateTime.now();
         this.evaluatedAt = LocalDateTime.now(); 
         calculateTotalScore();
+        
+        if (this.isSelectedBidder == null) this.isSelectedBidder = false;
+        if (this.selectedForOrder == null) this.selectedForOrder = false;
     }
 
     @PreUpdate
