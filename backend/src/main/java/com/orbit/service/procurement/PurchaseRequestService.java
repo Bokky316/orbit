@@ -1082,4 +1082,39 @@ public class PurchaseRequestService {
 
         return convertToDto(purchaseRequest);
     }
+
+    /**
+     * 첨부파일 삭제
+     */
+    @Transactional
+    public void deleteAttachment(Long attachmentId, String username) {
+        // 1. 첨부파일 조회
+        PurchaseRequestAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("ID " + attachmentId + "에 해당하는 첨부파일이 없습니다."));
+
+        // 2. 삭제 권한 확인 (구매요청 작성자 또는 관리자)
+        Member currentUser = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("사용자 정보를 찾을 수 없습니다: " + username));
+
+        PurchaseRequest purchaseRequest = attachment.getPurchaseRequest();
+        boolean isAdmin = Member.Role.ADMIN.equals(currentUser.getRole());
+        boolean isRequester = purchaseRequest.getMember() != null &&
+                purchaseRequest.getMember().getId().equals(currentUser.getId());
+
+        if (!(isAdmin || isRequester)) {
+            throw new SecurityException("첨부파일 삭제 권한이 없습니다.");
+        }
+
+        // 3. 구매요청 상태 확인 - 요청 상태일 때만 삭제 가능
+        if (purchaseRequest.getStatus() != null &&
+                !"REQUESTED".equals(purchaseRequest.getStatus().getChildCode())) {
+            throw new IllegalStateException("현재 구매요청 상태에서는 첨부파일을 삭제할 수 없습니다.");
+        }
+
+        // 4. 첨부파일 삭제 (DB에서만 삭제, 실제 파일은 보관)
+        attachmentRepository.delete(attachment);
+
+        // 5. 구매요청에서 첨부파일 참조 제거
+        purchaseRequest.getAttachments().remove(attachment);
+    }
 }

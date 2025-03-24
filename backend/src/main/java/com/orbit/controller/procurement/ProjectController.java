@@ -211,4 +211,17 @@ public class ProjectController {
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
                 .body(resource);
     }
+
+    /**
+     * 첨부파일 삭제
+     */
+    @DeleteMapping("/attachments/{attachmentId}")
+    public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) {
+        // Spring Security Context에서 인증 정보 가져오기
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserName = authentication.getName();
+
+        projectService.deleteAttachment(attachmentId, currentUserName);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
 }
