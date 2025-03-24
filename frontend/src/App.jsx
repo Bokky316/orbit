@@ -55,6 +55,7 @@ import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
+import ChartDashboard from '@/pages/statistics/ChartDashboard';
 import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
 /**
@@ -264,6 +265,9 @@ function AppContent() {
                     path="/items/edit/:id"
                     element={<ItemFormPage mode="edit" />}
                   />
+
+                  {/* 통계 관리 */}
+                  <Route path="/chart" element={<ChartDashboard />} />
 
                   {/* 공통 코드 관리 */}
                   <Route

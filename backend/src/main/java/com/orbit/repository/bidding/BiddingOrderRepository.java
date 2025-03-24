@@ -1,6 +1,7 @@
 package com.orbit.repository.bidding;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,6 +86,84 @@ public interface BiddingOrderRepository extends JpaRepository<BiddingOrder, Long
     @Query("SELECT bo FROM BiddingOrder bo WHERE bo.approvedAt IS NULL AND bo.id NOT IN (SELECT d.biddingOrder.id FROM Delivery d)")
     List<BiddingOrder> findUnapprovedAndUnreceivedOrders();
 
+    /**
+     * 월별 구매 통계 조회
+     */
+    @Query(value = """
+    SELECT 
+            DATE_FORMAT(bo.reg_time, '%Y-%m') AS yearMonth,
+            COUNT(bo.id) AS orderCount,
+            SUM(bo.total_amount) AS totalAmount
+    FROM bidding_orders bo
+    WHERE bo.reg_time BETWEEN CAST(:startDate AS DATETIME) AND CAST(:endDate AS DATETIME)
+    GROUP BY DATE_FORMAT(bo.reg_time, '%Y-%m')
+    ORDER BY yearMonth
+    """, nativeQuery = true)
+    List<Object[]> findMonthlyOrderStatistics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    /**
+     * 카테고리별 구매 통계 조회
+     */
+    @Query(value = """
+        SELECT
+             c.category_name AS category,
+             COUNT(bo.id) AS orderCount,
+             SUM(bo.total_amount) AS totalAmount
+        FROM bidding_orders bo
+        JOIN purchase_request_items pri ON bo.purchase_request_item_id = pri.purchase_request_item_id
+        JOIN item i ON pri.item_id = i.item_id
+        JOIN category c ON i.category_id = c.category_id
+        WHERE bo.reg_time BETWEEN CAST(:startDate AS DATETIME) AND CAST(:endDate AS DATETIME)
+        GROUP BY c.category_name
+        ORDER BY totalAmount DESC
+        """, nativeQuery = true)
+    List<Object[]> findCategoryOrderStatistics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    /**
+     * 품목별 구매 통계 조회
+     */
+    @Query(value = """
+        SELECT 
+            i.item_name AS item,
+            COUNT(bo.id) AS orderCount,
+            SUM(bo.total_amount) AS totalAmount
+        FROM bidding_orders bo
+        JOIN purchase_request_items pri ON bo.purchase_request_item_id = pri.purchase_request_item_id
+        JOIN item i ON pri.item_id = i.item_id
+        WHERE bo.reg_time BETWEEN CAST(:startDate AS DATETIME) AND CAST(:endDate AS DATETIME)
+        GROUP BY i.item_name
+        ORDER BY totalAmount DESC
+        LIMIT 10
+        """, nativeQuery = true)
+    List<Object[]> findItemOrderStatistics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+
+    /**
+     * 공급업체별 구매 통계 조회
+     */
+    @Query(value = """
+        SELECT 
+            bo.supplier_id AS supplierId,
+            bo.supplier_name AS supplierName,
+            SUM(bo.total_amount) AS totalAmount
+        FROM bidding_orders bo
+        WHERE bo.reg_time BETWEEN CAST(:startDate AS DATETIME) AND CAST(:endDate AS DATETIME)
+        GROUP BY bo.supplier_id, bo.supplier_name
+        ORDER BY totalAmount DESC
+        """, nativeQuery = true)
+    List<Object[]> findSupplierOrderStatistics(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 
 
 }
