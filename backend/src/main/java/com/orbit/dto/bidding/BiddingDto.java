@@ -15,9 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 입찰 공고 응답용 DTO
- */
 @Getter
 @Setter
 @NoArgsConstructor

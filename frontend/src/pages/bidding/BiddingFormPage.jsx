@@ -1204,6 +1204,7 @@ function BiddingFormPage() {
                 margin="normal"
               />
             </Grid>
+
             {/* 공급자 선택 */}
             <Grid item xs={12}>
               <Typography variant="subtitle1" gutterBottom>
@@ -1277,6 +1278,7 @@ function BiddingFormPage() {
                 </Button>
               )}
             </Grid>
+
             {/* 입찰 정보 */}
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth margin="normal">

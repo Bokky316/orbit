@@ -94,6 +94,11 @@ import ItemListPage from "@/pages/item/ItemListPage";
 import ItemFormPage from "@/pages/item/ItemFormPage";
 import AdminMemberPage from "@/pages/member/AdminMemberPage";
 
+import NotificationPage from "./pages/member/NotificationPage";
+import NotificationToast from "./components/notification/NotificationToast";
+import SupplierDashboard from "./pages/dashboard/SupplierDashboard";
+import DashboardPage from "./pages/dashboard/DashboardPage";
+
 /**
  * AppContent 컴포넌트: 라우팅 설정 및 페이지 레이아웃 관리
  * @returns {JSX.Element} - 전체 앱 콘텐츠
@@ -333,6 +338,9 @@ function AppContent() {
                     element={<AdminMemberPage />}
                   />
 
+
+                  {/* 알림 페이지 */}
+                  <Route path="/notifications" element={<NotificationPage />} />
                 </>
               )}
               <Route path="/payments" element={<PaymentListPage />} />
