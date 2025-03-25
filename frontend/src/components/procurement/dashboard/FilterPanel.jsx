@@ -1,6 +1,18 @@
 // src/components/procurement/dashboard/FilterPanel.jsx
 import React from "react";
-import { Row, Col, Form, Button, Card } from "react-bootstrap";
+import {
+  Grid,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box
+} from "@mui/material";
+import { Search, Refresh } from "@mui/icons-material";
 
 const FilterPanel = ({
   filters,
@@ -34,101 +46,121 @@ const FilterPanel = ({
   };
 
   return (
-    <Card className="mb-4">
-      <Card.Header>검색 필터</Card.Header>
-      <Card.Body>
-        <Form>
-          <Row className="mb-3">
-            <Col md={3}>
-              <Form.Group>
-                <Form.Label>상태</Form.Label>
-                <Form.Select
-                  value={filters.status}
-                  onChange={(e) => onFilterChange('status', e.target.value)}
-                >
-                  <option value="">전체</option>
-                  {statusCodes.map(code => (
-                    <option key={code} value={code}>
-                      {statusDisplayName[code] || code}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group>
-                <Form.Label>부서</Form.Label>
-                <Form.Select
-                  value={filters.department}
-                  onChange={(e) => onFilterChange('department', e.target.value)}
-                >
-                  <option value="">전체</option>
-                  {departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group>
-                <Form.Label>사업 구분</Form.Label>
-                <Form.Select
-                  value={filters.businessType}
-                  onChange={(e) => onFilterChange('businessType', e.target.value)}
-                >
-                  <option value="">전체</option>
-                  {Object.entries(businessTypeDisplayName).map(([code, name]) => (
-                    <option key={code} value={code}>{name}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group>
-                <Form.Label>프로젝트 ID</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="프로젝트 ID"
-                  value={filters.projectId}
-                  onChange={(e) => onFilterChange('projectId', e.target.value)}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-          <Row className="mb-3">
-            <Col md={3}>
-              <Form.Group>
-                <Form.Label>시작일</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={filters.fromDate}
-                  onChange={(e) => handleDateChange(e, 'fromDate')}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group>
-                <Form.Label>종료일</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={filters.toDate}
-                  onChange={(e) => handleDateChange(e, 'toDate')}
-                  min={filters.fromDate} // 시작일 이후만 선택 가능
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6} className="d-flex align-items-end">
-              <Button variant="primary" onClick={onFilterSubmit} className="me-2">
-                검색
-              </Button>
-              <Button variant="secondary" onClick={onFilterReset}>
-                초기화
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </Card.Body>
-    </Card>
+    <Paper
+      elevation={0}
+      sx={{
+        p: 3,
+        mb: 4,
+        border: '1px solid #e0e0e0',
+        borderRadius: 2,
+        bgcolor: '#f8f9fa'
+      }}
+    >
+      <Typography variant="h6" gutterBottom>검색 필터</Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth variant="outlined" size="small">
+            <InputLabel>상태</InputLabel>
+            <Select
+              value={filters.status}
+              onChange={(e) => onFilterChange('status', e.target.value)}
+              label="상태"
+            >
+              <MenuItem value="">전체</MenuItem>
+              {statusCodes.map(code => (
+                <MenuItem key={code} value={code}>
+                  {statusDisplayName[code] || code}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth variant="outlined" size="small">
+            <InputLabel>부서</InputLabel>
+            <Select
+              value={filters.department}
+              onChange={(e) => onFilterChange('department', e.target.value)}
+              label="부서"
+            >
+              <MenuItem value="">전체</MenuItem>
+              {departments.map(dept => (
+                <MenuItem key={dept} value={dept}>{dept}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth variant="outlined" size="small">
+            <InputLabel>사업 구분</InputLabel>
+            <Select
+              value={filters.businessType}
+              onChange={(e) => onFilterChange('businessType', e.target.value)}
+              label="사업 구분"
+            >
+              <MenuItem value="">전체</MenuItem>
+              {Object.entries(businessTypeDisplayName).map(([code, name]) => (
+                <MenuItem key={code} value={code}>{name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <TextField
+            fullWidth
+            size="small"
+            label="프로젝트 ID"
+            placeholder="프로젝트 ID"
+            value={filters.projectId}
+            onChange={(e) => onFilterChange('projectId', e.target.value)}
+          />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <TextField
+            fullWidth
+            size="small"
+            label="시작일"
+            type="date"
+            value={filters.fromDate}
+            onChange={(e) => handleDateChange(e, 'fromDate')}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <TextField
+            fullWidth
+            size="small"
+            label="종료일"
+            type="date"
+            value={filters.toDate}
+            onChange={(e) => handleDateChange(e, 'toDate')}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ min: filters.fromDate }}
+          />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={onFilterSubmit}
+              startIcon={<Search />}
+              fullWidth
+            >
+              검색
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={onFilterReset}
+              startIcon={<Refresh />}
+              fullWidth
+            >
+              초기화
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
+    </Paper>
   );
 };
 
