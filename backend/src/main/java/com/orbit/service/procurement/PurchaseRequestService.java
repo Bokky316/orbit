@@ -288,7 +288,7 @@ public class PurchaseRequestService {
     /**
      * 엔티티를 DTO로 변환 (핵심)
      */
-    private PurchaseRequestDTO convertToDto(PurchaseRequest entity) {
+    public PurchaseRequestDTO convertToDto(PurchaseRequest entity) {
         PurchaseRequestDTO dto;
 
         // 1. 타입에 따라 DTO 생성 및 초기화
