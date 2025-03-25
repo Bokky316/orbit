@@ -32,6 +32,7 @@ import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
+import PurchaseRequestDashboard from "@/pages/procurement/PurchaseRequestDashboard"; // 구매요청 대시보드 추가
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
@@ -52,7 +53,7 @@ import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage";
 import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
 import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
- import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
@@ -71,8 +72,8 @@ function AppContent() {
     (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
   );
 
-  // 대시보드 페이지 임시 컴포넌트
-  const DashboardPage = () => <div>대시보드 페이지</div>;
+  // 대시보드 페이지는 구매요청 대시보드로 변경
+  const DashboardPage = () => <PurchaseRequestDashboard />;
   // 공급자 대시보드 임시 컴포넌트
   const SupplierDashboard = () => <div>공급자 대시보드 페이지</div>;
   // 임시 페이지 컴포넌트들
@@ -134,6 +135,13 @@ function AppContent() {
               {!isSupplier && (
                 <>
                   <Route path="/dashboard" element={<DashboardPage />} />
+
+                  {/* 구매요청 대시보드 라우트 추가 */}
+                  <Route
+                    path="/purchase-requests/dashboard"
+                    element={<PurchaseRequestDashboard />}
+                  />
+
                   {/* 입찰 관리 */}
                   <Route path="/biddings" element={<BiddingListPage />} />
                   <Route
