@@ -3,6 +3,7 @@ package com.orbit.controller.procurement;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -164,5 +165,27 @@ public class PurchaseRequestController {
 
         purchaseRequestService.deleteAttachment(attachmentId, currentUserName);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<PurchaseRequestDashboardDTO> getDashboard() {
+        PurchaseRequestDashboardDTO dashboard = purchaseRequestService.getDashboardData();
+        return ResponseEntity.ok(dashboard);
+    }
+
+    @GetMapping("/dashboard/filter")
+    public ResponseEntity<List<PurchaseRequestDTO>> getFilteredRequests(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) LocalDate fromDate,
+            @RequestParam(required = false) LocalDate toDate) {
+        List<PurchaseRequestDTO> filteredData = purchaseRequestService.getFilteredRequests(status, department, fromDate, toDate);
+        return ResponseEntity.ok(filteredData);
+    }
+
+    @GetMapping("/by-project/{projectId}")
+    public ResponseEntity<List<PurchaseRequestDTO>> getRequestsByProject(@PathVariable Long projectId) {
+        List<PurchaseRequestDTO> requests = purchaseRequestService.getRequestsByProject(projectId);
+        return ResponseEntity.ok(requests);
     }
 }
