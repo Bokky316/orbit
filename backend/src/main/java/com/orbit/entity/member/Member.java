@@ -148,6 +148,11 @@ public class Member implements UserDetails {
      * @param passwordEncoder 패스워드 암호화 인코더
      */
     public static Member createMember(MemberFormDto memberFormDto, PasswordEncoder passwordEncoder) {
+        // role이 명시되지 않았거나 빈 값이면 BUYER로 기본 설정
+        String roleToSet = memberFormDto.getRole() != null && !memberFormDto.getRole().isEmpty()
+                ? memberFormDto.getRole()
+                : "BUYER";
+
         return Member.builder()
                 .username(memberFormDto.getUsername())
                 .name(memberFormDto.getName())
@@ -158,7 +163,7 @@ public class Member implements UserDetails {
                 .postalCode(memberFormDto.getPostalCode())
                 .roadAddress(memberFormDto.getRoadAddress())
                 .detailAddress(memberFormDto.getDetailAddress())
-                .role(Role.BUYER)
+                .role(Role.valueOf(roleToSet)) // 동적으로 role 설정
                 .enabled(true)
                 .build();
     }

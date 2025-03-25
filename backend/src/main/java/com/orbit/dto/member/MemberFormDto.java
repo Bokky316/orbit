@@ -48,5 +48,7 @@ public class MemberFormDto {
     @NotBlank(message = "상세 주소를 입력해주세요.")
     private String detailAddress;
 
+    private String role;
+
     private String confirmPassword; // 비밀번호 확인 필드 추가
 }

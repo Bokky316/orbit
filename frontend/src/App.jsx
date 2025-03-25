@@ -7,6 +7,7 @@ import { store } from "./redux/store";
 import Home from "@/pages/Home";
 import Login from "@/pages/member/Login";
 import RegisterMember from "@/pages/member/RegisterMember";
+import RegisterSupplier from "@/pages/member/RegisterSupplier";
 import BiddingListPage from "@/pages/bidding/BiddingListPage";
 import BiddingDetailPage from "./pages/bidding/BiddingDetailPage";
 import BiddingFormPage from "@/pages/bidding/BiddingFormPage";
@@ -85,6 +86,7 @@ function AppContent() {
           {/* 로그인/회원가입 페이지는 로그인 여부와 상관없이 접근 가능 */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<RegisterMember />} />
+          <Route path="/signup/supplier" element={<RegisterSupplier />} />
 
           {isLoggedIn ? (
             <Route element={<Home />}>
