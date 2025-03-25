@@ -106,25 +106,11 @@ public class MemberDashboardService {
                         .name(member.getName())
                         .build())
                 .purchaseRequestStats(PurchaseRequestStatsDTO.builder()
-                        // 전체 요청 수를 리스트 크기로 계산
-                        .totalRequests((long) memberPurchaseRequests.size())
-                        // 진행중 요청 수 계산
-                        .inProgressRequests(
-                                requestStatusCount.entrySet().stream()
-                                        .filter(entry ->
-                                                !entry.getKey().equals("COMPLETED") &&
-                                                        !entry.getKey().equals("PAYMENT_COMPLETED") &&
-                                                        !entry.getKey().equals("REJECTED")
-                                        )
-                                        .mapToLong(Map.Entry::getValue)
-                                        .sum()
-                        )
-                        // 완료된 요청 수
-                        .completedRequests(requestStatusCount.getOrDefault("PAYMENT_COMPLETED", 0L))
-                        // 반려된 요청 수
+                        .totalRequests(requestStatusCount.getOrDefault("TOTAL", 0L))
+                        .inProgressRequests(requestStatusCount.getOrDefault("IN_PROGRESS", 0L))
+                        .completedRequests(requestStatusCount.getOrDefault("COMPLETED", 0L))
                         .rejectedRequests(requestStatusCount.getOrDefault("REJECTED", 0L))
                         .build())
-                // 최근 구매요청, 알림, 활동 등 추가 데이터 설정
                 .recentRequests(recentRequests)
                 .pendingApprovals(pendingApprovals)
                 .notifications(notifications.stream()
