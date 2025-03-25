@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import NotificationBadgeIcon from "../notification/NotificationBadgeIcon";
 import "/public/css/layout/Layout.css";
+import logoImage from "/public/images/logo.png";
 
 function TopBar() {
   const location = useLocation();
@@ -131,10 +132,8 @@ function TopBar() {
     <header className="top_container">
       <div className="top_toolbar">
         {/* 로고 영역 */}
-        <Link
-          to={isSupplier ? "/suppliers/dashboard" : "/dashboard"}
-          className="logo">
-          <img src="/public/images/logo.png" alt="logo" />
+        <Link to="/dashboard" className="logo">
+          <img src={logoImage} alt="logo" />
         </Link>
         {/* 소카테고리 탭 */}
         <nav className="sub_categories">
