@@ -66,9 +66,9 @@ public class CommonCodeDataInitializer {
         ParentCode purchaseStatus = initParentCode("PURCHASE_REQUEST", "STATUS", "구매 요청 상태");
         initChildCodes(purchaseStatus,
                 List.of("REQUESTED", "RECEIVED", "VENDOR_SELECTION", "CONTRACT_PENDING",
-                        "INSPECTION", "INVOICE_ISSUED", "PAYMENT_COMPLETED"),
+                        "INSPECTION", "INVOICE_ISSUED", "PAYMENT_COMPLETED", "REJECTED"),
                 List.of("구매 요청", "구매요청 접수", "업체 선정", "계약 대기",
-                        "검수 진행", "인보이스 발행", "대금지급 완료")
+                        "검수 진행", "인보이스 발행", "대금지급 완료", "반려")
         );
 
         // 구매 유형 코드
