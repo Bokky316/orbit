@@ -10,23 +10,24 @@ import {
   Chip,
   Typography
 } from '@mui/material';
+import { format } from 'date-fns';
 
 const RecentRequestsList = ({ requests }) => {
-  // 상태 코드별 색상 매핑
   const statusColors = {
-    'REQUESTED': '#ff9800',
-    'RECEIVED': '#2196f3',
-    'VENDOR_SELECTION': '#9c27b0',
-    'CONTRACT_PENDING': '#f44336',
-    'INSPECTION': '#4caf50',
-    'INVOICE_ISSUED': '#795548',
-    'PAYMENT_COMPLETED': '#3f51b5'
+    REQUESTED: '#ff9800',
+    RECEIVED: '#2196f3',
+    VENDOR_SELECTION: '#9c27b0',
+    CONTRACT_PENDING: '#f44336',
+    INSPECTION: '#4caf50',
+    INVOICE_ISSUED: '#795548',
+    PAYMENT_COMPLETED: '#3f51b5',
+    REJECTED: '#d32f2f'
   };
 
   if (requests.length === 0) {
     return (
       <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
-        최근 구매요청이 없습니다.
+        해당 상태의 구매요청이 없습니다.
       </Typography>
     );
   }
@@ -36,14 +37,15 @@ const RecentRequestsList = ({ requests }) => {
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>요청일</TableCell>
             <TableCell>요청번호</TableCell>
             <TableCell>요청명</TableCell>
             <TableCell>상태</TableCell>
-            <TableCell align="right">예산</TableCell>
+            <TableCell align="right">금액</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {requests.slice(0, 5).map((request) => (
+          {requests.map((request) => (
             <TableRow
               key={request.id}
               hover
@@ -57,12 +59,11 @@ const RecentRequestsList = ({ requests }) => {
                 }
               }}
             >
-              <TableCell>{request.requestNumber}</TableCell>
               <TableCell>
-                <Typography noWrap sx={{ maxWidth: 150 }}>
-                  {request.requestName}
-                </Typography>
+                {request.requestDate ? format(new Date(request.requestDate), 'yyyy-MM-dd') : '-'}
               </TableCell>
+              <TableCell>{request.requestNumber || '-'}</TableCell>
+              <TableCell>{request.requestName || '-'}</TableCell>
               <TableCell>
                 <Chip
                   label={request.statusDisplayName || request.status}
@@ -75,10 +76,7 @@ const RecentRequestsList = ({ requests }) => {
                 />
               </TableCell>
               <TableCell align="right">
-                {request.businessBudget ?
-                  `${request.businessBudget.toLocaleString()}원` :
-                  '-'
-                }
+                {request.businessBudget ? `${request.businessBudget.toLocaleString()}원` : '-'}
               </TableCell>
             </TableRow>
           ))}

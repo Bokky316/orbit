@@ -7,9 +7,11 @@ export const filterRequestsByStatus = (requests, status) => {
       return requests; // 모든 요청
 
     case 'IN_PROGRESS':
+      // 백엔드 로직과 일치: 완료 및 반려가 아닌 모든 요청을 '진행 중'으로 간주
       return requests.filter(req =>
-        ["REQUESTED", "RECEIVED", "VENDOR_SELECTION", "CONTRACT_PENDING",
-         "INSPECTION", "INVOICE_ISSUED", "REJECTED"].includes(req.status)
+        req.status !== 'COMPLETED' &&
+        req.status !== 'PAYMENT_COMPLETED' &&
+        req.status !== 'REJECTED'
       );
 
     case 'COMPLETED':

@@ -7,6 +7,8 @@ import {
   Box,
   Chip
 } from '@mui/material';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 const RecentActivitiesList = ({ activities }) => {
   // 활동 타입별 색상 매핑
@@ -18,7 +20,16 @@ const RecentActivitiesList = ({ activities }) => {
     'SYSTEM_UPDATE': '#795548'
   };
 
-  if (activities.length === 0) {
+  // 활동 타입별 표시 이름 매핑
+  const activityTypeDisplayName = {
+    'PURCHASE_REQUEST_SUBMIT': '구매요청 제출',
+    'PURCHASE_REQUEST_APPROVAL': '구매요청 승인',
+    'BUDGET_USAGE': '예산 사용',
+    'ITEM_RECEIPT': '물품 수령',
+    'SYSTEM_UPDATE': '시스템 업데이트'
+  };
+
+  if (!activities || activities.length === 0) {
     return (
       <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
         최근 활동이 없습니다.
@@ -27,8 +38,8 @@ const RecentActivitiesList = ({ activities }) => {
   }
 
   return (
-    <List dense>
-      {activities.slice(0, 5).map((activity) => (
+    <List dense sx={{ maxHeight: 350, overflow: 'auto' }}>
+      {activities.map((activity) => (
         <ListItem
           key={activity.id}
           divider
@@ -43,7 +54,7 @@ const RecentActivitiesList = ({ activities }) => {
             primary={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Chip
-                  label={activity.type}
+                  label={activityTypeDisplayName[activity.type] || activity.type}
                   size="small"
                   sx={{
                     bgcolor: activityTypeColors[activity.type] || '#666',
@@ -57,12 +68,12 @@ const RecentActivitiesList = ({ activities }) => {
               </Box>
             }
             secondary={
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
                   {activity.description}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {new Date(activity.timestamp).toLocaleString()}
+                  {activity.timestamp && format(new Date(activity.timestamp), 'yyyy-MM-dd HH:mm', { locale: ko })}
                 </Typography>
               </Box>
             }
