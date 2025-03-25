@@ -15,6 +15,7 @@ import { combineReducers } from "redux";
 // 기존 리듀서들
 import projectReducer from "./projectSlice";
 import purchaseRequestReducer, { websocketMiddleware } from "./purchaseRequestSlice";
+import purchaseRequestDashboardReducer, { websocketMiddleware as dashboardWebsocketMiddleware } from "./purchaseRequestDashboardSlice";
 import approvalReducer from "./approvalSlice";
 import approvalAdminReducer from "./approvalAdminSlice";
 import supplierReducer from "./supplier/supplierSlice";
@@ -31,6 +32,7 @@ const persistConfig = {
   whitelist: [
     "project",
     "purchaseRequest",
+    "purchaseRequestDashboard",
     "approval",
     "approvalAdmin",
     "supplier",
@@ -41,9 +43,15 @@ const persistConfig = {
   ]
 };
 
+/**
+ * 루트 리듀서 생성
+ * - combineReducers를 사용하여 여러 리듀서를 하나로 병합
+ * - purchaseRequestDashboard 리듀서 추가하여 구매요청 대시보드 관련 상태 관리
+ */
 const rootReducer = combineReducers({
   project: projectReducer,
   purchaseRequest: purchaseRequestReducer,
+  purchaseRequestDashboard: purchaseRequestDashboardReducer, // 구매요청 대시보드 리듀서 추가
   approval: approvalReducer,
   approvalAdmin: approvalAdminReducer,
   supplier: supplierReducer,
@@ -54,6 +62,11 @@ const rootReducer = combineReducers({
   bidding: biddingReducer
 });
 
+/**
+ * Persisted Reducer 생성
+ * - Redux Persist 설정을 적용한 리듀서를 생성
+ * - 이를 통해 모든 상태가 로컬 스토리지에 저장되고 복원됨
+ */
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 /**
@@ -77,17 +90,18 @@ export const store = configureStore({
           "persist/PERSIST",
           "persist/REHYDRATE",
           // 웹소켓 액션 추가
-          "purchaseRequest/wsUpdate"
+          "purchaseRequest/wsUpdate",
+          "purchaseRequestDashboard/wsUpdate"
         ],
         ignoredActionPaths: ["payload.error", "meta.arg"]
       }
-    }).concat(websocketMiddleware) // 웹소켓 미들웨어 추가
+    }).concat([websocketMiddleware, dashboardWebsocketMiddleware]) // 웹소켓 미들웨어 추가
 });
 
 /**
  * Redux Persistor 생성
  * - persistStore를 사용하여 Redux Store와 Redux Persist를 연결
  * - 상태가 localStorage에 저장되고 복구될 수 있도록 설정
- * - approvalAdmin 상태를 포함한 모든 상태가 자동으로 저장되고 복원됨
+ * - 모든 상태가 자동으로 저장되고 복원됨
  */
 export const persistor = persistStore(store);
