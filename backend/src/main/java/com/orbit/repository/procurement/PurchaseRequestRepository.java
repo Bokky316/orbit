@@ -37,4 +37,30 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
      */
     @Query("SELECT DISTINCT pr.status.childCode FROM PurchaseRequest pr WHERE pr.status.childCode IS NOT NULL")
     List<String> findAllStatusCodes();
+    /**
+     * 특정 사용자의 구매 요청 목록 조회
+     * @param username 사용자 로그인 ID
+     * @return 해당 사용자의 구매 요청 목록
+     */
+    @Query("SELECT pr FROM PurchaseRequest pr WHERE pr.member.username = :username")
+    List<PurchaseRequest> findByMemberUsername(@Param("username") String username);
+
+    /**
+     * 특정 상태의 구매 요청 조회
+     * @param status 상태 코드
+     * @return 해당 상태의 구매 요청 목록
+     */
+    List<PurchaseRequest> findByStatus_ChildCode(String status);
+
+    /**
+     * 특정 사용자의 특정 상태 구매 요청 조회
+     * @param username 사용자 로그인 ID
+     * @param status 상태 코드
+     * @return 해당 사용자의 특정 상태 구매 요청 목록
+     */
+    @Query("SELECT pr FROM PurchaseRequest pr WHERE pr.member.username = :username AND pr.status.childCode = :status")
+    List<PurchaseRequest> findByMemberUsernameAndStatus(
+            @Param("username") String username,
+            @Param("status") String status
+    );
 }
