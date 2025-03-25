@@ -1,14 +1,24 @@
 // src/components/procurement/dashboard/RequestProgress.jsx
 import React from 'react';
-import { Card, ProgressBar, Badge } from 'react-bootstrap';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  Typography,
+  Box,
+  Chip,
+  LinearProgress,
+  Divider,
+  Stack
+} from '@mui/material';
 
 const RequestProgress = ({ progress }) => {
   if (!progress) {
     return (
-      <Card>
-        <Card.Body className="text-center">
-          <p>진행 상태 정보가 없습니다.</p>
-        </Card.Body>
+      <Card elevation={0} sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
+        <CardContent sx={{ textAlign: 'center' }}>
+          <Typography color="text.secondary">진행 상태 정보가 없습니다.</Typography>
+        </CardContent>
       </Card>
     );
   }
@@ -26,72 +36,103 @@ const RequestProgress = ({ progress }) => {
 
   // 상태별 색상 매핑
   const statusColors = {
-    'REQUESTED': 'warning',
-    'RECEIVED': 'info',
-    'VENDOR_SELECTION': 'primary',
-    'CONTRACT_PENDING': 'danger',
-    'INSPECTION': 'success',
-    'INVOICE_ISSUED': 'secondary',
-    'PAYMENT_COMPLETED': 'dark'
+    'REQUESTED': '#ff9800',
+    'RECEIVED': '#2196f3',
+    'VENDOR_SELECTION': '#9c27b0',
+    'CONTRACT_PENDING': '#f44336',
+    'INSPECTION': '#4caf50',
+    'INVOICE_ISSUED': '#795548',
+    'PAYMENT_COMPLETED': '#3f51b5'
   };
 
   return (
-    <Card>
-      <Card.Header className="d-flex justify-content-between align-items-center">
-        <div>
-          <h5 className="mb-0">{progress.requestName}</h5>
-          <small className="text-muted">{progress.requestNumber}</small>
-        </div>
-        <Badge bg={statusColors[progress.currentStatus] || 'secondary'}>
-          {statusDisplayName[progress.currentStatus] || progress.currentStatus}
-        </Badge>
-      </Card.Header>
-      <Card.Body>
-        <div className="mb-4">
-          <ProgressBar now={progress.completionPercentage} label={`${Math.round(progress.completionPercentage)}%`} />
-        </div>
+    <Card elevation={0} sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
+      <CardHeader
+        title={
+          <Box>
+            <Typography variant="h6">{progress.requestName}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {progress.requestNumber}
+            </Typography>
+          </Box>
+        }
+        action={
+          <Chip
+            label={statusDisplayName[progress.currentStatus] || progress.currentStatus}
+            sx={{
+              bgcolor: statusColors[progress.currentStatus],
+              color: 'white',
+              fontWeight: 'medium'
+            }}
+          />
+        }
+      />
+      <CardContent>
+        <Box sx={{ mb: 3 }}>
+          <LinearProgress
+            variant="determinate"
+            value={progress.completionPercentage}
+            sx={{ height: 10, borderRadius: 5 }}
+          />
+          <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.5 }}>
+            {Math.round(progress.completionPercentage)}%
+          </Typography>
+        </Box>
 
-        <div className="d-flex justify-content-between mb-3">
-          <div>
-            <h6>현재 단계</h6>
-            <Badge bg={statusColors[progress.currentStatus] || 'secondary'} className="fs-6">
-              {statusDisplayName[progress.currentStatus] || progress.currentStatus}
-            </Badge>
-          </div>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>현재 단계</Typography>
+            <Chip
+              label={statusDisplayName[progress.currentStatus] || progress.currentStatus}
+              sx={{
+                bgcolor: statusColors[progress.currentStatus],
+                color: 'white'
+              }}
+            />
+          </Box>
           {progress.nextStep && (
-            <div>
-              <h6>다음 단계</h6>
-              <Badge bg="light" text="dark" className="fs-6">
-                {statusDisplayName[progress.nextStep] || progress.nextStep}
-              </Badge>
-            </div>
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>다음 단계</Typography>
+              <Chip
+                label={statusDisplayName[progress.nextStep] || progress.nextStep}
+                variant="outlined"
+              />
+            </Box>
           )}
-        </div>
+        </Box>
 
-        <div className="mb-3">
-          <h6>완료된 단계</h6>
-          <div className="d-flex flex-wrap gap-2 mb-2">
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>완료된 단계</Typography>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {progress.completedSteps.map((step) => (
-              <Badge key={step} bg="success">
-                {statusDisplayName[step] || step}
-              </Badge>
+              <Chip
+                key={step}
+                label={statusDisplayName[step] || step}
+                color="success"
+                size="small"
+                sx={{ mb: 1 }}
+              />
             ))}
-          </div>
-        </div>
+          </Stack>
+        </Box>
 
         {progress.pendingSteps && progress.pendingSteps.length > 0 && (
-          <div>
-            <h6>남은 단계</h6>
-            <div className="d-flex flex-wrap gap-2">
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>남은 단계</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {progress.pendingSteps.map((step) => (
-                <Badge key={step} bg="light" text="dark">
-                  {statusDisplayName[step] || step}
-                </Badge>
+                <Chip
+                  key={step}
+                  label={statusDisplayName[step] || step}
+                  variant="outlined"
+                  size="small"
+                  sx={{ mb: 1 }}
+                />
               ))}
-            </div>
-          </div>
+            </Stack>
+          </Box>
         )}
-      </Card.Body>
+      </CardContent>
     </Card>
   );
 };

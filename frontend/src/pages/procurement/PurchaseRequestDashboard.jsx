@@ -3,9 +3,28 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Card, Container, Row, Col, Tabs, Tab, Spinner, Alert, Button } from 'react-bootstrap';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+
+// MUI 컴포넌트로 교체
+import {
+  Box,
+  Container,
+  Grid,
+  Paper,
+  Typography,
+  Button,
+  Chip,
+  CircularProgress,
+  Alert,
+  Tabs,
+  Tab,
+  TextField,
+  InputAdornment
+} from '@mui/material';
+
+// MUI 아이콘 추가
+import { Search, Refresh } from '@mui/icons-material';
 
 // 별칭 경로를 사용하여 임포트
 import { SERVER_URL } from '@utils/constants';
@@ -20,7 +39,7 @@ import {
   receiveWebsocketUpdate
 } from '@redux/purchaseRequestDashboardSlice';
 
-// 별칭 경로를 사용한 컴포넌트 임포트
+// Material UI 스타일로 변경된 컴포넌트 임포트
 import StatusSummary from '@components/procurement/dashboard/StatusSummary';
 import DepartmentSummary from '@components/procurement/dashboard/DepartmentSummary';
 import RecentRequestsList from '@components/procurement/dashboard/RecentRequestsList';
@@ -69,6 +88,7 @@ const PurchaseRequestDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [wsConnected, setWsConnected] = useState(false);
   const [manualRefresh, setManualRefresh] = useState(0); // 수동 새로고침 카운터
+  const [searchTerm, setSearchTerm] = useState('');
 
   // WebSocket 클라이언트 및 초기화 상태 관리
   const wsClientRef = useRef(null);
@@ -92,7 +112,7 @@ const PurchaseRequestDashboard = () => {
     };
   }, [dispatch]);
 
-  // WebSocket 연결 별도 관리 - 비활성화 (문제 해결 시까지 주석 처리)
+  // WebSocket 연결 별도 관리
   useEffect(() => {
     if (!USE_WEBSOCKET || !user?.id) return;
 
@@ -111,7 +131,6 @@ const PurchaseRequestDashboard = () => {
       const socket = new SockJS(wsUrl);
       client = new Client({
         webSocketFactory: () => socket,
-        // debug 옵션을 올바르게 설정 - null이나 false가 아닌 빈 함수로 설정
         debug: () => {},
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
@@ -196,43 +215,72 @@ const PurchaseRequestDashboard = () => {
   // 로딩 표시
   if (loading && (!dashboard || Object.keys(dashboard).length === 0)) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">로딩 중...</span>
-        </Spinner>
-      </Container>
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '50vh'
+      }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   // 에러 표시
   if (error) {
     return (
-      <Container className="py-3">
-        <Alert variant="danger">
-          <Alert.Heading>오류가 발생했습니다</Alert.Heading>
-          <p>{error}</p>
+      <Container maxWidth={false} sx={{ py: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="h6">오류가 발생했습니다</Typography>
+          <Typography>{error}</Typography>
         </Alert>
       </Container>
     );
   }
 
   return (
-    <Container fluid className="py-3">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="mb-0">구매요청 대시보드</h2>
-        <div className="d-flex align-items-center">
-          <Button variant="primary" onClick={handleManualRefresh} className="me-2">
-            <i className="bi bi-arrow-clockwise"></i> 데이터 새로고침
+    <Container maxWidth={false} sx={{ py: 3 }}>
+      {/* 헤더 부분 */}
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 4,
+        flexWrap: 'wrap',
+        gap: 2
+      }}>
+        <Typography variant="h4" component="h1" fontWeight="bold">
+          구매요청 대시보드
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="contained"
+            startIcon={<Refresh />}
+            onClick={handleManualRefresh}
+            size="small"
+            sx={{
+              background: 'linear-gradient(to right, #4e73df, #3e62d2)',
+              '&:hover': {
+                background: 'linear-gradient(to right, #3e62d2, #2e52c2)'
+              }
+            }}
+          >
+            데이터 새로고침
           </Button>
           {USE_WEBSOCKET && (
-            <span className={`badge ${wsConnected ? 'bg-success' : 'bg-danger'} me-2`}>
-              {wsConnected ? '서버 연결됨' : '서버 연결 끊김'}
-            </span>
+            <Chip
+              label={wsConnected ? '서버 연결됨' : '서버 연결 끊김'}
+              color={wsConnected ? 'success' : 'error'}
+              size="small"
+            />
           )}
-          <small className="text-muted">마지막 업데이트: {format(new Date(), 'yyyy-MM-dd HH:mm:ss', { locale: ko })}</small>
-        </div>
-      </div>
+          <Typography variant="body2" color="text.secondary">
+            마지막 업데이트: {format(new Date(), 'yyyy-MM-dd HH:mm:ss', { locale: ko })}
+          </Typography>
+        </Box>
+      </Box>
 
+      {/* 필터 패널 - 분리된 컴포넌트 사용 */}
       <FilterPanel
         filters={filters}
         departments={departments || []}
@@ -242,103 +290,99 @@ const PurchaseRequestDashboard = () => {
         onFilterReset={handleFilterReset}
       />
 
-      <Tabs
-        activeKey={activeTab}
-        onSelect={(k) => setActiveTab(k)}
-        className="mb-4"
-      >
-        <Tab eventKey="overview" title="대시보드 개요">
-          <Row className="mb-4">
-            <Col md={4}>
-              <Card className="h-100 shadow-sm">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">구매요청 상태별 현황</h5>
-                </Card.Header>
-                <Card.Body>
-                  <StatusSummary
-                    countByStatus={dashboard.countByStatus || {}}
-                    budgetByStatus={dashboard.budgetByStatus || {}}
-                  />
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={4}>
-              <Card className="h-100 shadow-sm">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">부서별 현황</h5>
-                </Card.Header>
-                <Card.Body>
-                  <DepartmentSummary
-                    countByDepartment={dashboard.countByDepartment || {}}
-                    budgetByDepartment={dashboard.budgetByDepartment || {}}
-                  />
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={4}>
-              <Card className="h-100 shadow-sm">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">예산 현황</h5>
-                </Card.Header>
-                <Card.Body>
-                  <BudgetSummary
-                    totalBudget={dashboard.totalBudget || 0}
-                    completedBudget={dashboard.completedBudget || 0}
-                    pendingBudget={dashboard.pendingBudget || 0}
-                  />
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+      {/* 탭 메뉴 */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          aria-label="dashboard tabs"
+        >
+          <Tab label="대시보드 개요" value="overview" />
+          <Tab label="필터링된 목록" value="filtered" />
+        </Tabs>
+      </Box>
 
-          <Row>
-            <Col md={6}>
-              <Card className="h-100 shadow-sm">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">최근 구매요청</h5>
-                </Card.Header>
-                <Card.Body>
-                  <RecentRequestsList requests={dashboard.recentRequests || []} />
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={6}>
-              <Card className="h-100 shadow-sm">
-                <Card.Header className="bg-light">
-                  <h5 className="mb-0">처리 대기중인 요청</h5>
-                </Card.Header>
-                <Card.Body>
-                  <PendingRequestsList requests={dashboard.pendingRequests || []} />
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        </Tab>
+      {activeTab === 'overview' ? (
+        <>
+          {/* 메인 카드 섹션 - 분리된 컴포넌트 사용 */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} md={4}>
+              <BudgetSummary
+                totalBudget={dashboard.totalBudget || 0}
+                completedBudget={dashboard.completedBudget || 0}
+                pendingBudget={dashboard.pendingBudget || 0}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <StatusSummary
+                countByStatus={dashboard.countByStatus || {}}
+                budgetByStatus={dashboard.budgetByStatus || {}}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <DepartmentSummary
+                countByDepartment={dashboard.countByDepartment || {}}
+                budgetByDepartment={dashboard.budgetByDepartment || {}}
+              />
+            </Grid>
+          </Grid>
 
-        <Tab eventKey="filtered" title="필터링된 목록">
-          <Card className="shadow-sm">
-            <Card.Header className="bg-light">
-              <h5 className="mb-0">필터링된 구매요청 목록</h5>
-            </Card.Header>
-            <Card.Body>
-              {loading ? (
-                <div className="text-center p-4">
-                  <Spinner animation="border" role="status">
-                    <span className="visually-hidden">로딩 중...</span>
-                  </Spinner>
-                </div>
-              ) : (
-                <RequestsTable requests={filteredRequests || []} />
-              )}
-            </Card.Body>
-          </Card>
-        </Tab>
-      </Tabs>
+          {/* 요청 목록 섹션 - 분리된 컴포넌트 사용 */}
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <RecentRequestsList requests={dashboard.recentRequests || []} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <PendingRequestsList requests={dashboard.pendingRequests || []} />
+            </Grid>
+          </Grid>
+        </>
+      ) : (
+        // 필터링된 목록 탭 - 분리된 컴포넌트 사용
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            border: '1px solid #e0e0e0',
+            borderRadius: 2
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6" color="primary">
+              필터링된 구매요청 목록
+            </Typography>
 
+            <TextField
+              placeholder="요청명 검색"
+              size="small"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ width: 250 }}
+            />
+          </Box>
+
+          <RequestsTable
+            requests={filteredRequests || []}
+            loading={loading}
+            searchTerm={searchTerm}
+          />
+        </Paper>
+      )}
+
+      {/* WebSocket 경고 */}
       {!USE_WEBSOCKET && (
-        <Alert variant="warning" className="mt-3">
-          <Alert.Heading>실시간 업데이트 비활성화</Alert.Heading>
-          <p>현재 실시간 WebSocket 연결이 비활성화되어 있습니다. 데이터 업데이트를 위해 '데이터 새로고침' 버튼을 사용하세요.</p>
+        <Alert severity="warning" sx={{ mt: 3 }}>
+          <Typography variant="subtitle1" fontWeight="bold">실시간 업데이트 비활성화</Typography>
+          <Typography variant="body2">
+            현재 실시간 WebSocket 연결이 비활성화되어 있습니다. 데이터 업데이트를 위해 '데이터 새로고침' 버튼을 사용하세요.
+          </Typography>
         </Alert>
       )}
     </Container>

@@ -1,6 +1,16 @@
 // src/components/procurement/dashboard/StatusSummary.jsx
 import React from 'react';
-import { Table, Badge } from 'react-bootstrap';
+import {
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Chip,
+  Box,
+  Typography
+} from '@mui/material';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const StatusSummary = ({ countByStatus, budgetByStatus }) => {
@@ -34,58 +44,71 @@ const StatusSummary = ({ countByStatus, budgetByStatus }) => {
     color: statusColors[status] || '#999'
   }));
 
+  // 전체 건수 계산
+  const totalCount = Object.values(countByStatus).reduce((sum, count) => sum + count, 0);
+
   return (
     <div className="status-summary">
-      <div className="mb-4" style={{ height: 250 }}>
+      <Box sx={{ height: 250, mb: 2 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={chartData}
               cx="50%"
               cy="50%"
+              innerRadius={60}
               outerRadius={80}
-              fill="#8884d8"
+              paddingAngle={2}
               dataKey="value"
               nameKey="name"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
             >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
             <Tooltip
-              formatter={(value, name) => [value, name]}
-              labelFormatter={(label) => label}
+              formatter={(value, name) => [
+                `${value.toLocaleString()}건 (${(value/totalCount*100).toFixed(1)}%)`,
+                name
+              ]}
             />
-            <Legend />
+            <Legend layout="vertical" verticalAlign="middle" align="right" />
           </PieChart>
         </ResponsiveContainer>
-      </div>
+      </Box>
 
-      <Table striped bordered hover size="sm">
-        <thead>
-          <tr>
-            <th>상태</th>
-            <th>건수</th>
-            <th>예산</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(countByStatus).map(([status, count]) => (
-            <tr key={status}>
-              <td>
-                <Badge bg="secondary" style={{ backgroundColor: statusColors[status] }}>
-                  {statusDisplayName[status] || status}
-                </Badge>
-              </td>
-              <td className="text-end">{count.toLocaleString()}</td>
-              <td className="text-end">
-                {(budgetByStatus[status] || 0).toLocaleString()}원
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>상태</TableCell>
+              <TableCell align="right">건수</TableCell>
+              <TableCell align="right">예산</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {Object.entries(countByStatus).map(([status, count]) => (
+              <TableRow key={status}>
+                <TableCell>
+                  <Chip
+                    label={statusDisplayName[status] || status}
+                    size="small"
+                    sx={{
+                      bgcolor: statusColors[status],
+                      color: '#fff',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                </TableCell>
+                <TableCell align="right">{count.toLocaleString()}</TableCell>
+                <TableCell align="right">
+                  {(budgetByStatus[status] || 0).toLocaleString()}원
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   );
 };
