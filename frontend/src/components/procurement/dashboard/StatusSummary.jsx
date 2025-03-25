@@ -8,8 +8,7 @@ import {
   TableRow,
   TableCell,
   Chip,
-  Box,
-  Typography
+  Box
 } from '@mui/material';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
@@ -48,7 +47,7 @@ const StatusSummary = ({ countByStatus, budgetByStatus }) => {
   const totalCount = Object.values(countByStatus).reduce((sum, count) => sum + count, 0);
 
   return (
-    <div className="status-summary">
+    <>
       <Box sx={{ height: 250, mb: 2 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -109,7 +108,7 @@ const StatusSummary = ({ countByStatus, budgetByStatus }) => {
           </TableBody>
         </Table>
       </TableContainer>
-    </div>
+    </>
   );
 };
 
