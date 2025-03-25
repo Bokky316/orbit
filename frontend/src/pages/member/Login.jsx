@@ -21,6 +21,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "@utils/constants";
 import "/public/css/member/member.css";
+import logoImage from "/public/images/logo.png";
 
 export default function Login() {
   const [credentials, setCredentials] = useState({
@@ -175,7 +176,7 @@ export default function Login() {
     <div className="login_container">
       <div></div>
       <div className="logo">
-        <img src="/public/images/logo.png" alt="logo" />
+        <img src={logoImage} alt="logo" />
       </div>
 
       <Box
