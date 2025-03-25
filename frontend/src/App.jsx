@@ -16,7 +16,7 @@ import BiddingEvaluationDetailPage from "./pages/bidding/BiddingEvaluationDetail
 import SupplierBiddingListPage from "./pages/bidding/SupplierBiddingListPage";
 import SupplierBiddingDetailPage from "./pages/bidding/SupplierBiddingDetailPage";
 import ContractsListPage from "./pages/contract/ContractsListPage";
-import ContractDraftPage from "./pages/contract/ContractDraftPage";
+import ContractDetailPage from "./pages/contract/ContractDetailPage";
 import ContractSignPage from "./pages/contract/ContractSignPage";
 import SupplierContractsListPage from "./pages/contract/SupplierContractsListPage";
 import SupplierContractDetailPage from "./pages/contract/SupplierContractDetailPage";
@@ -33,6 +33,7 @@ import PurchaseRequestListPage from "@/pages/procurement/PurchaseRequestListPage
 import PurchaseRequestDetailPage from "@/pages/procurement/PurchaseRequestDetailPage";
 import PurchaseRequestCreatePage from "@/pages/procurement/PurchaseRequestCreatePage";
 import PurchaseRequestEditPage from "@/pages/procurement/PurchaseRequestEditPage";
+import PurchaseRequestDashboard from "@/pages/procurement/PurchaseRequestDashboard"; // 구매요청 대시보드 추가
 import ApprovalListPage from "@/pages/approval/ApprovalListPage";
 import ApprovalDetailPage from "@/pages/approval/ApprovalDetailPage";
 import ApprovalManagementPage from "@/pages/approval/ApprovalManagementPage";
@@ -60,7 +61,7 @@ import DeliveryEditPage from "@/pages/delivery/DeliveryEditPage";
 import InvoicesListPage from "@/pages/invoice/InvoicesListPage"
 import InvoiceDetailPage from "@/pages/invoice/InvoiceDetailPage"
 import InvoiceEditPage from "@/pages/invoice/InvoiceEditPage"
- import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
+import InvoiceCreatePage from "@/pages/invoice/InvoiceCreatePage"
 import PaymentListPage from '@/pages/payment/PaymentListPage';
 import PaymentDetailPage from '@/pages/payment/PaymentDetailPage';
 import PaymentCreatePage from '@/pages/payment/PaymentCreatePage';
@@ -129,14 +130,91 @@ function AppContent() {
                 </>
               )}
 
-                {/* 구매 요청 관리 */}
-                <Route
-                  path="/purchase-requests"
-                  element={<PurchaseRequestListPage />}
-                />
-                <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />} />
-                <Route path="/purchase-requests/:id" element={<PurchaseRequestDetailPage />}/>
-                <Route path="/purchase-requests/new" element={<PurchaseRequestCreatePage />}/>
+              {/* 구매자/관리자 전용 라우트 */}
+              {!isSupplier && (
+                <>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+
+                  {/* 구매요청 대시보드 라우트 추가 */}
+                  <Route
+                    path="/purchase-requests/dashboard"
+                    element={<PurchaseRequestDashboard />}
+                  />
+
+                  {/* 입찰 관리 */}
+                  <Route path="/biddings" element={<BiddingListPage />} />
+                  <Route
+                    path="/biddings/new"
+                    element={<BiddingFormPage mode="create" />}
+                  />
+                  <Route
+                    path="/biddings/:id/edit"
+                    element={<BiddingFormPage mode="edit" />}
+                  />
+                  <Route path="/biddings/:id" element={<BiddingDetailPage />} />
+                  {/* 평가 페이지 */}
+                  <Route
+                    path="/biddings/evaluations"
+                    element={<BiddingEvaluationListPage />}
+                  />
+                  {/* 평가 상세 페이지 */}
+                  <Route
+                    path="/biddings/evaluations/:id"
+                    element={<BiddingEvaluationDetailPage />}
+                  />
+                  {/* 계약 목록 페이지 */}
+                  <Route path="/contracts" element={<ContractsListPage />} />
+                  {/* 계약 생성 페이지 */}
+                  <Route
+                    path="/contracts/:id"
+                    element={<ContractDetailPage />}
+                  />
+                  {/* 주문 목록 페이지 */}
+                  <Route path="/orders" element={<BiddingOrderListPage />} />
+                  {/* 주문 상세 페이지 */}
+                  <Route
+                    path="/orders/:id"
+                    element={<BiddingOrderDetailPage />}
+                  />
+                  {/* 프로젝트 관리 */}
+                  <Route path="/projects" element={<ProjectListPage />} />
+                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                  <Route path="/projects/new" element={<ProjectCreatePage />} />
+                  <Route
+                    path="/projects/edit/:id"
+                    element={<ProjectEditPage />}
+                  />
+                  {/* 구매 요청 관리 */}
+                  <Route
+                    path="/purchase-requests"
+                    element={<PurchaseRequestListPage />}
+                  />
+                  <Route
+                    path="/purchase-requests/:id"
+                    element={<PurchaseRequestDetailPage />}
+                  />
+                  <Route
+                    path="/purchase-requests/new"
+                    element={<PurchaseRequestCreatePage />}
+                  />
+                  <Route
+                    path="/purchase-requests/edit/:id"
+                    element={<PurchaseRequestEditPage />}
+                  />
+                  {/* 승인 관리 */}
+                  <Route path="/approvals" element={<ApprovalListPage />} />
+                  <Route
+                    path="/approvals/:id"
+                    element={<ApprovalDetailPage />}
+                  />
+                  <Route
+                    path="/approval-management"
+                    element={<ApprovalManagementPage />}
+                  />
+                  <Route
+                    path="/approval-lines"
+                    element={<ApprovalLineAdministration />}
+                  />
 
 
               {/* 승인 관리 */}
