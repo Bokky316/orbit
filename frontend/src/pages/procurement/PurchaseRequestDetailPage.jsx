@@ -597,9 +597,6 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
-
-
-
     // 구매요청 삭제 처리 함수
     const handleDeleteRequest = () => {
         if (window.confirm('정말 삭제하시겠습니까?')) {
@@ -615,18 +612,9 @@ const PurchaseRequestDetailPage = () => {
         }
     };
 
-    return (
-        <Box sx={{ p: 3 }}>
-            {/* 상단 헤더 및 상태 표시 */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="h4">{request.requestName}</Typography>
-                    <StatusChip
-                         label={getStatusLabel(extractStatusCode(request))}
-                         statuscode={extractStatusCode(request)}
-                         variant="outlined"
-                     />
-                </Box>
+    // 상태 코드 가져오기
+    const statusCode = extractStatusCode(request);
+    const statusLabel = getStatusLabel(statusCode);
 
     return (
         <Box sx={{ p: 4 }}>
