@@ -26,7 +26,7 @@ jobs:
           command_timeout: 40m
           script: |
             echo "🔹 SSH 연결 테스트 성공!"
-            cd ~/orbit/backend
+            cd ~/orbit
             # 🔹 최신 코드 가져오기
             export GIT_SSH_COMMAND="ssh -i ~/.ssh/github-key -o StrictHostKeyChecking=no"
             git pull origin main
