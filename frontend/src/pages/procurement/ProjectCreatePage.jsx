@@ -170,7 +170,7 @@ function ProjectCreatePage() {
                 startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
                 endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
             },
-            // 기본 상태는 서버에서 설정하도록 생략
+            // 기본 상태는 서버에서 항상 'REGISTERED'(등록) 상태로 자동 설정됨
             requestDepartment: selectedDepartment ? selectedDepartment.name : '',
             requestDepartmentId: selectedDepartment ? selectedDepartment.id : null,
             requesterName: selectedManager ? selectedManager.name : null,

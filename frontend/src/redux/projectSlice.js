@@ -141,16 +141,19 @@ export const fetchProjectById = createAsyncThunk(
  */
 export const updateProjectStatus = createAsyncThunk(
   "project/updateStatus",
-  async ({ id, statusType, statusCode }, { rejectWithValue }) => {
+  async ({ id, statusCode }, { rejectWithValue }) => {
     try {
       const response = await fetchWithAuth(`${API_URL}projects/${id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ statusType, statusCode })
+        body: JSON.stringify({ statusCode })
       });
-      if (!response.ok) throw new Error("상태 업데이트 실패");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`상태 업데이트 실패: ${errorText}`);
+      }
       return await response.json();
     } catch (error) {
       return rejectWithValue(error.message);

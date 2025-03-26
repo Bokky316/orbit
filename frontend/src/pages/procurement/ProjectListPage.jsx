@@ -355,9 +355,20 @@ function ProjectListPage() {
                     </Grid>
                 </CardContent>
             </Card>
-
             {/* 프로젝트 목록 테이블 */}
             <Card>
+             <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={handleCreateProject}
+                    sx={{ m: 2 }}
+                >
+                    신규 생성
+                </Button>
+                </Box>
+                <Divider />
                 <StyledTableContainer>
                     <Table stickyHeader>
                         <TableHead>
@@ -419,17 +430,6 @@ function ProjectListPage() {
                 </StyledTableContainer>
                 <Divider />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<AddIcon />}
-                            onClick={handleCreateProject}
-                            sx={{ m: 2 }}
-                        >
-                            신규 생성
-                        </Button>
-                    </Box>
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
