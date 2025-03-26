@@ -63,4 +63,14 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
             @Param("username") String username,
             @Param("status") String status
     );
+
+    /**
+     * 특정 접두사로 시작하는 요청 번호 중 가장 큰 값을 찾습니다.
+     *
+     * @param prefix 접두사 (예: "2405")
+     * @return 발견된 최대 요청번호, 없으면 null
+     */
+    @Query("SELECT MAX(p.requestNumber) FROM PurchaseRequest p WHERE p.requestNumber LIKE CONCAT(:prefix, '%')")
+    String findMaxRequestNumberByPrefix(@Param("prefix") String prefix);
+
 }
