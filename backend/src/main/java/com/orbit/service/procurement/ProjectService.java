@@ -185,7 +185,7 @@ public class ProjectService {
     }
 
     /**
-     * 프로젝트 업데이트
+     * 프로젝트 업데이트 메서드
      */
     @Transactional
     public ProjectDTO updateProject(Long id, ProjectDTO dto) {
@@ -202,14 +202,25 @@ public class ProjectService {
         // 4. 프로젝트 기간 유효성 검사
         validateProjectPeriod(project.getProjectPeriod());
 
-        // 5. 첨부파일 처리
+        // 5. 프로젝트 상태를 "정정등록(REREGISTERED)"으로 변경 - 이 부분이 추가된 코드
+        ParentCode basicStatusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("PROJECT", "BASIC_STATUS")
+                .orElseThrow(() -> new ResourceNotFoundException("ParentCode(PROJECT, BASIC_STATUS)를 찾을 수 없습니다."));
+
+        ChildCode reregisteredStatus = childCodeRepository.findByParentCodeAndCodeValue(basicStatusParent, "REREGISTERED")
+                .orElseThrow(() -> new ResourceNotFoundException("ChildCode(REREGISTERED)를 찾을 수 없습니다."));
+
+        // 상태 설정 (항상 정정등록으로 변경)
+        project.setBasicStatusParent(basicStatusParent);
+        project.setBasicStatusChild(reregisteredStatus);
+
+        // 6. 첨부파일 처리
         if (dto.getFiles() != null && dto.getFiles().length > 0) {
             Member updater = memberRepository.findByUsername(dto.getUpdatedBy())
                     .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
             processAttachments(project, dto.getFiles(), updater);
         }
 
-        // 6. 저장 후 DTO 반환
+        // 7. 저장 후 DTO 반환
         Project updatedProject = projectRepository.save(project);
         return convertToDto(updatedProject);
     }
