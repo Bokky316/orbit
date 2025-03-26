@@ -1,7 +1,6 @@
 package com.orbit.controller.bidding;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -14,9 +13,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.orbit.dto.bidding.BiddingEvaluationDto;
 import com.orbit.dto.bidding.BiddingOrderDto;
 import com.orbit.entity.member.Member;
 import com.orbit.repository.member.MemberRepository;
@@ -26,10 +25,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/bidding-orders")
 @RequiredArgsConstructor
-@Slf4j
 public class BiddingOrderController {
     private final BiddingOrderService orderService;
     private final MemberRepository memberRepository;
@@ -37,12 +36,6 @@ public class BiddingOrderController {
     /**
      * 발주 목록 조회
      */
-    @PostMapping
-    public ResponseEntity<BiddingOrderDto> createOrder(@Valid @RequestBody BiddingOrderDto orderDto) {
-        log.info("발주 생성 요청");
-        BiddingOrderDto createdOrder = biddingOrderService.createOrder(orderDto);
-        return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
-    }
     @GetMapping
     public ResponseEntity<List<BiddingOrderDto>> getAllOrders() {
         log.info("발주 목록 조회 요청");
@@ -87,7 +80,10 @@ public class BiddingOrderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
+    
+    /**
+     * 발주 상세 조회
+     */
     @GetMapping("/{id}")
     public ResponseEntity<BiddingOrderDto> getOrderById(@PathVariable Long id) {
         log.info("발주 상세 조회 요청 - ID: {}", id);
@@ -100,9 +96,7 @@ public class BiddingOrderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-   
-
+    
     /**
      * 발주 생성
      */
@@ -244,48 +238,4 @@ public class BiddingOrderController {
         return memberRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
-
-    @GetMapping("/available-ids")
-    public ResponseEntity<List<BiddingOrderDto>> getAvailableBiddingOrderIds() {
-        try {
-            List<BiddingOrderDto> orderIds = orderService.getAvailableBiddingOrderIds();
-            return ResponseEntity.ok(orderIds);
-        } catch (Exception e) {
-            log.error("발주 목록 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping("/{biddingOrderId}/detail")
-    public ResponseEntity<BiddingOrderDto> getBiddingOrderDetail(@PathVariable Long biddingOrderId) {
-        try {
-            BiddingOrderDto order = orderService.getBiddingOrderDetail(biddingOrderId);
-            return ResponseEntity.ok(order);
-        } catch (Exception e) {
-            log.error("발주 상세 조회 중 오류 발생: {}", biddingOrderId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping("/statistics/monthly")
-    public ResponseEntity<List<MonthlyOrderStatisticsDto>> getMonthlyStatistics(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
-        return ResponseEntity.ok(orderService.getMonthlyOrderStatistics(startDate, endDate));
-    }
-
-    @GetMapping("/statistics/supplier")
-    public ResponseEntity<List<Object[]>> getSupplierOrderStatistics(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
-        log.info("공급업체별 구매 실적 조회 요청");
-        try {
-            List<Object[]> statistics = orderService.getSupplierOrderStatistics(startDate, endDate);
-            return ResponseEntity.ok(statistics);
-        } catch (Exception e) {
-            log.error("공급업체별 구매 실적 조회 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
 }

@@ -302,17 +302,4 @@ public ResponseEntity<BiddingEvaluationDto> createEvaluation(
         return memberRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
-
-    /**
-     * 공급자별 평가 히스토리 조회
-     */
-    @GetMapping("/supplier/{supplierName}")
-    public ResponseEntity<List<BiddingEvaluationDto>> getSupplierEvaluationHistory(@PathVariable String supplierName) {
-        log.info("공급자 평가 히스토리 조회 요청 - 공급자명: {}", supplierName);
-        
-        List<BiddingEvaluationDto> supplierEvaluations = evaluationService.getEvaluationsBySupplierName(supplierName);
-        return ResponseEntity.ok(supplierEvaluations);
-    }
-    
-    
 }

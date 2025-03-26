@@ -132,6 +132,8 @@ function BiddingDetailPage() {
     participationId: null,
     supplierName: ""
   });
+
+  // 상태 변경 다이얼로그 상태
   const [statusChangeDialog, setStatusChangeDialog] = useState({
     open: false,
     newStatus: "",
@@ -227,6 +229,39 @@ function BiddingDetailPage() {
     }
   };
 
+  // 3. getStatusText 함수 오버라이드 (기존 함수에 문제가 있을 경우)
+  // helpers/commonBiddingHelpers.js에 있는 함수를 수정하기 어렵다면
+  // 컴포넌트 내에 새 함수를 추가합니다.
+  const getStatusDisplayText = (status) => {
+    if (!status) return "알 수 없음";
+
+    // 객체인 경우
+    if (typeof status === "object") {
+      if (status.childCode) {
+        return getStatusCodeDisplayText(status.childCode);
+      }
+      return status.name || "알 수 없음";
+    }
+
+    // 문자열인 경우
+    return getStatusCodeDisplayText(status);
+  };
+
+  const getStatusCodeDisplayText = (statusCode) => {
+    switch (statusCode) {
+      case BiddingStatus.PENDING:
+        return "대기중";
+      case BiddingStatus.ONGOING:
+        return "진행중";
+      case BiddingStatus.CLOSED:
+        return "마감";
+      case BiddingStatus.CANCELED:
+        return "취소";
+      default:
+        return statusCode || "알 수 없음";
+    }
+  };
+
   const fetchParticipations = async (biddingId) => {
     const res = await fetchWithAuth(
       `${API_URL}biddings/${biddingId}/participations`
@@ -287,6 +322,20 @@ function BiddingDetailPage() {
     }
   };
 
+  const fetchStatusHistory = async (biddingId) => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}biddings/${biddingId}/status-history`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setStatusHistories(data);
+      }
+    } catch (error) {
+      console.error("상태 변경 이력 로딩 실패:", error);
+    }
+  };
+
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     if (id) fetchBiddingDetails();
@@ -341,6 +390,30 @@ function BiddingDetailPage() {
       navigate("/biddings");
     } catch (error) {
       console.error("입찰 마감 중 오류:", error);
+      alert(`오류 발생: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 입찰 삭제 핸들러
+  const handleDeleteBidding = async () => {
+    try {
+      setIsLoading(true);
+      setDeleteConfirmOpen(false);
+
+      const response = await fetchWithAuth(`${API_URL}biddings/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("입찰 공고 삭제에 실패했습니다.");
+      }
+
+      alert("입찰 공고가 성공적으로 삭제되었습니다.");
+      navigate("/biddings");
+    } catch (error) {
+      console.error("입찰 공고 삭제 중 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -1028,7 +1101,6 @@ function BiddingDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* 계약 생성 모달 */}
       <Dialog
         open={contractModalOpen}
@@ -1047,7 +1119,6 @@ function BiddingDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* 공급자 평가 다이얼로그 */}
       <BiddingEvaluationDialog
         open={evaluationDialogState.open}
