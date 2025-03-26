@@ -607,4 +607,21 @@ public class ProjectService {
         // 4. 프로젝트에서 첨부파일 참조 제거
         project.getAttachments().remove(attachment);
     }
+
+    /**
+     * 프로젝트 상태 업데이트
+     */
+    @Transactional
+    public ProjectDTO updateProjectStatus(Long id, String statusCode) {
+        // 1. 프로젝트 조회
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ProjectNotFoundException("ID " + id + "에 해당하는 프로젝트를 찾을 수 없습니다."));
+
+        // 2. 상태 코드 설정
+        setCodeForProject(project, statusCode, true);
+
+        // 3. 저장 및 반환
+        Project updatedProject = projectRepository.save(project);
+        return convertToDto(updatedProject);
+    }
 }

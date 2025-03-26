@@ -21,13 +21,35 @@ import {
     List,
     ListItem,
     Link,
-    Divider
+    Divider,
+    Card,
+    CardHeader,
+    CardContent,
+    IconButton,
+    Tooltip,
+    Alert,
+    Menu,
+    MenuItem,
+    Avatar,
+    Stack,
+    Tabs,
+    Tab,
+    Badge
 } from '@mui/material';
 import {
     AttachFile as AttachFileIcon,
     Add as AddIcon,
     Edit as EditIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    ArrowBack as ArrowBackIcon,
+    MoreVert as MoreVertIcon,
+    Event as EventIcon,
+    Business as BusinessIcon,
+    Person as PersonIcon,
+    Apartment as ApartmentIcon,
+    AccountBalance as AccountBalanceIcon,
+    Notes as NotesIcon,
+    Description as DescriptionIcon
 } from '@mui/icons-material';
 
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
@@ -64,6 +86,12 @@ const StatusChip = styled(Chip)(({ theme, statuscode }) => {
         color = theme.palette.info.light;
     } else if (status.includes('reregistered') || status.includes('정정등록')) {
         color = theme.palette.info.light;
+    } else if (status.includes('in_progress') || status.includes('진행중')) {
+        color = theme.palette.primary.main;
+    } else if (status.includes('completed') || status.includes('완료')) {
+        color = theme.palette.success.main;
+    } else if (status.includes('terminated') || status.includes('종결')) {
+        color = theme.palette.error.main;
     }
 
     return {
@@ -83,6 +111,37 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
     },
 }));
 
+// 세부 정보 그리드 아이템
+const InfoItem = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: theme.spacing(2),
+    '& .MuiSvgIcon-root': {
+        marginRight: theme.spacing(1),
+        color: theme.palette.primary.main
+    }
+}));
+
+// 섹션 제목
+const SectionTitle = styled(Typography)(({ theme }) => ({
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: theme.spacing(2),
+    '& .MuiSvgIcon-root': {
+        marginRight: theme.spacing(1)
+    }
+}));
+
+// 파일 항목 스타일
+const FileItem = styled(ListItem)(({ theme }) => ({
+    borderRadius: theme.shape.borderRadius,
+    transition: 'background-color 0.2s',
+    '&:hover': {
+        backgroundColor: theme.palette.action.hover,
+    }
+}));
+
 function ProjectDetailPage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -91,6 +150,8 @@ function ProjectDetailPage() {
     const [purchaseRequests, setPurchaseRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [tabValue, setTabValue] = useState(0);
+    const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -263,6 +324,21 @@ function ProjectDetailPage() {
         navigate(`/purchase-requests/${requestId}`);
     };
 
+    // 메뉴 열기
+    const handleMenuOpen = (event) => {
+        setMenuAnchorEl(event.currentTarget);
+    };
+
+    // 메뉴 닫기
+    const handleMenuClose = () => {
+        setMenuAnchorEl(null);
+    };
+
+    // 탭 변경 핸들러
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+    };
+
     // 첨부파일 다운로드 함수
     const downloadFile = async (attachmentId) => {
         try {
@@ -320,8 +396,24 @@ function ProjectDetailPage() {
         }
     };
 
-    if (loading) return <Typography>로딩 중...</Typography>;
-    if (error) return <Typography color="error">{error}</Typography>;
+    if (loading) return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+            <Typography variant="h6">프로젝트 정보를 불러오는 중...</Typography>
+        </Box>
+    );
+
+    if (error) return (
+        <Box sx={{ p: 4 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+            <Button
+                variant="outlined"
+                startIcon={<ArrowBackIcon />}
+                onClick={() => navigate('/projects')}
+            >
+                프로젝트 목록으로 돌아가기
+            </Button>
+        </Box>
+    );
 
     // 프로젝트 상태 코드 추출
     const projectStatusCode = extractProjectStatusCode(project);
@@ -330,166 +422,297 @@ function ProjectDetailPage() {
 
     return (
         <Box sx={{ p: 4 }}>
-            {/* 상단 헤더 및 상태 표시 */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="h4">{project.projectName}</Typography>
-                    <StatusChip
-                        label={projectStatusLabel}
-                        statuscode={projectStatusCode}
+            {/* 상단 헤더 및 액션 버튼 */}
+            <Card sx={{ mb: 3 }}>
+                <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Button
+                                variant="outlined"
+                                color="inherit"
+                                size="small"
+                                startIcon={<ArrowBackIcon />}
+                                onClick={() => navigate('/projects')}
+                                sx={{ mr: 1 }}
+                            >
+                                목록
+                            </Button>
+                            <Typography variant="h4" component="h1">{project.projectName}</Typography>
+                            <StatusChip
+                                label={projectStatusLabel}
+                                statuscode={projectStatusCode}
+                                size="medium"
+                            />
+                        </Box>
+
+                        <Box>
+                            <Tooltip title="프로젝트 관리">
+                                <IconButton onClick={handleMenuOpen}>
+                                    <MoreVertIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <Menu
+                                anchorEl={menuAnchorEl}
+                                open={Boolean(menuAnchorEl)}
+                                onClose={handleMenuClose}
+                            >
+                                {canEditProject() && (
+                                    <MenuItem onClick={() => {
+                                        handleMenuClose();
+                                        navigate(`/projects/edit/${id}`);
+                                    }}>
+                                        <EditIcon fontSize="small" sx={{ mr: 1 }} />
+                                        프로젝트 수정
+                                    </MenuItem>
+                                )}
+                                {canDeleteProject() && (
+                                    <MenuItem onClick={() => {
+                                        handleMenuClose();
+                                        handleDelete();
+                                    }} sx={{ color: 'error.main' }}>
+                                        <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+                                        프로젝트 삭제
+                                    </MenuItem>
+                                )}
+                                <MenuItem onClick={() => {
+                                    handleMenuClose();
+                                    navigate('/purchase-requests/new', { state: { projectId: id } });
+                                }}>
+                                    <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                                    구매 요청 생성
+                                </MenuItem>
+                            </Menu>
+                        </Box>
+                    </Box>
+
+                    <Divider sx={{ my: 2 }} />
+
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <DescriptionIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">프로젝트 ID</Typography>
+                                    <Typography variant="body1">{project.projectIdentifier || project.id}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <PersonIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">담당자</Typography>
+                                    <Typography variant="body1">{project.requesterName || '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <BusinessIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">사업 유형</Typography>
+                                    <Typography variant="body1">{getBusinessTypeLabel(project.businessCategory)}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <ApartmentIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">요청 부서</Typography>
+                                    <Typography variant="body1">{project.requestDepartment || '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <EventIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">시작일</Typography>
+                                    <Typography variant="body1">{formatDate(project.projectPeriod.startDate)}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <EventIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">종료일</Typography>
+                                    <Typography variant="body1">{formatDate(project.projectPeriod.endDate)}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <AccountBalanceIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">총 예산</Typography>
+                                    <Typography variant="body1">
+                                        {project.totalBudget ? project.totalBudget.toLocaleString() + ' 원' : '정보 없음'}
+                                    </Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <AccountBalanceIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">예산 코드</Typography>
+                                    <Typography variant="body1">{getBudgetCodeLabel(project.budgetCode)}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                    </Grid>
+                </CardContent>
+            </Card>
+
+            {/* 탭 패널 */}
+            <Card>
+                <Tabs
+                    value={tabValue}
+                    onChange={handleTabChange}
+                    variant="fullWidth"
+                    sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+                >
+                    <Tab label="특이 사항" />
+                    <Tab label="첨부 파일"
+                        icon={project.attachments && project.attachments.length > 0 ?
+                            <Badge badgeContent={project.attachments.length} color="primary" sx={{ mr: 1 }} /> : null}
+                        iconPosition="end"
                     />
-                </Box>
+                    <Tab label="관련 구매 요청"
+                        icon={purchaseRequests && purchaseRequests.length > 0 ?
+                            <Badge badgeContent={purchaseRequests.length} color="primary" sx={{ mr: 1 }} /> : null}
+                        iconPosition="end"
+                    />
+                </Tabs>
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    {canEditProject() && (
-                        <Button
-                            variant="outlined"
-                            color="primary"
-                            startIcon={<EditIcon />}
-                            onClick={() => navigate(`/projects/edit/${id}`)}
-                        >
-                            수정
-                        </Button>
+                {/* 특이 사항 탭 */}
+                <Box role="tabpanel" hidden={tabValue !== 0} sx={{ p: 3 }}>
+                    {tabValue === 0 && (
+                        <>
+                            <SectionTitle variant="h6">
+                                <NotesIcon />
+                                특이 사항
+                            </SectionTitle>
+                            <Typography sx={{ whiteSpace: 'pre-line', pl: 4 }}>
+                                {project.remarks || '특이 사항이 없습니다.'}
+                            </Typography>
+                        </>
                     )}
-                    {canDeleteProject() && (
-                        <Button
-                            variant="outlined"
-                            color="error"
-                            startIcon={<DeleteIcon />}
-                            onClick={handleDelete}
-                        >
-                            삭제
-                        </Button>
-                    )}
-                    <Button
-                        variant="outlined"
-                        onClick={() => navigate('/projects')}
-                    >
-                        목록
-                    </Button>
                 </Box>
-            </Box>
 
-            {/* 기본 정보 섹션 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>기본 정보</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={4}>
-                        <Typography><strong>프로젝트 ID:</strong> {project.id}</Typography>
-                        <Typography><strong>프로젝트명:</strong> {project.projectName}</Typography>
-                        <Typography><strong>담당자:</strong> {project.requesterName}</Typography>
-                    </Grid>
-                    <Grid item xs={4}>
-                        <Typography><strong>시작일:</strong> {formatDate(project.projectPeriod.startDate)}</Typography>
-                        <Typography><strong>종료일:</strong> {formatDate(project.projectPeriod.endDate)}</Typography>
-                        <Typography><strong>요청 부서:</strong> {project.requestDepartment || '정보 없음'}</Typography>
-                    </Grid>
-                    <Grid item xs={4}>
-                        <Typography><strong>사업 유형:</strong> {getBusinessTypeLabel(project.businessCategory || '')}</Typography>
-                        <Typography><strong>총 예산:</strong> {project.totalBudget ? project.totalBudget.toLocaleString() + ' 원' : '정보 없음'}</Typography>
-                        <Typography><strong>예산 코드:</strong> {getBudgetCodeLabel(project.budgetCode || '')}</Typography>
-                    </Grid>
-                </Grid>
-            </Paper>
+                {/* 첨부 파일 탭 */}
+                <Box role="tabpanel" hidden={tabValue !== 1} sx={{ p: 3 }}>
+                    {tabValue === 1 && (
+                        <>
+                            <SectionTitle variant="h6">
+                                <AttachFileIcon />
+                                첨부 파일
+                            </SectionTitle>
 
-            {/* 상세 정보 섹션 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>특이 사항</Typography>
-                <Typography sx={{ whiteSpace: 'pre-line' }}>
-                    {project.remarks || '없음'}
-                </Typography>
-            </Paper>
-
-            {/* 첨부 파일 섹션 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>첨부 파일</Typography>
-
-                {project.attachments && project.attachments.length > 0 ? (
-                    <List>
-                        {project.attachments.map((attachment, index) => (
-                            <React.Fragment key={attachment.id}>
-                                <ListItem>
-                                    <Link
-                                        component="button"
-                                        onClick={() => downloadFile(attachment.id)}
-                                        sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                                    >
-                                        <AttachFileIcon sx={{ mr: 1 }} />
-                                        {attachment.fileName}
-                                        <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                            ({Math.round(attachment.fileSize / 1024)}KB) - {new Date(attachment.uploadedAt).toLocaleString()}
-                                        </Typography>
-                                    </Link>
-                                </ListItem>
-                                {index < project.attachments.length - 1 && <Divider />}
-                            </React.Fragment>
-                        ))}
-                    </List>
-                ) : (
-                    <Typography color="text.secondary">첨부 파일이 없습니다.</Typography>
-                )}
-            </Paper>
-
-            {/* 연관 구매 요청 테이블 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6">관련 구매 요청</Typography>
-                    <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<AddIcon />}
-                        onClick={() => navigate('/purchase-requests/new', { state: { projectId: id } })}
-                    >
-                        구매 요청 생성
-                    </Button>
-                </Box>
-                <TableContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>요청번호</TableCell>
-                                <TableCell>유형</TableCell>
-                                <TableCell>요청명</TableCell>
-                                <TableCell>상태</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {purchaseRequests.length > 0 ? (
-                                purchaseRequests.map(req => {
-                                    // 상태 코드 추출
-                                    const statusCode = extractStatusCode(req);
-                                    // 상태 라벨 가져오기
-                                    const statusLabel = getPurchaseStatusLabel(statusCode);
-                                    // 비즈니스 유형 라벨 가져오기
-                                    const businessTypeLabel = getBusinessTypeLabel(req.businessType);
-
-                                    return (
-                                        <TableRow key={req.id}>
-                                            <TableCell>{req.requestNumber || req.id}</TableCell>
-                                            <TableCell>{businessTypeLabel}</TableCell>
-                                            <ClickableCell
-                                                onClick={() => navigateToPurchaseRequest(req.id)}
+                            {project.attachments && project.attachments.length > 0 ? (
+                                <List sx={{ pl: 4 }}>
+                                    {project.attachments.map((attachment, index) => (
+                                        <FileItem key={attachment.id} disableGutters>
+                                            <Link
+                                                component="button"
+                                                onClick={() => downloadFile(attachment.id)}
+                                                sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left' }}
+                                                underline="none"
                                             >
-                                                {req.requestName}
-                                            </ClickableCell>
-                                            <TableCell>
-                                                <StatusChip
-                                                    label={statusLabel}
-                                                    statuscode={statusCode}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
+                                                <AttachFileIcon sx={{ mr: 1 }} />
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Typography variant="body1">{attachment.fileName}</Typography>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        ({Math.round(attachment.fileSize / 1024)}KB) - {new Date(attachment.uploadedAt).toLocaleString()}
+                                                    </Typography>
+                                                </Box>
+                                            </Link>
+                                        </FileItem>
+                                    ))}
+                                </List>
                             ) : (
-                                <TableRow>
-                                    <TableCell colSpan={4} align="center">관련 구매 요청이 없습니다.</TableCell>
-                                </TableRow>
+                                <Typography color="text.secondary" sx={{ pl: 4 }}>첨부 파일이 없습니다.</Typography>
                             )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Paper>
+                        </>
+                    )}
+                </Box>
+
+                {/* 관련 구매 요청 탭 */}
+                <Box role="tabpanel" hidden={tabValue !== 2} sx={{ p: 3 }}>
+                    {tabValue === 2 && (
+                        <>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <SectionTitle variant="h6" sx={{ mb: 0 }}>
+                                    <DescriptionIcon />
+                                    관련 구매 요청
+                                </SectionTitle>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    size="small"
+                                    startIcon={<AddIcon />}
+                                    onClick={() => navigate('/purchase-requests/new', { state: { projectId: id } })}
+                                >
+                                    구매 요청 생성
+                                </Button>
+                            </Box>
+
+                            {purchaseRequests && purchaseRequests.length > 0 ? (
+                                <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+                                    <Table stickyHeader>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>요청번호</TableCell>
+                                                <TableCell>유형</TableCell>
+                                                <TableCell>요청명</TableCell>
+                                                <TableCell align="center">상태</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {purchaseRequests.map(req => {
+                                                // 상태 코드 추출
+                                                const statusCode = extractStatusCode(req);
+                                                // 상태 라벨 가져오기
+                                                const statusLabel = getPurchaseStatusLabel(statusCode);
+                                                // 비즈니스 유형 라벨 가져오기
+                                                const businessTypeLabel = getBusinessTypeLabel(req.businessType);
+
+                                                return (
+                                                    <TableRow
+                                                        key={req.id}
+                                                        hover
+                                                        sx={{ cursor: 'pointer' }}
+                                                        onClick={() => navigateToPurchaseRequest(req.id)}
+                                                    >
+                                                        <TableCell>{req.requestNumber || req.id}</TableCell>
+                                                        <TableCell>{businessTypeLabel}</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+                                                            {req.requestName}
+                                                        </TableCell>
+                                                        <TableCell align="center">
+                                                            <StatusChip
+                                                                label={statusLabel}
+                                                                statuscode={statusCode}
+                                                                size="small"
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            ) : (
+                                <Alert severity="info" sx={{ mt: 2 }}>
+                                    관련 구매 요청이 없습니다. 새 구매 요청을 생성해보세요.
+                                </Alert>
+                            )}
+                        </>
+                    )}
+                </Box>
+            </Card>
         </Box>
     );
 }
