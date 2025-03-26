@@ -1,59 +1,36 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  Link,
-  Chip,
-  Grid,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Card,
-  CardContent,
-  CardHeader,
-  Tabs,
-  Tab,
-  IconButton,
-  Badge,
-  Tooltip,
-  Avatar,
-  Stack
-} from "@mui/material";
-import { useParams, useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { API_URL } from "@/utils/constants";
-import moment from "moment";
+    Box, Typography, Paper, Button, Link, Chip,
+    Grid, List, ListItem, ListItemText, Divider, Alert,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    Card, CardContent, CardHeader, Tabs, Tab, IconButton, Badge,
+    Tooltip, Avatar, Stack
+} from '@mui/material';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchWithAuth } from '@/utils/fetchWithAuth';
+import { API_URL } from '@/utils/constants';
+import moment from 'moment';
 import {
-  AttachFile as AttachFileIcon,
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ArrowBack as ArrowBackIcon,
-  MoreVert as MoreVertIcon,
-  Event as EventIcon,
-  Business as BusinessIcon,
-  Person as PersonIcon,
-  AccountBalance as AccountBalanceIcon,
-  Notes as NotesIcon,
-  Description as DescriptionIcon,
-  Phone as PhoneIcon,
-  CheckCircle as CheckCircleIcon
-} from "@mui/icons-material";
-import ApprovalLineComponent from "@/pages/approval/ApprovalLineComponent";
-import { styled } from "@mui/material/styles";
-import { deletePurchaseRequest } from "@/redux/purchaseRequestSlice";
-import useWebSocket from "@hooks/useWebSocket";
+    AttachFile as AttachFileIcon,
+    Add as AddIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon,
+    ArrowBack as ArrowBackIcon,
+    MoreVert as MoreVertIcon,
+    Event as EventIcon,
+    Business as BusinessIcon,
+    Person as PersonIcon,
+    AccountBalance as AccountBalanceIcon,
+    Notes as NotesIcon,
+    Description as DescriptionIcon,
+    Phone as PhoneIcon,
+    CheckCircle as CheckCircleIcon
+} from '@mui/icons-material';
+import ApprovalLineComponent from '@/pages/approval/ApprovalLineComponent';
+import { styled } from '@mui/material/styles';
+import { deletePurchaseRequest } from '@/redux/purchaseRequestSlice';
+import useWebSocket from '@hooks/useWebSocket';
 
 // 상태 칩 스타일 커스터마이징
 const StatusChip = styled(Chip)(({ theme, statuscode }) => {
@@ -83,22 +60,60 @@ const StatusChip = styled(Chip)(({ theme, statuscode }) => {
     color = theme.palette.success.dark;
   }
 
-  return {
-    backgroundColor: color,
-    color: theme.palette.getContrastText(color),
-    fontWeight: "bold",
-    minWidth: "80px"
-  };
+    return {
+        backgroundColor: color,
+        color: theme.palette.getContrastText(color),
+        fontWeight: 'bold',
+        minWidth: '80px'
+    };
 });
 
 // 클릭 가능한 텍스트 스타일링
 const ClickableCell = styled(TableCell)(({ theme }) => ({
-  cursor: "pointer",
-  "&:hover": {
-    textDecoration: "underline",
-    color: theme.palette.primary.main
-  }
+    cursor: 'pointer',
+    '&:hover': {
+        textDecoration: 'underline',
+        color: theme.palette.primary.main,
+    },
 }));
+
+// 세부 정보 그리드 아이템
+const InfoItem = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: theme.spacing(2),
+    '& .MuiSvgIcon-root': {
+        marginRight: theme.spacing(1),
+        color: theme.palette.primary.main
+    }
+}));
+
+// 섹션 제목
+const SectionTitle = styled(Typography)(({ theme }) => ({
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: theme.spacing(2),
+    '& .MuiSvgIcon-root': {
+        marginRight: theme.spacing(1)
+    }
+}));
+
+// 파일 항목 스타일
+const FileItem = styled(ListItem)(({ theme }) => ({
+    borderRadius: theme.shape.borderRadius,
+    transition: 'background-color 0.2s',
+    '&:hover': {
+        backgroundColor: theme.palette.action.hover,
+    }
+}));
+
+const PurchaseRequestDetailPage = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const currentUser = useSelector(state => state.auth.user);
+    const { sendStatusChange } = useWebSocket(currentUser);
 
     // 로컬 상태
     const [request, setRequest] = useState(null);
@@ -107,6 +122,8 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
     const [error, setError] = useState(null);
     const [approvalLines, setApprovalLines] = useState([]);
     const [hasApprovalAuthority, setHasApprovalAuthority] = useState(false);
+    const [tabValue, setTabValue] = useState(0);
+
     const extractStatusCode = (request) => {
         // 1. prStatusChild가 있으면 그대로 사용
         if (request.prStatusChild) {
@@ -130,7 +147,8 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
         // 4. 기본값 반환
         return "REQUESTED"; // 기본 상태
     };
-// 상태 라벨 가져오기
+
+    // 상태 라벨 가져오기
     const getStatusLabel = (statusCode) => {
         switch(statusCode) {
             case 'REQUESTED': return '구매 요청';
@@ -144,16 +162,31 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
         }
     };
 
+    // 비즈니스 유형 표시 변환
+    const getBusinessTypeLabel = (type) => {
+        switch(type) {
+            case 'SI': return 'SI';
+            case 'MAINTENANCE': return '유지보수';
+            case 'GOODS': return '물품';
+            default: return type || '정보 없음';
+        }
+    };
+
+    // 탭 변경 핸들러
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+    };
+
     // useEffect 안에 상태 정보 디버깅 추가
     useEffect(() => {
-         if (request) {
-             console.log('==== 구매요청 상태 정보 디버깅 ====');
-             console.log('request.status:', request.status);
-             console.log('request.prStatusChild:', request.prStatusChild);
-             console.log('추출된 상태 코드:', extractStatusCode(request));
-             console.log('상태 라벨:', getStatusLabel(extractStatusCode(request)));
-         }
-     }, [request]);
+        if (request) {
+            console.log('==== 구매요청 상태 정보 디버깅 ====');
+            console.log('request.status:', request.status);
+            console.log('request.prStatusChild:', request.prStatusChild);
+            console.log('추출된 상태 코드:', extractStatusCode(request));
+            console.log('상태 라벨:', getStatusLabel(extractStatusCode(request)));
+        }
+    }, [request]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -280,51 +313,48 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
     // 로딩 상태 처리
     if (loading) {
         return (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography>데이터를 불러오는 중입니다...</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+                <Typography variant="h6">구매 요청 정보를 불러오는 중입니다...</Typography>
             </Box>
         );
     }
 
-    // 2. status_child_code가 있으면 사용 (이 부분 추가)
-    if (request.status_child_code) {
-      return request.status_child_code;
+    // 에러 상태 처리
+    if (error) {
+        return (
+            <Box sx={{ p: 4 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>오류 발생: {error}</Alert>
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/purchase-requests')}
+                >
+                    목록으로 돌아가기
+                </Button>
+            </Box>
+        );
     }
 
-    // 3. status 문자열이 있으면 파싱해서 childCode 부분 추출
-    if (request.status) {
-      const parts = request.status.split("-");
-      // 마지막 부분이 상태 코드일 가능성이 높음
-      if (parts.length >= 2) {
-        return parts[parts.length - 1]; // 마지막 부분 반환
-      }
+    // 데이터가 없는 경우
+    if (!request) {
+        return (
+            <Box sx={{ p: 4 }}>
+                <Alert severity="info" sx={{ mb: 2 }}>구매 요청 정보가 없습니다.</Alert>
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/purchase-requests')}
+                >
+                    목록으로 돌아가기
+                </Button>
+            </Box>
+        );
     }
 
-    // 4. 기본값 반환
-    return "REQUESTED"; // 기본 상태
-  };
-
-  // 상태 라벨 가져오기
-  const getStatusLabel = (statusCode) => {
-    switch (statusCode) {
-      case "REQUESTED":
-        return "구매 요청";
-      case "RECEIVED":
-        return "요청 접수";
-      case "VENDOR_SELECTION":
-        return "업체 선정";
-      case "CONTRACT_PENDING":
-        return "계약 대기";
-      case "INSPECTION":
-        return "검수 진행";
-      case "INVOICE_ISSUED":
-        return "인보이스 발행";
-      case "PAYMENT_COMPLETED":
-        return "대금지급 완료";
-      default:
-        return statusCode || "상태 정보 없음";
-    }
-  };
+    // 첨부파일 다운로드 함수
+    const downloadFile = async (attachment) => {
+        try {
+            console.log("[DEBUG] 첨부파일 객체:", attachment);
 
   // 비즈니스 유형 표시 변환
   const getBusinessTypeLabel = (type) => {
@@ -497,106 +527,67 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
 
     // 구매요청이 수정/삭제 가능한지 확인하는 함수 (개선된 버전)
     const canModifyRequest = () => {
-        // 상태 코드 추출 - extractStatusCode 함수 사용
+        // 상태 코드 추출
         const statusCode = extractStatusCode(request);
 
-  // 로딩 상태 처리
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "80vh"
-        }}>
-        <Typography variant="h6">
-          구매 요청 정보를 불러오는 중입니다...
-        </Typography>
-      </Box>
-    );
-  }
+        // 현재 사용자가 요청자인지 확인
+        const isRequester = currentUser && request.memberId === currentUser.id;
+        const isAdmin = currentUser && currentUser.role === 'ADMIN';
 
-  // 에러 상태 처리
-  if (error) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          오류 발생: {error}
-        </Alert>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate("/purchase-requests")}>
-          목록으로 돌아가기
-        </Button>
-      </Box>
-    );
-  }
+        // 결재 상태 확인
+        const approvalStatus = getApprovalStatus();
 
-  // 데이터가 없는 경우
-  if (!request) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="info" sx={{ mb: 2 }}>
-          구매 요청 정보가 없습니다.
-        </Alert>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate("/purchase-requests")}>
-          목록으로 돌아가기
-        </Button>
-      </Box>
-    );
-  }
+        // 1. '구매 요청' 상태이거나
+        // 2. 결재가 진행 중이지만 최종 승인되지 않은 상태이고
+        // 3. 사용자가 요청자이거나 관리자인 경우
+        const isInReviewStatus = approvalStatus.includes('REVIEW') || approvalStatus === 'FIRST_LEVEL';
+        const isNotFullyApproved = approvalStatus !== 'FULLY_APPROVED';
 
-  // 첨부파일 다운로드 함수
-  const downloadFile = async (attachment) => {
-    try {
-      console.log("[DEBUG] 첨부파일 객체:", attachment);
+        return (statusCode === 'REQUESTED' ||
+                (isInReviewStatus && isNotFullyApproved)) &&
+                (isRequester || isAdmin);
+    };
 
-      if (!attachment?.id) {
-        alert("유효하지 않은 첨부파일 ID입니다.");
-        return;
-      }
+    // 결재 상태 확인 함수 - 유연한 결재 단계를 지원하도록 수정
+    const getApprovalStatus = () => {
+        if (!approvalLines || approvalLines.length === 0) {
+            return 'NO_APPROVAL';
+        }
 
-      const response = await fetchWithAuth(
-        `${API_URL}purchase-requests/attachments/${attachment.id}/download`,
-        { method: "GET", responseType: "blob" }
-      );
+        // 단계별로 정렬된 결재선
+        const sortedLines = [...approvalLines].sort((a, b) => a.step - b.step);
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = attachment.fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      } else {
-        console.error("다운로드 실패:", await response.text());
-        alert("파일 다운로드에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error("다운로드 오류:", error);
-      alert(`다운로드 중 오류 발생: ${error.message}`);
-    }
-  };
+        // 첫 번째 단계 결재 상태 확인
+        const firstLevel = sortedLines[0];
+        if (!firstLevel || firstLevel.statusCode !== 'APPROVED') {
+            return 'FIRST_LEVEL';
+        }
 
-  // 구매요청이 수정/삭제 가능한지 확인하는 함수 (개선된 버전)
-  const canModifyRequest = () => {
-    // 상태 코드 추출
-    const statusCode = extractStatusCode(request);
+        // 마지막 단계 결재 상태 확인 (최종 승인 여부)
+        const lastLevel = sortedLines[sortedLines.length - 1];
+        if (lastLevel.statusCode === 'APPROVED') {
+            return 'FULLY_APPROVED';
+        }
 
-    // 현재 사용자가 요청자인지 확인
-    const isRequester = currentUser && request.memberId === currentUser.id;
-    const isAdmin = currentUser && currentUser.role === "ADMIN";
+        // 현재 검토 중인 단계 찾기
+        const currentReviewIndex = sortedLines.findIndex(line =>
+            line.statusCode === 'IN_REVIEW' ||
+            line.statusCode === 'PENDING' ||
+            line.statusCode === 'REQUESTED'
+        );
 
-    // 결재 상태 확인
-    const approvalStatus = getApprovalStatus();
+        if (currentReviewIndex !== -1) {
+            return `LEVEL_${currentReviewIndex + 1}_REVIEW`;
+        }
+
+        // 반려된 단계 찾기
+        const rejectedIndex = sortedLines.findIndex(line => line.statusCode === 'REJECTED');
+        if (rejectedIndex !== -1) {
+            return `LEVEL_${rejectedIndex + 1}_REJECTED`;
+        }
+
+        return 'UNKNOWN';
+    };
 
     // 상태 변경 핸들러
     const handleStatusChange = (newStatus) => {
@@ -605,9 +596,6 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
             sendStatusChange(id, currentStatus, newStatus);
         }
     };
-
-
-
 
     // 구매요청 삭제 처리 함수
     const handleDeleteRequest = () => {
@@ -624,263 +612,415 @@ const ClickableCell = styled(TableCell)(({ theme }) => ({
         }
     };
 
-    return (
-        <Box sx={{ p: 3 }}>
-            {/* 상단 헤더 및 상태 표시 */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="h4">{request.requestName}</Typography>
-                    <StatusChip
-                         label={getStatusLabel(extractStatusCode(request))}
-                         statuscode={extractStatusCode(request)}
-                         variant="outlined"
-                     />
-                </Box>
+    // 상태 코드 가져오기
+    const statusCode = extractStatusCode(request);
+    const statusLabel = getStatusLabel(statusCode);
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    {canModifyRequest() && (
-                        <>
+    return (
+        <Box sx={{ p: 4 }}>
+            {/* 상단 헤더 및 액션 버튼 */}
+            <Card sx={{ mb: 3 }}>
+                <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Button
                                 variant="outlined"
-                                color="primary"
-                                startIcon={<EditIcon />}
-                                onClick={() => navigate(`/purchase-requests/edit/${id}`)}
+                                color="inherit"
+                                size="small"
+                                startIcon={<ArrowBackIcon />}
+                                onClick={() => navigate('/purchase-requests')}
+                                sx={{ mr: 1 }}
                             >
-                                수정
+                                목록
                             </Button>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<DeleteIcon />}
-                                onClick={handleDeleteRequest}
-                            >
-                                삭제
-                            </Button>
-                        </>
-                    )}
-                </Box>
-            </Box>
+                            <Typography variant="h4" component="h1">{request.requestName}</Typography>
+                            <StatusChip
+                                label={statusLabel}
+                                statuscode={statusCode}
+                                size="medium"
+                            />
+                        </Box>
+
+                        <Box>
+                            {canModifyRequest() && (
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Button
+                                        variant="outlined"
+                                        color="primary"
+                                        startIcon={<EditIcon />}
+                                        onClick={() => navigate(`/purchase-requests/edit/${id}`)}
+                                    >
+                                        수정
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        startIcon={<DeleteIcon />}
+                                        onClick={handleDeleteRequest}
+                                    >
+                                        삭제
+                                    </Button>
+                                </Box>
+                            )}
+                        </Box>
+                    </Box>
+
+                    <Divider sx={{ my: 2 }} />
+
+                    {/* 기본 정보 섹션 */}
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <DescriptionIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">요청번호</Typography>
+                                    <Typography variant="body1">{request.requestNumber || request.id}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <BusinessIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">사업구분</Typography>
+                                    <Typography variant="body1">{getBusinessTypeLabel(request.businessType)}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <EventIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">요청일</Typography>
+                                    <Typography variant="body1">{request.requestDate ? moment(request.requestDate).format('YYYY-MM-DD') : '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <AccountBalanceIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">예산</Typography>
+                                    <Typography variant="body1">{request.businessBudget ? `${request.businessBudget.toLocaleString()}원` : '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <PersonIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">요청자</Typography>
+                                    <Typography variant="body1">{request.memberName || '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <BusinessIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">소속</Typography>
+                                    <Typography variant="body1">{request.memberCompany || '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <BusinessIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">사업부서</Typography>
+                                    <Typography variant="body1">{request.businessDepartment || '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <InfoItem>
+                                <PersonIcon />
+                                <Box>
+                                    <Typography variant="body2" color="text.secondary">담당자</Typography>
+                                    <Typography variant="body1">{request.businessManager || '정보 없음'}</Typography>
+                                </Box>
+                            </InfoItem>
+                        </Grid>
+                    </Grid>
+                </CardContent>
+            </Card>
 
             {/* 결재선 표시 */}
             {approvalLines.length > 0 && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <ApprovalLineComponent
-                        purchaseRequestId={Number(id)}
-                        currentUserId={currentUser?.id}
-                        onApprovalComplete={handleApprovalComplete}
-                    />
-                </Paper>
+                <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                        <ApprovalLineComponent
+                            purchaseRequestId={Number(id)}
+                            currentUserId={currentUser?.id}
+                            onApprovalComplete={handleApprovalComplete}
+                        />
+                    </CardContent>
+                </Card>
             )}
 
             {/* 관련 프로젝트 정보 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>관련 프로젝트 정보</Typography>
-                {project ? (
-                    <Grid container spacing={2}>
-                        <Grid item xs={4}>
-                            <Typography><strong>프로젝트명:</strong> {project.projectName}</Typography>
-                            <Typography>
+            <Card sx={{ mb: 3 }}>
+                <CardContent>
+                    <SectionTitle variant="h6" gutterBottom>
+                        <DescriptionIcon />
+                        관련 프로젝트 정보
+                    </SectionTitle>
+                    {project ? (
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <InfoItem>
+                                    <DescriptionIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">프로젝트명</Typography>
+                                        <Typography variant="body1">{project.projectName}</Typography>
+                                    </Box>
+                                </InfoItem>
                                 <Button
                                     variant="outlined"
                                     size="small"
-                                    sx={{ mt: 1 }}
+                                    sx={{ mt: 1, ml: 4 }}
                                     onClick={() => navigate(`/projects/${project.id}`)}
                                 >
                                     프로젝트 상세보기
                                 </Button>
-                            </Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <InfoItem>
+                                    <DescriptionIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">프로젝트 ID</Typography>
+                                        <Typography variant="body1">{project.projectIdentifier || project.id}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <InfoItem>
+                                    <EventIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">프로젝트 기간</Typography>
+                                        <Typography variant="body1">{
+                                            project.projectPeriod ?
+                                            `${moment(project.projectPeriod.startDate).format('YYYY-MM-DD')} ~
+                                            ${moment(project.projectPeriod.endDate).format('YYYY-MM-DD')}` :
+                                            '정보 없음'
+                                        }</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
                         </Grid>
-                        <Grid item xs={4}>
-                            <Typography><strong>고객사:</strong> {project.clientCompany || '정보 없음'}</Typography>
-                            <Typography><strong>계약 유형:</strong> {project.contractType || '정보 없음'}</Typography>
-                        </Grid>
-                        <Grid item xs={4}>
-                            <Typography><strong>기간:</strong> {
-                                project.projectPeriod ?
-                                `${moment(project.projectPeriod.startDate).format('YYYY-MM-DD')} ~
-                                ${moment(project.projectPeriod.endDate).format('YYYY-MM-DD')}` :
-                                '정보 없음'
-                            }</Typography>
-                            <Typography><strong>예산:</strong> {
-                                project.totalBudget ?
-                                `${project.totalBudget.toLocaleString()}원` :
-                                '정보 없음'
-                            }</Typography>
-                        </Grid>
-                    </Grid>
-                ) : (
-                    <Typography color="text.secondary">관련 프로젝트 정보가 없습니다.</Typography>
-                )}
-            </Paper>
-
-            {/* 기본 정보 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>기본 정보</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={4}>
-                        <Typography><strong>요청번호:</strong> {request.id}</Typography>
-                        <Typography><strong>사업구분:</strong> {request.businessType}</Typography>
-                        <Typography><strong>요청일:</strong> {request.requestDate ? moment(request.requestDate).format('YYYY-MM-DD') : '정보 없음'}</Typography>
-                    </Grid>
-                    <Grid item xs={4}>
-                        <Typography><strong>고객사:</strong> {request.customer || '정보 없음'}</Typography>
-                        <Typography><strong>사업부서:</strong> {request.businessDepartment || '정보 없음'}</Typography>
-                        <Typography><strong>담당자:</strong> {request.businessManager || '정보 없음'}</Typography>
-                    </Grid>
-                    <Grid item xs={4}>
-                        <Typography><strong>예산:</strong> {request.businessBudget ? `${request.businessBudget.toLocaleString()}원` : '정보 없음'}</Typography>
-                        <Typography><strong>연락처:</strong> {request.managerPhoneNumber || '정보 없음'}</Typography>
-                    </Grid>
-                </Grid>
-            </Paper>
-
-            {/* 요청자 정보 */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>요청자 정보</Typography>
-                <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                        <Typography><strong>요청자:</strong> {request.memberName || '정보 없음'}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                        <Typography><strong>소속:</strong> {request.memberCompany || '정보 없음'}</Typography>
-                    </Grid>
-                </Grid>
-            </Paper>
-
-            {/* 사업 구분별 상세 정보 */}
-            {request.businessType === 'SI' && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>SI 프로젝트 정보</Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={6}>
-                            <Typography>
-                                <strong>시작일:</strong> {request.projectStartDate ? moment(request.projectStartDate).format('YYYY-MM-DD') : '정보 없음'}
-                            </Typography>
-                            <Typography>
-                                <strong>종료일:</strong> {request.projectEndDate ? moment(request.projectEndDate).format('YYYY-MM-DD') : '정보 없음'}
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={6}>
-                            <Typography><strong>프로젝트 내용:</strong></Typography>
-                            <Typography sx={{ whiteSpace: 'pre-wrap' }}>{request.projectContent || '내용 없음'}</Typography>
-                        </Grid>
-                    </Grid>
-                </Paper>
-            )}
-
-            {request.businessType === 'MAINTENANCE' && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>유지보수 정보</Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={6}>
-                            <Typography>
-                                <strong>계약기간:</strong> {
-                                    request.contractStartDate && request.contractEndDate ?
-                                    `${moment(request.contractStartDate).format('YYYY-MM-DD')} ~ ${moment(request.contractEndDate).format('YYYY-MM-DD')}` :
-                                    '정보 없음'
-                                }
-                            </Typography>
-                            <Typography>
-                                <strong>계약금액:</strong> {request.contractAmount ? `${request.contractAmount.toLocaleString()}원` : '정보 없음'}
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={6}>
-                            <Typography><strong>계약내용:</strong></Typography>
-                            <Typography sx={{ whiteSpace: 'pre-wrap' }}>{request.contractDetails || '내용 없음'}</Typography>
-                        </Grid>
-                    </Grid>
-                </Paper>
-            )}
-
-            {/* 물품 구매 정보 (GOODS 타입일 때만 표시) */}
-            {request.businessType === 'GOODS' && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>구매 품목</Typography>
-                    {Array.isArray(request.items) && request.items.length > 0 ? (
-                        <TableContainer>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>No</TableCell>
-                                        <TableCell>품목명</TableCell>
-                                        <TableCell>사양</TableCell>
-                                        <TableCell>단위</TableCell>
-                                        <TableCell align="right">수량</TableCell>
-                                        <TableCell align="right">단가</TableCell>
-                                        <TableCell align="right">금액</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {request.items.map((item, index) => (
-                                        <TableRow key={item.id || index}>
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>{item.itemName}</TableCell>
-                                            <TableCell>{item.specification || '-'}</TableCell>
-                                            <TableCell>{item.unitChildCode || '-'}</TableCell>
-                                            <TableCell align="right">{item.quantity}</TableCell>
-                                            <TableCell align="right">
-                                                ₩{Number(item.unitPrice).toLocaleString()}
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                ₩{Number(item.totalPrice).toLocaleString()}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow>
-                                        <TableCell colSpan={6} align="right" sx={{ fontWeight: 'bold' }}>합계</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                                            ₩{request.items.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0).toLocaleString()}
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
                     ) : (
-                        <Typography variant="body2" color="text.secondary">
-                            구매 품목 정보가 없습니다.
-                        </Typography>
+                        <Alert severity="info">관련 프로젝트 정보가 없습니다.</Alert>
                     )}
-                </Paper>
-            )}
+                </CardContent>
+            </Card>
 
-            {/* 첨부 파일 */}
-            {request.attachments && request.attachments.length > 0 ? (
-                <Paper sx={{ p: 3 }}>
-                    <Typography variant="h6" gutterBottom>첨부 파일</Typography>
-                    <List>
-                        {request.attachments.map((attachment) => (
-                           <ListItem key={attachment.id}>
-                             <Link
-                               component="button"
-                               onClick={() => downloadFile(attachment)}
-                               sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                             >
-                               <AttachFileIcon sx={{ mr: 1 }} />
-                               {attachment.fileName || '파일명 없음'}
-                               <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                                 ({Math.round((attachment.fileSize || 0) / 1024)}KB)
-                               </Typography>
-                             </Link>
-                           </ListItem>
-                        ))}
-                    </List>
-                </Paper>
-            ) : (
-                <Paper sx={{ p: 3 }}>
-                    <Typography variant="h6" gutterBottom>첨부 파일</Typography>
-                    <Typography variant="body2" color="text.secondary">첨부된 파일이 없습니다.</Typography>
-                </Paper>
-            )}
-
-            {/* 하단 버튼 그룹 */}
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-                <Button
-                    variant="outlined"
-                    onClick={() => navigate('/purchase-requests')}
+            {/* 탭 패널 */}
+            <Card>
+                <Tabs
+                    value={tabValue}
+                    onChange={handleTabChange}
+                    variant="fullWidth"
+                    sx={{ borderBottom: 1, borderColor: 'divider' }}
                 >
-                    목록으로
-                </Button>
-            </Box>
+                    <Tab label="상세 정보" />
+                    <Tab label="첨부 파일"
+                        icon={request.attachments && request.attachments.length > 0 ?
+                            <Badge badgeContent={request.attachments.length} color="primary" sx={{ mr: 1 }} /> : null}
+                        iconPosition="end"
+                    />
+                </Tabs>
+
+                {/* 상세 정보 탭 */}
+                <Box role="tabpanel" hidden={tabValue !== 0} sx={{ p: 3 }}>
+                    {tabValue === 0 && (
+                        <>
+                            {/* 특이사항 */}
+                            <Box sx={{ mb: 4 }}>
+                                <SectionTitle variant="h6">
+                                    <NotesIcon />
+                                    특이 사항
+                                </SectionTitle>
+                                <Typography sx={{ pl: 4, whiteSpace: 'pre-line' }}>
+                                    {request.specialNotes || '특이 사항이 없습니다.'}
+                                </Typography>
+                            </Box>
+
+                            {/* 사업 구분별 상세 정보 */}
+                            {request.businessType === 'SI' && (
+                                <Box sx={{ mb: 4 }}>
+                                    <SectionTitle variant="h6">
+                                        <BusinessIcon />
+                                        SI 프로젝트 정보
+                                    </SectionTitle>
+                                    <Grid container spacing={2} sx={{ pl: 3 }}>
+                                        <Grid item xs={12} sm={6}>
+                                            <InfoItem>
+                                                <EventIcon />
+                                                <Box>
+                                                    <Typography variant="body2" color="text.secondary">프로젝트 기간</Typography>
+                                                    <Typography variant="body1">
+                                                        {request.projectStartDate && request.projectEndDate
+                                                        ? `${moment(request.projectStartDate).format('YYYY-MM-DD')} ~ ${moment(request.projectEndDate).format('YYYY-MM-DD')}`
+                                                        : '정보 없음'}
+                                                    </Typography>
+                                                </Box>
+                                            </InfoItem>
+                                        </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <InfoItem>
+                                                <NotesIcon />
+                                                <Box>
+                                                    <Typography variant="body2" color="text.secondary">프로젝트 내용</Typography>
+                                                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                                                        {request.projectContent || '내용 없음'}
+                                                    </Typography>
+                                                </Box>
+                                            </InfoItem>
+                                        </Grid>
+                                    </Grid>
+                                </Box>
+                            )}
+
+                            {request.businessType === 'MAINTENANCE' && (
+                                <Box sx={{ mb: 4 }}>
+                                    <SectionTitle variant="h6">
+                                        <BusinessIcon />
+                                        유지보수 정보
+                                    </SectionTitle>
+                                    <Grid container spacing={2} sx={{ pl: 3 }}>
+                                        <Grid item xs={12} sm={6}>
+                                            <InfoItem>
+                                                <EventIcon />
+                                                <Box>
+                                                    <Typography variant="body2" color="text.secondary">계약기간</Typography>
+                                                    <Typography variant="body1">
+                                                        {request.contractStartDate && request.contractEndDate
+                                                        ? `${moment(request.contractStartDate).format('YYYY-MM-DD')} ~ ${moment(request.contractEndDate).format('YYYY-MM-DD')}`
+                                                        : '정보 없음'}
+                                                    </Typography>
+                                                </Box>
+                                            </InfoItem>
+                                        </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <InfoItem>
+                                                <AccountBalanceIcon />
+                                                <Box>
+                                                    <Typography variant="body2" color="text.secondary">계약금액</Typography>
+                                                    <Typography variant="body1">
+                                                        {request.contractAmount ? `${request.contractAmount.toLocaleString()}원` : '정보 없음'}
+                                                    </Typography>
+                                                </Box>
+                                            </InfoItem>
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <InfoItem>
+                                                <NotesIcon />
+                                                <Box>
+                                                    <Typography variant="body2" color="text.secondary">계약내용</Typography>
+                                                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                                                        {request.contractDetails || '내용 없음'}
+                                                    </Typography>
+                                                </Box>
+                                            </InfoItem>
+                                        </Grid>
+                                    </Grid>
+                                </Box>
+                            )}
+
+                            {/* 물품 구매 정보 (GOODS 타입일 때만 표시) */}
+                            {request.businessType === 'GOODS' && (
+                                <Box sx={{ mb: 4 }}>
+                                    <SectionTitle variant="h6">
+                                        <DescriptionIcon />
+                                        구매 품목
+                                    </SectionTitle>
+                                    {Array.isArray(request.items) && request.items.length > 0 ? (
+                                        <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+                                            <Table>
+                                                <TableHead>
+                                                    <TableRow sx={{ backgroundColor: 'rgba(0, 0, 0, 0.04)' }}>
+                                                        <TableCell align="center">No</TableCell>
+                                                        <TableCell>품목명</TableCell>
+                                                        <TableCell>사양</TableCell>
+                                                        <TableCell align="center">단위</TableCell>
+                                                        <TableCell align="right">수량</TableCell>
+                                                        <TableCell align="right">단가</TableCell>
+                                                        <TableCell align="right">금액</TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {request.items.map((item, index) => (
+                                                        <TableRow key={item.id || index}>
+                                                            <TableCell align="center">{index + 1}</TableCell>
+                                                            <TableCell>{item.itemName}</TableCell>
+                                                            <TableCell>{item.specification || '-'}</TableCell>
+                                                            <TableCell align="center">{item.unitChildCode || '-'}</TableCell>
+                                                            <TableCell align="right">{item.quantity}</TableCell>
+                                                            <TableCell align="right">
+                                                                ₩{Number(item.unitPrice).toLocaleString()}
+                                                            </TableCell>
+                                                            <TableCell align="right">
+                                                                ₩{Number(item.totalPrice).toLocaleString()}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                    <TableRow sx={{ backgroundColor: 'rgba(0, 0, 0, 0.03)' }}>
+                                                        <TableCell colSpan={6} align="right" sx={{ fontWeight: 'bold' }}>합계</TableCell>
+                                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                                            ₩{request.items.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0).toLocaleString()}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    ) : (
+                                        <Alert severity="info" sx={{ mt: 2 }}>
+                                            구매 품목 정보가 없습니다.
+                                        </Alert>
+                                    )}
+                                </Box>
+                            )}
+                        </>
+                    )}
+                </Box>
+
+                {/* 첨부 파일 탭 */}
+                <Box role="tabpanel" hidden={tabValue !== 1} sx={{ p: 3 }}>
+                    {tabValue === 1 && (
+                        <>
+                            <SectionTitle variant="h6">
+                                <AttachFileIcon />
+                                첨부 파일
+                            </SectionTitle>
+
+                            {request.attachments && request.attachments.length > 0 ? (
+                                <List sx={{ pl: 4 }}>
+                                    {request.attachments.map((attachment) => (
+                                        <FileItem key={attachment.id} disableGutters>
+                                            <Link
+                                                component="button"
+                                                onClick={() => downloadFile(attachment)}
+                                                sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left' }}
+                                                underline="none"
+                                            >
+                                                <AttachFileIcon sx={{ mr: 1 }} />
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Typography variant="body1">{attachment.fileName || '파일명 없음'}</Typography>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        ({Math.round((attachment.fileSize || 0) / 1024)}KB)
+                                                    </Typography>
+                                                </Box>
+                                            </Link>
+                                        </FileItem>
+                                    ))}
+                                </List>
+                            ) : (
+                                <Typography color="text.secondary" sx={{ pl: 4 }}>첨부된 파일이 없습니다.</Typography>
+                            )}
+                        </>
+                    )}
+                </Box>
+            </Card>
         </Box>
     );
   };
