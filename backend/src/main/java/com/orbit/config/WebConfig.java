@@ -35,7 +35,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "http://127.0.0.1:3000",
                         "http://localhost:3000",
-                        "http://3.37.97.210"
+                        "http://13.238.47.20"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")    // 모든 헤더를 허용
