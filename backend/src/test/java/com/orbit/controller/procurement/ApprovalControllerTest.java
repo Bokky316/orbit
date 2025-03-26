@@ -3,7 +3,6 @@ package com.orbit.controller.procurement;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +34,7 @@ import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.procurement.ProjectRepository;
 import com.orbit.repository.procurement.PurchaseRequestRepository;
 import com.orbit.service.RedisService;
-import com.orbit.service.procurement.ApprovalService;
+import com.orbit.service.procurement.ApprovalLineService;
 
 /**
  * ApprovalController에 대한 통합 테스트 클래스
@@ -124,31 +123,31 @@ public class ApprovalControllerTest {
         redisService.cacheUserAuthorities(TEST_USERNAME);
 
         // 테스트 프로젝트 생성 및 저장
-        String projectId = UUID.randomUUID().toString();
-        Project project =
-                Project.builder()
-//                        .projectId(projectId)
-//                        .projectName("Test Project")
-//                        .managerName("Test Manager")
-//                        .startDate(LocalDate.now())
-//                        .endDate(LocalDate.now().plusDays(7))
-//                        .status(Project.ProjectStatus.IN_PROGRESS)
-//                        .description("Test Project Description")
-//                        .supplierStatus(SupplierStatus.PENDING)
-                        .build();
-        projectRepository.save(project);
+        // String projectId = UUID.randomUUID().toString();
+        // Project project =
+        //         Project.builder()
+        //                .projectId(projectId)
+        //                .projectName("Test Project")
+        //                .managerName("Test Manager")
+        //                .startDate(LocalDate.now())
+        //                .endDate(LocalDate.now().plusDays(7))
+        //                .status(Project.ProjectStatus.IN_PROGRESS)
+        //                .description("Test Project Description")
+        //                .supplierStatus(SupplierStatus.PENDING)
+        //                 .build();
+        // projectRepository.save(project);
 
         // 테스트 구매 요청 생성 및 저장
-        PurchaseRequest purchaseRequest = new PurchaseRequest();
-        purchaseRequest.setRequestName("Test Purchase Request"); // title -> requestName
-        purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
-        purchaseRequest.setProject(project);
-        purchaseRequest.setMember(testMember); // Requester -> Member
-//        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
-        purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
-        purchaseRequest.setRequestDate(LocalDate.now());
-        purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
-        purchaseRequestRepository.save(purchaseRequest);
+////        PurchaseRequest purchaseRequest = new PurchaseRequest();
+//        purchaseRequest.setRequestName("Test Purchase Request"); // title -> requestName
+////        purchaseRequest.setProjectContent("Test Description"); // description -> projectContent
+////        purchaseRequest.setProject(project);
+////        purchaseRequest.setMember(testMember); // Requester -> Member
+//////        purchaseRequest.setStatus("초안"); // PurchaseStatus -> String
+////        purchaseRequest.setBusinessBudget(1000L); // totalAmount -> businessBudget, Double -> Long
+////        purchaseRequest.setRequestDate(LocalDate.now());
+////        purchaseRequest.setProjectStartDate(LocalDate.now().plusDays(3)); // DeliveryDate -> ProjectStartDate
+//        purchaseRequestRepository.save(purchaseRequest);
 
         // 테스트 결재 생성 및 저장
 //        ApprovalLine approval =

@@ -11,6 +11,8 @@ function TopBar() {
   // Redux에서 사용자 정보 가져오기
   const auth = useSelector((state) => state.auth);
   const { user } = auth;
+
+  // 사용자 역할 확인
   const userRoles = auth.roles || user?.roles || [];
   const normalizedRoles = Array.isArray(userRoles)
     ? userRoles
@@ -20,12 +22,10 @@ function TopBar() {
   const isSupplier = normalizedRoles.some(
     (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
   );
-  
-  // 소카테고리 메뉴 데이터 - URL 경로에 따라 정의
-  const subCategories = {
-    "/members": [
-      { label: "사용자목록", path: "/members" },
-    ],
+
+  // 구매자/관리자용 소카테고리 메뉴 데이터
+  const buyerAdminSubCategories = {
+    "/members": [{ label: "사용자목록", path: "/members" }],
     "/supplier": [
       { label: "협력업체리스트", path: "/supplier" },
       { label: "가입승인대기리스트", path: "/supplier/approval" }
@@ -43,13 +43,12 @@ function TopBar() {
       { label: "입찰공고리스트", path: "/biddings" },
       { label: "협력사평가리스트", path: "/biddings/evaluations" }
     ],
-    "/biddings/contracts": [
-      { label: "계약리스트", path: "/biddings/contracts" }
-    ],
-    "/orders": [{ label: "발주리스트", path: "/orders/list" }],
-    "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
-    "/funds": [{ label: "자금리스트", path: "/funds/list" }],
-    "/reports": [{ label: "보고서리스트", path: "/reports/list" }],
+    "/contracts": [{ label: "계약리스트", path: "/contracts" }],
+    "/orders": [{ label: "발주리스트", path: "/orders" }],
+    "/deliveries": [{ label: "입고리스트", path: "/deliveries" }],
+    "/invoices": [{ label: "송장리스트", path: "/invoices" }],
+    "/payments": [{ label: "자금관리", path: "/payments" }],
+    "/chart": [{ label: "통계대시보드", path: "/chart" }],
     "/system": [
       { label: "공통 코드 관리", path: "/common-codes" },
       { label: "기타 설정", path: "/system/settings" }

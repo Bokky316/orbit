@@ -195,7 +195,7 @@ public BiddingEvaluationDto createEvaluation(BiddingEvaluationDto dto, Long eval
         
         return BiddingEvaluationDto.fromEntity(evaluation);
     }
-
+    
     /**
      * 낙찰자 선정
      */
@@ -285,8 +285,8 @@ public BiddingEvaluationDto createEvaluation(BiddingEvaluationDto dto, Long eval
     public List<BiddingEvaluationDto> getAllEvaluations() {
         List<BiddingEvaluation> evaluations = evaluationRepository.findAll();
         return evaluations.stream()
-            .map(BiddingEvaluationDto::fromEntity)
-            .collect(Collectors.toList());
+                .map(BiddingEvaluationDto::fromEntity)
+                .collect(Collectors.toList());
     }
 
     /**

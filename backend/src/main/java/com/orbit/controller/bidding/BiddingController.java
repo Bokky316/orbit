@@ -247,46 +247,6 @@ public class BiddingController {
                 .body(resource);
     }
 
-    // @GetMapping("/download-file")
-    // @Operation(summary = "파일 다운로드", description = "지정된 파일 다운로드")
-    // public ResponseEntity<Resource> downloadFile(
-    //     @RequestParam("filename") String filename
-    // ) {
-    //     try {
-    //         // 파일 리소스 로드
-    //         Resource resource = biddingService.loadFileAsResource(filename);
-            
-    //         // 파일명 인코딩 (한글 파일명 지원)
-    //         String encodedFilename = URLEncoder.encode(resource.getFilename(), StandardCharsets.UTF_8)
-    //             .replaceAll("\\+", "%20");
-
-    //         return ResponseEntity.ok()
-    //             .contentType(MediaType.parseMediaType(determineContentType(filename)))
-    //             .header(HttpHeaders.CONTENT_DISPOSITION, 
-    //                 "attachment; filename*=UTF-8''" + encodedFilename)
-    //             .body(resource);
-    //     } catch (Exception e) {
-    //         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-    //             .body(null);
-    //     }
-    // }
-
-    /**
-     * 파일 확장자에 따른 콘텐츠 타입 결정
-     * @param filename 파일명
-     * @return MIME 타입
-     */
-    // private String determineContentType(String filename) {
-    //     filename = filename.toLowerCase();
-    //     if (filename.endsWith(".pdf")) return MediaType.APPLICATION_PDF_VALUE;
-    //     if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return MediaType.IMAGE_JPEG_VALUE;
-    //     if (filename.endsWith(".png")) return MediaType.IMAGE_PNG_VALUE;
-    //     if (filename.endsWith(".gif")) return MediaType.IMAGE_GIF_VALUE;
-    //     if (filename.endsWith(".doc")) return "application/msword";
-    //     if (filename.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    //     return MediaType.APPLICATION_OCTET_STREAM_VALUE;
-    // }
-
     /**
      * 입찰 공고 목록 조회
      */

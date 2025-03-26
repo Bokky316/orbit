@@ -17,6 +17,7 @@ import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.NotificationRepository;
+import com.orbit.repository.member.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -263,7 +264,7 @@ public NotificationDto sendNotification(NotificationRequest request) {
                 request.getTitle());
         
         List<NotificationDto> results = new ArrayList<>();
-        
+
         if (request.getRecipientIds() != null && !request.getRecipientIds().isEmpty()) {
             for (Long recipientId : request.getRecipientIds()) {
                 NotificationRequest individualRequest = new NotificationRequest();
@@ -273,12 +274,12 @@ public NotificationDto sendNotification(NotificationRequest request) {
                 individualRequest.setContent(request.getContent());
                 individualRequest.setReferenceId(request.getReferenceId());
                 individualRequest.setPriority(request.getPriority());
-                
+
                 NotificationDto result = sendNotification(individualRequest);
                 results.add(result);
             }
         }
-        
+
         return results;
     }
 
@@ -288,10 +289,10 @@ public NotificationDto sendNotification(NotificationRequest request) {
     @Override
     public List<NotificationDto> sendNotificationsByRole(NotificationRequest request, String role) {
         log.debug("역할별 알림 발송 - 역할: {}, 제목: {}", role, request.getTitle());
-        
+
         // 역할별 회원 ID 조회 - 실제 구현 시 적절한 메서드 추가 필요
         List<Long> userIds = new ArrayList<>(); // memberRepository.findByRole(role)...
-        
+
         BulkNotificationRequest bulkRequest = new BulkNotificationRequest();
         bulkRequest.setType(request.getType());
         bulkRequest.setTitle(request.getTitle());
@@ -299,7 +300,7 @@ public NotificationDto sendNotification(NotificationRequest request) {
         bulkRequest.setReferenceId(request.getReferenceId());
         bulkRequest.setRecipientIds(userIds);
         bulkRequest.setPriority(request.getPriority());
-        
+
         return sendBulkNotifications(bulkRequest);
     }
 
@@ -311,7 +312,7 @@ public NotificationDto sendNotification(NotificationRequest request) {
         log.debug("구매자 역할 알림 발송 - 제목: {}", request.getTitle());
         return sendNotificationsByRole(request, "BUYER");
     }
-    
+
     /**
      * Notification 엔티티를 DTO로 변환
      */

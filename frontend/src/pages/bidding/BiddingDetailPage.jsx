@@ -132,6 +132,8 @@ function BiddingDetailPage() {
     participationId: null,
     supplierName: ""
   });
+
+  // 상태 변경 다이얼로그 상태
   const [statusChangeDialog, setStatusChangeDialog] = useState({
     open: false,
     newStatus: "",
@@ -339,11 +341,13 @@ function BiddingDetailPage() {
   const fetchSuppliers = async (biddingId) => {
     try {
       const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/suppliers`
+        `${API_URL}biddings/${biddingId}/invited-suppliers`
       );
       if (response.ok) {
         const data = await response.json();
         setSuppliers(data);
+      } else {
+        console.error("공급사 목록 응답 오류:", response.status);
       }
 
       // 응답을 텍스트로 가져오기
@@ -418,6 +422,20 @@ function BiddingDetailPage() {
     }
   };
 
+  const fetchStatusHistory = async (biddingId) => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}biddings/${biddingId}/status-history`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setStatusHistories(data);
+      }
+    } catch (error) {
+      console.error("상태 변경 이력 로딩 실패:", error);
+    }
+  };
+
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     if (id) {
@@ -474,6 +492,30 @@ function BiddingDetailPage() {
       navigate("/biddings");
     } catch (error) {
       console.error("입찰 마감 중 오류:", error);
+      alert(`오류 발생: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 입찰 삭제 핸들러
+  const handleDeleteBidding = async () => {
+    try {
+      setIsLoading(true);
+      setDeleteConfirmOpen(false);
+
+      const response = await fetchWithAuth(`${API_URL}biddings/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("입찰 공고 삭제에 실패했습니다.");
+      }
+
+      alert("입찰 공고가 성공적으로 삭제되었습니다.");
+      navigate("/biddings");
+    } catch (error) {
+      console.error("입찰 공고 삭제 중 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsLoading(false);

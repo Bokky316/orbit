@@ -69,14 +69,6 @@ public class BiddingParticipationDto {
                 .selectedAt(entity.getSelectedAt())
                 .confirmedAt(entity.getConfirmedAt())
                 .build();
-        
-        // 추가 속성 설정
-        participation.setConfirmed(this.confirmed);
-        participation.setConfirmedAt(this.confirmedAt);
-        participation.setEvaluated(this.evaluated);
-        participation.setEvaluationScore(this.evaluationScore);
-        
-        return participation;
     }
     
     public BiddingParticipation toEntity() {

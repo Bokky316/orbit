@@ -9,7 +9,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.procurement.Project;
 
 /**
@@ -43,23 +42,4 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // 기존 메소드
     List<Project> findByProjectPeriodStartDateAndBasicStatusChildCodeValueNot(LocalDate startDate, String statusValue);
     List<Project> findByProjectPeriodEndDateAndBasicStatusChildCodeValueNot(LocalDate endDate, String statusValue);
-
-    // 추가 메소드
-    /**
-     * 시작일이 지정된 날짜이고, 상태가 지정된 상태 코드 목록에 포함되는 프로젝트를 조회합니다.
-     *
-     * @param startDate 시작일
-     * @param childCodes 상태 코드 목록
-     * @return 조회된 프로젝트 목록
-     */
-    List<Project> findByProjectPeriodStartDateAndBasicStatusChildIn(LocalDate startDate, List<ChildCode> childCodes);
-
-    /**
-     * 종료일이 지정된 날짜이고, 상태가 지정된 상태 코드인 프로젝트를 조회합니다.
-     *
-     * @param endDate 종료일
-     * @param childCode 상태 코드
-     * @return 조회된 프로젝트 목록
-     */
-    List<Project> findByProjectPeriodEndDateAndBasicStatusChild(LocalDate endDate, ChildCode childCode);
 }
