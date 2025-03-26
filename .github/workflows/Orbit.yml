@@ -1,0 +1,19 @@
+name: Test SSH Connection Only  # GitHub Actions 워크플로우 이름
+
+on:
+  push:
+    branches:
+      - main  # main 브랜치에 push될 때 실행
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest  # GitHub Actions가 실행될 환경 지정
+    steps:
+      - name: Test Basic SSH Connection  # SSH 연결 테스트 단계
+        uses: appleboy/ssh-action@v0.1.4  # SSH 연결을 위한 GitHub Action 사용
+        with:
+          host: ${{ secrets.EC2_HOST }}  # EC2 인스턴스의 호스트 주소 (GitHub Secrets에서 가져옴)
+          username: ${{ secrets.EC2_USER }}  # SSH 접속할 EC2 사용자명
+          key: ${{ secrets.EC2_SSH_KEY }}  # SSH 접속을 위한 개인키
+          script: echo "✅ GitHub Actions에서 EC2 SSH 연결 성공!"  # EC2에서 실행할 명령어 (SSH 연결 확인 메시지 출력)
+          ssh_options: "-o StrictHostKeyChecking=no"  # 호스트 키 확인을 건너뛰어 SSH 접속이 원활하게 이루어지도록 설정
