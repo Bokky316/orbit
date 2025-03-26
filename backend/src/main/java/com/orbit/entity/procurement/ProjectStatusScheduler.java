@@ -33,22 +33,26 @@ public class ProjectStatusScheduler {
 
         log.info("프로젝트 상태 자동 업데이트 스케줄러 실행: {}", today);
 
-        // 1. 시작일이 오늘인 프로젝트를 '진행중' 상태로 변경
+        // 1. 시작일이 오늘인 프로젝트를 '진행중' 상태로 변경 (등록 상태인 프로젝트만)
         updateProjectsToInProgress(today);
 
-        // 2. 종료일이 오늘인 프로젝트를 '완료' 상태로 변경
-        updateProjectsToCompleted(today);
+        // 2. 종료일이 어제인 프로젝트를 '완료' 상태로 변경 (진행중 상태인 프로젝트만)
+        updateProjectsToCompleted(today.minusDays(1));
     }
 
     private void updateProjectsToInProgress(LocalDate today) {
         ParentCode basicStatusParent = getParentCode("PROJECT", "BASIC_STATUS");
+        ChildCode registeredStatus = getChildCode(basicStatusParent, "REGISTERED");
+        ChildCode reregisteredStatus = getChildCode(basicStatusParent, "REREGISTERED");
         ChildCode inProgressStatus = getChildCode(basicStatusParent, "IN_PROGRESS");
 
-        List<Project> projectsToStart = projectRepository.findByProjectPeriodStartDateAndBasicStatusChildCodeValueNot(
-                today, "IN_PROGRESS");
+        // 등록 또는 정정등록 상태이면서 시작일이 오늘인 프로젝트만 진행중으로 변경
+        List<Project> projectsToStart = projectRepository.findByProjectPeriodStartDateAndBasicStatusChildIn(
+                today, List.of(registeredStatus, reregisteredStatus));
 
         for (Project project : projectsToStart) {
-            log.info("프로젝트 상태 변경 (진행중): ID={}, 이름={}", project.getId(), project.getProjectName());
+            log.info("프로젝트 상태 변경 (등록/정정등록 -> 진행중): ID={}, 이름={}, 기존 상태={}",
+                    project.getId(), project.getProjectName(), project.getBasicStatusChild().getCodeValue());
             project.setBasicStatusChild(inProgressStatus);
         }
 
@@ -56,15 +60,18 @@ public class ProjectStatusScheduler {
         log.info("{} 개의 프로젝트가 '진행중' 상태로 변경되었습니다.", projectsToStart.size());
     }
 
-    private void updateProjectsToCompleted(LocalDate today) {
+    private void updateProjectsToCompleted(LocalDate endDate) {
         ParentCode basicStatusParent = getParentCode("PROJECT", "BASIC_STATUS");
+        ChildCode inProgressStatus = getChildCode(basicStatusParent, "IN_PROGRESS");
         ChildCode completedStatus = getChildCode(basicStatusParent, "COMPLETED");
 
-        List<Project> projectsToComplete = projectRepository.findByProjectPeriodEndDateAndBasicStatusChildCodeValueNot(
-                today, "COMPLETED");
+        // 진행중 상태이면서 종료일이 어제인 프로젝트만 완료로 변경
+        List<Project> projectsToComplete = projectRepository.findByProjectPeriodEndDateAndBasicStatusChild(
+                endDate, inProgressStatus);
 
         for (Project project : projectsToComplete) {
-            log.info("프로젝트 상태 변경 (완료): ID={}, 이름={}", project.getId(), project.getProjectName());
+            log.info("프로젝트 상태 변경 (진행중 -> 완료): ID={}, 이름={}, 종료일={}",
+                    project.getId(), project.getProjectName(), endDate);
             project.setBasicStatusChild(completedStatus);
         }
 
