@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.orbit.entity.bidding.BiddingEvaluation;
 import com.orbit.entity.bidding.BiddingParticipation;
 
 public interface BiddingParticipationRepository extends JpaRepository<BiddingParticipation, Long> {
@@ -26,6 +27,8 @@ public interface BiddingParticipationRepository extends JpaRepository<BiddingPar
      * 특정 입찰과 공급사의 중복 참여 확인
      */
     boolean existsByBiddingIdAndSupplierId(Long biddingId, Long supplierId);
+
+    Optional<BiddingEvaluation> findByBiddingParticipationIdAndEvaluatorId(Long participationId, Long evaluatorId);
     
     /**
      * 특정 입찰에서 가장 낮은 가격을 제시한 참여 조회

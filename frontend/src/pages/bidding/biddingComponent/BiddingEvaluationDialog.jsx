@@ -124,13 +124,17 @@ function BiddingEvaluationDialog({
         qualityScore: scores[2] || 0,
         deliveryScore: scores[3] || 0,
         reliabilityScore: scores[4] || 0,
-
         comment: comments
       };
 
-      // 직접 평가 데이터 저장 API 호출
-      const response = await fetchWithAuth(`${API_URL}bidding-evaluations`, {
-        method: existingEvaluation ? "PUT" : "POST",
+      const url = existingEvaluation
+        ? `${API_URL}bidding-evaluations/${existingEvaluation.id}`
+        : `${API_URL}bidding-evaluations`;
+
+      const method = existingEvaluation ? "PUT" : "POST";
+
+      const response = await fetchWithAuth(url, {
+        method,
         headers: {
           "Content-Type": "application/json"
         },
@@ -172,7 +176,6 @@ function BiddingEvaluationDialog({
         </Alert>
       );
 
-      // 2초 후 자동 닫기
       setTimeout(handleClose, 2000);
     } catch (error) {
       console.error("평가 저장 중 오류:", error);
@@ -202,7 +205,7 @@ function BiddingEvaluationDialog({
   };
 
   const isFormComplete = () => {
-    return criteria.every((criterion) => (scores[criterion.id] || 0) > 0);
+    return EVALUATION_CRITERIA.every((c) => scores[c.id] > 0);
   };
 
   return (
@@ -302,7 +305,7 @@ function BiddingEvaluationDialog({
                 <Typography variant="subtitle1">
                   총점: {(calculateWeightedScore() * 100).toFixed(1)}
                 </Typography>
-                {calculateWeightedScore() > 0 && (
+                {/* {calculateWeightedScore() > 0 && (
                   <Chip
                     label={
                       getScoreGrade(calculateWeightedScore() * 100).grade +
@@ -310,7 +313,7 @@ function BiddingEvaluationDialog({
                     }
                     color={getScoreGrade(calculateWeightedScore() * 100).color}
                   />
-                )}
+                )} */}
               </Box>
             </Grid>
           </Grid>

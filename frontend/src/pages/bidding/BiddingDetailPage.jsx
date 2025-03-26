@@ -74,6 +74,8 @@ function BiddingDetailPage() {
   const [bidding, setBidding] = useState(null);
   const [participations, setParticipations] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [contractModalOpen, setContractModalOpen] = useState(false);
+  const [isWinnerConfirmOpen, setIsWinnerConfirmOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
@@ -121,9 +123,7 @@ function BiddingDetailPage() {
 
   // 모달 상태
   const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
-  const [isWinnerConfirmOpen, setIsWinnerConfirmOpen] = useState(false);
   const [selectedParticipation, setSelectedParticipation] = useState(null);
-  const [contractModalOpen, setContractModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // 평가 다이얼로그 상태
@@ -205,35 +205,52 @@ function BiddingDetailPage() {
   const fetchBiddingDetails = async () => {
     try {
       setIsLoading(true);
-      const response = await fetchWithAuth(`${API_URL}biddings/${id}`);
-
-      if (!response.ok) {
-        throw new Error("입찰 공고 정보를 불러오는 데 실패했습니다.");
-      }
-
-      const data = await response.json();
-      console.log("서버에서 받은 bidding 데이터:", data);
-      console.log("현재 status 값:", data.status);
-
+      const res = await fetchWithAuth(`${API_URL}biddings/${id}`);
+      if (!res.ok) throw new Error("입찰 정보 조회 실패");
+      const data = await res.json();
       setBidding(data);
-
-      // 참여 목록, 공급사 목록 등 추가 데이터 패치
       await Promise.all([
         fetchParticipations(id),
         fetchSuppliers(id),
         fetchStatusHistory(id)
       ]);
-    } catch (error) {
-      setError(error.message);
-      console.error("입찰 공고 상세 정보 로딩 실패:", error);
+    } catch (e) {
+      setError(e.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 3. getStatusText 함수 오버라이드 (기존 함수에 문제가 있을 경우)
-  // helpers/commonBiddingHelpers.js에 있는 함수를 수정하기 어렵다면
-  // 컴포넌트 내에 새 함수를 추가합니다.
+  const fetchParticipations = async (biddingId) => {
+    const res = await fetchWithAuth(
+      `${API_URL}biddings/${biddingId}/participations`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      setParticipations(data);
+    }
+  };
+
+  const fetchSuppliers = async (biddingId) => {
+    const res = await fetchWithAuth(
+      `${API_URL}biddings/${biddingId}/invited-suppliers`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      setSuppliers(data);
+    }
+  };
+
+  const fetchStatusHistory = async (biddingId) => {
+    const res = await fetchWithAuth(
+      `${API_URL}biddings/${biddingId}/status-history`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      setStatusHistories(data);
+    }
+  };
+
   const getStatusDisplayText = (status) => {
     if (!status) return "알 수 없음";
 
@@ -264,55 +281,9 @@ function BiddingDetailPage() {
     }
   };
 
-  const fetchParticipations = async (biddingId) => {
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/participations`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setParticipations(data);
-      }
-    } catch (error) {
-      console.error("참여 목록 로딩 실패:", error);
-    }
-  };
-
-  const fetchSuppliers = async (biddingId) => {
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/invited-suppliers`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSuppliers(data);
-      } else {
-        console.error("공급사 목록 응답 오류:", response.status);
-      }
-    } catch (error) {
-      console.error("공급사 목록 로딩 실패:", error);
-    }
-  };
-
-  const fetchStatusHistory = async (biddingId) => {
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/status-history`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setStatusHistories(data);
-      }
-    } catch (error) {
-      console.error("상태 변경 이력 로딩 실패:", error);
-    }
-  };
-
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
-    if (id) {
-      fetchBiddingDetails();
-    }
+    if (id) fetchBiddingDetails();
   }, [id]);
 
   // 입찰 마감 핸들러
@@ -396,98 +367,64 @@ function BiddingDetailPage() {
     }
   };
 
-  // 낙찰자 선정 핸들러
+  // 평가 완료 후 참여자 업데이트
+  const handleEvaluationComplete = async (savedEvaluation) => {
+    const pid = savedEvaluation.biddingParticipationId;
+
+    setParticipations((prev) =>
+      prev.map((p) =>
+        p.id === pid
+          ? {
+              ...p,
+              isEvaluated: true,
+              evaluationScore:
+                savedEvaluation.totalScore ??
+                savedEvaluation.evaluationScore ??
+                0
+            }
+          : p
+      )
+    );
+
+    await fetchParticipations(bidding.id);
+
+    console.log("평가 완료됨:", savedEvaluation);
+  };
+
   const handleSelectWinner = async () => {
-    if (!selectedParticipation) return;
-
     try {
-      setIsLoading(true);
-      setIsWinnerConfirmOpen(false);
-
-      const response = await fetchWithAuth(
-        `${API_URL}/evaluations/${id}/select-winner`,
+      const res = await fetchWithAuth(
+        `${API_URL}bidding-evaluations/winner/${bidding.id}`,
         {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ participationId: selectedParticipation.id })
+          method: "PUT"
         }
       );
-
-      if (!response.ok) {
-        throw new Error("낙찰자 선정에 실패했습니다.");
-      }
-
-      // 상태 새로고침
-      fetchBiddingDetails();
-      alert("낙찰자가 성공적으로 선정되었습니다.");
-    } catch (error) {
-      console.error("낙찰자 선정 중 오류:", error);
-      alert(`오류가 발생했습니다: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-      setSelectedParticipation(null);
+      if (!res.ok) throw new Error("낙찰자 지정 실패");
+      await fetchBiddingDetails();
+      setIsWinnerConfirmOpen(false);
+      alert("낙찰자가 지정되었습니다.");
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
     }
   };
 
-  // 평가 완료 핸들러
-  const handleEvaluationComplete = async (evaluation) => {
-    try {
-      // API 호출을 통한 평가 저장(직접 API 호출은 BiddingEvaluationDialog에서 처리)
-
-      // 참여 목록 다시 가져오기
-      await fetchParticipations(id);
-
-      // 성공 메시지
-      console.log("평가가 성공적으로 저장되었습니다:", evaluation);
-
-      // 평가 결과 반환 (중요: Promise를 반환하도록 함)
-      return evaluation;
-    } catch (error) {
-      console.error("평가 처리 중 오류:", error);
-      // 오류를 다시 throw하여 다이얼로그에서 처리하도록 함
-      throw error;
-    }
-  };
-
-  // 계약 초안 생성 핸들러
   const handleCreateContract = async () => {
-    if (!bidding || !selectedParticipation) return;
-
     try {
-      setIsLoading(true);
-      setContractModalOpen(false);
-
-      const response = await fetchWithAuth(`${API_URL}/contracts/draft`, {
+      const res = await fetchWithAuth(`${API_URL}/contracts/draft`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           biddingId: Number(id),
           participationId: selectedParticipation.id
         })
       });
-
-      if (!response.ok) {
-        throw new Error("계약 초안 생성에 실패했습니다.");
-      }
-
-      const data = await response.json();
-
-      // 상태 새로고침
-      fetchBiddingDetails();
-      alert("계약 초안이 성공적으로 생성되었습니다.");
-
-      // 계약 페이지로 이동
+      if (!res.ok) throw new Error("계약 생성 실패");
+      const data = await res.json();
       navigate(`/contracts/${data.id}`);
-    } catch (error) {
-      console.error("계약 초안 생성 중 오류:", error);
-      alert(`오류가 발생했습니다: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-      setSelectedParticipation(null);
+      setContractModalOpen(false);
+    } catch (e) {
+      alert(e.message);
     }
   };
 
@@ -560,31 +497,35 @@ function BiddingDetailPage() {
     return statusCode === BiddingStatus.CLOSED;
   }, [bidding, user]);
 
-  const canSelectWinner = useMemo(() => {
-    if (!bidding || !user) return false;
-    if (bidding.status?.childCode !== BiddingStatus.CLOSED) return false;
-
-    const hasWinner = participations.some((p) => p.isSelectedBidder);
-    const allEvaluated =
-      participations.length > 0 && participations.every((p) => p.isEvaluated);
-
-    return !hasWinner && allEvaluated && permission.canSelectWinner(bidding);
-  }, [bidding, user, participations, permission]);
+  const hasWinner = useMemo(
+    () => participations.some((p) => p.isSelectedBidder),
+    [participations]
+  );
+  const allEvaluated = useMemo(
+    () =>
+      participations.length > 0 && participations.every((p) => p.isEvaluated),
+    [participations]
+  );
 
   const canCreateContract = useMemo(() => {
-    if (!bidding || !user) return false;
-    if (bidding.status?.childCode !== BiddingStatus.CLOSED) return false;
-
-    // 낙찰자가 있는지 확인
+    if (!bidding || !isClosed) return false;
     const selectedBidder = participations.find((p) => p.isSelectedBidder);
-    if (!selectedBidder) return false;
-
-    // 이미 계약이 있는지 확인
     const hasContract = bidding.contracts && bidding.contracts.length > 0;
-    if (hasContract) return false;
+    return (
+      selectedBidder &&
+      !hasContract &&
+      permission.canCreateContractDraft(bidding)
+    );
+  }, [bidding, participations, isClosed, permission]);
 
-    return permission.canCreateContractDraft(bidding);
-  }, [bidding, user, participations, permission]);
+  const canSelectWinner = useMemo(() => {
+    return (
+      bidding?.status?.childCode === BiddingStatus.CLOSED &&
+      participations.length > 0 &&
+      participations.every((p) => p.isEvaluated) &&
+      !participations.some((p) => p.isSelectedBidder)
+    );
+  }, [bidding, participations]);
 
   // 로딩 및 에러 상태 처리
   if (isLoading) {
@@ -894,7 +835,6 @@ function BiddingDetailPage() {
             <ParticipationList
               participations={participations}
               bidding={bidding}
-              userRole={user?.role}
               isClosed={isClosed}
               canEvaluateEach={canEvaluateEachParticipation}
               canSelectWinner={canSelectWinner}
@@ -1053,51 +993,48 @@ function BiddingDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* 낙찰자 선정 확인 모달 */}
+
+      {/* 낙찰자 지정 모달 */}
       <Dialog
         open={isWinnerConfirmOpen}
         onClose={() => setIsWinnerConfirmOpen(false)}>
-        <DialogTitle>낙찰자 선정 확인</DialogTitle>
+        <DialogTitle>낙찰자 지정 확인</DialogTitle>
         <DialogContent>
-          <Typography variant="body1">
-            {selectedParticipation?.companyName}을(를) 낙찰자로
-            선정하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            <strong>{selectedParticipation?.companyName}</strong> 를(을)
+            낙찰자로 지정하시겠습니까?
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsWinnerConfirmOpen(false)}>취소</Button>
           <Button
-            onClick={handleSelectWinner}
             variant="contained"
-            color="primary">
-            낙찰자 선정
+            color="warning"
+            onClick={handleSelectWinner}>
+            낙찰자로 지정
           </Button>
         </DialogActions>
       </Dialog>
+
       {/* 계약 생성 모달 */}
       <Dialog
         open={contractModalOpen}
         onClose={() => setContractModalOpen(false)}>
         <DialogTitle>계약 초안 생성</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            {selectedParticipation?.companyName}와(과)의 계약 초안을
+          <Typography>
+            {selectedParticipation?.companyName}와의 계약 초안을
             생성하시겠습니까?
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            계약 금액: {formatNumber(selectedParticipation?.totalAmount || 0)}원
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setContractModalOpen(false)}>취소</Button>
-          <Button
-            onClick={handleCreateContract}
-            variant="contained"
-            color="primary">
-            계약 초안 생성
+          <Button variant="contained" onClick={handleCreateContract}>
+            생성
           </Button>
         </DialogActions>
       </Dialog>
+
       {/* 공급자 평가 다이얼로그 */}
       <BiddingEvaluationDialog
         open={evaluationDialogState.open}

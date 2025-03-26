@@ -513,62 +513,70 @@ function BiddingListPage() {
               </TableHead>
               <TableBody>
                 {filteredBiddings.length > 0 ? (
-                  filteredBiddings.map((item) => (
-                    <TableRow key={item.id} hover>
-                      <TableCell>{item.purchaseRequestId || "-"}</TableCell>
-                      <TableCell>{item.bidNumber}</TableCell>
-                      <TableCell>
-                        <Typography
-                          component="a"
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleViewDetail(item.id);
-                          }}
-                          sx={{
-                            textDecoration: "none",
-                            color: "primary.main",
-                            fontWeight: "medium",
-                            "&:hover": {
-                              textDecoration: "underline"
+                  filteredBiddings.map((item) => {
+                    const statusCode =
+                      typeof item.status === "object"
+                        ? item.status.childCode
+                        : item.status;
+                    return (
+                      <TableRow key={item.id} hover>
+                        <TableCell>{item.purchaseRequestId || "-"}</TableCell>
+                        <TableCell>{item.bidNumber}</TableCell>
+                        <TableCell>
+                          <Typography
+                            component="a"
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleViewDetail(item.id);
+                            }}
+                            sx={{
+                              textDecoration: "none",
+                              color: "primary.main",
+                              fontWeight: "medium",
+                              "&:hover": {
+                                textDecoration: "underline"
+                              }
+                            }}>
+                            {item.title}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {item.biddingPeriod?.startDate
+                            ? moment(item.biddingPeriod.startDate).format(
+                                "YY-MM-DD"
+                              )
+                            : "-"}{" "}
+                          ~{" "}
+                          {item.biddingPeriod?.endDate
+                            ? moment(item.biddingPeriod.endDate).format(
+                                "YY-MM-DD"
+                              )
+                            : "-"}
+                        </TableCell>
+
+                        <TableCell>
+                          {getBidMethodText(item.bidMethod)}
+                        </TableCell>
+
+                        <TableCell>
+                          <Chip
+                            label={getStatusText(item.status)}
+                            color={
+                              statusCode === "ONGOING"
+                                ? "primary"
+                                : statusCode === "CLOSED"
+                                ? "success"
+                                : statusCode === "CANCELED"
+                                ? "error"
+                                : "default"
                             }
-                          }}>
-                          {item.title}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        {item.biddingPeriod?.startDate
-                          ? moment(item.biddingPeriod.startDate).format(
-                              "YY-MM-DD"
-                            )
-                          : "-"}{" "}
-                        ~{" "}
-                        {item.biddingPeriod?.endDate
-                          ? moment(item.biddingPeriod.endDate).format(
-                              "YY-MM-DD"
-                            )
-                          : "-"}
-                      </TableCell>
-
-                      <TableCell>{getBidMethodText(item.bidMethod)}</TableCell>
-
-                      <TableCell>
-                        <Chip
-                          label={getStatusText(item.status)}
-                          color={
-                            item.status?.childCode === "ONGOING"
-                              ? "primary"
-                              : item.status?.childCode === "CLOSED"
-                              ? "success"
-                              : item.status?.childCode === "CANCELED"
-                              ? "error"
-                              : "default"
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
+                            size="small"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={9} align="center">

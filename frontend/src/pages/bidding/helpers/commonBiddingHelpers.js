@@ -35,11 +35,15 @@ export const INITIAL_FORM_DATA = {
 
 export const getStatusText = (status) => {
   const statusMap = {
-    [BiddingStatus.PENDING]: "대기중",
-    [BiddingStatus.ONGOING]: "진행중",
-    [BiddingStatus.CLOSED]: "마감",
-    [BiddingStatus.CANCELED]: "취소"
+    PENDING: "대기중",
+    ONGOING: "진행중",
+    CLOSED: "마감",
+    CANCELED: "취소"
   };
+
+  if (typeof status === "string") {
+    return statusMap[status] || "대기중";
+  }
 
   return status?.childCode ? statusMap[status.childCode] : "대기중";
 };

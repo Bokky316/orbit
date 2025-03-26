@@ -1194,7 +1194,6 @@ function BiddingFormPage() {
                 label="입찰 조건"
                 name="biddingConditions"
                 multiline
-                variant="filled"
                 minRows={4}
                 maxRows={8}
                 value={formData.biddingConditions}
@@ -1213,7 +1212,6 @@ function BiddingFormPage() {
                 label="비고 (내부용)"
                 name="internalNote"
                 multiline
-                variant="filled"
                 minRows={4}
                 maxRows={8}
                 value={formData.internalNote}

@@ -149,9 +149,13 @@ public BiddingEvaluationDto createEvaluation(BiddingEvaluationDto dto, Long eval
 
         // 총점 자동 계산
         evaluation.calculateTotalScore();
-
         evaluation = evaluationRepository.save(evaluation);
-
+    
+        // 참여자 상태 업데이트
+        participation.setIsEvaluated(true);
+        participation.setEvaluationScore(evaluation.getTotalScore());
+        participationRepository.save(participation);
+    
         return BiddingEvaluationDto.fromEntity(evaluation);
      }
 
