@@ -2,7 +2,6 @@ package com.orbit.service.bidding;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -55,8 +54,8 @@ public class BiddingOrderService {
     public List<BiddingOrderDto> getAllBiddingOrders() {
         List<BiddingOrder> orders = orderRepository.findAll();
         return orders.stream()
-                    .map(this::convertToDto)
-                    .collect(Collectors.toList());
+                .map(BiddingOrderDto::fromEntity)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -84,6 +83,7 @@ public class BiddingOrderService {
     /**
      * 발주 상세 조회
      */
+    @Transactional(readOnly = true)
     public BiddingOrderDto getOrderById(Long id) {
         BiddingOrder order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + id));
@@ -181,7 +181,7 @@ public class BiddingOrderService {
     }
 
     /**
-     * 발주 취소
+     * 발주 승인
      */
     @Transactional
     public BiddingOrderDto approveOrder(Long orderId, Member currentMember) {
@@ -437,50 +437,5 @@ public class BiddingOrderService {
         log.info("발주 상태 변경 완료 - 발주 ID: {}, 상태: {}", savedOrder.getId(), newStatus);
         
         return BiddingOrderDto.fromEntity(savedOrder);
-    }
-
-    @Transactional(readOnly = true)
-    public List<BiddingOrderDto> getAvailableBiddingOrderIds() {
-        // 승인된 발주 목록 조회
-        List<BiddingOrder> approvedOrders = biddingOrderRepository.findByApprovedAtIsNotNull();
-
-        // 입고된 발주 ID 목록 조회
-        List<Long> receivedOrderIds = deliveryRepository.findAll().stream()
-                .map(delivery -> delivery.getBiddingOrder().getId())
-                .collect(Collectors.toList());
-
-        // 승인되었지만 입고되지 않은 발주 필터링
-        List<BiddingOrderDto> availableOrders = approvedOrders.stream()
-                .filter(order -> !receivedOrderIds.contains(order.getId()))
-                .map(BiddingOrderDto::fromEntity)
-                .collect(Collectors.toList());
-
-        return availableOrders;
-    }
-
-
-    @Transactional(readOnly = true)
-    public BiddingOrderDto getBiddingOrderDetail(Long biddingOrderId) {
-        BiddingOrder order = biddingOrderRepository.findById(biddingOrderId)
-                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + biddingOrderId));
-
-        return BiddingOrderDto.fromEntity(order);
-    }
-
-    public List<MonthlyOrderStatisticsDto> getMonthlyOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
-        List<Object[]> results = biddingOrderRepository.findMonthlyOrderStatistics(startDate, endDate);
-
-        return results.stream()
-                .map(row -> MonthlyOrderStatisticsDto.builder()
-                        .yearMonth((String) row[0])
-                        .orderCount(((Number) row[1]).longValue())
-                        .totalAmount(((Number) row[2]).doubleValue())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<Object[]> getSupplierOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
-        return biddingOrderRepository.findSupplierOrderStatistics(startDate, endDate);
     }
 }

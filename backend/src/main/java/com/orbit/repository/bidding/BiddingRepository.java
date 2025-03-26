@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +16,18 @@ import com.orbit.entity.commonCode.ChildCode;
 import com.orbit.entity.commonCode.StatusHistory;
 
 public interface BiddingRepository extends JpaRepository<Bidding, Long> {
+
+        @Query("SELECT b FROM Bidding b " +
+       "LEFT JOIN FETCH b.purchaseRequest pr " +
+       "LEFT JOIN FETCH b.purchaseRequestItem pri " +
+       "LEFT JOIN FETCH pri.item i " +
+       "LEFT JOIN FETCH b.suppliers s " +
+       "LEFT JOIN FETCH s.supplier " +
+       "WHERE b.id = :id")
+Optional<Bidding> findFullById(@Param("id") Long id);
+
+
+
 
     /**
      * 상태와 날짜 범위로 입찰 공고 필터링
@@ -129,8 +142,8 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
         List<Bidding> findBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
 
         // 특정 공급사가 낙찰받은 입찰 공고 개수 조회
-        @Query("SELECT COUNT(DISTINCT b) FROM Bidding b JOIN b.evaluations e JOIN e.participation p WHERE e.isSelectedBidder = true AND p.supplierId = :supplierId")
-        long countBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
+        @Query("SELECT COUNT(b) FROM Bidding b JOIN b.participations p WHERE p.supplierId = :supplierId AND b.statusChild.codeValue = 'WON'")
+long countBiddingsWonBySupplier(@Param("supplierId") Long supplierId);
 
     // 특정 공급사가 최근에 초대받은 입찰 공고 목록 조회 (최신순, 제한 개수)
     @Query("SELECT b FROM Bidding b " +
@@ -153,5 +166,17 @@ List<Bidding> findBiddingsInvitedSupplierWithDeadlineBetween(
         @Param("startDate") LocalDate startDate, 
         @Param("endDate") LocalDate endDate,    
         Pageable pageable);
+
+
+        @Query("SELECT b FROM Bidding b JOIN BiddingParticipation p ON b.id = p.bidding.id " +
+       "WHERE p.supplierId = :supplierId ORDER BY p.submittedAt DESC")
+List<Bidding> findRecentParticipatedBySupplier(@Param("supplierId") Long supplierId, Pageable pageable);
+
+default List<Bidding> findRecentParticipatedBySupplier(Long supplierId, int limit) {
+    return findRecentParticipatedBySupplier(supplierId, PageRequest.of(0, limit));
+}
+
+@Query("SELECT b FROM Bidding b JOIN b.participations p WHERE p.supplierId = :supplierId ORDER BY b.regTime DESC")
+List<Bidding> findRecentBiddingsBySupplier(@Param("supplierId") Long supplierId, Pageable pageable);
 
 }

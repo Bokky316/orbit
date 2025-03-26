@@ -1,7 +1,10 @@
 package com.orbit.controller.bidding;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,21 +41,52 @@ public class SupplierBiddingController {
     /**
      * 대시보드 요약 정보 조회
      */
-    // @GetMapping("/dashboard")
-    // public ResponseEntity<Map<String, Object>> getDashboardSummary(
-    //     @AuthenticationPrincipal UserDetails userDetails
-    // ) {
-    //     log.info("공급사 대시보드 요약 정보 조회 요청");
-        
-    //     try {
-    //         Member supplier = getUserFromUserDetails(userDetails);
-    //         Map<String, Object> dashboard = supplierBiddingService.getSupplierDashboardSummary(supplier.getId());
-    //         return ResponseEntity.ok(dashboard);
-    //     } catch (Exception e) {
-    //         log.error("대시보드 정보 조회 실패: {}", e.getMessage());
-    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    //     }
-    // }
+    @GetMapping("/bidding-summary")
+    public ResponseEntity<Map<String, Object>> getDashboardSummary(
+        @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        try {
+            Member supplier = getUserFromUserDetails(userDetails);
+            Map<String, Object> dashboard = supplierBiddingService.getSupplierDashboardSummary(supplier.getId());
+            return ResponseEntity.ok(dashboard);
+        } catch (Exception e) {
+            log.error("입찰 요약 정보 조회 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/recent-biddings")
+    public ResponseEntity<List<BiddingDto>> getRecentBiddings(
+        @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        try {
+            Member supplier = getUserFromUserDetails(userDetails);
+            List<BiddingDto> recent = supplierBiddingService.getRecentBiddings(supplier.getId());
+            
+            // 최신 날짜순으로 정렬
+            sortBiddingsByDateDesc(recent);
+            
+            return ResponseEntity.ok(recent);
+        } catch (Exception e) {
+            log.error("최근 입찰 공고 조회 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/performance-metrics")
+    public ResponseEntity<Map<String, Object>> getPerformanceMetrics(
+        @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        try {
+            Member supplier = getUserFromUserDetails(userDetails);
+            Map<String, Object> metrics = supplierBiddingService.getSupplierPerformanceMetrics(supplier.getId());
+            return ResponseEntity.ok(metrics);
+        } catch (Exception e) {
+            log.error("성과 지표 조회 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     
     /**
      * 초대받은 입찰 공고 목록 조회
@@ -66,6 +100,10 @@ public class SupplierBiddingController {
         try {
             Member supplier = getUserFromUserDetails(userDetails);
             List<BiddingDto> invitedBiddings = supplierBiddingService.getInvitedBiddings(supplier.getId());
+            
+            // 최신 날짜순으로 정렬
+            sortBiddingsByDateDesc(invitedBiddings);
+            
             return ResponseEntity.ok(invitedBiddings);
         } catch (Exception e) {
             log.error("초대 목록 조회 실패: {}", e.getMessage());
@@ -85,6 +123,10 @@ public class SupplierBiddingController {
         try {
             Member supplier = getUserFromUserDetails(userDetails);
             List<BiddingDto> activeInvitedBiddings = supplierBiddingService.getActiveInvitedBiddings(supplier.getId());
+            
+            // 최신 날짜순으로 정렬
+            sortBiddingsByDateDesc(activeInvitedBiddings);
+            
             return ResponseEntity.ok(activeInvitedBiddings);
         } catch (Exception e) {
             log.error("활성 초대 목록 조회 실패: {}", e.getMessage());
@@ -104,6 +146,10 @@ public class SupplierBiddingController {
         try {
             Member supplier = getUserFromUserDetails(userDetails);
             List<BiddingDto> participatedBiddings = supplierBiddingService.getParticipatedBiddings(supplier.getId());
+            
+            // 최신 날짜순으로 정렬
+            sortBiddingsByDateDesc(participatedBiddings);
+            
             return ResponseEntity.ok(participatedBiddings);
         } catch (Exception e) {
             log.error("참여 목록 조회 실패: {}", e.getMessage());
@@ -123,6 +169,10 @@ public class SupplierBiddingController {
         try {
             Member supplier = getUserFromUserDetails(userDetails);
             List<BiddingDto> wonBiddings = supplierBiddingService.getWonBiddings(supplier.getId());
+            
+            // 최신 날짜순으로 정렬
+            sortBiddingsByDateDesc(wonBiddings);
+            
             return ResponseEntity.ok(wonBiddings);
         } catch (Exception e) {
             log.error("낙찰 목록 조회 실패: {}", e.getMessage());
@@ -327,6 +377,67 @@ public class SupplierBiddingController {
             log.error("참여 철회 실패: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+    
+    /**
+     * 입찰 목록을 최신 날짜순으로 정렬하는 메서드
+     * 마감일 > 시작일 > 생성일 > ID 순으로 정렬 우선순위 적용
+     */
+    private void sortBiddingsByDateDesc(List<BiddingDto> biddings) {
+        if (biddings == null || biddings.isEmpty()) {
+            return;
+        }
+        
+        biddings.sort((a, b) -> {
+            // 1. 마감일 기준 정렬 (최신 날짜가 먼저)
+            // biddingPeriod.endDate 사용
+            LocalDate aEndDate = null;
+            LocalDate bEndDate = null;
+            
+            if (a.getBiddingPeriod() != null && a.getBiddingPeriod().getEndDate() != null) {
+                aEndDate = a.getBiddingPeriod().getEndDate();
+            }
+            
+            if (b.getBiddingPeriod() != null && b.getBiddingPeriod().getEndDate() != null) {
+                bEndDate = b.getBiddingPeriod().getEndDate();
+            }
+            
+            // 둘 다 마감일이 있으면 마감일로 비교
+            if (aEndDate != null && bEndDate != null) {
+                // 내림차순 정렬 (최신 날짜가 먼저)
+                return bEndDate.compareTo(aEndDate);
+            }
+            
+            // 2. 시작일 기준 정렬
+            LocalDate aStartDate = null;
+            LocalDate bStartDate = null;
+            
+            if (a.getBiddingPeriod() != null && a.getBiddingPeriod().getStartDate() != null) {
+                aStartDate = a.getBiddingPeriod().getStartDate();
+            }
+            
+            if (b.getBiddingPeriod() != null && b.getBiddingPeriod().getStartDate() != null) {
+                bStartDate = b.getBiddingPeriod().getStartDate();
+            }
+            
+            // 둘 다 시작일이 있으면 시작일로 비교
+            if (aStartDate != null && bStartDate != null) {
+                // 내림차순 정렬 (최신 날짜가 먼저)
+                return bStartDate.compareTo(aStartDate);
+            }
+            
+            // 3. 생성일 기준 정렬
+            LocalDateTime aRegTime = a.getRegTime();
+            LocalDateTime bRegTime = b.getRegTime();
+            
+            if (aRegTime != null && bRegTime != null) {
+                // 내림차순 정렬 (최신 날짜가 먼저)
+                return bRegTime.compareTo(aRegTime);
+            }
+            
+            // 4. ID 기준 정렬 (최신 ID가 보통 더 큰 값)
+            return Long.compare(b.getId(), a.getId());
+        });
     }
     
     /**

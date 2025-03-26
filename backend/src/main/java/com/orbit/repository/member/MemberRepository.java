@@ -5,6 +5,7 @@ import com.orbit.entity.member.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,11 +36,38 @@ public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecif
      */
     List<Member> findByNameContainingIgnoreCase(String name);
 
+    /**
+     * 검수 작업이 가장 적은 품질관리부 담당자 찾기
+     * - `QualityControl` 부서에서 가장 적은 검수 건수를 가진 담당자를 찾음
+     * - 만약 검수 담당자가 없으면 `Optional.empty()` 반환
+     */
+        @Query("SELECT m FROM Member m JOIN m.position p WHERE p.level >= :level")
+        List<Member> findByPositionLevelGreaterThanEqual(@Param("level") int level);
+    /**
+     * 특정 부서의 특정 직급 이상인 멤버 조회
+     * @param department 부서
+     * @param positionLevel 직급 레벨
+     * @return 해당 부서의 특정 직급 이상 멤버 리스트
+     */
+    @Query("SELECT m FROM Member m WHERE m.department = :department AND m.position.level > :positionLevel")
+    List<Member> findByDepartmentAndPositionLevelGreaterThan(
+            @Param("department") Department department,
+            @Param("positionLevel") int positionLevel
+    );
 
     /**
-     * 결재 가능한 사용자 조회 (직급 레벨 3 이상)
-     * @return 결재 가능한 사용자 리스트
+     * 특정 부서의 특정 직급 범위 멤버 조회
+     * @param department 부서
+     * @param minLevel 최소 직급 레벨
+     * @param maxLevel 최대 직급 레벨
+     * @return 해당 부서의 특정 직급 범위 멤버 리스트
      */
+    @Query("SELECT m FROM Member m WHERE m.department = :department AND m.position.level BETWEEN :minLevel AND :maxLevel")
+    List<Member> findByDepartmentAndPositionLevelBetween(
+            @Param("department") Department department,
+            @Param("minLevel") int minLevel,
+            @Param("maxLevel") int maxLevel
+    );
 
     /**
      * 특정 직급 이상의 멤버 조회

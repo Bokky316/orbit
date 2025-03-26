@@ -85,64 +85,74 @@ public class BiddingEvaluationService {
      * 입찰 참여에 대한 평가 생성
      */
     @Transactional
-    public BiddingEvaluationDto createEvaluation(Long biddingId, Long participationId, Long evaluatorId) {
-        log.info("입찰 참여 평가 생성 - 입찰 ID: {}, 참여 ID: {}, 평가자 ID: {}", biddingId, participationId, evaluatorId);
-        
-        // 입찰 공고 검증
-        Bidding bidding = biddingRepository.findById(biddingId)
-            .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
-        
-        // 입찰 상태 검증 (마감 상태인지)
-        if (!bidding.getStatusChild().getCodeValue().equals(BiddingStatus.BiddingStatusCode.CLOSED)) {
-            throw new IllegalStateException("마감된 입찰만 평가할 수 있습니다.");
-        }
-        
-        // 참여 정보 검증
-        BiddingParticipation participation = participationRepository.findById(participationId)
-            .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + participationId));
-        
-        // 평가자 정보 검증
-        Member evaluator = memberRepository.findById(evaluatorId)
-            .orElseThrow(() -> new EntityNotFoundException("평가자 정보를 찾을 수 없습니다. ID: " + evaluatorId));
-        
-        // 중복 평가 검증
-        List<BiddingEvaluation> existingEvaluations = evaluationRepository
-            .findByBiddingParticipationId(participationId);
-        
-        for (BiddingEvaluation existing : existingEvaluations) {
-            if (existing.getEvaluatorId().equals(evaluatorId)) {
-                throw new IllegalStateException("이미 평가한 참여 정보입니다.");
-            }
-        }
-        
-        // 공급사 정보 조회
-        Member supplier = memberRepository.findById(participation.getSupplierId())
-            .orElseThrow(() -> new EntityNotFoundException("공급사 정보를 찾을 수 없습니다. ID: " + participation.getSupplierId()));
-        
-        // 평가 정보 생성
-        BiddingEvaluation evaluation = BiddingEvaluation.builder()
-            .participation(participation)
-            .biddingParticipationId(participationId)
-            .biddingId(biddingId)
-            .evaluatorId(evaluatorId)
-            .evaluatorName(evaluator.getName())
-            .supplierName(supplier.getName())
-            .priceScore(0)        // 초기값 설정
-            .qualityScore(0)      // 초기값 설정
-            .deliveryScore(0)     // 초기값 설정
-            .reliabilityScore(0)  // 초기값 설정
-            .serviceScore(0)      // 초기값 설정
-            .additionalScore(0)   // 초기값 설정
-            .comment("")
-            .isSelectedBidder(false)
-            .selectedForOrder(false)
-            .build();
-        
-        // 저장
-        evaluation = evaluationRepository.save(evaluation);
-        
-        return BiddingEvaluationDto.fromEntity(evaluation);
+public BiddingEvaluationDto createEvaluation(BiddingEvaluationDto dto, Long evaluatorId) {
+    log.info("입찰 참여 평가 생성 - 입찰 ID: {}, 참여 ID: {}, 평가자 ID: {}", 
+             dto.getBiddingId(), dto.getBiddingParticipationId(), evaluatorId);
+
+    // 입찰 공고 검증
+    Bidding bidding = biddingRepository.findById(dto.getBiddingId())
+        .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + dto.getBiddingId()));
+
+    if (!bidding.getStatusChild().getCodeValue().equals(BiddingStatus.BiddingStatusCode.CLOSED)) {
+        throw new IllegalStateException("마감된 입찰만 평가할 수 있습니다.");
     }
+
+    // 참여 정보 검증
+    BiddingParticipation participation = participationRepository.findById(dto.getBiddingParticipationId())
+        .orElseThrow(() -> new EntityNotFoundException("입찰 참여 정보를 찾을 수 없습니다. ID: " + dto.getBiddingParticipationId()));
+
+    // 평가자 정보 검증
+    Member evaluator = memberRepository.findById(evaluatorId)
+        .orElseThrow(() -> new EntityNotFoundException("평가자 정보를 찾을 수 없습니다. ID: " + evaluatorId));
+
+    // 중복 평가 방지
+    List<BiddingEvaluation> existingEvaluations = evaluationRepository.findByBiddingParticipationId(dto.getBiddingParticipationId());
+    for (BiddingEvaluation existing : existingEvaluations) {
+        if (existing.getEvaluatorId().equals(evaluatorId)) {
+            throw new IllegalStateException("이미 평가한 참여 정보입니다.");
+        }
+    }
+
+    // 공급사 정보
+    Member supplier = memberRepository.findById(participation.getSupplierId())
+        .orElseThrow(() -> new EntityNotFoundException("공급사 정보를 찾을 수 없습니다. ID: " + participation.getSupplierId()));
+
+    // 총점 계산
+    int totalScore =
+        (dto.getPriceScore() != null ? dto.getPriceScore() : 0) +
+        (dto.getQualityScore() != null ? dto.getQualityScore() : 0) +
+        (dto.getDeliveryScore() != null ? dto.getDeliveryScore() : 0) +
+        (dto.getReliabilityScore() != null ? dto.getReliabilityScore() : 0) +
+        (dto.getServiceScore() != null ? dto.getServiceScore() : 0) +
+        (dto.getAdditionalScore() != null ? dto.getAdditionalScore() : 0);
+
+    // 평가 엔티티 생성
+    BiddingEvaluation evaluation = BiddingEvaluation.builder()
+        .participation(participation)
+        .biddingParticipationId(dto.getBiddingParticipationId())
+        .biddingId(dto.getBiddingId())
+        .evaluatorId(evaluatorId)
+        .evaluatorName(evaluator.getName())
+        .supplierName(supplier.getName())
+        .priceScore(dto.getPriceScore())
+        .qualityScore(dto.getQualityScore())
+        .deliveryScore(dto.getDeliveryScore())
+        .reliabilityScore(dto.getReliabilityScore())
+        .serviceScore(dto.getServiceScore())
+        .additionalScore(dto.getAdditionalScore())
+        .totalScore(totalScore)
+        .comment(dto.getComment())
+        .isSelectedBidder(false)
+        .selectedForOrder(false)
+        .evaluatedAt(LocalDateTime.now())
+        .build();
+
+    // 저장
+    evaluation = evaluationRepository.save(evaluation);
+
+    return BiddingEvaluationDto.fromEntity(evaluation);
+}
+
 
     /**
      * 평가 점수 업데이트
@@ -185,7 +195,7 @@ public class BiddingEvaluationService {
         
         return BiddingEvaluationDto.fromEntity(evaluation);
     }
-
+    
     /**
      * 낙찰자 선정
      */
@@ -275,8 +285,8 @@ public class BiddingEvaluationService {
     public List<BiddingEvaluationDto> getAllEvaluations() {
         List<BiddingEvaluation> evaluations = evaluationRepository.findAll();
         return evaluations.stream()
-            .map(BiddingEvaluationDto::fromEntity)
-            .collect(Collectors.toList());
+                .map(BiddingEvaluationDto::fromEntity)
+                .collect(Collectors.toList());
     }
 
     /**

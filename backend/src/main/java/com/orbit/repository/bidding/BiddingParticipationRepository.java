@@ -1,6 +1,8 @@
 package com.orbit.repository.bidding;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -63,5 +65,14 @@ public interface BiddingParticipationRepository extends JpaRepository<BiddingPar
     
     // 특정 입찰 및 공급사에 대한 참여 정보 조회
     Optional<BiddingParticipation> findByBiddingIdAndSupplierId(Long biddingId, Long supplierId);
+
+
+    @Query("SELECT SUM(p.totalAmount) FROM BiddingParticipation p WHERE p.supplierId = :supplierId")
+BigDecimal sumTotalAmountBySupplierId(@Param("supplierId") Long supplierId);
+
+@Query("SELECT AVG(p.evaluationScore) FROM BiddingParticipation p WHERE p.supplierId = :supplierId")
+Double averageEvaluationScoreBySupplierId(@Param("supplierId") Long supplierId);
+
+
     
 }

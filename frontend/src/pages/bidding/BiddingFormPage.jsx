@@ -34,60 +34,26 @@ import moment from "moment";
 import {
   BiddingStatus,
   BiddingMethod,
-  BillingUnits,
-  ItemSourcingCategoryMap,
-  ItemCategories
+  BillingUnits
 } from "./helpers/biddingTypes";
 import {
-  getStatusText,
-  getBidMethodText,
+  INITIAL_FORM_DATA,
   transformFormDataToApiFormat,
   mapBiddingDataToFormData
 } from "./helpers/commonBiddingHelpers";
 import { validateBiddingForm } from "./helpers/BuyerBiddingHelpers";
-
-import PermissionService, { usePermission } from "./helpers/permissionUtils";
-import useWebSocket from "@/hooks/useWebSocket";
+import { usePermission } from "./helpers/permissionUtils";
 
 // Dialog 컴포넌트 import
 import SupplierSelectionDialog from "./biddingComponent/SupplierSelectionDialog";
 import PurchaseRequestSelectionDialog from "./biddingComponent/PurchaseRequestSelectionDialog";
 
-// 초기 폼 데이터
-const INITIAL_FORM_DATA = {
-  requestNumber: "", // 구매 요청 번호
-  requestName: "", // 구매 요청 이름
-  title: "", // 입찰 공고 제목 (필수)
-  purchaseRequestId: null, // 구매 요청 ID (숫자 형식)
-  purchaseRequestItemId: null, // 구매 요청 품목 ID (숫자 형식)
-  purchaseRequestItems: [], // 복수의 품목 선택 가능하도록 변경
-  selectedItems: [], // 선택된 품목 ID 배열
-  description: "",
-  suppliers: [],
-  bidMethod: BiddingMethod.FIXED_PRICE,
-  status: {
-    parentCode: "BIDDING",
-    childCode: BiddingStatus.PENDING
-  },
-  startDate: new Date().toISOString().split("T")[0], // 오늘 날짜
-  deadline: "", // 입찰 마감일 (필수)
-  quantity: 1,
-  unitPrice: 0,
-  supplyPrice: 0,
-  vat: 0,
-  totalAmount: 0,
-  biddingConditions: "", // 입찰 조건
-  conditions: "", // 백엔드에서 사용하는 필드명
-  internalNote: "",
-  deliveryLocation: "", // 납품 장소
-  deliveryDate: "", // 납품 예정일
-  billingUnit: "EA", // 과금 단위 기본값
-  files: []
-};
-
+/**
+ * 입찰 공고 등록/수정 페이지 컴포넌트
+ */
 function BiddingFormPage() {
-  const navigate = useNavigate();
   const { id } = useParams();
+  const navigate = useNavigate();
   const mode = id ? "edit" : "create";
   const biddingId = id ? parseInt(id) : null;
 
@@ -104,11 +70,14 @@ function BiddingFormPage() {
   const [errors, setErrors] = useState({});
   const [requestError, setRequestError] = useState("");
   const [isLoading, setIsLoading] = useState(mode === "edit");
+  const [submitting, setSubmitting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileList, setFileList] = useState([]);
   const [originalBidMethod, setOriginalBidMethod] = useState(null);
-  const [selectedRequest, setSelectedRequest] = useState(null); // 선택된 구매 요청 추가
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [hasPermission, setHasPermission] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // 모달 상태
   const [isPurchaseRequestModalOpen, setIsPurchaseRequestModalOpen] =
@@ -123,32 +92,6 @@ function BiddingFormPage() {
     );
   }, [formData.requestNumber, purchaseRequests]);
 
-  // 웹소켓 훅 사용 - 입찰 기능만 활성화
-  const websocket = useWebSocket(user, {
-    enablePurchaseRequests: false,
-    enableBiddings: true,
-    enableNotifications: true
-  });
-
-  // 알림 전송 함수 수정 - 웹소켓 서비스 존재 여부 확인
-  const sendNotification = async (type, message) => {
-    try {
-      // REST API를 통한 알림 전송
-      await fetchWithAuth(`${API_URL}notifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          message,
-          senderId: user?.id,
-          timestamp: new Date().toISOString()
-        })
-      });
-    } catch (error) {
-      console.warn("알림 전송 실패 (무시됨):", error);
-    }
-  };
-
   // 페이지 로드 시 권한 체크
   useEffect(() => {
     const checkPermission = () => {
@@ -158,21 +101,41 @@ function BiddingFormPage() {
       }
 
       if (mode === "create") {
-        const createPermission = permissions.canCreateBidding;
-        setHasPermission(createPermission);
+        setHasPermission(permissions.canCreateBidding);
       } else if (mode === "edit" && formData.status) {
-        const updatePermission = permissions.canUpdateBidding(formData);
-        setHasPermission(updatePermission);
+        setHasPermission(permissions.canUpdateBidding(formData));
       }
     };
 
     checkPermission();
   }, [mode, user, formData.status, permissions]);
 
-  // 페이지 로드 시 suppliers 데이터 가져오기 함수
+  // 페이지 로드 시 데이터 가져오기
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setIsLoading(true);
+
+        // 동시에 여러 데이터 요청 처리
+        await Promise.all([
+          fetchSuppliers(),
+          fetchPurchaseRequests(),
+          mode === "edit" ? fetchBiddingData(biddingId) : Promise.resolve()
+        ]);
+      } catch (error) {
+        console.error("초기 데이터 로딩 중 오류:", error);
+        setRequestError("데이터를 불러오는데 실패했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, [mode, biddingId]);
+
+  // 공급업체 목록 가져오기
   const fetchSuppliers = async () => {
     try {
-      setIsLoading(true);
       console.log("공급업체 목록 API 호출 시작");
       const response = await fetchWithAuth(
         `${API_URL}biddings/suppliers/active`
@@ -185,7 +148,7 @@ function BiddingFormPage() {
       const data = await response.json();
       console.log("공급업체 API 응답 데이터:", data);
 
-      // 공급업체 데이터 형식 정규화
+      // 공급업체 데이터 정규화
       const normalizedSuppliers = data.map((supplier) => ({
         id: supplier.id,
         name: supplier.name || supplier.companyName,
@@ -201,10 +164,7 @@ function BiddingFormPage() {
       setSuppliers(normalizedSuppliers);
     } catch (error) {
       console.error("공급사 목록 가져오기 실패:", error);
-      setRequestError("공급사 정보를 불러오는데 실패했습니다.");
-      setSuppliers([]); // 빈 배열로 설정하여 무한 루프 방지
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
   };
 
@@ -224,39 +184,144 @@ function BiddingFormPage() {
       }
 
       const data = await response.json();
-      //console.log("구매 요청 API 응답 데이터:", data);
-
       setPurchaseRequests(data || []);
     } catch (error) {
-      setRequestError(error.message || "구매 요청 목록을 불러올 수 없습니다.");
+      console.error("구매 요청 목록 가져오기 실패:", error);
+      throw error;
     }
   };
 
-  // 사용자 권한 체크 함수 - 중복을 제거하고 usePermission 훅과 통합
-  const checkUserPermissions = () => {
-    // 이미 usePermission 훅을 통해 권한을 확인하므로
-    // 해당 함수를 간소화하고 permissions 객체를 반환
-    return {
-      hasPermission: (permission) => {
-        if (permission === "canCreateBidding") {
-          return permissions.canCreateBidding;
-        }
-        if (permission === "canUpdateBidding") {
-          return permissions.canUpdateBidding(formData);
-        }
-        if (permission === "changeStatus") {
-          return permissions.canChangeBiddingStatus;
-        }
-        return false;
-      },
-      canModifyBidding: (status) => {
-        return permissions.canUpdateBidding({
-          ...formData,
-          status: status
-        });
+  // 입찰 공고 상세 정보 가져오기 (수정 모드)
+  const fetchBiddingData = async (id) => {
+    try {
+      console.log("입찰 공고 상세 정보 API 호출 시작");
+      const response = await fetchWithAuth(`${API_URL}biddings/${id}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+
+      const biddingData = await response.json();
+      console.log("서버에서 받은 데이터:", biddingData);
+
+      // 필드명 매핑 - 기존 코드 유지
+      if (biddingData.purchaseRequest) {
+        biddingData.purchaseRequest.request_number =
+          biddingData.purchaseRequest.requestNumber ||
+          biddingData.purchaseRequest.id;
+      }
+
+      if (biddingData.purchaseRequestItem) {
+        biddingData.purchaseRequestItem.purchase_request_item_id =
+          biddingData.purchaseRequestItem.id;
+        biddingData.purchaseRequestItem.delivery_location =
+          biddingData.purchaseRequestItem.deliveryLocation;
+        biddingData.purchaseRequestItem.delivery_request_date =
+          biddingData.purchaseRequestItem.deliveryRequestDate;
+      }
+
+      // 데이터 변환
+      const mappedFormData = mapBiddingDataToFormData(biddingData);
+
+      // 입찰 조건 필드 매핑
+      if (biddingData.conditions && !mappedFormData.biddingConditions) {
+        mappedFormData.biddingConditions = biddingData.conditions;
+      }
+
+      // 납품 관련 정보 매핑
+      if (biddingData.deliveryLocation) {
+        mappedFormData.deliveryLocation = biddingData.deliveryLocation;
+      }
+
+      if (biddingData.deliveryDate) {
+        mappedFormData.deliveryDate = biddingData.deliveryDate;
+      }
+
+      // 공급자 정보 처리
+      if (biddingData.suppliers && Array.isArray(biddingData.suppliers)) {
+        mappedFormData.suppliers = biddingData.suppliers.map((supplier) => ({
+          id: supplier.id,
+          name: supplier.name || supplier.companyName,
+          businessNo: supplier.businessNo || supplier.businessNumber,
+          businessType: supplier.businessType,
+          businessCategory: supplier.businessCategory,
+          sourcingCategory: supplier.sourcingCategory,
+          sourcingSubCategory: supplier.sourcingSubCategory,
+          contact: supplier.phoneNumber || supplier.contactPhone,
+          email: supplier.contactEmail || supplier.email
+        }));
+      } else if (
+        biddingData.invitedSuppliers &&
+        Array.isArray(biddingData.invitedSuppliers)
+      ) {
+        // invitedSuppliers 필드에 정보가 있는 경우
+        mappedFormData.suppliers = biddingData.invitedSuppliers.map(
+          (supplier) => ({
+            id: supplier.id,
+            name: supplier.name || supplier.companyName,
+            businessNo: supplier.businessNo || supplier.businessNumber,
+            businessType: supplier.businessType,
+            businessCategory: supplier.businessCategory,
+            sourcingCategory: supplier.sourcingCategory,
+            sourcingSubCategory: supplier.sourcingSubCategory,
+            contact: supplier.phoneNumber || supplier.contactPhone,
+            email: supplier.contactEmail || supplier.email
+          })
+        );
+      }
+
+      console.log("매핑된 데이터:", mappedFormData);
+
+      setFormData(mappedFormData);
+      setOriginalBidMethod(mappedFormData.bidMethod);
+
+      // 첨부 파일 정보 처리
+      if (biddingData.filePath) {
+        setFileList([{ name: biddingData.filePath }]);
+      } else if (
+        biddingData.attachments &&
+        Array.isArray(biddingData.attachments)
+      ) {
+        setFileList(
+          biddingData.attachments.map((attachment) => ({
+            name: attachment.fileName || attachment.originalFileName,
+            path: attachment.filePath
+          }))
+        );
+      }
+
+      // 선택된 요청 저장
+      if (biddingData.purchaseRequest) {
+        setSelectedRequest(biddingData.purchaseRequest);
+      }
+    } catch (error) {
+      console.error("입찰 공고 데이터 로딩 중 오류:", error);
+      throw error;
+    }
   };
+
+  // 필드 수정 가능 여부 결정 함수
+  const isFieldEditable = (fieldName) => {
+    // 수정 모드가 아니면 모든 필드 활성화
+    if (mode !== "edit") return true;
+
+    // 수정 가능한 필드 목록
+    const editableFields = [
+      "title",
+      "startDate",
+      "endDate",
+      "biddingConditions",
+      "conditions",
+      "internalNote"
+    ];
+
+    return editableFields.includes(fieldName);
+  };
+
+  // 공급자 선택 수정 가능 여부
+  const canEditSuppliers =
+    mode !== "edit" ||
+    (mode === "edit" && formData.status === BiddingStatus.PENDING);
 
   // 입력 필드 변경 핸들러
   const handleChange = (e) => {
@@ -265,49 +330,25 @@ function BiddingFormPage() {
     setFormData((prev) => {
       switch (name) {
         case "status":
-          // 상세 페이지에서만 상태 변경 가능하도록 수정 모드에서는 변경 방지
-          return mode === "create"
-            ? {
-                ...prev,
-                status: {
-                  parentCode: "BIDDING",
-                  childCode: value
-                }
-              }
-            : prev;
-
+          return {
+            ...prev,
+            status: value
+          };
         case "bidMethod":
-          // 최초 등록 시에만 입찰 방식 변경 가능
-          return mode === "create"
-            ? {
-                ...prev,
-                bidMethod: value,
-                ...(value === BiddingMethod.OPEN_PRICE && {
-                  itemQuantity: 0,
-                  unitPrice: 0
-                })
-              }
-            : prev;
-
-        case "biddingConditions": // 입찰 조건 필드 수정
+          return {
+            ...prev,
+            bidMethod: value,
+            ...(value === BiddingMethod.OPEN_PRICE && {
+              itemQuantity: 0,
+              unitPrice: 0
+            })
+          };
+        case "biddingConditions":
           return {
             ...prev,
             biddingConditions: value,
-            conditions: value // API 요청 시 conditions 필드로 매핑되도록
+            conditions: value
           };
-
-        case "deliveryDate": // 납품일 처리
-          return {
-            ...prev,
-            deliveryDate: value
-          };
-
-        case "deliveryLocation": // 납품 장소 처리
-          return {
-            ...prev,
-            deliveryLocation: value
-          };
-
         default:
           return {
             ...prev,
@@ -316,7 +357,6 @@ function BiddingFormPage() {
       }
     });
 
-    // 오류 메시지 초기화
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -333,177 +373,82 @@ function BiddingFormPage() {
     }));
   };
 
-  // 구매 요청 및 품목 선택 완료 핸들러
-  const handlePurchaseRequestComplete = (
-    request,
-    selectedItemId,
-    selectedItem
-  ) => {
-    console.log("구매 요청 선택 완료 - 전체 요청:", request);
-    console.log("선택된 품목 ID:", selectedItemId);
-    console.log("선택된 품목:", selectedItem);
+  // 숫자 필드 변경 핸들러
+  const handleNumberChange = (name, value) => {
+    const safeValue = Math.max(0, Number(value) || 0);
 
-    if (!request || !selectedItem) {
-      console.error("선택된 요청이나 품목이 없습니다.");
-      return;
-    }
-
-    // 문자열로 된 가격 정보 처리 함수
-    const parsePrice = (priceStr) => {
-      if (typeof priceStr === "number") return priceStr;
-      if (!priceStr) return 0;
-      return parseFloat(String(priceStr).replace(/,/g, "")) || 0;
-    };
-
-    // DB 테이블 필드명과 클라이언트 필드명 모두 처리
-    const requestNumber =
-      request.request_number ||
-      request.requestNumber ||
-      request.id?.toString() ||
-      "";
-    const requestName =
-      request.requestName || request.request_name || request.title || "";
-
-    // 납품 관련 정보 (DB 필드명 우선)
-    const deliveryLocation =
-      selectedItem.delivery_location || selectedItem.deliveryLocation || "";
-    const deliveryDate =
-      selectedItem.delivery_request_date ||
-      selectedItem.deliveryRequestDate ||
-      null;
-
-    // 단위 코드 처리
-    const unitChildCode =
-      selectedItem.unit_child_code || selectedItem.unitChildCode || "49"; // 기본값 49 (개)
-
-    // 단위 코드 ID를 코드값(EA, BOX 등)으로 변환하는 함수
-    const getUnitCodeById = (codeId) => {
-      // DB 테이블 기준 매핑
-      const codeMap = {
-        49: "EA",
-        50: "BOX",
-        51: "BAG",
-        52: "SET",
-        53: "KG",
-        54: "M"
-      };
-      return codeMap[String(codeId)] || "EA";
-    };
-
-    // 단위 코드값 구하기
-    const billingUnit = getUnitCodeById(unitChildCode);
-
-    // 가격 정보 처리
-    const unitPrice = parsePrice(
-      selectedItem.unit_price || selectedItem.unitPrice
-    );
-    const quantity = parseFloat(selectedItem.quantity) || 1;
-    const totalPrice =
-      parsePrice(selectedItem.total_price || selectedItem.totalPrice) ||
-      unitPrice * quantity;
-    const vat = Math.round(totalPrice * 0.1);
-    const totalAmount = totalPrice + vat;
-
-    // formData에 매핑할 데이터 - 타입 변환 확실히 적용
-    const mappedData = {
-      // 구매 요청 정보
-      requestNumber: requestNumber,
-      requestName: requestName,
-      // 중요: 숫자 타입으로 변환
-      purchaseRequestId: parseInt(request.id, 10),
-      title: requestName, // title 필드 추가 - 필수 필드
-
-      // 선택된 품목 정보 - 숫자 타입으로 변환
-      purchaseRequestItems: [selectedItem],
-      selectedItems: [parseInt(selectedItemId, 10)],
-      purchaseRequestItemId: parseInt(selectedItemId, 10),
-      purchase_request_item_id: parseInt(selectedItemId, 10),
-
-      // 수량 및 가격 정보
-      quantity: quantity,
-      unitPrice: unitPrice,
-      unit_price: unitPrice,
-      supplyPrice: totalPrice,
-      supply_price: totalPrice,
-      vat: vat,
-      totalAmount: totalAmount,
-      total_amount: totalAmount,
-
-      // 납품 관련 정보
-      deliveryLocation: deliveryLocation,
-      delivery_location: deliveryLocation,
-      deliveryDate: deliveryDate
-        ? moment(deliveryDate).format("YYYY-MM-DD")
-        : "",
-      delivery_date: deliveryDate
-        ? moment(deliveryDate).format("YYYY-MM-DD")
-        : "",
-
-      // 품목 규격 정보
-      specification: selectedItem.specification || "",
-
-      // 과금 단위
-      billingUnit: billingUnit,
-      billing_unit: billingUnit,
-
-      // 입찰 마감일
-      deadline: request.deadline
-        ? moment(request.deadline).format("YYYY-MM-DD")
-        : "",
-
-      // 상태 정보 확인 (PENDING = 대기중)
-      status: {
-        parentCode: "BIDDING",
-        childCode: "PENDING"
-      }
-    };
-
-    console.log("폼에 설정할 데이터:", mappedData);
-
-    // 기존 폼 데이터와 병합
     setFormData((prev) => {
-      const updatedData = {
+      const updated = {
         ...prev,
-        ...mappedData
+        [name]: safeValue
       };
 
-      // 병합 후 값 확인
-      console.log(
-        "최종 폼 데이터의 purchaseRequestId:",
-        updatedData.purchaseRequestId,
-        "타입:",
-        typeof updatedData.purchaseRequestId
-      );
+      if (name === "quantity" || name === "unitPrice") {
+        const quantity = name === "quantity" ? safeValue : prev.quantity;
+        const unitPrice = name === "unitPrice" ? safeValue : prev.unitPrice;
+        const supplyPrice = quantity * unitPrice;
+        const vat = Math.round(supplyPrice * 0.1);
+        const totalAmount = supplyPrice + vat;
 
-      return updatedData;
+        return {
+          ...updated,
+          supplyPrice,
+          vat,
+          totalAmount
+        };
+      }
+
+      return updated;
     });
 
-    // 모달 닫기
-    setIsPurchaseRequestModalOpen(false);
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
 
-    // 선택된 요청 저장
+  // 구매 요청 및 품목 선택 완료 핸들러
+  const handlePurchaseRequestComplete = (request, itemId, item) => {
+    if (!request || !item) return;
+
+    const quantity = Number(item.quantity) || 1;
+    const unitPrice = parseFloat(item.unitPrice || 0);
+    const supplyPrice = quantity * unitPrice;
+    const vat = Math.round(supplyPrice * 0.1);
+    const totalAmount = supplyPrice + vat;
+
+    setFormData((prev) => ({
+      ...prev,
+      requestNumber: request.request_number || request.id,
+      requestName: request.title || request.requestName,
+      purchaseRequestId: request.id,
+      purchaseRequestItems: [item],
+      selectedItems: [itemId],
+      purchaseRequestItemId: itemId,
+      quantity,
+      unitPrice,
+      supplyPrice,
+      vat,
+      totalAmount,
+      deliveryLocation: item.deliveryLocation || "",
+      deliveryDate: item.deliveryRequestDate || "",
+      deadline: request.deadline || "",
+      status: "PENDING"
+    }));
     setSelectedRequest(request);
+    setIsPurchaseRequestModalOpen(false);
   };
 
   // 공급자 선택 핸들러
   const handleSupplierSelect = (supplier) => {
     setFormData((prev) => {
-      // 이미 선택된 공급자인지 확인
-      const isSelected = prev.suppliers.some((s) => s.id === supplier.id);
-
-      if (isSelected) {
-        // 이미 선택된 경우 제거
-        return {
-          ...prev,
-          suppliers: prev.suppliers.filter((s) => s.id !== supplier.id)
-        };
-      } else {
-        // 새로 선택한 경우 추가
-        return {
-          ...prev,
-          suppliers: [...prev.suppliers, supplier]
-        };
-      }
+      const exists = prev.suppliers.some((s) => s.id === supplier.id);
+      const updated = exists
+        ? prev.suppliers.filter((s) => s.id !== supplier.id)
+        : [...prev.suppliers, supplier];
+      return { ...prev, suppliers: updated };
     });
   };
 
@@ -512,80 +457,29 @@ function BiddingFormPage() {
     setIsSupplierModalOpen(false);
   };
 
-  // 수량 및 단가 변경 핸들러
-  const handleNumberChange = (name, value) => {
-    // 안전한 숫자 변환 적용
-    const safeValue = Math.max(0, Number(value) || 0);
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: safeValue
-    }));
-
-    // 수량이나 단가가 변경되면 금액 재계산
-    if (name === "itemQuantity" || name === "unitPrice") {
-      const quantity =
-        name === "itemQuantity"
-          ? safeValue
-          : Math.max(0, Number(formData.itemQuantity) || 0);
-      const unitPrice =
-        name === "unitPrice"
-          ? safeValue
-          : Math.max(0, Number(formData.unitPrice) || 0);
-      const supplyPrice = quantity * unitPrice;
-      const vat = Math.round(supplyPrice * 0.1);
-      const totalAmount = supplyPrice + vat;
-
-      setFormData((prev) => ({
-        ...prev,
-        supplyPrice,
-        vat,
-        totalAmount
-      }));
-    }
-  };
-
-  // 파일 타입 제한 및 최대 크기 설정
-  const ALLOWED_FILE_TYPES = [
-    "image/jpeg",
-    "image/png",
-    "application/pdf",
-    "image/gif",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ];
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-
   // 파일 변경 핸들러
   const handleFileChange = (event) => {
     const files = Array.from(event.target.files);
     const validFiles = files.filter((file) => {
-      // 파일 타입 및 크기 검증
-      const isValidType = ALLOWED_FILE_TYPES.includes(file.type);
-      const isValidSize = file.size <= MAX_FILE_SIZE;
-
-      if (!isValidType) {
-        alert(`지원되지 않는 파일 형식입니다: ${file.name}`);
-      }
-
-      if (!isValidSize) {
+      const isValidType = [
+        "image/jpeg",
+        "image/png",
+        "application/pdf",
+        "image/gif",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ].includes(file.type);
+      const isValidSize = file.size <= 50 * 1024 * 1024;
+      if (!isValidType) alert(`지원되지 않는 파일 형식: ${file.name}`);
+      if (!isValidSize)
         alert(`파일 크기가 너무 큽니다 (최대 50MB): ${file.name}`);
-      }
-
       return isValidType && isValidSize;
     });
 
-    // 기존 파일과 새 파일 병합
     setFileList((prev) => {
-      const updatedFiles = [...prev, ...validFiles];
-
-      // formData에도 파일 정보 업데이트
-      setFormData((prevForm) => ({
-        ...prevForm,
-        files: updatedFiles
-      }));
-
-      return updatedFiles;
+      const updated = [...prev, ...validFiles];
+      setFormData((prevForm) => ({ ...prevForm, files: updated }));
+      return updated;
     });
   };
 
@@ -596,281 +490,119 @@ function BiddingFormPage() {
         `${API_URL}biddings/download-file?filename=${encodeURIComponent(
           filename
         )}`,
-        { method: "GET" }
+        {
+          method: "GET"
+        }
       );
-
-      if (!response.ok) {
-        throw new Error("파일을 다운로드할 수 없습니다.");
-      }
-
-      // Blob으로 변환 및 다운로드
+      if (!response.ok) throw new Error("다운로드 실패");
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = downloadUrl;
+      link.href = url;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error("파일 다운로드 중 오류:", error);
-      alert("파일을 다운로드할 수 없습니다.");
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("파일 다운로드 실패");
     }
   };
 
   // 파일 삭제 핸들러
   const handleFileDelete = (fileToDelete) => {
     setFileList((prev) => {
-      const updatedFiles = prev.filter(
+      const updated = prev.filter(
         (file) => file.name !== fileToDelete.name && file !== fileToDelete
       );
-
-      // formData의 files도 업데이트
-      setFormData((prevForm) => ({
-        ...prevForm,
-        files: updatedFiles
-      }));
-
-      return updatedFiles;
+      setFormData((prevForm) => ({ ...prevForm, files: updated }));
+      return updated;
     });
   };
 
   // 폼 제출 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // 로컬 스토리지 또는 쿠키에서 액세스 토큰 가져오기
-    const accessToken = localStorage.getItem("accessToken");
-
-    // 토큰 및 사용자 정보 로깅
-    const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
-    const token = localStorage.getItem("token");
-    const accToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("accToken="))
-      ?.split("=")[1];
-
-    console.log("로그인된 사용자:", loggedInUser);
-    console.log("localStorage 토큰:", token);
-    console.log("쿠키 토큰:", accToken);
+    setSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-      setRequestError("");
-
-      // 구매 요청 및 품목 ID 확인 - 숫자 타입 보장
-      const purchaseRequestId = parseInt(formData.purchaseRequestId, 10);
-      const purchaseRequestItemId = parseInt(
-        formData.purchaseRequestItemId,
-        10
-      );
-
-      if (isNaN(purchaseRequestId) || isNaN(purchaseRequestItemId)) {
-        setRequestError(
-          "구매 요청 정보가 올바른 형식이 아닙니다. 다시 선택해주세요."
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      // title 필드가 있는지 확인 (구매 요청명을 title로 사용)
-      if (!formData.title && formData.requestName) {
-        setFormData((prev) => ({
-          ...prev,
-          title: formData.requestName
-        }));
-      }
-
-      if (!formData.deadline) {
-        setErrors((prev) => ({
-          ...prev,
-          deadline: "입찰 마감일을 설정해주세요."
-        }));
-        setRequestError("입찰 마감일은 필수 항목입니다.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 폼 유효성 검사
-      const { isValid, errors: validationErrors } = validateBiddingForm(
-        formData,
-        mode
-      );
-
-      if (!isValid) {
-        setErrors(validationErrors);
-        alert("입력 정보를 확인해주세요.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // API 데이터 준비
-      const apiData = transformFormDataToApiFormat(formData, user);
-
-      console.log("API 요청 전송 데이터:", apiData);
-
-      // 필수 필드 검사
-      const requiredFields = [
-        "purchaseRequestId",
-        "purchaseRequestItemId",
-        "title",
-        "status",
-        "bidMethod",
-        "quantity",
-        "unitPrice"
-      ];
-
-      // biddingPeriod.endDate가 deadline에 해당
-      if (!apiData.biddingPeriod?.endDate) {
-        requiredFields.push("deadline");
-      }
-
-      const missingFields = requiredFields.filter((field) => {
-        if (field === "deadline") {
-          return !apiData.biddingPeriod?.endDate;
+      const payload = {
+        ...formData,
+        status: formData.status?.childCode || formData.status,
+        method: formData.bidMethod?.childCode || formData.bidMethod,
+        supplierIds: formData.suppliers?.map((s) => s.id) || [],
+        biddingPeriod: {
+          startDate: formData.startDate,
+          endDate: formData.endDate
         }
+      };
 
-        // null, undefined, 빈 문자열 체크
-        if (
-          field === "purchaseRequestId" ||
-          field === "purchaseRequestItemId"
-        ) {
-          return (
-            apiData[field] === null ||
-            apiData[field] === undefined ||
-            isNaN(apiData[field])
-          );
-        }
+      const apiUrl = `${API_URL}biddings${
+        mode === "edit" ? `/${biddingId}` : ""
+      }`;
 
-        return (
-          apiData[field] === null ||
-          apiData[field] === undefined ||
-          apiData[field] === ""
-        );
-      });
-
-      if (missingFields.length > 0) {
-        console.error("필수 필드 누락:", missingFields);
-        setRequestError(
-          `다음 필수 필드가 누락되었습니다: ${missingFields.join(", ")}`
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      // API 요청 URL 및 메서드 설정
-      const url =
-        mode === "create" ? `${API_URL}biddings` : `${API_URL}biddings/${id}`;
-
-      const method = mode === "create" ? "POST" : "PUT";
-
-      const requestOptions = {
-        method: method,
+      const res = await fetchWithAuth(apiUrl, {
+        method: mode === "edit" ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(apiData)
-      };
+        body: JSON.stringify(payload)
+      });
 
-      //const response = await fetchMethod(url, requestOptions);
+      // ✅ 응답 확인
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("서버 오류 응답:", errorText);
+      const responseText = await res.text();
 
-        // JSON 형식의 오류인지 확인하고 파싱 시도
-        let errorMessage = `입찰 공고 ${
-          mode === "create" ? "등록" : "수정"
-        }에 실패했습니다. (${response.status})`;
+      if (!res.ok) {
+        throw new Error(responseText || "입찰 요청 실패");
+      }
+
+      const result = JSON.parse(responseText); // 이미 JSON 형태일 경우 생략 가능
+
+      // 파일 업로드가 필요한 경우 처리
+      if (
+        formData.files &&
+        formData.files.length > 0 &&
+        formData.files.some((f) => f instanceof File)
+      ) {
+        const fileFormData = new FormData();
+        formData.files.forEach((file) => {
+          if (file instanceof File) {
+            fileFormData.append("files", file);
+          }
+        });
 
         try {
-          const errorJson = JSON.parse(errorText);
-          if (errorJson.message) {
-            errorMessage += `: ${errorJson.message}`;
-          } else if (errorJson.error) {
-            errorMessage += `: ${errorJson.error}`;
+          const fileResponse = await fetchWithAuth(
+            `${API_URL}biddings/${result.id}/attachments`,
+            {
+              method: "POST",
+              credentials: "include",
+              body: fileFormData
+            }
+          );
+
+          if (fileResponse.ok) {
+            console.log("첨부 파일 업로드 성공");
           } else {
-            errorMessage += `: ${errorText}`;
+            console.warn("첨부 파일 업로드 실패");
           }
-        } catch (e) {
-          errorMessage += `: ${errorText}`;
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      // 성공 응답 처리
-      const data = await response.json();
-      console.log("API 응답 성공:", data);
-      // 알림 전송 - try/catch로 감싸서 실패해도 다음 단계 진행
-      try {
-        if (mode === "create") {
-          // 입찰 공고 생성 알림 (관리자, 구매팀)
-          await sendNotification(
-            "BIDDING_CREATED",
-            `새로운 입찰 공고 "${formData.requestName}"이 생성되었습니다.`
-          );
-        } else {
-          // 입찰 공고 수정 알림
-          await sendNotification(
-            "BIDDING_UPDATED",
-            `입찰 공고 "${formData.requestName}"이 수정되었습니다.`
-          );
-        }
-      } catch (notificationError) {
-        console.warn("알림 전송 실패:", notificationError);
-        // 알림 전송 실패는 사용자 경험에 큰 영향을 주지 않으므로 진행
-      }
-
-      // 파일이 있는 경우 별도의 첨부파일 업로드 요청
-      if (formData.files && formData.files.length > 0) {
-        try {
-          const formDataForFiles = new FormData();
-          formData.files.forEach((file) => {
-            // File 객체인지 확인
-            if (file instanceof File) {
-              formDataForFiles.append("files", file);
-            }
-          });
-
-          // 파일이 추가된 경우에만 요청
-          if (formDataForFiles.has("files")) {
-            const fileUploadResponse = await fetchWithAuth(
-              `${API_URL}biddings/${data.id}/attachments`,
-              {
-                method: "POST",
-                body: formDataForFiles
-              }
-            );
-
-            if (!fileUploadResponse.ok) {
-              console.warn(
-                "파일 업로드 실패:",
-                await fileUploadResponse.text()
-              );
-              // 파일 업로드 실패는 경고만 표시하고 진행
-            }
-          }
-        } catch (fileError) {
-          console.error("파일 업로드 중 오류:", fileError);
-          // 파일 업로드 실패는 경고만 표시하고 진행
+        } catch (uploadError) {
+          console.error("파일 업로드 중 오류:", uploadError);
         }
       }
 
-      alert(
-        `입찰 공고가 성공적으로 ${
-          mode === "create" ? "등록" : "수정"
-        }되었습니다.`
+      // 성공 메시지 표시 및 이동
+      setSuccessMessage(
+        `입찰 공고가 성공적으로 ${mode === "edit" ? "수정" : "등록"}되었습니다.`
       );
-
-      // 성공 후 상세 페이지로 이동
-      navigate(`/biddings/${data.id}`);
-    } catch (error) {
-      console.error("입찰 공고 제출 오류:", error);
-      setRequestError(`오류가 발생했습니다: ${error.message}`);
+      setShowSuccess(true);
+      setTimeout(() => navigate(`/biddings/${result.id}`), 1500);
+    } catch (err) {
+      console.error("handleSubmit 에러:", err);
+      alert(err.message || "저장 실패");
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
@@ -893,39 +625,12 @@ function BiddingFormPage() {
           const biddingData = await response.json();
           console.log("서버에서 받은 데이터:", biddingData);
 
-          // DB 필드명과 클라이언트 필드명 매핑 보강
-          if (biddingData.purchaseRequest) {
-            biddingData.purchaseRequest.request_number =
-              biddingData.purchaseRequest.requestNumber ||
-              biddingData.purchaseRequest.id;
-          }
-
-          if (biddingData.purchaseRequestItem) {
-            biddingData.purchaseRequestItem.purchase_request_item_id =
-              biddingData.purchaseRequestItem.id;
-            biddingData.purchaseRequestItem.delivery_location =
-              biddingData.purchaseRequestItem.deliveryLocation;
-            biddingData.purchaseRequestItem.delivery_request_date =
-              biddingData.purchaseRequestItem.deliveryRequestDate;
-          }
-
           // biddingHelpers의 mapBiddingDataToFormData 함수 사용
           const mappedFormData = mapBiddingDataToFormData(biddingData);
 
           // 입찰 조건 필드 매핑 보장
           if (biddingData.conditions && !mappedFormData.biddingConditions) {
             mappedFormData.biddingConditions = biddingData.conditions;
-          }
-
-          // 납품 관련 정보 매핑
-          if (biddingData.deliveryLocation) {
-            mappedFormData.deliveryLocation = biddingData.deliveryLocation;
-            mappedFormData.delivery_location = biddingData.deliveryLocation;
-          }
-
-          if (biddingData.deliveryDate) {
-            mappedFormData.deliveryDate = biddingData.deliveryDate;
-            mappedFormData.delivery_date = biddingData.deliveryDate;
           }
 
           console.log("매핑된 데이터:", mappedFormData);
@@ -938,9 +643,26 @@ function BiddingFormPage() {
             setFileList([{ name: biddingData.filePath }]);
           }
 
-          // 선택된 요청 저장
-          if (biddingData.purchaseRequest) {
-            setSelectedRequest(biddingData.purchaseRequest);
+          // 수정 모드에서는 공급자 정보도 정확히 가져와야 함
+          if (
+            !mappedFormData.suppliers ||
+            mappedFormData.suppliers.length === 0
+          ) {
+            // 공급자 정보가 없는 경우, description에서 추출 시도
+            if (mappedFormData.description) {
+              const companyName = mappedFormData.description
+                .split(",")
+                .map((name) => name.trim());
+              // 가능하다면 이름으로 공급자 객체 찾기
+              const foundSuppliers = suppliers.filter((s) =>
+                companyName.includes(s.name)
+              );
+
+              if (foundSuppliers.length > 0) {
+                mappedFormData.suppliers = foundSuppliers;
+                setFormData((prev) => ({ ...prev, suppliers: foundSuppliers }));
+              }
+            }
           }
         } catch (error) {
           console.error("입찰 공고 데이터 로딩 중 오류:", error);
@@ -956,6 +678,59 @@ function BiddingFormPage() {
     fetchBiddingData();
   }, [mode, biddingId]);
 
+  // 성공 응답 처리를 위한 헬퍼 함수
+  const handleSuccessResponse = async (response) => {
+    const result = await response.json();
+    console.log(`입찰 공고 ${mode === "edit" ? "수정" : "등록"} 성공:`, result);
+
+    // 파일 처리 (있는 경우)
+    if (
+      formData.files &&
+      formData.files.length > 0 &&
+      formData.files.some((f) => f instanceof File)
+    ) {
+      const fileFormData = new FormData();
+
+      formData.files.forEach((file) => {
+        if (file instanceof File) {
+          fileFormData.append("files", file);
+        }
+      });
+
+      try {
+        const fileResponse = await fetch(
+          `${API_URL}biddings/${result.id}/attachments`,
+          {
+            method: "POST",
+            credentials: "include", // 중요: 쿠키 포함
+            body: fileFormData
+          }
+        );
+
+        if (fileResponse.ok) {
+          console.log("첨부 파일이 성공적으로 업로드되었습니다.");
+        } else {
+          console.warn("첨부 파일 업로드 실패 (계속 진행)");
+        }
+      } catch (fileError) {
+        console.warn("첨부 파일 업로드 중 오류 (계속 진행):", fileError);
+      }
+    }
+
+    // 성공 메시지 표시
+    setSuccessMessage(
+      `입찰 공고가 성공적으로 ${mode === "edit" ? "수정" : "등록"}되었습니다.`
+    );
+    setShowSuccess(true);
+
+    // 상세 페이지로 이동
+    setTimeout(() => {
+      navigate(`/biddings/${result.id}`);
+    }, 1500);
+
+    return result;
+  };
+
   // 취소 핸들러
   const handleCancel = () => {
     const confirmCancel = window.confirm(
@@ -966,95 +741,12 @@ function BiddingFormPage() {
     }
   };
 
-  // 권한 렌더링
-  const renderSubmitButton = () => {
-    // user 객체를 직접 전달
-    const { hasPermission, canModifyBidding } = checkUserPermissions(user);
-
-    // 생성 모드에서 권한 체크
-    if (mode === "create" && !hasPermission("canCreateBidding")) {
-      return null; // 버튼 숨김
-    }
-
-    // 수정 모드에서 권한 체크
-    if (mode === "edit" && !canModifyBidding(formData.status)) {
-      return null; // 버튼 숨김
-    }
-
-    return (
-      <Button
-        variant="contained"
-        color="primary"
-        type="submit"
-        disabled={isSubmitting}>
-        {isSubmitting ? (
-          <CircularProgress size={24} />
-        ) : mode === "create" ? (
-          "등록"
-        ) : (
-          "수정"
-        )}
-      </Button>
-    );
-  };
-
-  // 상태 변경 핸들러 추가
-  const handleStatusChange = async (newStatus) => {
-    const { hasPermission } = checkUserPermissions();
-
-    if (!hasPermission("canChangeBiddingStatus")) {
-      alert("입찰 공고 상태를 변경할 권한이 없습니다.");
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-
-      // 1. API를 통한 상태 변경
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/status`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: newStatus,
-            reason: `상태가 ${newStatus}로 변경되었습니다.`
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("상태 변경에 실패했습니다.");
-      }
-
-      // 2. 웹소켓으로 상태 변경 알림
-      websocket.sendBiddingStatusChange(
-        biddingId,
-        formData.status.childCode,
-        newStatus
-      );
-
-      // 3. 알림 전송
-      sendNotification(
-        "BIDDING_STATUS_CHANGED",
-        `입찰 공고 "${formData.title}"의 상태가 ${newStatus}로 변경되었습니다.`
-      );
-
-      // 4. 로컬 상태 업데이트
-      setFormData((prev) => ({
-        ...prev,
-        status: {
-          ...prev.status,
-          childCode: newStatus
-        }
-      }));
-    } catch (error) {
-      console.error("상태 변경 중 오류:", error);
-      setRequestError(`오류가 발생했습니다: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  useEffect(() => {
+    console.log("📦 최종 제출 payload 확인", {
+      purchaseRequestId: formData.purchaseRequestId,
+      purchaseRequestItemId: formData.purchaseRequestItemId
+    });
+  }, [formData]);
 
   // 파일 리스트 렌더링
   const renderFileList = () => {
@@ -1079,7 +771,6 @@ function BiddingFormPage() {
               </Typography>
             </Box>
             <Box>
-              {/* 다운로드 버튼 (서버에서 온 파일인 경우만) */}
               {typeof file === "string" && (
                 <IconButton
                   size="small"
@@ -1114,7 +805,7 @@ function BiddingFormPage() {
       />
       <label htmlFor="contained-button-file">
         <Button
-          variant="contained"
+          variant="outlined"
           component="span"
           startIcon={<AttachFileIcon />}
           disabled={mode === "edit"}>
@@ -1131,30 +822,7 @@ function BiddingFormPage() {
         <CircularProgress />
       </Box>
     );
-  };
-
-  // 파일 첨부 input 수정
-  const renderFileUploadInput = () => (
-    <>
-      <input
-        type="file"
-        multiple
-        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-        onChange={handleFileChange}
-        id="contained-button-file"
-        style={{ display: "none" }}
-      />
-      <label htmlFor="contained-button-file">
-        <Button
-          variant="contained"
-          component="span"
-          startIcon={<AttachFileIcon />}
-          disabled={mode === "edit"}>
-          파일 첨부
-        </Button>
-      </label>
-    </>
-  );
+  }
 
   return (
     <Box sx={{ p: 4 }}>
@@ -1169,6 +837,13 @@ function BiddingFormPage() {
         </Alert>
       )}
 
+      {/* 성공 메시지 표시 */}
+      {showSuccess && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
+      )}
+
       <form onSubmit={handleSubmit}>
         <Paper sx={{ p: 3, mb: 3 }}>
           <Grid container spacing={3}>
@@ -1180,10 +855,12 @@ function BiddingFormPage() {
                 name="requestNumber"
                 value={formData.requestNumber}
                 onClick={() => {
-                  setIsPurchaseRequestModalOpen(true);
+                  if (mode === "create") {
+                    setIsPurchaseRequestModalOpen(true);
+                  }
                 }}
                 InputProps={{
-                  readOnly: mode === "edit",
+                  readOnly: true,
                   style: { cursor: mode === "create" ? "pointer" : "default" }
                 }}
                 error={!!errors.requestNumber}
@@ -1220,63 +897,58 @@ function BiddingFormPage() {
                   minHeight: "100px",
                   mb: 1
                 }}>
-                {mode === "create" || mode === "edit" ? (
-                  formData.suppliers && formData.suppliers.length > 0 ? (
-                    <Grid container spacing={1}>
-                      {formData.suppliers.map((supplier) => (
-                        <Grid item key={supplier.id}>
-                          <Box
-                            sx={{
-                              bgcolor: "primary.light",
-                              color: "white",
-                              p: 1,
-                              borderRadius: 1,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1
+                {formData.suppliers && formData.suppliers.length > 0 ? (
+                  <Grid container spacing={1}>
+                    {formData.suppliers.map((supplier) => (
+                      <Grid item key={supplier.id}>
+                        <Box
+                          sx={{
+                            bgcolor: "primary.light",
+                            color: "white",
+                            p: 1,
+                            borderRadius: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1
+                          }}>
+                          <Typography variant="body2">
+                            {supplier.name}
+                          </Typography>
+                          <Button
+                            size="small"
+                            sx={{ minWidth: "auto", p: 0, color: "white" }}
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                suppliers: prev.suppliers.filter(
+                                  (s) => s.id !== supplier.id
+                                )
+                              }));
                             }}>
-                            <Typography variant="body2">
-                              {supplier.name}
-                            </Typography>
-                            <Button
-                              size="small"
-                              sx={{ minWidth: "auto", p: 0, color: "white" }}
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  suppliers: prev.suppliers.filter(
-                                    (s) => s.id !== supplier.id
-                                  )
-                                }));
-                              }}>
-                              ×
-                            </Button>
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  ) : (
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "text.secondary" }}>
-                      선택된 공급자가 없습니다.
-                    </Typography>
-                  )
-                ) : null}
+                            ×
+                          </Button>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : (
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    선택된 공급자가 없습니다.
+                  </Typography>
+                )}
               </Box>
               {errors.suppliers && (
                 <Typography color="error" variant="caption">
                   {errors.suppliers}
                 </Typography>
               )}
-              {(mode === "create" || mode === "edit") && (
-                <Button
-                  variant="outlined"
-                  onClick={() => setIsSupplierModalOpen(true)}
-                  startIcon={<span>+</span>}>
-                  공급자 선택
-                </Button>
-              )}
+              <Button
+                variant="outlined"
+                onClick={() => setIsSupplierModalOpen(true)}
+                startIcon={<span>+</span>}
+                disabled={mode === "edit"}>
+                공급자 선택
+              </Button>
             </Grid>
 
             {/* 입찰 정보 */}
@@ -1305,9 +977,7 @@ function BiddingFormPage() {
                 <Select
                   labelId="status-label"
                   name="status"
-                  value={
-                    mode === "create" ? formData.status.childCode : "PENDING"
-                  }
+                  value={formData.status?.childCode || "PENDING"}
                   label="상태"
                   onChange={handleChange}
                   disabled={mode === "edit"}>
@@ -1317,6 +987,22 @@ function BiddingFormPage() {
                   <MenuItem value={BiddingStatus.CANCELED}>취소</MenuItem>
                 </Select>
               </FormControl>
+            </Grid>
+
+            {/* 제목 필드 (필수) */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="입찰 공고 제목"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                error={!!errors.title}
+                helperText={errors.title}
+                disabled={!isFieldEditable("title")}
+                margin="normal"
+              />
             </Grid>
 
             {/* 납품 관련 정보 */}
@@ -1331,28 +1017,6 @@ function BiddingFormPage() {
                 error={!!errors.deliveryLocation}
                 helperText={errors.deliveryLocation}
               />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <LocalizationProvider dateAdapter={AdapterMoment}>
-                <DatePicker
-                  label="납품 요청일"
-                  value={
-                    formData.deliveryDate ? moment(formData.deliveryDate) : null
-                  }
-                  onChange={(newDate) =>
-                    handleDateChange("deliveryDate", newDate)
-                  }
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      margin: "normal",
-                      error: !!errors.deliveryDate,
-                      helperText: errors.deliveryDate
-                    }
-                  }}
-                />
-              </LocalizationProvider>
             </Grid>
 
             {/* 수량 및 단가 정보 */}
@@ -1388,7 +1052,7 @@ function BiddingFormPage() {
                 disabled={
                   mode === "edit" ||
                   formData.bidMethod === BiddingMethod.OPEN_PRICE ||
-                  formData.selectedItems.length > 1 // 다중 선택 시 비활성화
+                  formData.selectedItems.length > 1
                 }
                 error={!!errors.unitPrice}
                 helperText={errors.unitPrice}
@@ -1405,8 +1069,7 @@ function BiddingFormPage() {
                   value={formData.billingUnit}
                   label="과금 단위"
                   onChange={handleChange}
-                  disabled={formData.selectedItems.length > 1} // 다중 선택 시 비활성화
-                >
+                  disabled={formData.selectedItems.length > 1}>
                   {BillingUnits.map((unit) => (
                     <MenuItem key={unit.value} value={unit.value}>
                       {unit.label}
@@ -1416,18 +1079,61 @@ function BiddingFormPage() {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DatePicker
-                  label="입찰 마감 일자"
-                  value={formData.deadline ? moment(formData.deadline) : null}
-                  onChange={(newDate) => handleDateChange("deadline", newDate)}
+                  label="납품 요청일"
+                  value={
+                    formData.deliveryDate ? moment(formData.deliveryDate) : null
+                  }
+                  onChange={(newDate) =>
+                    handleDateChange("deliveryDate", newDate)
+                  }
                   slotProps={{
                     textField: {
                       fullWidth: true,
-                      error: !!errors.deadline,
-                      helperText: errors.deadline,
-                      margin: "normal"
+                      margin: "normal",
+                      error: !!errors.deliveryDate,
+                      helperText: errors.deliveryDate
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <LocalizationProvider dateAdapter={AdapterMoment}>
+                <DatePicker
+                  label="입찰 시작일"
+                  value={formData.startDate ? moment(formData.startDate) : null}
+                  onChange={(newDate) => handleDateChange("startDate", newDate)}
+                  disabled={!isFieldEditable("title")}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      required: true,
+                      margin: "normal",
+                      error: !!errors.startDate,
+                      helperText: errors.startDate
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <LocalizationProvider dateAdapter={AdapterMoment}>
+                <DatePicker
+                  label="입찰 마감일"
+                  value={formData.endDate ? moment(formData.endDate) : null}
+                  onChange={(newDate) => handleDateChange("endDate", newDate)}
+                  disabled={!isFieldEditable("title")}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      required: true,
+                      margin: "normal",
+                      error: !!errors.endDate,
+                      helperText: errors.endDate
                     }
                   }}
                 />
@@ -1485,8 +1191,10 @@ function BiddingFormPage() {
                 value={formData.biddingConditions}
                 onChange={handleChange}
                 placeholder="예: 1. 납품 일정 2. 품질 요구사항 3. 결제 조건 등"
+                required
                 error={!!errors.biddingConditions}
                 helperText={errors.biddingConditions}
+                disabled={!isFieldEditable("title")}
                 margin="normal"
               />
             </Grid>
@@ -1502,6 +1210,7 @@ function BiddingFormPage() {
                 value={formData.internalNote}
                 onChange={handleChange}
                 placeholder="내부 참고사항을 입력하세요"
+                disabled={!isFieldEditable("title")}
                 margin="normal"
               />
             </Grid>
@@ -1540,7 +1249,7 @@ function BiddingFormPage() {
         </Box>
       </form>
 
-      {/* 통합된 구매 요청 및 품목 선택 모달 */}
+      {/* 구매 요청 선택 모달 */}
       <PurchaseRequestSelectionDialog
         open={isPurchaseRequestModalOpen}
         onClose={() => setIsPurchaseRequestModalOpen(false)}

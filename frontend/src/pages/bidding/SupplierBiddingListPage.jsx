@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { API_URL } from "@/utils/constants";
 
@@ -29,10 +30,14 @@ import {
   getBidMethodText
 } from "./helpers/commonBiddingHelpers";
 
+import { useNotificationsWebSocket } from "@/hooks/useNotificationsWebSocket";
+import { useToastNotifications } from "@/hooks/useToastNotifications";
+
 function SupplierBiddingListPage() {
   const navigate = useNavigate();
 
   const [biddings, setBiddings] = useState([]);
+  const { user } = useSelector((state) => state.auth);
   const [filteredBiddings, setFilteredBiddings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -42,6 +47,22 @@ function SupplierBiddingListPage() {
   const [methodFilter, setMethodFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("all"); // 'all', 'invited', 'participated', 'won'
+
+  // 알림 웹소켓 연결
+  const { toast } = useToastNotifications();
+
+  // 알림 수신 시 토스트 띄우는 함수
+  const handleNotification = (notification) => {
+    toast({
+      title: notification.title,
+      description: notification.content,
+      severity: "info", // MUI Alert 스타일 대응 (success | error | warning | info)
+      duration: 5000
+    });
+  };
+
+  // 알림 웹소켓 연결
+  useNotificationsWebSocket(user, handleNotification);
 
   // 입찰 공고 목록 가져오기
   const fetchBiddings = async () => {
@@ -120,9 +141,16 @@ function SupplierBiddingListPage() {
     applyFilters();
   }, [biddings, statusFilter, methodFilter, searchTerm]);
 
+  useEffect(() => {
+    if (user) {
+      // 유저 정보를 기반으로 요청 가능
+      console.log("현재 로그인 사용자:", user.username);
+    }
+  }, [user]);
+
   // 상세 페이지로 이동
   const handleViewDetail = (id) => {
-    navigate(`/supplier/biddings/${id}`);
+    navigate(`/suppliers/biddings/${id}`);
   };
 
   // 참여 가능 여부 확인
@@ -210,7 +238,6 @@ function SupplierBiddingListPage() {
               <TableCell>공고 기간</TableCell>
               <TableCell>상태</TableCell>
               <TableCell>참여 가능 여부</TableCell>
-              <TableCell>작업</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -256,15 +283,6 @@ function SupplierBiddingListPage() {
                   ) : (
                     <Chip label="참여 불가" color="default" size="small" />
                   )}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="small"
-                    onClick={() => handleViewDetail(bidding.id)}>
-                    상세보기
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}

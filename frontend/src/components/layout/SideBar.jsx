@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { clearUser } from "@/redux/authSlice";
@@ -18,7 +18,11 @@ const buyerAdminMenuItems = [
   { label: "발주관리", path: "/orders" },
   { label: "입고 관리", path: "/deliveries" },
   { label: "송장 관리", path: "/invoices" },
-  { label: "자금 관리", path: "/payments" , roles: ["ROLE_ADMIN","ROLE_BUYER"] },
+  {
+    label: "자금 관리",
+    path: "/payments",
+    roles: ["ROLE_ADMIN", "ROLE_BUYER"]
+  },
   { label: "통계 관리", path: "/chart" },
   { label: "보고서생성/관리", path: "/reports" },
   { label: "시스템 설정", path: "/system", roles: ["ROLE_ADMIN"] }
@@ -26,7 +30,7 @@ const buyerAdminMenuItems = [
 
 // 공급업체(SUPPLIER) 메뉴
 const supplierMenuItems = [
-  { label: "대시보드", path: "/supplierDashboard" },
+  { label: "대시보드", path: "/suppliers/dashboard" },
   { label: "입찰 정보", path: "/suppliers/biddings" },
   { label: "계약 정보", path: "/suppliers/contracts" },
   { label: "주문 정보", path: "/suppliers/orders" },
@@ -38,10 +42,24 @@ function SideBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.auth);
+  const auth = useSelector((state) => state.auth);
 
-  // 현재 사용자의 역할에 따라 메뉴 아이템 결정
-  const isSupplier = user?.roles?.includes("SUPPLIER");
+  // Redux 스토어에서 사용자 정보 확인
+  // 1. 직접 auth.roles 사용
+  // 2. auth.user?.roles 사용 (user 객체 내부에 있을 경우)
+  const userRoles = auth.roles || auth.user?.roles || [];
+
+  // 역할이 문자열인 경우 배열로 변환하여 처리
+  const normalizedRoles = Array.isArray(userRoles)
+    ? userRoles
+    : [userRoles].filter(Boolean);
+
+  // SUPPLIER 역할 여부 확인
+  const isSupplier = normalizedRoles.some(
+    (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
+  );
+
+  // 역할에 따라 메뉴 선택
   const menuItems = isSupplier ? supplierMenuItems : buyerAdminMenuItems;
 
   // 현재 활성화된 메뉴 확인
@@ -55,7 +73,7 @@ function SideBar() {
     if (!item.roles) return true;
 
     // roles 속성이 있으면 해당 역할을 가진 사용자만 접근 가능
-    return user?.roles?.some((role) => item.roles.includes(role));
+    return normalizedRoles.some((role) => item.roles.includes(role));
   };
 
   // 로그아웃 핸들러
@@ -67,6 +85,9 @@ function SideBar() {
         credentials: "include"
       });
 
+      // 로컬 스토리지 데이터 삭제
+      localStorage.removeItem("loggedInUser");
+
       // Redux 상태 초기화
       dispatch(clearUser());
 
@@ -76,6 +97,7 @@ function SideBar() {
       console.error("로그아웃 중 오류 발생:", error);
 
       // 에러 발생해도 클라이언트 상태는 초기화
+      localStorage.removeItem("loggedInUser");
       dispatch(clearUser());
       navigate("/login");
     }

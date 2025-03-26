@@ -6,134 +6,147 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Paper,
   Button,
-  Chip
+  Chip,
+  Tooltip,
+  IconButton
 } from "@mui/material";
 import {
-  BiddingStatus,
-  BiddingMethod,
-  UserRole
-} from "./../helpers/biddingTypes";
+  StarRate as WinnerIcon,
+  Assessment as AssessmentIcon,
+  Description as DescriptionIcon
+} from "@mui/icons-material";
+import moment from "moment";
+import { formatNumber } from "../helpers/commonBiddingHelpers";
 
-/**
- * 참여 목록 컴포넌트 - 정가제안과 가격제안을 모두 지원
- */
 function ParticipationList({
   participations,
   bidding,
-  userRole,
+  isClosed,
+  canEvaluateEach,
+  canSelectWinner,
+  canCreateContract,
   onEvaluate,
   onSelectWinner,
   onCreateContract
 }) {
-  if (!bidding || !participations) return null;
-
-  // 낙찰자가 있는지 확인
-  const hasSelectedBidder = participations.some((p) => p.isSelectedBidder);
-
-  // 권한 체크
-  const canEvaluate =
-    userRole === UserRole.ADMIN || userRole === UserRole.BUYER;
-  const canSelect =
-    canEvaluate && bidding.status?.childCode === BiddingStatus.CLOSED;
-  const canContract =
-    canEvaluate &&
-    hasSelectedBidder &&
-    bidding.status?.childCode === BiddingStatus.CLOSED;
-
-  // 정가제안인지 가격제안인지에 따라 다른 컬럼 구성
-  const isPriceSuggestion = bidding.bidMethod === BiddingMethod.OPEN_PRICE;
+  const hasWinner = participations.some((p) => p.isSelectedBidder);
 
   return (
-    <TableContainer>
-      <Table>
+    <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+      <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>공급사</TableCell>
-            {isPriceSuggestion && <TableCell>제안 내용</TableCell>}
-            <TableCell align="right">단가</TableCell>
-            <TableCell align="right">수량</TableCell>
-            <TableCell align="right">총액</TableCell>
-            <TableCell>평가</TableCell>
+            <TableCell>공급사명</TableCell>
+            <TableCell>참여일시</TableCell>
+            <TableCell align="right">제안 단가</TableCell>
+            <TableCell align="right">제안 총액</TableCell>
+            <TableCell>평가상태</TableCell>
             <TableCell>상태</TableCell>
-            <TableCell>액션</TableCell>
+            <TableCell align="right">작업</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {participations.map((participation) => (
-            <TableRow
-              key={participation.id}
-              sx={
-                participation.isSelectedBidder
-                  ? { bgcolor: "rgba(76, 175, 80, 0.1)" }
-                  : {}
-              }>
-              <TableCell>{participation.companyName}</TableCell>
-              {isPriceSuggestion && (
-                <TableCell>{participation.proposalText || "-"}</TableCell>
-              )}
-              <TableCell align="right">
-                {formatNumber(participation.unitPrice)}원
-              </TableCell>
-              <TableCell align="right">{participation.quantity}</TableCell>
-              <TableCell align="right">
-                {formatNumber(participation.totalAmount)}원
-              </TableCell>
-              <TableCell>
-                {participation.isEvaluated ? (
-                  <Chip
-                    label={`${participation.evaluationScore || 0}점`}
-                    color="success"
-                    size="small"
-                  />
-                ) : canEvaluate ? (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="primary"
-                    onClick={() => onEvaluate && onEvaluate(participation)}>
-                    평가하기
-                  </Button>
-                ) : (
-                  "미평가"
-                )}
-              </TableCell>
-              <TableCell>
-                {participation.isSelectedBidder ? (
-                  <Chip label="낙찰자" color="success" size="small" />
-                ) : (
-                  "대기중"
-                )}
-              </TableCell>
-              <TableCell>
-                {canSelect && !hasSelectedBidder && (
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="primary"
-                    onClick={() =>
-                      onSelectWinner && onSelectWinner(participation)
-                    }
-                    disabled={!participation.isEvaluated}>
-                    낙찰자 선정
-                  </Button>
-                )}
+          {participations.map((p) => {
+            const showEvaluateButton =
+              isClosed && canEvaluateEach && !p.isEvaluated;
 
-                {canContract && participation.isSelectedBidder && (
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="success"
-                    onClick={() =>
-                      onCreateContract && onCreateContract(participation)
-                    }
-                    sx={{ ml: 1 }}>
-                    계약 생성
-                  </Button>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+            // 디버깅 출력
+            console.log(`[참여자: ${p.companyName}]`, {
+              전달받은_isClosed: isClosed,
+              canEvaluateEach,
+              isEvaluated: p.isEvaluated,
+              showEvaluateButton
+            });
+
+            return (
+              <TableRow key={p.id}>
+                <TableCell>
+                  {p.companyName}
+                  {p.isSelectedBidder && (
+                    <Tooltip title="낙찰자">
+                      <WinnerIcon
+                        color="warning"
+                        sx={{ ml: 1, verticalAlign: "middle" }}
+                      />
+                    </Tooltip>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {moment(p.participationDate).format("YYYY-MM-DD HH:mm")}
+                </TableCell>
+                <TableCell align="right">
+                  {formatNumber(p.unitPrice)} 원
+                </TableCell>
+                <TableCell align="right">
+                  {formatNumber(p.totalAmount)} 원
+                </TableCell>
+                <TableCell>
+                  {p.isEvaluated ? (
+                    <Chip
+                      label={`${p.evaluationScore || 0}점`}
+                      color="success"
+                      size="small"
+                    />
+                  ) : isClosed ? (
+                    <Chip label="미평가" color="warning" size="small" />
+                  ) : (
+                    "-"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {p.isSelectedBidder ? (
+                    <Chip label="낙찰" color="success" size="small" />
+                  ) : isClosed && hasWinner ? (
+                    <Chip label="탈락" color="error" size="small" />
+                  ) : (
+                    <Chip label="참여" color="info" size="small" />
+                  )}
+                </TableCell>
+                <TableCell align="right">
+                  {/* 평가 버튼 */}
+                  {showEvaluateButton && (
+                    <Tooltip title="평가하기">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => onEvaluate(p)}
+                        sx={{ mr: 1 }}>
+                        <AssessmentIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {/* 낙찰자 선정 버튼 */}
+                  {isClosed &&
+                    canSelectWinner &&
+                    !hasWinner &&
+                    p.isEvaluated && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="warning"
+                        onClick={() => onSelectWinner(p)}
+                        sx={{ mr: 1 }}>
+                        낙찰
+                      </Button>
+                    )}
+
+                  {/* 계약 초안 버튼 */}
+                  {isClosed && canCreateContract && p.isSelectedBidder && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<DescriptionIcon />}
+                      onClick={() => onCreateContract(p)}>
+                      계약
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </TableContainer>

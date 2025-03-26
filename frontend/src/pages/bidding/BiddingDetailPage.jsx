@@ -20,7 +20,18 @@ import {
   Collapse,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  TextField,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon
 } from "@mui/material";
 
 import {
@@ -29,7 +40,9 @@ import {
   Delete as DeleteIcon,
   AssignmentTurnedIn as AssignmentTurnedInIcon,
   Assignment as AssignmentIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  History as HistoryIcon,
+  Update as UpdateIcon
 } from "@mui/icons-material";
 
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -40,6 +53,11 @@ import {
   getBidMethodText,
   formatNumber
 } from "./helpers/commonBiddingHelpers";
+
+import PermissionService, { usePermission } from "./helpers/permissionUtils";
+
+import { useNotificationsWebSocket } from "@/hooks/useNotificationsWebSocket";
+import { useToastNotifications } from "@/hooks/useToastNotifications";
 
 // 분리된 컴포넌트 임포트
 import BiddingEvaluationDialog from "./biddingComponent/BiddingEvaluationDialog";
@@ -60,17 +78,53 @@ function BiddingDetailPage() {
   const [error, setError] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
     basicInfo: true,
+    detailInfo: true,
     suppliers: true,
     conditions: false,
     attachments: false,
-    participations: true
+    participations: true,
+    statusHistory: false
   });
+
+  // 알림 WebSocket 및 Toast 연결
+  const { toast } = useToastNotifications();
+
+  const handleNotification = (notification) => {
+    toast({
+      title: notification.title,
+      description: notification.content,
+      severity: "info",
+      duration: 5000
+    });
+  };
+
+  useNotificationsWebSocket(user, handleNotification);
+
+  const permission = usePermission(user);
+
+  const currentStatus = bidding?.status?.childCode || bidding?.status;
+
+  const statusCode = bidding
+    ? typeof bidding.status === "object"
+      ? bidding.status.childCode
+      : bidding.status
+    : null;
+
+  const isClosed =
+    (bidding?.status?.childCode || bidding?.status) === BiddingStatus.CLOSED;
+
+  console.log("bidding.status:", bidding?.status);
+  console.log("bidding.status.childCode:", bidding?.status?.childCode);
+
+  const userPosition = user?.position?.toLowerCase();
+  const userRole = user?.roles?.[0]?.replace("ROLE_", "").toUpperCase();
 
   // 모달 상태
   const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
   const [isWinnerConfirmOpen, setIsWinnerConfirmOpen] = useState(false);
   const [selectedParticipation, setSelectedParticipation] = useState(null);
   const [contractModalOpen, setContractModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // 평가 다이얼로그 상태
   const [evaluationDialogState, setEvaluationDialogState] = useState({
@@ -78,6 +132,8 @@ function BiddingDetailPage() {
     participationId: null,
     supplierName: ""
   });
+
+  // 상태 변경 다이얼로그 상태
   const [statusChangeDialog, setStatusChangeDialog] = useState({
     open: false,
     newStatus: "",
@@ -92,6 +148,28 @@ function BiddingDetailPage() {
     { label: "평가 및 낙찰", value: BiddingStatus.CLOSED },
     { label: "계약 및 발주", value: "CONTRACT" }
   ];
+
+  // 상태 변경 가능한 상태 목록
+  const availableStatusChanges = useMemo(() => {
+    if (!bidding) return [];
+
+    const currentStatus = bidding.status?.childCode || bidding.status;
+
+    switch (currentStatus) {
+      case BiddingStatus.PENDING:
+        return [
+          { code: BiddingStatus.ONGOING, text: "입찰 진행" },
+          { code: BiddingStatus.CANCELED, text: "입찰 취소" }
+        ];
+      case BiddingStatus.ONGOING:
+        return [
+          { code: BiddingStatus.CLOSED, text: "입찰 마감" },
+          { code: BiddingStatus.CANCELED, text: "입찰 취소" }
+        ];
+      default:
+        return [];
+    }
+  }, [bidding]);
 
   // 현재 활성 단계 계산
   const activeStep = useMemo(() => {
@@ -115,7 +193,6 @@ function BiddingDetailPage() {
     }
   }, [bidding]);
 
-  
   // 섹션 확장/축소 토글
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -135,15 +212,55 @@ function BiddingDetailPage() {
       }
 
       const data = await response.json();
+      console.log("서버에서 받은 bidding 데이터:", data);
+      console.log("현재 status 값:", data.status);
+
       setBidding(data);
 
       // 참여 목록, 공급사 목록 등 추가 데이터 패치
-      await Promise.all([fetchParticipations(id), fetchSuppliers(id)]);
+      await Promise.all([
+        fetchParticipations(id),
+        fetchSuppliers(id),
+        fetchStatusHistory(id)
+      ]);
     } catch (error) {
       setError(error.message);
       console.error("입찰 공고 상세 정보 로딩 실패:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 3. getStatusText 함수 오버라이드 (기존 함수에 문제가 있을 경우)
+  // helpers/commonBiddingHelpers.js에 있는 함수를 수정하기 어렵다면
+  // 컴포넌트 내에 새 함수를 추가합니다.
+  const getStatusDisplayText = (status) => {
+    if (!status) return "알 수 없음";
+
+    // 객체인 경우
+    if (typeof status === "object") {
+      if (status.childCode) {
+        return getStatusCodeDisplayText(status.childCode);
+      }
+      return status.name || "알 수 없음";
+    }
+
+    // 문자열인 경우
+    return getStatusCodeDisplayText(status);
+  };
+
+  const getStatusCodeDisplayText = (statusCode) => {
+    switch (statusCode) {
+      case BiddingStatus.PENDING:
+        return "대기중";
+      case BiddingStatus.ONGOING:
+        return "진행중";
+      case BiddingStatus.CLOSED:
+        return "마감";
+      case BiddingStatus.CANCELED:
+        return "취소";
+      default:
+        return statusCode || "알 수 없음";
     }
   };
 
@@ -164,14 +281,30 @@ function BiddingDetailPage() {
   const fetchSuppliers = async (biddingId) => {
     try {
       const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/suppliers`
+        `${API_URL}biddings/${biddingId}/invited-suppliers`
       );
       if (response.ok) {
         const data = await response.json();
         setSuppliers(data);
+      } else {
+        console.error("공급사 목록 응답 오류:", response.status);
       }
     } catch (error) {
       console.error("공급사 목록 로딩 실패:", error);
+    }
+  };
+
+  const fetchStatusHistory = async (biddingId) => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}biddings/${biddingId}/status-history`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setStatusHistories(data);
+      }
+    } catch (error) {
+      console.error("상태 변경 이력 로딩 실패:", error);
     }
   };
 
@@ -196,13 +329,69 @@ function BiddingDetailPage() {
         throw new Error("입찰 마감 처리에 실패했습니다.");
       }
 
-      // 상태 새로고침
-      fetchBiddingDetails();
-      alert("입찰 공고가 성공적으로 마감되었습니다.");
+      await fetchBiddingDetails();
+      alert("입찰이 성공적으로 마감되었습니다.");
     } catch (error) {
       console.error("입찰 마감 중 오류:", error);
+      alert(`오류 발생: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 입찰 삭제 핸들러
+  const handleDeleteBidding = async () => {
+    try {
+      setIsLoading(true);
+      setDeleteConfirmOpen(false);
+
+      const response = await fetchWithAuth(`${API_URL}biddings/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        throw new Error("입찰 공고 삭제에 실패했습니다.");
+      }
+
+      alert("입찰 공고가 성공적으로 삭제되었습니다.");
+      navigate("/biddings");
+    } catch (error) {
+      console.error("입찰 공고 삭제 중 오류:", error);
       alert(`오류가 발생했습니다: ${error.message}`);
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 상태 변경 핸들러
+  const handleStatusChange = async () => {
+    try {
+      setIsLoading(true);
+      console.log("상태 변경 요청:", {
+        status: statusChangeDialog.newStatus,
+        reason: statusChangeDialog.reason
+      });
+
+      const res = await fetchWithAuth(`${API_URL}biddings/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: statusChangeDialog.newStatus,
+          reason: statusChangeDialog.reason
+        })
+      });
+
+      if (!res.ok) throw new Error("상태 변경 실패");
+
+      alert("상태 변경 완료");
+
+      // fetchBidding() 대신 fetchBiddingDetails() 함수 호출
+      await fetchBiddingDetails();
+    } catch (e) {
+      console.error("상태 변경 오류:", e);
+      alert(e.message);
+    } finally {
+      setStatusChangeDialog({ open: false, newStatus: "", reason: "" });
       setIsLoading(false);
     }
   };
@@ -216,7 +405,7 @@ function BiddingDetailPage() {
       setIsWinnerConfirmOpen(false);
 
       const response = await fetchWithAuth(
-        `${API_URL}evaluations/${id}/select-winner`,
+        `${API_URL}/evaluations/${id}/select-winner`,
         {
           method: "PUT",
           headers: {
@@ -245,20 +434,20 @@ function BiddingDetailPage() {
   // 평가 완료 핸들러
   const handleEvaluationComplete = async (evaluation) => {
     try {
-      // 평가 목록 다시 가져오기
+      // API 호출을 통한 평가 저장(직접 API 호출은 BiddingEvaluationDialog에서 처리)
+
+      // 참여 목록 다시 가져오기
       await fetchParticipations(id);
 
-      alert("평가가 성공적으로 제출되었습니다.");
+      // 성공 메시지
+      console.log("평가가 성공적으로 저장되었습니다:", evaluation);
 
-      // 평가 다이얼로그 닫기
-      setEvaluationDialogState({
-        open: false,
-        participationId: null,
-        supplierName: ""
-      });
+      // 평가 결과 반환 (중요: Promise를 반환하도록 함)
+      return evaluation;
     } catch (error) {
       console.error("평가 처리 중 오류:", error);
-      alert(`평가 처리 중 오류가 발생했습니다: ${error.message}`);
+      // 오류를 다시 throw하여 다이얼로그에서 처리하도록 함
+      throw error;
     }
   };
 
@@ -270,7 +459,7 @@ function BiddingDetailPage() {
       setIsLoading(true);
       setContractModalOpen(false);
 
-      const response = await fetchWithAuth(`${API_URL}contracts/draft`, {
+      const response = await fetchWithAuth(`${API_URL}/contracts/draft`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -302,51 +491,85 @@ function BiddingDetailPage() {
     }
   };
 
-  // 권한 체크
+  // 권한 체크 부분 수정
+  const canEdit = useMemo(() => {
+    return permission.canUpdateBidding(bidding);
+  }, [bidding, permission]);
+
+  const canDelete = useMemo(() => {
+    return PermissionService.checkPermission(user, "delete", currentStatus);
+  }, [user, currentStatus]);
+
+  const canChangeStatus = useMemo(() => {
+    return permission.canChangeBiddingStatus(
+      currentStatus,
+      BiddingStatus.ONGOING
+    );
+  }, [permission, currentStatus]);
+
+  const handleDelete = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetchWithAuth(`${API_URL}biddings/${id}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("삭제에 실패했습니다.");
+      alert("삭제 완료");
+      navigate("/biddings");
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const canManageBidding = useMemo(() => {
-    if (!bidding || !user) return false;
-    if (user.role === UserRole.ADMIN) return true;
-    if (user.role === UserRole.BUYER && bidding.createdBy === user.username)
-      return true;
-    return false;
+    return permission.canUpdateBidding(bidding);
+  }, [bidding, permission]);
+
+  const canChangeBiddingStatus = useMemo(() => {
+    return permission.canChangeBiddingStatus(
+      currentStatus,
+      BiddingStatus.ONGOING
+    );
+  }, [bidding, permission]);
+
+  const canDeleteBidding = useMemo(() => {
+    return PermissionService.checkPermission(user, "delete", currentStatus);
   }, [bidding, user]);
 
   const canCloseBidding = useMemo(() => {
-    if (!bidding || !user) return false;
-    if (bidding.status?.childCode !== BiddingStatus.ONGOING) return false;
-    if (user.role === UserRole.ADMIN) return true;
-    if (user.role === UserRole.BUYER && bidding.createdBy === user.username)
-      return true;
-    return false;
-  }, [bidding, user]);
+    return currentStatus === BiddingStatus.ONGOING && canManageBidding;
+  }, [currentStatus, canManageBidding]);
 
   const canEvaluate = useMemo(() => {
     if (!bidding || !user) return false;
     if (bidding.status?.childCode !== BiddingStatus.CLOSED) return false;
-    if (user.role === UserRole.ADMIN) return true;
-    if (user.role === UserRole.BUYER && bidding.createdBy === user.username)
-      return true;
-    return false;
+
+    return permission.canSelectWinner(bidding);
+  }, [bidding, user, permission]);
+
+  const canEvaluateEachParticipation = useMemo(() => {
+    if (!bidding || !user) return false;
+
+    const statusCode =
+      typeof bidding.status === "object"
+        ? bidding.status.childCode
+        : bidding.status;
+
+    return statusCode === BiddingStatus.CLOSED;
   }, [bidding, user]);
 
   const canSelectWinner = useMemo(() => {
     if (!bidding || !user) return false;
     if (bidding.status?.childCode !== BiddingStatus.CLOSED) return false;
 
-    // 이미 낙찰자가 있는지 확인
     const hasWinner = participations.some((p) => p.isSelectedBidder);
-    if (hasWinner) return false;
-
-    // 모든 참여에 대한 평가가 완료되었는지 확인
     const allEvaluated =
       participations.length > 0 && participations.every((p) => p.isEvaluated);
-    if (!allEvaluated) return false;
 
-    if (user.role === UserRole.ADMIN) return true;
-    if (user.role === UserRole.BUYER && bidding.createdBy === user.username)
-      return true;
-    return false;
-  }, [bidding, user, participations]);
+    return !hasWinner && allEvaluated && permission.canSelectWinner(bidding);
+  }, [bidding, user, participations, permission]);
 
   const canCreateContract = useMemo(() => {
     if (!bidding || !user) return false;
@@ -360,11 +583,8 @@ function BiddingDetailPage() {
     const hasContract = bidding.contracts && bidding.contracts.length > 0;
     if (hasContract) return false;
 
-    if (user.role === UserRole.ADMIN) return true;
-    if (user.role === UserRole.BUYER && bidding.createdBy === user.username)
-      return true;
-    return false;
-  }, [bidding, user, participations]);
+    return permission.canCreateContractDraft(bidding);
+  }, [bidding, user, participations, permission]);
 
   // 로딩 및 에러 상태 처리
   if (isLoading) {
@@ -416,40 +636,73 @@ function BiddingDetailPage() {
             onClick={() => navigate("/biddings")}>
             목록으로
           </Button>
-          {canManageBidding && (
-            <>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<EditIcon />}
-                sx={{ mr: 1 }}
-                onClick={() => navigate(`/biddings/${id}/edit`)}
-                disabled={bidding.status?.childCode === BiddingStatus.CLOSED}>
-                수정
-              </Button>
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<DeleteIcon />}
-                disabled={bidding.status?.childCode !== BiddingStatus.PENDING}>
-                삭제
-              </Button>
-            </>
+
+          {/* 상태 변경 버튼 */}
+          {canChangeStatus && (
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<UpdateIcon />}
+              onClick={() => {
+                // 현재 상태에 따라 적절한 다음 상태 선택
+                const nextStatus =
+                  currentStatus === BiddingStatus.PENDING
+                    ? BiddingStatus.ONGOING
+                    : currentStatus === BiddingStatus.ONGOING
+                    ? BiddingStatus.CLOSED
+                    : BiddingStatus.PENDING;
+
+                setStatusChangeDialog({
+                  open: true,
+                  newStatus: nextStatus,
+                  reason: ""
+                });
+              }}
+              sx={{ mr: 1 }}>
+              상태 변경
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<EditIcon />}
+              sx={{ mr: 1 }}
+              onClick={() => navigate(`/biddings/${id}/edit`)}>
+              수정
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => setDeleteConfirmOpen(true)}>
+              삭제
+            </Button>
           )}
         </Box>
       </Box>
-
       {/* 프로세스 진행 상태 */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Stepper activeStep={activeStep} alternativeLabel>
-          {biddingSteps.map((step) => (
-            <Step key={step.label}>
-              <StepLabel>{step.label}</StepLabel>
+        <Stepper
+          activeStep={
+            currentStatus === BiddingStatus.PENDING
+              ? 0
+              : currentStatus === BiddingStatus.ONGOING
+              ? 1
+              : currentStatus === BiddingStatus.CLOSED
+              ? 2
+              : 0
+          }
+          alternativeLabel>
+          {["등록", "진행", "마감"].map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
             </Step>
           ))}
         </Stepper>
       </Paper>
-
       {/* 기본 정보 섹션 */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <SectionHeader
@@ -461,86 +714,70 @@ function BiddingDetailPage() {
         <Collapse in={expandedSections.basicInfo}>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                입찰 번호
+              <Typography variant="subtitle2">입찰 번호</Typography>
+              <Typography>{bidding.bidNumber || "-"}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="subtitle2">상태</Typography>
+              <Chip label={getStatusDisplayText(bidding.status)} />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="subtitle2">입찰 방식</Typography>
+              <Typography>{getBidMethodText(bidding.bidMethod)}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="subtitle2">입찰 기간</Typography>
+              <Typography>
+                {bidding.biddingPeriod?.startDate} ~{" "}
+                {bidding.biddingPeriod?.endDate}
               </Typography>
-              <Typography variant="body1">
-                {bidding.bidNumber || "-"}
+            </Grid>
+          </Grid>
+        </Collapse>
+      </Paper>
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <SectionHeader
+          title="상세 정보"
+          icon={<AssignmentIcon />}
+          expanded={expandedSections.detailInfo}
+          onToggle={() => toggleSection("detailInfo")}
+        />
+        <Collapse in={expandedSections.detailInfo}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="subtitle2">구매요청 번호</Typography>
+              <Typography>
+                {bidding.purchaseRequest?.requestNumber || "-"}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                상태
-              </Typography>
-              <Chip
-                label={getStatusText(bidding.status)}
-                color={
-                  bidding.status?.childCode === BiddingStatus.ONGOING
-                    ? "primary"
-                    : bidding.status?.childCode === BiddingStatus.CLOSED
-                    ? "success"
-                    : "default"
-                }
-              />
+              <Typography variant="subtitle2">품목</Typography>
+              <Typography>{bidding.purchaseRequestItemName || "-"}</Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                입찰 방식
-              </Typography>
-              <Typography variant="body1">
-                {getBidMethodText(bidding.bidMethod)}
-              </Typography>
+              <Typography variant="subtitle2">납품장소</Typography>
+              <Typography>{bidding.deliveryLocation || "-"}</Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                입찰 기간
-              </Typography>
-              <Typography variant="body1">
-                {bidding.biddingPeriod?.startDate &&
-                bidding.biddingPeriod?.endDate
-                  ? `${moment(bidding.biddingPeriod.startDate).format(
-                      "YYYY-MM-DD"
-                    )} ~ ${moment(bidding.biddingPeriod.endDate).format(
-                      "YYYY-MM-DD"
-                    )}`
+              <Typography variant="subtitle2">납품 요청일</Typography>
+              <Typography>
+                {bidding.deliveryRequestDate
+                  ? moment(bidding.deliveryRequestDate).format("YYYY-MM-DD")
                   : "-"}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                수량
-              </Typography>
-              <Typography variant="body1">{bidding.quantity || 0}</Typography>
+              <Typography variant="subtitle2">수량</Typography>
+              <Typography>{bidding.quantity || 0}</Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                단가
-              </Typography>
-              <Typography variant="body1">
-                {formatNumber(bidding.unitPrice)} 원
-              </Typography>
+              <Typography variant="subtitle2">단가</Typography>
+              <Typography>{formatNumber(bidding.unitPrice)} 원</Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                총액
-              </Typography>
-              <Typography variant="body1">
-                {formatNumber(bidding.totalAmount)} 원
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                세금계산서 발행여부
-              </Typography>
-              <Typography variant="body1">필요</Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="text.secondary">
-                설명
-              </Typography>
-              <Typography variant="body1">
-                {bidding.description || "-"}
-              </Typography>
+              <Typography variant="subtitle2">총액</Typography>
+              <Typography>{formatNumber(bidding.totalAmount)} 원</Typography>
             </Grid>
           </Grid>
         </Collapse>
@@ -560,7 +797,6 @@ function BiddingDetailPage() {
           </Typography>
         </Collapse>
       </Paper>
-
       {/* 초대된 공급사 섹션 */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <SectionHeader
@@ -570,10 +806,70 @@ function BiddingDetailPage() {
           onToggle={() => toggleSection("suppliers")}
         />
         <Collapse in={expandedSections.suppliers}>
-          <SupplierList suppliers={suppliers} />
+          {suppliers.length > 0 ? (
+            <SupplierList suppliers={suppliers} />
+          ) : (
+            <Typography variant="body1">초대된 공급사가 없습니다.</Typography>
+          )}
         </Collapse>
       </Paper>
+      {/* 정가제안용 선택된 공급사 섹션 */}
+      {bidding.bidMethod === BiddingMethod.OPEN_PRICE &&
+        suppliers.length > 0 && (
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <SectionHeader
+              title={`정가제안 - 선택된 공급사 (${suppliers.length})`}
+              icon={<AssignmentIcon />}
+              expanded={true}
+              onToggle={() => {}}
+            />
 
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>공급사명</TableCell>
+                    <TableCell>사업자번호</TableCell>
+                    <TableCell>카테고리</TableCell>
+                    <TableCell>초대 상태</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {suppliers.map((supplier) => (
+                    <TableRow key={supplier.id}>
+                      <TableCell>{supplier.companyName}</TableCell>
+                      <TableCell>{supplier.businessNo || "-"}</TableCell>
+                      <TableCell>
+                        {supplier.sourcingCategory || "-"}{" "}
+                        {supplier.sourcingSubCategory &&
+                          `> ${supplier.sourcingSubCategory}`}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={
+                            supplier.accepted
+                              ? "수락"
+                              : supplier.responseDate
+                              ? "거부"
+                              : "대기중"
+                          }
+                          color={
+                            supplier.accepted
+                              ? "success"
+                              : supplier.responseDate
+                              ? "error"
+                              : "warning"
+                          }
+                          size="small"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        )}
       {/* 입찰 참여 현황 */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <SectionHeader
@@ -599,6 +895,10 @@ function BiddingDetailPage() {
               participations={participations}
               bidding={bidding}
               userRole={user?.role}
+              isClosed={isClosed}
+              canEvaluateEach={canEvaluateEachParticipation}
+              canSelectWinner={canSelectWinner}
+              canCreateContract={canCreateContract}
               onEvaluate={(participation) => {
                 setEvaluationDialogState({
                   open: true,
@@ -623,6 +923,116 @@ function BiddingDetailPage() {
         </Collapse>
       </Paper>
 
+      {/* 상태 변경 이력 섹션 */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <SectionHeader
+          title="상태 변경 이력"
+          icon={<HistoryIcon />}
+          expanded={expandedSections.statusHistory}
+          onToggle={() => toggleSection("statusHistory")}
+        />
+        <Collapse in={expandedSections.statusHistory}>
+          {statusHistories.length > 0 ? (
+            <List>
+              {statusHistories.map((history, index) => (
+                <ListItem
+                  key={index}
+                  divider={index < statusHistories.length - 1}>
+                  <ListItemIcon>
+                    <UpdateIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={`${getStatusText(
+                      history.previousStatus
+                    )} → ${getStatusText(history.newStatus)}`}
+                    secondary={`${moment(history.changeDate).format(
+                      "YYYY-MM-DD HH:mm"
+                    )} | ${history.changedBy || "시스템"} | ${
+                      history.reason || "사유 없음"
+                    }`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body1">상태 변경 이력이 없습니다.</Typography>
+          )}
+        </Collapse>
+      </Paper>
+      {/* 삭제 모달 */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>삭제 확인</DialogTitle>
+        <DialogContent>
+          <Typography>정말로 삭제하시겠습니까?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>취소</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">
+            삭제
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* 상태 변경 모달 */}
+      <Dialog
+        open={statusChangeDialog.open}
+        onClose={() =>
+          setStatusChangeDialog({ open: false, newStatus: "", reason: "" })
+        }>
+        <DialogTitle>상태 변경</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, mb: 2 }}>
+            <Typography variant="subtitle1">새 상태 선택</Typography>
+            {availableStatusChanges.map((status) => (
+              <Button
+                key={status.code}
+                variant={
+                  statusChangeDialog.newStatus === status.code
+                    ? "contained"
+                    : "outlined"
+                }
+                color="primary"
+                onClick={() =>
+                  setStatusChangeDialog({
+                    ...statusChangeDialog,
+                    newStatus: status.code
+                  })
+                }
+                sx={{ mr: 1, mt: 1 }}>
+                {status.text}
+              </Button>
+            ))}
+          </Box>
+          <TextField
+            fullWidth
+            label="변경 사유"
+            value={statusChangeDialog.reason}
+            onChange={(e) =>
+              setStatusChangeDialog({
+                ...statusChangeDialog,
+                reason: e.target.value
+              })
+            }
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() =>
+              setStatusChangeDialog({ open: false, newStatus: "", reason: "" })
+            }>
+            취소
+          </Button>
+          <Button
+            onClick={handleStatusChange}
+            variant="contained"
+            color="primary"
+            disabled={!statusChangeDialog.newStatus}>
+            변경
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* 입찰 마감 확인 모달 */}
       <Dialog
         open={isCloseConfirmOpen}
@@ -643,7 +1053,6 @@ function BiddingDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* 낙찰자 선정 확인 모달 */}
       <Dialog
         open={isWinnerConfirmOpen}
@@ -665,7 +1074,6 @@ function BiddingDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* 계약 생성 모달 */}
       <Dialog
         open={contractModalOpen}
@@ -690,7 +1098,6 @@ function BiddingDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* 공급자 평가 다이얼로그 */}
       <BiddingEvaluationDialog
         open={evaluationDialogState.open}

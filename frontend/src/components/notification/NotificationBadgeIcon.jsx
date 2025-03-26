@@ -1,19 +1,17 @@
 // frontend/src/components/notification/NotificationBadgeIcon.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import useWebSocket from "@/hooks/useWebSocket";
 import { useSelector } from "react-redux";
 import "/public/css/layout/Notification.css";
 
 function NotificationBadgeIcon() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const {
-    isConnected,
-    notifications = [],
-    unreadCount = 0,
-    markNotificationAsRead
-  } = useWebSocket(user);
+
+  // 임시 데이터로 대체 (API 연결 문제 해결 전까지)
+  const notifications = [];
+  const unreadCount = 0;
+  const markNotificationAsRead = () => {};
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -67,9 +65,6 @@ function NotificationBadgeIcon() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  // 웹소켓 연결 상태 표시용 (개발 중에만 사용, 실제로는 제거 가능)
-  const connectionStatus = isConnected ? "connected" : "disconnected";
 
   return (
     <div className="notification_wrapper" ref={dropdownRef}>

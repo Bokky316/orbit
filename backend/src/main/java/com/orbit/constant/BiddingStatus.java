@@ -54,9 +54,9 @@ public class BiddingStatus {
         public static class PENDING {
             public static final int CREATE_MIN_LEVEL = STAFF_LEVEL;           // 사원도 초안 작성 가능
             public static final int MODIFY_MIN_LEVEL = ASSISTANT_MANAGER_LEVEL; // 대리 이상 수정 가능
-            public static final int START_MIN_LEVEL = MANAGER_LEVEL;           // 과장 이상 진행 가능
-            public static final int CANCEL_MIN_LEVEL = MANAGER_LEVEL;          // 과장 이상 취소 가능
-            public static final int INVITE_SUPPLIER_MIN_LEVEL = MANAGER_LEVEL; // 과장 이상 공급사 초대 가능
+            public static final int START_MIN_LEVEL = ASSISTANT_MANAGER_LEVEL;           // 과장 이상 진행 가능
+            public static final int CANCEL_MIN_LEVEL = ASSISTANT_MANAGER_LEVEL;          // 과장 이상 취소 가능
+            public static final int INVITE_SUPPLIER_MIN_LEVEL = ASSISTANT_MANAGER_LEVEL; // 과장 이상 공급사 초대 가능
         }
         
         /**
@@ -64,8 +64,8 @@ public class BiddingStatus {
          */
         public static class ONGOING {
             public static final int VIEW_MIN_LEVEL = STAFF_LEVEL;             // 사원도 조회 가능
-            public static final int MODIFY_MIN_LEVEL = SENIOR_MANAGER_LEVEL;   // 차장 이상만 제한적 수정 가능
-            public static final int CLOSE_MIN_LEVEL = SENIOR_MANAGER_LEVEL;    // 차장 이상 마감 가능
+            public static final int MODIFY_MIN_LEVEL = ASSISTANT_MANAGER_LEVEL;   // 차장 이상만 제한적 수정 가능
+            public static final int CLOSE_MIN_LEVEL = ASSISTANT_MANAGER_LEVEL;    // 차장 이상 마감 가능
             public static final int INVITE_SUPPLIER_MIN_LEVEL = MANAGER_LEVEL; // 과장 이상 공급사 초대 가능
         }
         

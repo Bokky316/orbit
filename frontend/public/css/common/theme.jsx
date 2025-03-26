@@ -227,13 +227,15 @@ const theme = createTheme({
             boxSizing: "border-box",
             "&.MuiTextField-root": {
               "& .MuiFilledInput-root": {
-                backgroundColor: "transparent",
+                backgroundColor: "#fff !important",
                 borderColor: "#E0E0E0"
               },
               "& .MuiFilledInput-underline:before": {
+                backgroundColor: "#fff",
                 borderBottomColor: "#E0E0E0" // 언더라인 색상
               },
               "& .MuiFilledInput-underline:after": {
+                backgroundColor: "#fff",
                 borderBottomColor: "#FF7F3E" // 포커스 시 언더라인 색상
               }
             },
@@ -251,6 +253,12 @@ const theme = createTheme({
             },
             "&.Mui-error fieldset": {
               borderColor: "#FA6B6B"
+            },
+            // multiline 텍스트필드 높이 조정
+            "&.MuiInputBase-multiline": {
+              height: "auto", // 높이를 자동으로 조정
+              minHeight: "42px", // 최소 높이만 설정
+              padding: "0"
             }
           },
           "& .MuiInputLabel-root": {
@@ -284,6 +292,13 @@ const theme = createTheme({
               opacity: 1,
               position: "relative"
             }
+          },
+          // 멀티라인 인풋 스타일 추가
+          "& .MuiInputBase-inputMultiline": {
+            height: "auto", // 멀티라인은 높이를 자동으로
+            padding: "9px 12px",
+            fontSize: "14px",
+            color: "#333"
           }
         }
       }
@@ -308,7 +323,11 @@ const theme = createTheme({
             borderColor: "#FF7F3E", // 포커스 시 테두리 색상
             borderWidth: "1px" // 포커스 시 테두리 두께 유지
           },
-          backgroundColor: "#fff"
+          backgroundColor: "#fff",
+          "&.MuiInputBase-multiline": {
+            height: "auto", // 멀티라인은 높이 자동
+            padding: "0"
+          }
         },
         input: {
           height: "24px",
@@ -326,6 +345,42 @@ const theme = createTheme({
           border: "1px solid #E5E7EB",
           boxSizing: "border-box",
           zIndex: 0
+        },
+        // 멀티라인 인풋 스타일
+        inputMultiline: {
+          height: "auto", // 멀티라인은 높이 자동
+          minHeight: "unset",
+          padding: "9px 16px"
+        }
+      }
+    },
+    // FilledInput 스타일 오버라이드 추가
+    MuiFilledInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#fff !important", // 배경색 강제 지정
+          "&:hover": {
+            backgroundColor: "#fff !important" // 호버 시에도 흰색 유지
+          },
+          "&.Mui-focused": {
+            backgroundColor: "#fff !important" // 포커스 시에도 흰색 유지
+          },
+          "&::before": {
+            borderBottomColor: "#E0E0E0" // 밑줄 색상
+          },
+          "&::after": {
+            borderBottomColor: "#FF7F3E" // 포커스 시 밑줄 색상
+          },
+          // 멀티라인 처리
+          "&.MuiInputBase-multiline": {
+            backgroundColor: "#fff !important",
+            padding: "8px 12px" // 멀티라인 패딩 조정
+          }
+        },
+        // 멀티라인 인풋 특화 스타일
+        inputMultiline: {
+          padding: "0",
+          backgroundColor: "#fff !important"
         }
       }
     },
@@ -411,7 +466,15 @@ const theme = createTheme({
           fontWeight: "normal",
           "&.Mui-disabled": {
             backgroundColor: "#F5F5F5"
+          },
+          // 멀티라인 인풋 스타일
+          "&.MuiInputBase-multiline": {
+            padding: "0"
           }
+        },
+        // 멀티라인 인풋 스타일
+        inputMultiline: {
+          padding: "9px 12px"
         }
       }
     },

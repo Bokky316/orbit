@@ -12,8 +12,8 @@ export const refreshAccessToken = async () => {
       method: "POST",
       credentials: "include",
       headers: {
-        "Content-Type": "application/json",
-      },
+        "Content-Type": "application/json"
+      }
     });
     console.log(
       "refreshAccessToken /refresh 요청후 받은 응답 response: ",
@@ -51,9 +51,9 @@ export const fetchWithAuth = async (url, options = {}) => {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}), // JWT 토큰 추가
-      ...options.headers, // 기존 헤더 유지
+      ...options.headers // 기존 헤더 유지
     },
-    credentials: "include",
+    credentials: "include"
   };
 
   if (config.method) {
@@ -87,9 +87,9 @@ export const fetchWithAuth = async (url, options = {}) => {
           headers: {
             "Content-Type": "application/json",
             ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}), // 갱신된 JWT 토큰 사용
-            ...options.headers, // 기존 헤더 유지
+            ...options.headers // 기존 헤더 유지
           },
-          credentials: "include",
+          credentials: "include"
         };
         const newResponse = await fetch(url, newConfig);
         return newResponse;
@@ -120,9 +120,9 @@ export const fetchWithoutAuth = async (url, options = {}) => {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...options.headers, // 기존 헤더 유지
+      ...options.headers // 기존 헤더 유지
     },
-    credentials: "include",
+    credentials: "include"
   };
 
   // HTTP 메소드를 대문자로 변환

@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -424,36 +425,89 @@ public class BiddingSupplierViewService {
     /**
      * 공급업체의 대시보드 요약 데이터 조회
      */
-//     @Transactional(readOnly = true)
-//     public Map<String, Object> getSupplierDashboardSummary(Long supplierId) {
-//         Map<String, Object> summary = new HashMap<>();
+    @Transactional(readOnly = true)
+    public Map<String, Object> getSupplierDashboardSummary(Long supplierId) {
+        Map<String, Object> summary = new HashMap<>();
         
-//         // 초대된 입찰 수
-//         long invitedCount = supplierRepository.countBySupplierId(supplierId);
+        // 초대된 입찰 수
+        long invitedCount = supplierRepository.countBySupplierId(supplierId);
         
-//         // 참여한 입찰 수
-//         long participatedCount = participationRepository.countBySupplierId(supplierId);
+        // 참여한 입찰 수
+        long participatedCount = participationRepository.countBySupplierId(supplierId);
         
-//         // 진행 중인 입찰 수
-//         ParentCode statusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS")
-//                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS"));
+        // 진행 중인 입찰 수
+        ParentCode statusParent = parentCodeRepository.findByEntityTypeAndCodeGroup("BIDDING", "STATUS")
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 상태 코드 그룹입니다: BIDDING_STATUS"));
         
-//         ChildCode ongoingStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent, "ONGOING")
-//                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 상태 코드입니다: ONGOING"));
+        ChildCode ongoingStatus = childCodeRepository.findByParentCodeAndCodeValue(statusParent, "ONGOING")
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 상태 코드입니다: ONGOING"));
         
-//         long ongoingCount = biddingRepository.countBiddingsInvitedSupplierByStatus(supplierId, ongoingStatus);
+        long ongoingCount = biddingRepository.countBiddingsInvitedSupplierByStatus(supplierId, ongoingStatus);
         
-//         // 낙찰된 입찰 수
-//         long wonCount = biddingRepository.countBiddingsWonBySupplier(supplierId);
+        // 낙찰된 입찰 수
+        long wonCount = biddingRepository.countBiddingsWonBySupplier(supplierId);
         
-//         // 요약 정보 설정
-//         summary.put("invitedCount", invitedCount);
-//         summary.put("participatedCount", participatedCount);
-//         summary.put("ongoingCount", ongoingCount);
-//         summary.put("wonCount", wonCount);
+        // 요약 정보 설정
+        summary.put("invitedCount", invitedCount);
+        summary.put("participatedCount", participatedCount);
+        summary.put("ongoingCount", ongoingCount);
+        summary.put("wonCount", wonCount);
         
-//         return summary;
-//     }
+        return summary;
+    }
+    
+//최근 입찰 참여 내역 
+    @Transactional(readOnly = true)
+public List<BiddingDto> getRecentParticipatedBiddings(Long supplierId, int limit) {
+    List<Bidding> recent = biddingRepository.findRecentParticipatedBySupplier(supplierId, limit);
+    return recent.stream()
+        .map(this::convertToDto)
+        .collect(Collectors.toList());
+}
+
+//성과 지표
+@Transactional(readOnly = true)
+public Map<String, Object> getPerformanceMetrics(Long supplierId) {
+    Map<String, Object> metrics = new HashMap<>();
+
+    long totalParticipated = participationRepository.countBySupplierId(supplierId);
+    long wonCount = biddingRepository.countBiddingsWonBySupplier(supplierId);
+
+    double winRate = totalParticipated > 0 ? (double) wonCount / totalParticipated : 0.0;
+
+    BigDecimal totalBidValue = participationRepository.sumTotalAmountBySupplierId(supplierId);
+    Double avgScore = participationRepository.averageEvaluationScoreBySupplierId(supplierId);
+
+    metrics.put("winRate", winRate);
+    metrics.put("totalBidValue", totalBidValue != null ? totalBidValue : BigDecimal.ZERO);
+    metrics.put("averageBidScore", avgScore != null ? avgScore : 0.0);
+
+    return metrics;
+}
+
+@Transactional(readOnly = true)
+public List<BiddingDto> getRecentBiddings(Long supplierId) {
+    List<Bidding> recent = biddingRepository.findRecentBiddingsBySupplier(supplierId, PageRequest.of(0, 5));
+    return recent.stream().map(this::convertToDto).collect(Collectors.toList());
+}
+
+@Transactional(readOnly = true)
+public Map<String, Object> getSupplierPerformanceMetrics(Long supplierId) {
+    Map<String, Object> metrics = new HashMap<>();
+    
+    long totalParticipated = participationRepository.countBySupplierId(supplierId);
+    long totalWon = biddingRepository.countBiddingsWonBySupplier(supplierId);
+    BigDecimal totalBidValue = participationRepository.sumTotalAmountBySupplierId(supplierId);
+    double averageScore = participationRepository.averageEvaluationScoreBySupplierId(supplierId);
+
+    metrics.put("winRate", totalParticipated > 0 ? (double) totalWon / totalParticipated : 0.0);
+    metrics.put("totalBidValue", totalBidValue != null ? totalBidValue : BigDecimal.ZERO);
+    metrics.put("averageBidScore", averageScore);
+
+    return metrics;
+}
+
+
 
     // ===== 내부 메서드 =====
     

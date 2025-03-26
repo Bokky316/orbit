@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { API_URL } from "@/utils/constants";
 import { useNavigate } from "react-router-dom";
-import useWebSocket from "@/hooks/useWebSocket";
+import { useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   Paper,
@@ -46,6 +46,9 @@ import {
   getStatusText,
   getBidMethodText
 } from "./helpers/commonBiddingHelpers";
+
+import { useNotificationsWebSocket } from "@/hooks/useNotificationsWebSocket";
+import { useToastNotifications } from "@/hooks/useToastNotifications";
 
 // 빈 데이터용 목업 데이터
 const MOCK_DATA = [
@@ -96,9 +99,22 @@ function BiddingListPage() {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const { user } = useSelector((state) => state.auth);
-  const { sendStatusChange, isConnected } = useWebSocket(user);
 
   const navigate = useNavigate();
+
+  // 🔔 알림 WebSocket 연결
+  const { toast } = useToastNotifications();
+
+  const handleNotification = (notification) => {
+    toast({
+      title: notification.title,
+      description: notification.content,
+      severity: "info",
+      duration: 5000
+    });
+  };
+
+  useNotificationsWebSocket(user, handleNotification);
 
   // 입찰 공고 목록 가져오기
   const fetchBiddings = async () => {
@@ -257,6 +273,12 @@ function BiddingListPage() {
     fetchBiddings();
   }, [paginationModel.page, paginationModel.pageSize]);
 
+  useEffect(() => {
+    if (location.state?.updated) {
+      fetchBiddings();
+    }
+  }, [location.state]);
+
   // 필터 적용 시 데이터 다시 가져오기
   const handleSearch = () => {
     setPaginationModel((prev) => ({ ...prev, page: 1 }));
@@ -314,26 +336,9 @@ function BiddingListPage() {
   function handleCreateBidding() {
     navigate("/biddings/new");
 
-    // 웹소켓으로 상태 변경 알림 (선택사항)
-    if (isConnected) {
-      sendStatusChange("NEW_BIDDING_ID", "DRAFT", "PENDING");
-    }
+    // 웹소켓으로 상태 변경 알림 (선택사항) - 간소화된 모의 객체 사용
+    simplifiedWebsocket.sendStatusChange("NEW_BIDDING_ID", "DRAFT", "PENDING");
   }
-
-  const WebSocketStatusIndicator = () => (
-    <Box
-      sx={{
-        position: "fixed",
-        bottom: 10,
-        right: 10,
-        p: 1,
-        bgcolor: isConnected ? "success.light" : "error.light",
-        color: "white",
-        borderRadius: 2
-      }}>
-      {isConnected ? "실시간 연결됨" : "연결 끊김"}
-    </Box>
-  );
 
   // 상태에 따른 색상 반환
   const getStatusColor = (statusCode) => {
@@ -372,27 +377,6 @@ function BiddingListPage() {
 
   return (
     <Box sx={{ p: 4 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 4
-        }}>
-        <Typography variant="h4">입찰 공고 리스트</Typography>
-        {/* 실시간 연결 상태 표시기 추가 - 테스트용*/}
-        <WebSocketStatusIndicator />
-        {useMockData && (
-          <Button
-            variant="outlined"
-            color="warning"
-            startIcon={<ErrorOutlineIcon />}
-            onClick={handleRetryConnection}>
-            서버 재연결 시도
-          </Button>
-        )}
-      </Box>
-
       {/* 필터 영역 */}
       <Card elevation={2} sx={{ marginBottom: 3 }}>
         <CardContent sx={{ p: 3 }}>
@@ -500,24 +484,6 @@ function BiddingListPage() {
         </CardContent>
       </Card>
 
-      {/* 데모 데이터 알림 */}
-      {useMockData && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 3 }}
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={handleRetryConnection}>
-              재시도
-            </Button>
-          }>
-          서버 연결 문제로 현재 데모 데이터를 표시하고 있습니다. 실제 데이터는
-          백엔드 서버가 정상화된 후 표시됩니다.
-        </Alert>
-      )}
-
       {/* 에러 메시지 */}
       {error && (
         <Alert severity="error" sx={{ my: 2 }}>
@@ -541,11 +507,8 @@ function BiddingListPage() {
                   <TableCell>공고번호</TableCell>
                   <TableCell>공고명</TableCell>
                   <TableCell>공고기간</TableCell>
-                  <TableCell>품목</TableCell>
                   <TableCell>입찰방식</TableCell>
-                  <TableCell>금액</TableCell>
                   <TableCell>공고상태</TableCell>
-                  <TableCell>마감</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -574,36 +537,41 @@ function BiddingListPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {item.startDate
-                          ? moment(item.startDate).format("YY-MM-DD")
+                        {item.biddingPeriod?.startDate
+                          ? moment(item.biddingPeriod.startDate).format(
+                              "YY-MM-DD"
+                            )
                           : "-"}{" "}
                         ~{" "}
-                        {item.endDate
-                          ? moment(item.endDate).format("YY-MM-DD")
+                        {item.biddingPeriod?.endDate
+                          ? moment(item.biddingPeriod.endDate).format(
+                              "YY-MM-DD"
+                            )
                           : "-"}
                       </TableCell>
-                      <TableCell>{item.itemName || "-"}</TableCell>
-                      <TableCell align="right">
-                        {Number(item.totalAmount || 0).toLocaleString()}원
-                      </TableCell>
+
                       <TableCell>{getBidMethodText(item.bidMethod)}</TableCell>
+
                       <TableCell>
                         <Chip
                           label={getStatusText(item.status)}
-                          color={getStatusColor(item.status?.childCode)}
+                          color={
+                            item.status?.childCode === "ONGOING"
+                              ? "primary"
+                              : item.status?.childCode === "CLOSED"
+                              ? "success"
+                              : item.status?.childCode === "CANCELED"
+                              ? "error"
+                              : "default"
+                          }
                           size="small"
                         />
-                      </TableCell>
-                      <TableCell>
-                        {item.endDate
-                          ? moment(item.endDate).format("YY-MM-DD")
-                          : "-"}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       데이터가 없습니다.
                     </TableCell>
                   </TableRow>

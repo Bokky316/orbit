@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.orbit.dto.NotificationDto;
@@ -13,8 +14,8 @@ import com.orbit.entity.notification.BulkNotificationRequest;
 import com.orbit.entity.notification.Notification;
 import com.orbit.entity.notification.NotificationRequest;
 import com.orbit.exception.ResourceNotFoundException;
-import com.orbit.repository.member.MemberRepository;
 import com.orbit.repository.NotificationRepository;
+import com.orbit.repository.member.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,34 +36,36 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
      * 알림 생성 및 발송
      */
     @Override
-    public NotificationDto sendNotification(NotificationRequest request) {
-        log.debug("알림 생성 요청 - 수신자: {}, 제목: {}", request.getRecipientId(), request.getTitle());
-        
-        // 알림 엔티티 생성
-        Notification notification = Notification.builder()
-                .type(request.getType())
-                .referenceId(request.getReferenceId())
-                .title(request.getTitle())
-                .content(request.getContent())
-                .recipientId(request.getRecipientId())
-                .isRead(false)
-                .priority(request.getPriority())
-                .createdAt(LocalDateTime.now())
-                .build();
-        
-        // 수신자 이름 설정 (있는 경우)
-        if (request.getRecipientId() != null) {
-            memberRepository.findById(request.getRecipientId())
-                    .ifPresent(member -> notification.setRecipientName(member.getName()));
-        }
-        
-        // 저장
-        Notification savedNotification = notificationRepository.save(notification);
-        log.info("알림 생성 완료 - ID: {}, 수신자: {}", savedNotification.getId(), savedNotification.getRecipientId());
-        
-        // DTO 변환 및 반환
-        return convertToDto(savedNotification);
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+public NotificationDto sendNotification(NotificationRequest request) {
+    log.debug("알림 생성 요청 - 수신자: {}, 제목: {}", request.getRecipientId(), request.getTitle());
+
+    if (request.getRecipientId() == null) {
+        throw new IllegalArgumentException("알림 수신자 ID가 필요합니다.");
     }
+
+    String recipientName = memberRepository.findById(request.getRecipientId())
+            .map(member -> member.getName())
+            .orElse("알 수 없음");
+
+    Notification notification = Notification.builder()
+            .type(request.getType())
+            .referenceId(request.getReferenceId())
+            .title(request.getTitle())
+            .content(request.getContent())
+            .recipientId(request.getRecipientId())
+            .recipientName(recipientName)
+            .isRead(false)
+            .priority(request.getPriority())
+            .createdAt(LocalDateTime.now())
+            .build();
+
+    Notification savedNotification = notificationRepository.save(notification);
+    log.info("알림 생성 완료 - ID: {}, 수신자: {}", savedNotification.getId(), savedNotification.getRecipientId());
+
+    return convertToDto(savedNotification);
+}
+
 
     /**
      * 개별 파라미터로 알림 발송
@@ -75,7 +78,7 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
         request.setTitle(title);
         request.setContent(content);
         request.setReferenceId(referenceId);
-        
+
         return sendNotification(request);
     }
 
@@ -120,7 +123,7 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
         log.debug("알림 읽음 처리 - 알림 ID: {}", notificationId);
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("알림을 찾을 수 없습니다. ID: " + notificationId));
-        
+
         notification.setRead(true);
         notification.setReadAt(LocalDateTime.now());
         notificationRepository.save(notification);
@@ -134,7 +137,7 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
         log.debug("알림 삭제 - 알림 ID: {}", notificationId);
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("알림을 찾을 수 없습니다. ID: " + notificationId));
-        
+
         notificationRepository.delete(notification);
     }
 
@@ -170,9 +173,9 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
         log.debug("대량 알림 발송 - 수신자 수: {}, 제목: {}", 
                 request.getRecipientIds() != null ? request.getRecipientIds().size() : 0, 
                 request.getTitle());
-        
+
         List<NotificationDto> results = new ArrayList<>();
-        
+
         if (request.getRecipientIds() != null && !request.getRecipientIds().isEmpty()) {
             for (Long recipientId : request.getRecipientIds()) {
                 NotificationRequest individualRequest = new NotificationRequest();
@@ -182,12 +185,12 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
                 individualRequest.setContent(request.getContent());
                 individualRequest.setReferenceId(request.getReferenceId());
                 individualRequest.setPriority(request.getPriority());
-                
+
                 NotificationDto result = sendNotification(individualRequest);
                 results.add(result);
             }
         }
-        
+
         return results;
     }
 
@@ -197,10 +200,10 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
     @Override
     public List<NotificationDto> sendNotificationsByRole(NotificationRequest request, String role) {
         log.debug("역할별 알림 발송 - 역할: {}, 제목: {}", role, request.getTitle());
-        
+
         // 역할별 회원 ID 조회 - 실제 구현 시 적절한 메서드 추가 필요
         List<Long> userIds = new ArrayList<>(); // memberRepository.findByRole(role)...
-        
+
         BulkNotificationRequest bulkRequest = new BulkNotificationRequest();
         bulkRequest.setType(request.getType());
         bulkRequest.setTitle(request.getTitle());
@@ -208,7 +211,7 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
         bulkRequest.setReferenceId(request.getReferenceId());
         bulkRequest.setRecipientIds(userIds);
         bulkRequest.setPriority(request.getPriority());
-        
+
         return sendBulkNotifications(bulkRequest);
     }
 
@@ -220,7 +223,7 @@ public class NotificationServiceImpl implements com.orbit.service.NotificationSe
         log.debug("구매자 역할 알림 발송 - 제목: {}", request.getTitle());
         return sendNotificationsByRole(request, "BUYER");
     }
-    
+
     /**
      * Notification 엔티티를 DTO로 변환
      */

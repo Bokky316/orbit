@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -56,6 +57,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+                
         log.info("TokenAuthenticationFilter.doFilterInternal 시작 - 요청 URI: {}", request.getRequestURI());
 
         // Swagger 및 로그인/특정 경로는 필터 건너뛰기
@@ -88,27 +90,26 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 3. 토큰에서 username 추출
-        String username = tokenProvider.getUsernameFromToken(token); // email -> username으로 변경
+       // 3. 토큰에서 username 추출 + UserDetails 생성
+        String username = tokenProvider.getUsernameFromToken(token);
+        UserDetails userDetails = tokenProvider.getUserDetailsFromToken(token);
         log.info("토큰에서 추출한 username: {}", username);
 
-        // 4. 위에서 추출한 username으로 Redis에서 권한 정보 조회
-        List<String> roles = redisService.getUserAuthoritiesFromCache(username); // email -> username으로 변경
+        // 4. Redis에서 권한 조회 (선택적 검증 용도)
+        List<String> roles = redisService.getUserAuthoritiesFromCache(username);
         if (roles == null || roles.isEmpty()) {
             handleUnauthorizedResponse(response, "Redis에서 권한 정보를 찾을 수 없습니다.");
             return;
         }
         log.info("Redis에서 조회한 권한 정보: {}", roles);
 
-        // 5. Redis 권한 정보로 인증 객체 생성, 인증 객체를 SecurityContext 세팅
-        Set<SimpleGrantedAuthority> authorities = roles.stream()
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toSet());
-        Authentication auth = new UsernamePasswordAuthenticationToken(username, null, authorities);
-        log.info("Redis 권한 정보로 생성된 인증 객체: {}", auth);
+        // 5. 인증 객체 생성 (principal: userDetails)
+        Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        log.info("인증 객체 생성 완료: {}", auth);
 
-        // 6. 인증 객체를 SecurityContext 세팅
+        // 6. SecurityContext에 인증 객체 저장
         SecurityContextHolder.getContext().setAuthentication(auth);
+
 
         // 7. 다음 필터로 요청 전달, 더이상 필터가 없으면 사용자 원하는 요청을 처리
         filterChain.doFilter(request, response);

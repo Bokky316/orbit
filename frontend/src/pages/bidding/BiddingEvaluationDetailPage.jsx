@@ -36,6 +36,7 @@ function BiddingEvaluationDetailPage() {
     participationId: null,
     supplierName: ""
   });
+  const evaluatedSuppliers = evaluations.filter((e) => e.totalScore > 0);
 
   // 임의의 샘플 데이터
   const sampleBidding = {
@@ -112,37 +113,46 @@ function BiddingEvaluationDetailPage() {
   ];
 
   // 데이터 가져오기
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     setIsLoading(true);
+  //     try {
+  //       // 샘플 데이터 강제 사용 (공고 정보)
+  //       setBidding(sampleBidding);
+
+  //       // 평가 데이터 불러오기
+  //       const evaluationsResponse = await fetchWithAuth(
+  //         `${API_URL}bidding-evaluations/bidding/${biddingId}`
+  //       );
+
+  //       if (evaluationsResponse.ok) {
+  //         const evaluationsData = await evaluationsResponse.json();
+  //         setEvaluations(evaluationsData);
+  //       } else {
+  //         console.warn("평가 데이터 요청 실패. 샘플 데이터 사용");
+  //         setEvaluations(sampleEvaluations); // 실패 시 샘플
+  //       }
+  //     } catch (error) {
+  //       console.error("데이터 로드 중 오류:", error);
+  //       setError("데이터를 불러오는 데 실패했습니다.");
+  //       // 실패 시에도 샘플로 보여주기 (테스트 용도)
+  //       setBidding(sampleBidding);
+  //       setEvaluations(sampleEvaluations);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, [biddingId]);
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // 임의의 샘플 데이터 설정
-        setBidding(sampleBidding);
-        setEvaluations(sampleEvaluations);
+    setIsLoading(true);
 
-        // const [biddingResponse, evaluationsResponse] = await Promise.all([
-        //   fetchWithAuth(`${API_URL}biddings/${biddingId}`),
-        //   fetchWithAuth(`${API_URL}biddings/evaluations/by-bidding/${biddingId}`)
-        // ]);
+    // 샘플 데이터를 강제로 적용
+    setBidding(sampleBidding);
+    setEvaluations(sampleEvaluations);
 
-        // if (!biddingResponse.ok || !evaluationsResponse.ok) {
-        //   throw new Error("데이터를 불러오는 데 실패했습니다.");
-        // }
-
-        // const biddingData = await biddingResponse.json();
-        // const evaluationsData = await evaluationsResponse.json();
-
-        // setBidding(biddingData);
-        // setEvaluations(evaluationsData);
-      } catch (error) {
-        console.error("데이터 로드 중 오류:", error);
-        setError(error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+    setIsLoading(false);
   }, [biddingId]);
 
   // 공급자 평가 제출 핸들러
@@ -168,9 +178,7 @@ function BiddingEvaluationDetailPage() {
   // 평가 완료 핸들러
   const handleEvaluationComplete = async (evaluation) => {
     try {
-      const savedEvaluation = await handleEvaluationSubmit(evaluation);
-
-      // 평가 목록 다시 가져오기
+      // 다이얼로그에서 API 호출 후 결과를 반환
       const evaluationsResponse = await fetchWithAuth(
         `${API_URL}biddings/evaluations/by-bidding/${biddingId}`
       );
@@ -178,19 +186,40 @@ function BiddingEvaluationDetailPage() {
       if (evaluationsResponse.ok) {
         const evaluationsData = await evaluationsResponse.json();
         setEvaluations(evaluationsData);
+      } else {
+        // API 오류 발생 시 기존 평가 목록에 추가
+        // 해당 공급업체를 찾아 평가 데이터를 업데이트
+        setEvaluations((prev) => {
+          return prev.map((item) => {
+            if (
+              item.biddingParticipationId === evaluation.biddingParticipationId
+            ) {
+              return {
+                ...item,
+                priceScore: evaluation.priceScore,
+                qualityScore: evaluation.qualityScore,
+                deliveryScore: evaluation.deliveryScore,
+                reliabilityScore: evaluation.reliabilityScore,
+                totalScore: evaluation.weightedTotalScore * 100,
+                comments: evaluation.comments
+              };
+            }
+            return item;
+          });
+        });
       }
 
-      return savedEvaluation;
+      // 성공 처리
+      console.log("평가가 성공적으로 반영되었습니다:", evaluation);
+
+      // 평가 결과 반환 (Promise를 반환)
+      return evaluation;
     } catch (error) {
-      console.error("평가 처리 중 오류:", error);
+      console.error("평가 데이터 갱신 중 오류:", error);
+      // 오류를 다시 throw하여 다이얼로그에서 처리하도록 함
       throw error;
     }
   };
-
-  // 평가된 공급자 목록
-  const evaluatedSuppliers = evaluations.filter(
-    (evaluation) => evaluation.totalScore > 0
-  );
 
   // 평가 통계 계산
   const calculateAverage = (field) => {

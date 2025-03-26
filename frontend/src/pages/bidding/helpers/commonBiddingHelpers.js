@@ -1,6 +1,38 @@
 import { BiddingStatus, BiddingMethod, BillingUnits } from "./biddingTypes";
 import moment from "moment";
 
+// 초기 폼 데이터
+export const INITIAL_FORM_DATA = {
+  requestNumber: "",
+  requestName: "",
+  title: "",
+  purchaseRequestId: null,
+  purchaseRequestItemId: null,
+  purchaseRequestItems: [],
+  selectedItems: [],
+  description: "",
+  suppliers: [],
+  bidMethod: BiddingMethod.FIXED_PRICE,
+  status: {
+    parentCode: "BIDDING",
+    childCode: BiddingStatus.PENDING
+  },
+  startDate: "",
+  endDate: "",
+  quantity: 1,
+  unitPrice: 0,
+  supplyPrice: 0,
+  vat: 0,
+  totalAmount: 0,
+  biddingConditions: "",
+  conditions: "",
+  internalNote: "",
+  deliveryLocation: "",
+  deliveryDate: "",
+  billingUnit: "EA",
+  files: []
+};
+
 export const getStatusText = (status) => {
   const statusMap = {
     [BiddingStatus.PENDING]: "대기중",

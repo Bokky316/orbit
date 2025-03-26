@@ -12,6 +12,8 @@ import com.orbit.entity.member.Member;
 
 public interface BiddingSupplierRepository extends JpaRepository<BiddingSupplier, Long> {
 
+    long countBySupplierId(Long supplierId); 
+
     /**
      * 특정 입찰 공고에 초대된 공급사 목록 조회
      */

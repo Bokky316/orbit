@@ -6,28 +6,30 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Paper,
   Chip,
+  Box,
   Typography
 } from "@mui/material";
-import moment from "moment";
 
-/**
- * 초대된 공급사 목록 컴포넌트
- */
 function SupplierList({ suppliers }) {
   if (!suppliers || suppliers.length === 0) {
-    return <Typography variant="body1">초대된 공급사가 없습니다.</Typography>;
+    return (
+      <Box sx={{ py: 2 }}>
+        <Typography variant="body1">초대된 공급사가 없습니다.</Typography>
+      </Box>
+    );
   }
 
   return (
-    <TableContainer>
+    <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
       <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell>공급사명</TableCell>
             <TableCell>사업자번호</TableCell>
-            <TableCell>초대 상태</TableCell>
-            <TableCell>응답 시간</TableCell>
+            <TableCell>카테고리</TableCell>
+            <TableCell>담당자</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -36,28 +38,13 @@ function SupplierList({ suppliers }) {
               <TableCell>{supplier.companyName}</TableCell>
               <TableCell>{supplier.businessNo || "-"}</TableCell>
               <TableCell>
-                <Chip
-                  label={
-                    supplier.accepted
-                      ? "수락"
-                      : supplier.responseDate
-                      ? "거부"
-                      : "대기중"
-                  }
-                  color={
-                    supplier.accepted
-                      ? "success"
-                      : supplier.responseDate
-                      ? "error"
-                      : "warning"
-                  }
-                  size="small"
-                />
+                {supplier.sourcingCategory || "-"}{" "}
+                {supplier.sourcingSubCategory &&
+                  `> ${supplier.sourcingSubCategory}`}
               </TableCell>
               <TableCell>
-                {supplier.responseDate
-                  ? moment(supplier.responseDate).format("YYYY-MM-DD HH:mm")
-                  : "-"}
+                {supplier.contactName || "-"}
+                {supplier.contactEmail && ` (${supplier.contactEmail})`}
               </TableCell>
             </TableRow>
           ))}

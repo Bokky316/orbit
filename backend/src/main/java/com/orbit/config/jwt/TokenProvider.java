@@ -7,7 +7,10 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Duration;
 import java.util.*;
@@ -180,4 +183,16 @@ public class TokenProvider {
         Claims claims = getClaims(token);
         return claims.get("id", Long.class);
     }
+
+
+    public UserDetails getUserDetailsFromToken(String token) {
+    String username = getUsernameFromToken(token);
+    List<String> roles = getRolesFromToken(token);
+
+    List<GrantedAuthority> authorities = roles.stream()
+            .map(SimpleGrantedAuthority::new)
+            .collect(Collectors.toList());
+
+    return new User(username, "", authorities);
+}
 }

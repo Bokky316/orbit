@@ -9,13 +9,23 @@ function TopBar() {
   const [activeTab, setActiveTab] = useState(0);
 
   // Redux에서 사용자 정보 가져오기
-  const { user } = useSelector((state) => state.auth);
+  const auth = useSelector((state) => state.auth);
+  const { user } = auth;
 
-  // 소카테고리 메뉴 데이터 - URL 경로에 따라 정의
-  const subCategories = {
-    "/members": [
-      { label: "사용자목록", path: "/members" },
-    ],
+  // 사용자 역할 확인
+  const userRoles = auth.roles || user?.roles || [];
+  const normalizedRoles = Array.isArray(userRoles)
+    ? userRoles
+    : [userRoles].filter(Boolean);
+
+  // SUPPLIER 역할 여부 확인
+  const isSupplier = normalizedRoles.some(
+    (role) => role === "SUPPLIER" || role === "ROLE_SUPPLIER"
+  );
+
+  // 구매자/관리자용 소카테고리 메뉴 데이터
+  const buyerAdminSubCategories = {
+    "/members": [{ label: "사용자목록", path: "/members" }],
     "/supplier": [
       { label: "협력업체리스트", path: "/supplier" },
       { label: "가입승인대기리스트", path: "/supplier/approval" }
@@ -31,16 +41,14 @@ function TopBar() {
     ],
     "/biddings": [
       { label: "입찰공고리스트", path: "/biddings" },
-      { label: "협력사평가리스트", path: "/biddings/evaluations" },
-      { label: "발주리스트", path: "/biddings/orders" }
+      { label: "협력사평가리스트", path: "/biddings/evaluations" }
     ],
-    "/biddings/contracts": [
-      { label: "계약리스트", path: "/biddings/contracts" }
-    ],
-    "/orders": [{ label: "발주리스트", path: "/orders/list" }],
-    "/invoices": [{ label: "송장리스트", path: "/invoices/list" }],
-    "/funds": [{ label: "자금리스트", path: "/funds/list" }],
-    "/reports": [{ label: "보고서리스트", path: "/reports/list" }],
+    "/contracts": [{ label: "계약리스트", path: "/contracts" }],
+    "/orders": [{ label: "발주리스트", path: "/orders" }],
+    "/deliveries": [{ label: "입고리스트", path: "/deliveries" }],
+    "/invoices": [{ label: "송장리스트", path: "/invoices" }],
+    "/payments": [{ label: "자금관리", path: "/payments" }],
+    "/chart": [{ label: "통계대시보드", path: "/chart" }],
     "/system": [
       { label: "공통 코드 관리", path: "/common-codes" },
       { label: "기타 설정", path: "/system/settings" }
@@ -48,6 +56,29 @@ function TopBar() {
     // 기본 탭
     default: []
   };
+
+  // 공급자용 소카테고리 메뉴 데이터
+  const supplierSubCategories = {
+    // "/suppliers/dashboard": [
+    //   { label: "대시보드", path: "/suppliers/dashboard" }
+    // ],
+    // "/suppliers/biddings": [{ label: "입찰정보", path: "/suppliers/biddings" }],
+    // "/suppliers/contracts": [
+    //   { label: "계약정보", path: "/suppliers/contracts" }
+    // ],
+    // "/suppliers/orders": [{ label: "주문정보", path: "/suppliers/orders" }],
+    // "/suppliers/invoices": [{ label: "송장관리", path: "/suppliers/invoices" }],
+    // "/supplier/registrations": [
+    //   { label: "내 정보 관리", path: "/supplier/registrations" }
+    // ],
+    // 기본 탭
+    default: []
+  };
+
+  // 역할에 따라 적절한 소카테고리 선택
+  const subCategories = isSupplier
+    ? supplierSubCategories
+    : buyerAdminSubCategories;
 
   // 현재 경로에 해당하는 소카테고리 가져오기
   const getCurrentSubCategories = () => {
@@ -99,7 +130,9 @@ function TopBar() {
     <header className="top_container">
       <div className="top_toolbar">
         {/* 로고 영역 */}
-        <Link to="/dashboard" className="logo">
+        <Link
+          to={isSupplier ? "/suppliers/dashboard" : "/dashboard"}
+          className="logo">
           <img src="/public/images/logo.png" alt="logo" />
         </Link>
         {/* 소카테고리 탭 */}
@@ -125,7 +158,10 @@ function TopBar() {
           <span className="login_name">
             {user?.name ? `${user.name}님` : "사용자"}
           </span>
-          <span className="login_position">마케팅팀</span>
+          {/* 역할 표시 (개발 중에만 사용, 필요 시 주석 해제) */}
+          {/* <span className="login_position">
+            {isSupplier ? "공급자" : "구매자/관리자"}
+          </span> */}
         </div>
       </div>
     </header>

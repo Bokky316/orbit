@@ -166,31 +166,30 @@ public class BiddingEvaluationController {
      * 입찰 참여에 대한 평가 생성
      */
     @PostMapping
-    public ResponseEntity<BiddingEvaluationDto> createEvaluation(
-            @RequestBody BiddingEvaluationDto evaluationDto,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        log.info("평가 생성 요청 - 입찰 ID: {}, 참여 ID: {}", 
-                evaluationDto.getBiddingId(), evaluationDto.getBiddingParticipationId());
-        
-        try {
-            // 현재 사용자 정보 조회
-            Member member = getUserFromUserDetails(userDetails);
-            
-            BiddingEvaluationDto evaluation = evaluationService.createEvaluation(
-                    evaluationDto.getBiddingId(), 
-                    evaluationDto.getBiddingParticipationId(), 
-                    member.getId());
-            
-            return new ResponseEntity<>(evaluation, HttpStatus.CREATED);
-        } catch (IllegalStateException e) {
-            log.error("평가 생성 불가: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        } catch (Exception e) {
-            log.error("평가 생성 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+public ResponseEntity<BiddingEvaluationDto> createEvaluation(
+        @RequestBody BiddingEvaluationDto evaluationDto,
+        @AuthenticationPrincipal UserDetails userDetails
+) {
+    log.info("평가 생성 요청 - 입찰 ID: {}, 참여 ID: {}", 
+            evaluationDto.getBiddingId(), evaluationDto.getBiddingParticipationId());
+
+    try {
+        // 현재 사용자 정보 조회
+        Member member = getUserFromUserDetails(userDetails);
+
+        // 전체 evaluationDto를 넘김
+        BiddingEvaluationDto evaluation = evaluationService.createEvaluation(evaluationDto, member.getId());
+
+        return new ResponseEntity<>(evaluation, HttpStatus.CREATED);
+    } catch (IllegalStateException e) {
+        log.error("평가 생성 불가: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    } catch (Exception e) {
+        log.error("평가 생성 중 오류 발생", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+}
+
     
     /**
      * 평가 점수 업데이트
@@ -303,17 +302,4 @@ public class BiddingEvaluationController {
         return memberRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
-
-    /**
-     * 공급자별 평가 히스토리 조회
-     */
-    @GetMapping("/supplier/{supplierName}")
-    public ResponseEntity<List<BiddingEvaluationDto>> getSupplierEvaluationHistory(@PathVariable String supplierName) {
-        log.info("공급자 평가 히스토리 조회 요청 - 공급자명: {}", supplierName);
-        
-        List<BiddingEvaluationDto> supplierEvaluations = evaluationService.getEvaluationsBySupplierName(supplierName);
-        return ResponseEntity.ok(supplierEvaluations);
-    }
-    
-    
 }

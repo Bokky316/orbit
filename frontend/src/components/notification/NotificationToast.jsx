@@ -1,15 +1,20 @@
 // frontend/src/components/notification/NotificationToast.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import useWebSocket from "@/hooks/useWebSocket";
 import { useSelector } from "react-redux";
-//import { formatRelativeTime } from "@/utils/dateUtils";
+import useWebSocket from "@/hooks/useWebSocket";
 import "/public/css/layout/Notification.css";
 
 function NotificationToast() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { toast, closeToast } = useWebSocket(user);
+
+  // WebSocket 훅에서 토스트 알림 관련 기능만 사용
+  const { toast, closeToast } = useWebSocket(user, {
+    enablePurchaseRequests: false,
+    enableBiddings: false,
+    enableNotifications: true
+  });
 
   // 토스트가 없으면 렌더링하지 않음
   if (!toast) return null;

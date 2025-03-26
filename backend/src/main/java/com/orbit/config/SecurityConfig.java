@@ -1,9 +1,16 @@
 package com.orbit.config;
 
-import java.util.Arrays;
-
+import com.orbit.config.jwt.RefreshTokenCheckFilter;
+import com.orbit.config.jwt.TokenAuthenticationFilter;
+import com.orbit.config.jwt.TokenProvider;
+import com.orbit.security.CustomUserDetailsService;
+import com.orbit.security.handler.CustomAuthenticationEntryPoint;
+import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
+import com.orbit.security.handler.CustomLogoutSuccessHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -14,19 +21,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.orbit.config.jwt.RefreshTokenCheckFilter;
-import com.orbit.config.jwt.TokenAuthenticationFilter;
-import com.orbit.config.jwt.TokenProvider;
-import com.orbit.security.CustomUserDetailsService;
-import com.orbit.security.handler.CustomAuthenticationEntryPoint;
-import com.orbit.security.handler.CustomAuthenticationSuccessHandler;
-import com.orbit.security.handler.CustomLogoutSuccessHandler;
+import java.util.Arrays;
+import java.util.List;
 
-import lombok.RequiredArgsConstructor;
+import static com.orbit.constant.Role.BUYER;
 
 /**
  * Spring Security 설정 파일
@@ -102,7 +106,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(request -> request
 
                 // 공개 접근 가능한 API 엔드포인트
-                        .requestMatchers(
+                .requestMatchers(
                         "/",
                         "/api/auth/login",
                         "/api/auth/logout",
@@ -183,8 +187,31 @@ public class SecurityConfig {
                 // 메시지 관련 API (USER 및 ADMIN 역할만 접근 가능)
                 .requestMatchers("/api/messages/**").hasAnyRole("USER", "ADMIN")
 
-                // 입찰 공고 관리 (BUYER 및 ADMIN 역할만 접근 가능)
-                .requestMatchers("/api/biddings/**","/api/bidding-evaluations/**","/api/bidding-contracts/**","/api/bidding-participations/**").hasAnyRole("BUYER", "ADMIN")
+                // 입찰 관련 모든 API 경로 포괄적으로 설정
+                .requestMatchers("/api/biddings/**").hasAnyRole("BUYER", "ADMIN", "SUPPLIER")
+                .requestMatchers("/api/bidding-evaluations/bidding/**","/api/bidding-evaluations/**").hasAnyRole("BUYER", "ADMIN")
+
+
+                // 공급사(SUPPLIER)에게 필요한 접근 권한
+                .requestMatchers(HttpMethod.GET, "/api/biddings/{id}").hasAnyRole("BUYER", "SUPPLIER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/biddings/{id}/suppliers").hasAnyRole("BUYER", "SUPPLIER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/biddings/{id}/invited-suppliers").hasAnyRole("BUYER", "SUPPLIER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/biddings/status/**").hasAnyRole("BUYER", "SUPPLIER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/biddings/{supplierId}/invited").hasAnyRole("SUPPLIER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/biddings/{supplierId}/participated").hasAnyRole("SUPPLIER", "ADMIN")
+                .requestMatchers("/api/biddings/{biddingId}/participate").hasAnyRole("SUPPLIER", "ADMIN")
+                .requestMatchers("/api/biddings/participations/{id}/confirm").hasAnyRole("SUPPLIER", "ADMIN")
+
+                // 구매자(BUYER)와 관리자(ADMIN)에게만 부여하는 권한
+                .requestMatchers(HttpMethod.POST, "/api/biddings").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/biddings/{id}").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/biddings/{id}").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/biddings/{id}/status-history").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/biddings/{id}/attachments").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/biddings/{biddingId}/invite/{supplierId}").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/biddings/{id}/close").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/evaluations/{id}/select-winner").hasAnyRole("BUYER", "ADMIN")
+                .requestMatchers("/api/supplier/biddings/**").hasRole("SUPPLIER")
 
                 .requestMatchers(
                         "/api/buyer/**",
@@ -194,6 +221,8 @@ public class SecurityConfig {
                         "/api/buyer/recent-purchase-requests",
                         "/api/buyer/performance-metrics"
                 ).hasAnyRole("BUYER", "ADMIN")
+
+                .requestMatchers("/api/supplier/biddings/bidding-summary","/api/supplier/biddings/recent-biddings","/api/supplier/biddings/performance-metrics").hasRole("SUPPLIER")
 
                 // 구매요청목록, 공급사목록 조회 엔드포인트
                 .requestMatchers("/api/biddings/purchase-requests/active", "/api/biddings/suppliers/active").hasAnyRole("BUYER", "ADMIN", "SUPPLIER")

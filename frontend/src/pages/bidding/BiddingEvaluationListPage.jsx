@@ -20,6 +20,8 @@ import { Search as SearchIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "@/utils/constants";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { useNotificationsWebSocket } from "@/hooks/useNotificationsWebSocket";
+import { useToastNotifications } from "@/hooks/useToastNotifications";
 
 function BiddingEvaluationListPage() {
   const navigate = useNavigate();
@@ -116,6 +118,35 @@ function BiddingEvaluationListPage() {
       (evaluation.title && evaluation.title.toLowerCase().includes(searchText))
     );
   });
+
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     setIsLoading(true);
+  //     try {
+  //       // ✅ 샘플 데이터 그대로 사용
+  //       setBidding(sampleBidding);
+
+  //       // ✅ 실제 API 호출은 평가 목록만
+  //       const evaluationsResponse = await fetchWithAuth(
+  //         `${API_URL}bidding-evaluations/bidding/${biddingId}`
+  //       );
+
+  //       if (!evaluationsResponse.ok) {
+  //         throw new Error("평가 데이터를 불러오는 데 실패했습니다.");
+  //       }
+
+  //       const evaluationsData = await evaluationsResponse.json();
+  //       setEvaluations(evaluationsData);
+  //     } catch (error) {
+  //       console.error("데이터 로드 중 오류:", error);
+  //       setError(error.message);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, [biddingId]);
 
   // 테이블 행 클릭 핸들러
   const handleRowClick = (biddingId) => {

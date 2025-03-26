@@ -119,13 +119,13 @@
       display: flex;
       align-items: center;
       justify-items: flex-start;
-      justify-content: stretch;
+      justify-content: flex-start;
+      gap: 55px;
       color: #666;
       font-weight: 500;
       padding: 15px;
       width: 100%;
       text-align: left;
-      transition: color 0.3ease;
       &:hover {
         font-weight: 600;
       }
