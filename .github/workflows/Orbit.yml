@@ -1,19 +1,65 @@
-name: Test SSH Connection Only  # GitHub Actions 워크플로우 이름
+name: Deploy Student Application  # [Workflow] GitHub Actions 워크플로우 이름 설정
 
-on:
-  push:
+on:  # [Event] Workflow 실행 트리거 정의
+  push:  # [Event] 코드가 push될 때 실행
     branches:
-      - main  # main 브랜치에 push될 때 실행
+      - main  # [Event] main 브랜치에 push될 때 실행
 
-jobs:
-  test-ssh:
-    runs-on: ubuntu-latest  # GitHub Actions가 실행될 환경 지정
-    steps:
-      - name: Test Basic SSH Connection  # SSH 연결 테스트 단계
-        uses: appleboy/ssh-action@v0.1.4  # SSH 연결을 위한 GitHub Action 사용
-        with:
-          host: ${{ secrets.EC2_HOST }}  # EC2 인스턴스의 호스트 주소 (GitHub Secrets에서 가져옴)
-          username: ${{ secrets.EC2_USER }}  # SSH 접속할 EC2 사용자명
-          key: ${{ secrets.EC2_SSH_KEY }}  # SSH 접속을 위한 개인키
-          script: echo "✅ GitHub Actions에서 EC2 SSH 연결 성공!"  # EC2에서 실행할 명령어 (SSH 연결 확인 메시지 출력)
-          ssh_options: "-o StrictHostKeyChecking=no"  # 호스트 키 확인을 건너뛰어 SSH 접속이 원활하게 이루어지도록 설정
+jobs:  # [Job] 실행할 작업 정의
+  deploy:  # [Job] 배포 작업 정의
+    runs-on: ubuntu-latest  # [Runner] GitHub에서 제공하는 최신 Ubuntu 환경에서 실행
+    timeout-minutes: 40  # [Job] 실행 최대 제한 시간 40분 설정
+    steps:  # [Step] 단계별 실행 작업 정의
+
+      - name: Checkout Repository  # [Step] GitHub 저장소 코드 가져오기
+        uses: actions/checkout@v3  # [Action] actions/checkout을 사용하여 현재 저장소를 가져옴
+
+      - name: Fix SSH Key Permissions  # [Step] SSH 키 권한 설정
+        run: |  # [Command] 실행할 명령어 정의
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2-key.pem  # [Command] GitHub Secrets에서 SSH 키 가져와 파일 생성
+          chmod 600 ec2-key.pem  # [Command] SSH 키 파일의 보안 권한 설정 (600: 소유자만 읽고 쓸 수 있음)
+
+      - name: Deploy to AWS EC2  # [Step] AWS EC2 서버에 배포 실행
+        uses: appleboy/ssh-action@v0.1.4  # [Action] SSH를 통해 원격 서버에서 명령 실행하는 GitHub Action 사용
+        with:  # [Configuration] Action에 필요한 환경 변수 설정
+          host: ${{ secrets.EC2_HOST }}  # [Configuration] EC2 인스턴스의 공인 IP 주소
+          username: ${{ secrets.EC2_USER }}  # [Configuration] GitHub Secrets에 저장된 EC2 사용자 이름
+          key: ${{ secrets.EC2_SSH_KEY }}  # [Configuration] GitHub Secrets에서 SSH 키 가져와 사용
+          command_timeout: 40m  # [Configuration] SSH 명령 실행 최대 시간 40분 설정
+          script: |  # [Command] SSH에서 실행할 명령어 스크립트
+            echo "🔹 SSH 연결 테스트 성공!"  # [Command] SSH 연결 확인 메시지 출력
+            cd ~/orbit/backend  # [Command] 프로젝트 폴더로 이동
+
+            # 🔹 최신 코드 가져오기
+            export GIT_SSH_COMMAND="ssh -i ~/.ssh/github-key -o StrictHostKeyChecking=no"  # [Command] SSH 키 사용 설정
+            git pull origin main  # [Command] GitHub에서 최신 코드 가져오기
+
+            # 🔹 백엔드 빌드 및 배포
+            cd backend  # [Command] 백엔드 프로젝트 폴더로 이동
+            chmod +x gradlew  # [Command] Gradle 실행 권한 부여
+            ./gradlew build -x test  # [Command] Gradle로 프로젝트 빌드 (테스트 제외)
+
+            # 🔹 실행 중인 JAR 프로세스 종료 및 새 실행
+            if [ -f ~/orbit/backend.pid ]; then  
+              pkill -F ~/orbit/backend.pid || true  
+              rm ~/orbit/backend.pid 
+            fi
+            # nohup java -jar build/libs/student-0.0.1-SNAPSHOT.jar --server.port=8080 > ~/student/backend.log 2>&1 &
+            # 개선된 방식 (screen 사용)
+            screen -dmS spring_server java -jar build/libs/backend-0.0.1-SNAPSHOT.jar --server.port=8080  # [Command] 백엔드 애플리케이션 실행 (screen 사용하여 백그라운드 실행)
+            echo $! > ~/orbit/backend.pid  # [Command] 실행된 프로세스의 PID를 저장
+            sleep 3  # [Command] 3초 대기
+            echo "🔹 백엔드 배포 완료"  # [Command] 백엔드 배포 완료 메시지 출력
+
+            # 🔹 프론트엔드 빌드
+            cd ../frontend || exit 1  # [Command] 프론트엔드 프로젝트 폴더로 이동 (없으면 종료)
+            npm install --legacy-peer-deps  # [Command] 패키지 설치 (오래된 패키지 지원 옵션 사용)
+            npm run build  # [Command] 프론트엔드 빌드 실행
+
+            # 🔹 Nginx 정적 파일 업데이트
+            sudo rm -rf /usr/share/nginx/html/*  # [Command] 기존 정적 파일 삭제
+            sudo cp -r dist/* /usr/share/nginx/html/  # [Command] 새로운 빌드 파일을 Nginx 정적 파일 폴더로 복사
+            ls -al /usr/share/nginx/html/  # [Command] ✅ 빌드된 정적 파일이 정상적으로 복사되었는지 확인
+            sudo nginx -t && sudo systemctl restart nginx  # [Command] Nginx 설정 테스트 및 재시작
+            echo "🔹 배포 완료!"  # [Command] 전체 배포 완료 메시지 출력
+​
