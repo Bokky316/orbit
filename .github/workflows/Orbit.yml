@@ -31,7 +31,7 @@ jobs:
             export GIT_SSH_COMMAND="ssh -i ~/.ssh/github-key -o StrictHostKeyChecking=no"
             git pull origin main
             # 🔹 백엔드 빌드 및 배포
-            cd backend_student
+            cd backend
             chmod +x gradlew
             ./gradlew build -x test
             # 🔹 실행 중인 JAR 프로세스 종료 및 새 실행
