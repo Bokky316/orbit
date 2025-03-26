@@ -46,7 +46,7 @@ jobs:
             sleep 3
             echo "🔹 백엔드 배포 완료"
             # 🔹 프론트엔드 빌드
-            cd ../frontend_student || exit 1
+            cd ../frontend || exit 1
             npm install --legacy-peer-deps
             echo " build 시작"
             npm run build
