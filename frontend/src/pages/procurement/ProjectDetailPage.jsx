@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
-import { deleteProject } from '@/redux/projectSlice';
+import { deleteProject, updateProjectStatus } from '@/redux/projectSlice';
 import { styled } from '@mui/material/styles';
 import {
     Box,
@@ -34,7 +34,14 @@ import {
     Stack,
     Tabs,
     Tab,
-    Badge
+    Badge,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    FormControl,
+    InputLabel,
+    Select
 } from '@mui/material';
 import {
     AttachFile as AttachFileIcon,
@@ -152,6 +159,9 @@ function ProjectDetailPage() {
     const [error, setError] = useState(null);
     const [tabValue, setTabValue] = useState(0);
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+    const [selectedStatus, setSelectedStatus] = useState('');
+    const [availableStatuses, setAvailableStatuses] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -162,9 +172,16 @@ function ProjectDetailPage() {
                 const projectData = await projectRes.json();
                 setProject(projectData);
 
+                // 2. 사용 가능한 상태 코드 가져오기
+                const statusRes = await fetchWithAuth(`${API_URL}common-codes/PROJECT/BASIC_STATUS`);
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json();
+                    setAvailableStatuses(statusData);
+                }
+
                 console.log('프로젝트 정보:', projectData);
 
-                // 2. 모든 구매 요청을 가져와서 클라이언트에서 필터링
+                // 3. 모든 구매 요청을 가져와서 클라이언트에서 필터링
                 const allPrRes = await fetchWithAuth(`${API_URL}purchase-requests`);
                 if (!allPrRes.ok) throw new Error('구매 요청 조회 실패');
 
@@ -325,396 +342,466 @@ function ProjectDetailPage() {
     };
 
     // 메뉴 열기
-    const handleMenuOpen = (event) => {
-        setMenuAnchorEl(event.currentTarget);
-    };
+        const handleMenuOpen = (event) => {
+            setMenuAnchorEl(event.currentTarget);
+        };
 
-    // 메뉴 닫기
-    const handleMenuClose = () => {
-        setMenuAnchorEl(null);
-    };
+        // 메뉴 닫기
+        const handleMenuClose = () => {
+            setMenuAnchorEl(null);
+        };
 
-    // 탭 변경 핸들러
-    const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
-    };
+        // 상태 변경 다이얼로그 열기
+        const handleOpenStatusDialog = () => {
+            setStatusDialogOpen(true);
+            handleMenuClose();
+        };
 
-    // 첨부파일 다운로드 함수
-    const downloadFile = async (attachmentId) => {
-        try {
-            console.log("첨부파일 다운로드 시작, attachmentId:", attachmentId);
+        // 상태 변경 다이얼로그 닫기
+        const handleCloseStatusDialog = () => {
+            setStatusDialogOpen(false);
+            setSelectedStatus('');
+        };
 
-            const response = await fetchWithAuth(
-                `${API_URL}projects/attachments/${attachmentId}/download`,
-                {
-                    method: 'GET',
-                    // responseType: 'blob' - fetchWithAuth는 자동으로 Response 객체를 반환
+        // 상태 변경 처리
+        const handleUpdateStatus = async () => {
+            try {
+                if (!selectedStatus) {
+                    alert('변경할 상태를 선택해주세요.');
+                    return;
                 }
-            );
 
-            if (response.ok) {
-                const blob = await response.blob();
+                // statusCode 형식: PROJECT-BASIC_STATUS-IN_PROGRESS
+                const statusCode = `PROJECT-BASIC_STATUS-${selectedStatus}`;
 
-                // 파일명 추출 시도
-                let filename = 'download';
-                const contentDisposition = response.headers.get('content-disposition');
-                if (contentDisposition) {
-                    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-                    if (filenameMatch && filenameMatch[1]) {
-                        filename = filenameMatch[1].replace(/['"]/g, '');
-                        // URL 디코딩이 필요할 수 있음
-                        try {
-                            filename = decodeURIComponent(filename);
-                        } catch (e) {
-                            console.warn('파일명 디코딩 실패:', e);
+                await dispatch(updateProjectStatus({ id, statusCode })).unwrap();
+
+                // 성공 시 프로젝트 데이터 새로고침
+                const response = await fetchWithAuth(`${API_URL}projects/${id}`);
+                if (response.ok) {
+                    const updatedProject = await response.json();
+                    setProject(updatedProject);
+                    alert('프로젝트 상태가 성공적으로 변경되었습니다.');
+                }
+
+                handleCloseStatusDialog();
+            } catch (error) {
+                console.error('상태 변경 오류:', error);
+                alert(`상태 변경 중 오류가 발생했습니다: ${error.message}`);
+            }
+        };
+
+        // 탭 변경 핸들러
+        const handleTabChange = (event, newValue) => {
+            setTabValue(newValue);
+        };
+
+        // 첨부파일 다운로드 함수
+        const downloadFile = async (attachmentId) => {
+            try {
+                console.log("첨부파일 다운로드 시작, attachmentId:", attachmentId);
+
+                const response = await fetchWithAuth(
+                    `${API_URL}projects/attachments/${attachmentId}/download`,
+                    {
+                        method: 'GET',
+                        // responseType: 'blob' - fetchWithAuth는 자동으로 Response 객체를 반환
+                    }
+                );
+
+                if (response.ok) {
+                    const blob = await response.blob();
+
+                    // 파일명 추출 시도
+                    let filename = 'download';
+                    const contentDisposition = response.headers.get('content-disposition');
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            filename = filenameMatch[1].replace(/['"]/g, '');
+                            // URL 디코딩이 필요할 수 있음
+                            try {
+                                filename = decodeURIComponent(filename);
+                            } catch (e) {
+                                console.warn('파일명 디코딩 실패:', e);
+                            }
                         }
                     }
+
+                    // 다운로드 링크 생성 및 클릭
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+
+                    // 정리
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }, 100);
+
+                    console.log("파일 다운로드 성공:", filename);
+                } else {
+                    console.error('다운로드 실패:', await response.text());
+                    alert('파일 다운로드에 실패했습니다.');
                 }
-
-                // 다운로드 링크 생성 및 클릭
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-
-                // 정리
-                setTimeout(() => {
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                }, 100);
-
-                console.log("파일 다운로드 성공:", filename);
-            } else {
-                console.error('다운로드 실패:', await response.text());
-                alert('파일 다운로드에 실패했습니다.');
+            } catch (error) {
+                console.error('다운로드 오류:', error);
+                alert('파일 다운로드 중 오류가 발생했습니다.');
             }
-        } catch (error) {
-            console.error('다운로드 오류:', error);
-            alert('파일 다운로드 중 오류가 발생했습니다.');
-        }
-    };
+        };
 
-    if (loading) return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-            <Typography variant="h6">프로젝트 정보를 불러오는 중...</Typography>
-        </Box>
-    );
+        if (loading) return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+                <Typography variant="h6">프로젝트 정보를 불러오는 중...</Typography>
+            </Box>
+        );
 
-    if (error) return (
-        <Box sx={{ p: 4 }}>
-            <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-            <Button
-                variant="outlined"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => navigate('/projects')}
-            >
-                프로젝트 목록으로 돌아가기
-            </Button>
-        </Box>
-    );
-
-    // 프로젝트 상태 코드 추출
-    const projectStatusCode = extractProjectStatusCode(project);
-    // 프로젝트 상태 라벨 가져오기
-    const projectStatusLabel = getProjectStatusLabel(projectStatusCode);
-
-    return (
-        <Box sx={{ p: 4 }}>
-            {/* 상단 헤더 및 액션 버튼 */}
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Button
-                                variant="outlined"
-                                color="inherit"
-                                size="small"
-                                startIcon={<ArrowBackIcon />}
-                                onClick={() => navigate('/projects')}
-                                sx={{ mr: 1 }}
-                            >
-                                목록
-                            </Button>
-                            <Typography variant="h4" component="h1">{project.projectName}</Typography>
-                            <StatusChip
-                                label={projectStatusLabel}
-                                statuscode={projectStatusCode}
-                                size="medium"
-                            />
-                        </Box>
-
-                        <Box>
-                            <Tooltip title="프로젝트 관리">
-                                <IconButton onClick={handleMenuOpen}>
-                                    <MoreVertIcon />
-                                </IconButton>
-                            </Tooltip>
-                            <Menu
-                                anchorEl={menuAnchorEl}
-                                open={Boolean(menuAnchorEl)}
-                                onClose={handleMenuClose}
-                            >
-                                {canEditProject() && (
-                                    <MenuItem onClick={() => {
-                                        handleMenuClose();
-                                        navigate(`/projects/edit/${id}`);
-                                    }}>
-                                        <EditIcon fontSize="small" sx={{ mr: 1 }} />
-                                        프로젝트 수정
-                                    </MenuItem>
-                                )}
-                                {canDeleteProject() && (
-                                    <MenuItem onClick={() => {
-                                        handleMenuClose();
-                                        handleDelete();
-                                    }} sx={{ color: 'error.main' }}>
-                                        <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-                                        프로젝트 삭제
-                                    </MenuItem>
-                                )}
-                                <MenuItem onClick={() => {
-                                    handleMenuClose();
-                                    navigate('/purchase-requests/new', { state: { projectId: id } });
-                                }}>
-                                    <AddIcon fontSize="small" sx={{ mr: 1 }} />
-                                    구매 요청 생성
-                                </MenuItem>
-                            </Menu>
-                        </Box>
-                    </Box>
-
-                    <Divider sx={{ my: 2 }} />
-
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <DescriptionIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">프로젝트 ID</Typography>
-                                    <Typography variant="body1">{project.projectIdentifier || project.id}</Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <PersonIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">담당자</Typography>
-                                    <Typography variant="body1">{project.requesterName || '정보 없음'}</Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <BusinessIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">사업 유형</Typography>
-                                    <Typography variant="body1">{getBusinessTypeLabel(project.businessCategory)}</Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <ApartmentIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">요청 부서</Typography>
-                                    <Typography variant="body1">{project.requestDepartment || '정보 없음'}</Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <EventIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">시작일</Typography>
-                                    <Typography variant="body1">{formatDate(project.projectPeriod.startDate)}</Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <EventIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">종료일</Typography>
-                                    <Typography variant="body1">{formatDate(project.projectPeriod.endDate)}</Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <AccountBalanceIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">총 예산</Typography>
-                                    <Typography variant="body1">
-                                        {project.totalBudget ? project.totalBudget.toLocaleString() + ' 원' : '정보 없음'}
-                                    </Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <InfoItem>
-                                <AccountBalanceIcon />
-                                <Box>
-                                    <Typography variant="body2" color="text.secondary">예산 코드</Typography>
-                                    <Typography variant="body1">{getBudgetCodeLabel(project.budgetCode)}</Typography>
-                                </Box>
-                            </InfoItem>
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
-
-            {/* 탭 패널 */}
-            <Card>
-                <Tabs
-                    value={tabValue}
-                    onChange={handleTabChange}
-                    variant="fullWidth"
-                    sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+        if (error) return (
+            <Box sx={{ p: 4 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/projects')}
                 >
-                    <Tab label="특이 사항" />
-                    <Tab label="첨부 파일"
-                        icon={project.attachments && project.attachments.length > 0 ?
-                            <Badge badgeContent={project.attachments.length} color="primary" sx={{ mr: 1 }} /> : null}
-                        iconPosition="end"
-                    />
-                    <Tab label="관련 구매 요청"
-                        icon={purchaseRequests && purchaseRequests.length > 0 ?
-                            <Badge badgeContent={purchaseRequests.length} color="primary" sx={{ mr: 1 }} /> : null}
-                        iconPosition="end"
-                    />
-                </Tabs>
+                    프로젝트 목록으로 돌아가기
+                </Button>
+            </Box>
+        );
 
-                {/* 특이 사항 탭 */}
-                <Box role="tabpanel" hidden={tabValue !== 0} sx={{ p: 3 }}>
-                    {tabValue === 0 && (
-                        <>
-                            <SectionTitle variant="h6">
-                                <NotesIcon />
-                                특이 사항
-                            </SectionTitle>
-                            <Typography sx={{ whiteSpace: 'pre-line', pl: 4 }}>
-                                {project.remarks || '특이 사항이 없습니다.'}
-                            </Typography>
-                        </>
-                    )}
-                </Box>
+        // 프로젝트 상태 코드 추출
+        const projectStatusCode = extractProjectStatusCode(project);
+        // 프로젝트 상태 라벨 가져오기
+        const projectStatusLabel = getProjectStatusLabel(projectStatusCode);
 
-                {/* 첨부 파일 탭 */}
-                <Box role="tabpanel" hidden={tabValue !== 1} sx={{ p: 3 }}>
-                    {tabValue === 1 && (
-                        <>
-                            <SectionTitle variant="h6">
-                                <AttachFileIcon />
-                                첨부 파일
-                            </SectionTitle>
-
-                            {project.attachments && project.attachments.length > 0 ? (
-                                <List sx={{ pl: 4 }}>
-                                    {project.attachments.map((attachment, index) => (
-                                        <FileItem key={attachment.id} disableGutters>
-                                            <Link
-                                                component="button"
-                                                onClick={() => downloadFile(attachment.id)}
-                                                sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left' }}
-                                                underline="none"
-                                            >
-                                                <AttachFileIcon sx={{ mr: 1 }} />
-                                                <Box sx={{ flex: 1 }}>
-                                                    <Typography variant="body1">{attachment.fileName}</Typography>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        ({Math.round(attachment.fileSize / 1024)}KB) - {new Date(attachment.uploadedAt).toLocaleString()}
-                                                    </Typography>
-                                                </Box>
-                                            </Link>
-                                        </FileItem>
-                                    ))}
-                                </List>
-                            ) : (
-                                <Typography color="text.secondary" sx={{ pl: 4 }}>첨부 파일이 없습니다.</Typography>
-                            )}
-                        </>
-                    )}
-                </Box>
-
-                {/* 관련 구매 요청 탭 */}
-                <Box role="tabpanel" hidden={tabValue !== 2} sx={{ p: 3 }}>
-                    {tabValue === 2 && (
-                        <>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <SectionTitle variant="h6" sx={{ mb: 0 }}>
-                                    <DescriptionIcon />
-                                    관련 구매 요청
-                                </SectionTitle>
+        return (
+            <Box sx={{ p: 4 }}>
+                {/* 상단 헤더 및 액션 버튼 */}
+                <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                 <Button
-                                    variant="contained"
-                                    color="primary"
+                                    variant="outlined"
+                                    color="inherit"
                                     size="small"
-                                    startIcon={<AddIcon />}
-                                    onClick={() => navigate('/purchase-requests/new', { state: { projectId: id } })}
+                                    startIcon={<ArrowBackIcon />}
+                                    onClick={() => navigate('/projects')}
+                                    sx={{ mr: 1 }}
                                 >
-                                    구매 요청 생성
+                                    목록
                                 </Button>
+                                <Typography variant="h4" component="h1">{project.projectName}</Typography>
+                                <StatusChip
+                                    label={projectStatusLabel}
+                                    statuscode={projectStatusCode}
+                                    size="medium"
+                                />
                             </Box>
 
-                            {purchaseRequests && purchaseRequests.length > 0 ? (
-                                <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
-                                    <Table stickyHeader>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell>요청번호</TableCell>
-                                                <TableCell>유형</TableCell>
-                                                <TableCell>요청명</TableCell>
-                                                <TableCell align="center">상태</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {purchaseRequests.map(req => {
-                                                // 상태 코드 추출
-                                                const statusCode = extractStatusCode(req);
-                                                // 상태 라벨 가져오기
-                                                const statusLabel = getPurchaseStatusLabel(statusCode);
-                                                // 비즈니스 유형 라벨 가져오기
-                                                const businessTypeLabel = getBusinessTypeLabel(req.businessType);
+                            <Box>
+                                <Tooltip title="프로젝트 관리">
+                                    <IconButton onClick={handleMenuOpen}>
+                                        <MoreVertIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Menu
+                                    anchorEl={menuAnchorEl}
+                                    open={Boolean(menuAnchorEl)}
+                                    onClose={handleMenuClose}
+                                >
+                                    {canEditProject() && (
+                                        <MenuItem onClick={() => {
+                                            handleMenuClose();
+                                            navigate(`/projects/edit/${id}`);
+                                        }}>
+                                            <EditIcon fontSize="small" sx={{ mr: 1 }} />
+                                            프로젝트 수정
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem onClick={handleOpenStatusDialog}>
+                                        <EventIcon fontSize="small" sx={{ mr: 1 }} />
+                                        상태 변경
+                                    </MenuItem>
+                                    {canDeleteProject() && (
+                                        <MenuItem onClick={() => {
+                                            handleMenuClose();
+                                            handleDelete();
+                                        }} sx={{ color: 'error.main' }}>
+                                            <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+                                            프로젝트 삭제
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem onClick={() => {
+                                        handleMenuClose();
+                                        navigate('/purchase-requests/new', { state: { projectId: id } });
+                                    }}>
+                                        <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                                        구매 요청 생성
+                                    </MenuItem>
+                                </Menu>
+                            </Box>
+                        </Box>
 
-                                                return (
-                                                    <TableRow
-                                                        key={req.id}
-                                                        hover
-                                                        sx={{ cursor: 'pointer' }}
-                                                        onClick={() => navigateToPurchaseRequest(req.id)}
-                                                    >
-                                                        <TableCell>{req.requestNumber || req.id}</TableCell>
-                                                        <TableCell>{businessTypeLabel}</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'medium', color: 'primary.main' }}>
-                                                            {req.requestName}
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <StatusChip
-                                                                label={statusLabel}
-                                                                statuscode={statusCode}
-                                                                size="small"
-                                                            />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            ) : (
-                                <Alert severity="info" sx={{ mt: 2 }}>
-                                    관련 구매 요청이 없습니다. 새 구매 요청을 생성해보세요.
-                                </Alert>
-                            )}
-                        </>
-                    )}
-                </Box>
-            </Card>
-        </Box>
-    );
-}
+                        <Divider sx={{ my: 2 }} />
 
-export default ProjectDetailPage;
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <DescriptionIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">프로젝트 ID</Typography>
+                                        <Typography variant="body1">{project.projectIdentifier || project.id}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <PersonIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">담당자</Typography>
+                                        <Typography variant="body1">{project.requesterName || '정보 없음'}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <BusinessIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">사업 유형</Typography>
+                                        <Typography variant="body1">{getBusinessTypeLabel(project.businessCategory)}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <ApartmentIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">요청 부서</Typography>
+                                        <Typography variant="body1">{project.requestDepartment || '정보 없음'}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <EventIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">시작일</Typography>
+                                        <Typography variant="body1">{formatDate(project.projectPeriod.startDate)}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <EventIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">종료일</Typography>
+                                        <Typography variant="body1">{formatDate(project.projectPeriod.endDate)}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <AccountBalanceIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">총 예산</Typography>
+                                        <Typography variant="body1">
+                                            {project.totalBudget ? project.totalBudget.toLocaleString() + ' 원' : '정보 없음'}
+                                        </Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <InfoItem>
+                                    <AccountBalanceIcon />
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary">예산 코드</Typography>
+                                        <Typography variant="body1">{getBudgetCodeLabel(project.budgetCode)}</Typography>
+                                    </Box>
+                                </InfoItem>
+                            </Grid>
+                        </Grid>
+                    </CardContent>
+                </Card>
+
+                {/* 탭 패널 */}
+                <Card>
+                    <Tabs
+                        value={tabValue}
+                        onChange={handleTabChange}
+                        variant="fullWidth"
+                        sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+                    >
+                        <Tab label="특이 사항" />
+                        <Tab label="첨부 파일"
+                            icon={project.attachments && project.attachments.length > 0 ?
+                                <Badge badgeContent={project.attachments.length} color="primary" sx={{ mr: 1 }} /> : null}
+                            iconPosition="end"
+                        />
+                        <Tab label="관련 구매 요청"
+                            icon={purchaseRequests && purchaseRequests.length > 0 ?
+                                <Badge badgeContent={purchaseRequests.length} color="primary" sx={{ mr: 1 }} /> : null}
+                            iconPosition="end"
+                        />
+                    </Tabs>
+
+                    {/* 특이 사항 탭 */}
+                    <Box role="tabpanel" hidden={tabValue !== 0} sx={{ p: 3 }}>
+                        {tabValue === 0 && (
+                            <>
+                                <SectionTitle variant="h6">
+                                    <NotesIcon />
+                                    특이 사항
+                                </SectionTitle>
+                                <Typography sx={{ whiteSpace: 'pre-line', pl: 4 }}>
+                                    {project.remarks || '특이 사항이 없습니다.'}
+                                </Typography>
+                            </>
+                        )}
+                    </Box>
+
+                    {/* 첨부 파일 탭 */}
+                    <Box role="tabpanel" hidden={tabValue !== 1} sx={{ p: 3 }}>
+                        {tabValue === 1 && (
+                            <>
+                                <SectionTitle variant="h6">
+                                    <AttachFileIcon />
+                                    첨부 파일
+                                </SectionTitle>
+
+                                {project.attachments && project.attachments.length > 0 ? (
+                                    <List sx={{ pl: 4 }}>
+                                        {project.attachments.map((attachment, index) => (
+                                            <FileItem key={attachment.id} disableGutters>
+                                                <Link
+                                                    component="button"
+                                                    onClick={() => downloadFile(attachment.id)}
+                                                    sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left' }}
+                                                    underline="none"
+                                                >
+                                                    <AttachFileIcon sx={{ mr: 1 }} />
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography variant="body1">{attachment.fileName}</Typography>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            ({Math.round(attachment.fileSize / 1024)}KB) - {new Date(attachment.uploadedAt).toLocaleString()}
+                                                        </Typography>
+                                                    </Box>
+                                                </Link>
+                                            </FileItem>
+                                        ))}
+                                    </List>
+                                ) : (
+                                    <Typography color="text.secondary" sx={{ pl: 4 }}>첨부 파일이 없습니다.</Typography>
+                                )}
+                            </>
+                        )}
+                    </Box>
+
+                    {/* 관련 구매 요청 탭 */}
+                    <Box role="tabpanel" hidden={tabValue !== 2} sx={{ p: 3 }}>
+                        {tabValue === 2 && (
+                            <>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <SectionTitle variant="h6" sx={{ mb: 0 }}>
+                                        <DescriptionIcon />
+                                        관련 구매 요청
+                                    </SectionTitle>
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        size="small"
+                                        startIcon={<AddIcon />}
+                                        onClick={() => navigate('/purchase-requests/new', { state: { projectId: id } })}
+                                    >
+                                        구매 요청 생성
+                                    </Button>
+                                </Box>
+
+                                {purchaseRequests && purchaseRequests.length > 0 ? (
+                                    <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+                                        <Table stickyHeader>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>요청번호</TableCell>
+                                                    <TableCell>유형</TableCell>
+                                                    <TableCell>요청명</TableCell>
+                                                    <TableCell align="center">상태</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {purchaseRequests.map(req => {
+                                                    // 상태 코드 추출
+                                                    const statusCode = extractStatusCode(req);
+                                                    // 상태 라벨 가져오기
+                                                    const statusLabel = getPurchaseStatusLabel(statusCode);
+                                                    // 비즈니스 유형 라벨 가져오기
+                                                    const businessTypeLabel = getBusinessTypeLabel(req.businessType);
+
+                                                    return (
+                                                        <TableRow
+                                                            key={req.id}
+                                                            hover
+                                                            sx={{ cursor: 'pointer' }}
+                                                            onClick={() => navigateToPurchaseRequest(req.id)}
+                                                        >
+                                                            <TableCell>{req.requestNumber || req.id}</TableCell>
+                                                            <TableCell>{businessTypeLabel}</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+                                                                {req.requestName}
+                                                            </TableCell>
+                                                            <TableCell align="center">
+                                                                <StatusChip
+                                                                    label={statusLabel}
+                                                                    statuscode={statusCode}
+                                                                    size="small"
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                ) : (
+                                    <Alert severity="info" sx={{ mt: 2 }}>
+                                        관련 구매 요청이 없습니다. 새 구매 요청을 생성해보세요.
+                                    </Alert>
+                                )}
+                            </>
+                        )}
+                    </Box>
+                </Card>
+
+                {/* 상태 변경 다이얼로그 */}
+                <Dialog open={statusDialogOpen} onClose={handleCloseStatusDialog}>
+                    <DialogTitle>프로젝트 상태 변경</DialogTitle>
+                    <DialogContent>
+                        <FormControl fullWidth sx={{ mt: 2, minWidth: 300 }}>
+                            <InputLabel id="status-select-label">상태</InputLabel>
+                            <Select
+                                labelId="status-select-label"
+                                value={selectedStatus}
+                                label="상태"
+                                onChange={(e) => setSelectedStatus(e.target.value)}
+                            >
+                                {availableStatuses.map((status) => (
+                                    <MenuItem key={status.id} value={status.codeValue}>
+                                        {status.codeName}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={handleCloseStatusDialog}>취소</Button>
+                        <Button onClick={handleUpdateStatus} variant="contained">변경</Button>
+                    </DialogActions>
+                </Dialog>
+            </Box>
+        );
+    }
+
+    export default ProjectDetailPage;
