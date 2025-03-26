@@ -49,6 +49,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -78,6 +79,7 @@ public class PurchaseRequestService {
      *
      * 구매 요청 생성 시 결재선 템플릿을 선택하거나 자동 생성할 수 있으며,
      * 기안자를 결재선에 포함시킬지 여부도 선택 가능합니다.
+     * 요청 번호는 YYMM001 형식으로 자동 생성됩니다.
      */
     @Transactional
     public PurchaseRequestDTO createPurchaseRequest(PurchaseRequestDTO purchaseRequestDTO, MultipartFile[] files) {
@@ -85,17 +87,46 @@ public class PurchaseRequestService {
         PurchaseRequest purchaseRequest = convertToEntity(purchaseRequestDTO);
         purchaseRequest.setRequestDate(LocalDate.now());
 
-        // 2. 초기 상태 설정
+        // 2. 요청번호 수동 설정 (사용자가 직접 지정한 경우)
+        if (purchaseRequestDTO.getRequestNumber() != null && !purchaseRequestDTO.getRequestNumber().isEmpty()) {
+            purchaseRequest.setRequestNumber(purchaseRequestDTO.getRequestNumber());
+        } else {
+            // 자동 생성 - YYMM001 형식
+            String yearMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM"));
+
+            // 현재 년월로 시작하는 가장 큰 요청번호 조회
+            String maxRequestNumber = purchaseRequestRepository.findMaxRequestNumberByPrefix(yearMonth);
+
+            String nextRequestNumber;
+            if (maxRequestNumber != null && maxRequestNumber.startsWith(yearMonth)) {
+                try {
+                    // 기존 ID에서 숫자 부분 추출하여 1 증가
+                    int sequenceNumber = Integer.parseInt(maxRequestNumber.substring(yearMonth.length()));
+                    nextRequestNumber = yearMonth + String.format("%03d", sequenceNumber + 1);
+                } catch (Exception e) {
+                    log.warn("요청번호 파싱 실패: {}, 기본값 사용", e.getMessage());
+                    // 파싱 실패 시 기본값으로 시작
+                    nextRequestNumber = yearMonth + "001";
+                }
+            } else {
+                // 해당 년월의 첫 번째 ID (예: 2405001)
+                nextRequestNumber = yearMonth + "001";
+            }
+
+            purchaseRequest.setRequestNumber(nextRequestNumber);
+        }
+
+        // 3. 초기 상태 설정
         setInitialStatus(purchaseRequest);
 
-        // 3. 요청자(회원) 정보 설정 - DTO에서 전달받은 memberId 사용
+        // 4. 요청자(회원) 정보 설정 - DTO에서 전달받은 memberId 사용
         if (purchaseRequestDTO.getMemberId() != null) {
             Member member = memberRepository.findById(purchaseRequestDTO.getMemberId())
                     .orElseThrow(() -> new ResourceNotFoundException("ID " + purchaseRequestDTO.getMemberId() + "에 해당하는 사용자가 없습니다."));
             purchaseRequest.setMember(member);
         }
 
-        // 4. 프로젝트 정보 설정
+        // 5. 프로젝트 정보 설정
         if (purchaseRequestDTO.getProjectId() != null && !purchaseRequestDTO.getProjectId().isEmpty()) {
             try {
                 Long projectId = Long.parseLong(purchaseRequestDTO.getProjectId());
@@ -108,19 +139,19 @@ public class PurchaseRequestService {
             }
         }
 
-        // 5. 종합적인 유효성 검증 추가
+        // 6. 종합적인 유효성 검증 추가
         validatePurchaseRequest(purchaseRequest);
 
-        // 6. 저장 및 첨부 파일 처리
+        // 7. 저장 및 첨부 파일 처리
         PurchaseRequest savedRequest = purchaseRequestRepository.save(purchaseRequest);
         processAttachments(savedRequest, files);
 
-        // 7. 물품 요청 시 품목 처리
+        // 8. 물품 요청 시 품목 처리
         if (savedRequest instanceof GoodsRequest && purchaseRequestDTO instanceof GoodsRequestDTO) {
             processGoodsRequestItems((GoodsRequest) savedRequest, (GoodsRequestDTO) purchaseRequestDTO);
         }
 
-        // 8. 결재선 생성 방식 결정
+        // 9. 결재선 생성 방식 결정
         if (purchaseRequestDTO.getApprovalTemplateId() != null) {
             try {
                 log.info("템플릿 기반 결재선 생성. 템플릿 ID: {}, 기안자 포함 여부: {}",

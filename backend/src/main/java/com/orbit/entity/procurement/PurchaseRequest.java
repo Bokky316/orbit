@@ -12,20 +12,47 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.orbit.entity.commonCode.SystemStatus;
+import com.orbit.entity.member.Member;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.GenericGenerator;
+
 @Entity
 @Getter @Setter
 @Table(name = "purchase_requests")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "request_type")
+@EntityListeners(PurchaseRequestListener.class)
 public abstract class PurchaseRequest {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "purchase_request_id")
     private Long id;
 
     @Column(name = "request_name", nullable = false)
     private String requestName;
 
+    // 구매 요청 번호 - 자동 생성 (REQ-YYMM-XXX 형식)
     @Column(name = "request_number", unique = true)
     private String requestNumber;
 
@@ -72,5 +99,21 @@ public abstract class PurchaseRequest {
     public void addAttachment(PurchaseRequestAttachment attachment) {
         attachment.setPurchaseRequest(this);
         this.attachments.add(attachment);
+    }
+
+    // Bidding 과 맴핑
+    @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PurchaseRequestItem> purchaseRequestItems = new ArrayList<>();
+
+    public List<PurchaseRequestItem> getPurchaseRequestItems() {
+        return this.purchaseRequestItems;
+    }
+
+    public void addPurchaseRequestItem(PurchaseRequestItem item) {
+        if (this.purchaseRequestItems == null) {
+            this.purchaseRequestItems = new ArrayList<>();
+        }
+        item.setPurchaseRequest(this);
+        this.purchaseRequestItems.add(item);
     }
 }
