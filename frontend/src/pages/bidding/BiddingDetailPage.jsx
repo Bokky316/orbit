@@ -141,14 +141,6 @@ function BiddingDetailPage() {
   });
   const [statusHistories, setStatusHistories] = useState([]);
 
-  // 상태 변경 다이얼로그 상태
-  const [statusChangeDialog, setStatusChangeDialog] = useState({
-    open: false,
-    newStatus: "",
-    reason: ""
-  });
-  const [statusHistories, setStatusHistories] = useState([]);
-
   // 입찰 프로세스 단계
   const biddingSteps = [
     { label: "입찰 등록", value: BiddingStatus.PENDING },
@@ -357,37 +349,6 @@ function BiddingDetailPage() {
 
       await fetchBiddingDetails();
       alert("입찰이 성공적으로 마감되었습니다.");
-    } catch (error) {
-      console.error("입찰 마감 중 오류:", error);
-      alert(`오류 발생: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 입찰 삭제 핸들러
-  const handleDeleteBidding = async () => {
-    try {
-      setIsLoading(true);
-      setDeleteConfirmOpen(false);
-
-      const response = await fetchWithAuth(`${API_URL}biddings/${id}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          status: statusChangeDialog.newStatus,
-          reason: statusChangeDialog.reason
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("입찰 공고 삭제에 실패했습니다.");
-      }
-
-      alert("입찰 공고가 성공적으로 삭제되었습니다.");
-      navigate("/biddings");
     } catch (error) {
       console.error("입찰 마감 중 오류:", error);
       alert(`오류 발생: ${error.message}`);

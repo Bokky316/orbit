@@ -345,22 +345,6 @@ public BiddingDto getBiddingById(Long id) {
 
 
     /**
-     * 입찰 공고 상태 조회
-     * @param biddingId 입찰 공고 ID
-     * @return 입찰 공고 상태 코드
-     */
-    @Transactional(readOnly = true)
-    public String getBiddingStatus(Long biddingId) {
-        Bidding bidding = biddingRepository.findById(biddingId)
-                .orElseThrow(() -> new EntityNotFoundException("입찰 공고를 찾을 수 없습니다. ID: " + biddingId));
-        
-        return bidding.getStatusChild() != null ? bidding.getStatusChild().getCodeValue() : null;
-    }
-
-
-
-
-    /**
      * 입찰 공고 생성
      */
     @Transactional

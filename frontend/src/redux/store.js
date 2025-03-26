@@ -1,21 +1,22 @@
 import { configureStore } from "@reduxjs/toolkit";
 import {
- persistStore,
- persistReducer,
- FLUSH,
- REHYDRATE,
- PAUSE,
- PERSIST,
- PURGE,
- REGISTER
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER
 } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { combineReducers } from "redux";
 
 // 기존 리듀서들
 import projectReducer from "./projectSlice";
-import purchaseRequestReducer, { websocketMiddleware } from "./purchaseRequestSlice";
-import purchaseRequestDashboardReducer, { websocketMiddleware as dashboardWebsocketMiddleware } from "./purchaseRequestDashboardSlice";
+import purchaseRequestReducer, {
+  websocketMiddleware
+} from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
 import approvalAdminReducer from "./approvalAdminSlice";
 import supplierReducer from "./supplier/supplierSlice";
@@ -23,6 +24,9 @@ import authReducer from "./authSlice";
 import commonCodeReducer from "./commonCodeSlice";
 import itemCategoryReducer from "./itemCategorySlice";
 import memberDashboardReducer from "./memberDashboardSlice";
+// 알림 리듀서 추가
+import notificationReducer from "./notificationSlice";
+import biddingReducer from "./biddingSlice";
 
 /**
 * Redux Persist의 설정을 정의합니다.
@@ -52,16 +56,17 @@ const persistConfig = {
 * - combineReducers를 사용하여 여러 리듀서를 하나로 병합
 */
 const rootReducer = combineReducers({
- project: projectReducer,
- purchaseRequest: purchaseRequestReducer,
- purchaseRequestDashboard: purchaseRequestDashboardReducer,
- approval: approvalReducer,
- approvalAdmin: approvalAdminReducer,
- supplier: supplierReducer,
- auth: authReducer,
- commonCode: commonCodeReducer,
- itemCategory: itemCategoryReducer,
- memberDashboard: memberDashboardReducer
+  project: projectReducer,
+  purchaseRequest: purchaseRequestReducer,
+  approval: approvalReducer,
+  approvalAdmin: approvalAdminReducer,
+  supplier: supplierReducer,
+  auth: authReducer,
+  commonCode: commonCodeReducer,
+  itemCategory: itemCategoryReducer,
+  notifications: notificationReducer, // 알림 리듀서
+  memberDashboard: memberDashboardReducer,
+  bidding: biddingReducer
 });
 
 /**
