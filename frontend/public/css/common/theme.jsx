@@ -269,8 +269,7 @@ const theme = createTheme({
           height: "42px",
           fontSize: "14px",
           boxSizing: "border-box",
-          backgroundColor: "transparent",
-          overflow: "hidden",
+          // 중복 제거: backgroundColor: "transparent", overflow: "hidden" 제거
           "& .MuiOutlinedInput-notchedOutline": {
             top: 0,
             bottom: 0,
@@ -337,6 +336,7 @@ const theme = createTheme({
             color: "#9CA3AF"
           }
         },
+        // 두 개의 outlined 키를 하나로 병합
         outlined: {
           "&:hover .MuiOutlinedInput-notchedOutline": {
             borderColor: "#FC8D4D"
@@ -344,11 +344,7 @@ const theme = createTheme({
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
             borderColor: "#FF7F3E",
             borderWidth: "1px"
-          }
-        },
-
-        // 텍스트 위치 추가 조정
-        outlined: {
+          },
           display: "flex",
           alignItems: "center",
           justifyContent: "flex-start",
