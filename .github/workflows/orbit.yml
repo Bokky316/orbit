@@ -49,7 +49,7 @@ jobs:
             cd ../frontend || exit 1
             npm install --legacy-peer-deps
             echo " build 시작"
-            npm run build
+            NODE_OPTIONS="--max-old-space-size=2048" npm run build
             echo " build 종료"
             
             # 🔹 Nginx 정적 파일 업데이트
