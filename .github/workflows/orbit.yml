@@ -1,0 +1,62 @@
+name: Deploy Student Application
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Fix SSH Key Permissions
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2-key.pem
+          chmod 600 ec2-key.pem
+      - name: Deploy to AWS EC2
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host:  ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 40m
+          script: |
+            echo "🔹 SSH 연결 테스트 성공!"
+            cd ~/orbit/backend
+            # 🔹 최신 코드 가져오기
+            export GIT_SSH_COMMAND="ssh -i ~/.ssh/github-key -o StrictHostKeyChecking=no"
+            git pull origin main
+            # 🔹 백엔드 빌드 및 배포
+            cd backend
+            chmod +x gradlew
+            ./gradlew build -x test
+            # 🔹 실행 중인 JAR 프로세스 종료 및 새 실행
+            if [ -f ~/orbit/backend.pid ]; then
+              pkill -F ~/orbit/backend.pid || true
+              rm ~/orbit/backend.pid
+            fi
+            # nohup java -jar build/libs/student-0.0.1-SNAPSHOT.jar --server.port=8080 > ~/student/backend.log 2>&1 &
+            # 개선된 방식 (screen 사용)
+            screen -dmS spring_server java -jar build/libs/backend-0.0.1-SNAPSHOT.jar --server.port=8080
+            echo $! > ~/orbit/backend.pid
+            sleep 3
+            echo "🔹 백엔드 배포 완료"
+            # 🔹 프론트엔드 빌드
+            cd ../frontend || exit 1
+            npm install --legacy-peer-deps
+            echo " build 시작"
+            npm run build
+            echo " build 종료"
+            
+            # 🔹 Nginx 정적 파일 업데이트
+            sudo rm -rf /usr/share/nginx/html/*
+            echo "🔹 프론트 dist 복사 시작"
+            sudo cp -r dist/* /usr/share/nginx/html/
+            echo "🔹 복사 완료"
+            #ls -al /usr/share/nginx/html/            
+            sudo nginx -t && sudo systemctl restart nginx
+            echo "🔹 배포 완료!"
