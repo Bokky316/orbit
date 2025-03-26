@@ -161,41 +161,21 @@ public class BiddingEvaluation extends BaseEntity {
     /**
      * 총점 계산
      */
-    private void calculateTotalScore() {
-        int totalPoints = 0;
-        int count = 0;
-        
-        if (this.priceScore != null) {
-            totalPoints += this.priceScore;
-            count++;
-        }
-        if (this.qualityScore != null) {
-            totalPoints += this.qualityScore;
-            count++;
-        }
-        if (this.deliveryScore != null) {
-            totalPoints += this.deliveryScore;
-            count++;
-        }
-        if (this.reliabilityScore != null) {
-            totalPoints += this.reliabilityScore;
-            count++;
-        }
-        if (this.serviceScore != null) {
-            totalPoints += this.serviceScore;
-            count++;
-        }
-        if (this.additionalScore != null) {
-            totalPoints += this.additionalScore;
-            count++;
-        }
-        
-        if (count > 0) {
-            this.totalScore = totalPoints / count;
-        } else {
-            this.totalScore = 0;
-        }
-    }
+    // BiddingEvaluation.java
+public void calculateTotalScore() {
+    int totalPoints = 0;
+    int count = 0;
+
+    if (priceScore != null) { totalPoints += priceScore; count++; }
+    if (qualityScore != null) { totalPoints += qualityScore; count++; }
+    if (deliveryScore != null) { totalPoints += deliveryScore; count++; }
+    if (reliabilityScore != null) { totalPoints += reliabilityScore; count++; }
+    if (serviceScore != null) { totalPoints += serviceScore; count++; }
+    if (additionalScore != null) { totalPoints += additionalScore; count++; }
+
+    this.totalScore = count > 0 ? totalPoints / count : 0;
+}
+
 
     @PrePersist
     protected void onCreate() {

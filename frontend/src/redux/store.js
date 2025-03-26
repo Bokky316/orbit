@@ -1,26 +1,29 @@
 import { configureStore } from "@reduxjs/toolkit";
 import {
- persistStore,
- persistReducer,
- FLUSH,
- REHYDRATE,
- PAUSE,
- PERSIST,
- PURGE,
- REGISTER
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER
 } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { combineReducers } from "redux";
 
 // 기존 리듀서들
 import projectReducer from "./projectSlice";
-import purchaseRequestReducer, { websocketMiddleware } from "./purchaseRequestSlice";
+import purchaseRequestReducer, {
+  websocketMiddleware
+} from "./purchaseRequestSlice";
 import approvalReducer from "./approvalSlice";
 import approvalAdminReducer from "./approvalAdminSlice";
 import supplierReducer from "./supplier/supplierSlice";
 import authReducer from "./authSlice";
 import commonCodeReducer from "./commonCodeSlice";
 import itemCategoryReducer from "./itemCategorySlice";
+import memberDashboardReducer from "./memberDashboardSlice";
 // 알림 리듀서 추가
 import notificationReducer from "./notificationSlice";
 import biddingReducer from "./biddingSlice";
@@ -51,6 +54,7 @@ const rootReducer = combineReducers({
   commonCode: commonCodeReducer,
   itemCategory: itemCategoryReducer,
   notifications: notificationReducer, // 알림 리듀서
+  memberDashboard: memberDashboardReducer,
   bidding: biddingReducer
 });
 

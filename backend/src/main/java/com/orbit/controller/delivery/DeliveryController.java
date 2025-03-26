@@ -4,7 +4,9 @@ import com.orbit.dto.delivery.DeliveryDto;
 import com.orbit.entity.member.Member;
 import com.orbit.service.delivery.DeliveryService;
 import com.orbit.service.member.MemberService;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -17,9 +19,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
 @RequestMapping("/api/deliveries")
 @RequiredArgsConstructor
+@Slf4j
 public class DeliveryController {
 
     private final DeliveryService deliveryService;

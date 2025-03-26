@@ -32,7 +32,7 @@ import {
   Add as AddIcon,
   Clear as ClearIcon,
   AttachFile as AttachFileIcon
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterMoment } from "@mui/x-date-pickers/AdapterMoment";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -57,43 +57,43 @@ const StatusChip = styled(Chip)(({ theme, statuscode }) => {
   // 상태별 색상 지정
   let color = theme.palette.grey[500]; // 기본값
 
-  if (status.includes('approved') || status.includes('승인')) {
+  if (status.includes("approved") || status.includes("승인")) {
     color = theme.palette.success.main;
-  } else if (status.includes('rejected') || status.includes('반려')) {
+  } else if (status.includes("rejected") || status.includes("반려")) {
     color = theme.palette.error.main;
-  } else if (status.includes('requested') || status.includes('요청')) {
+  } else if (status.includes("requested") || status.includes("요청")) {
     color = theme.palette.info.main;
-  } else if (status.includes('received') || status.includes('접수')) {
+  } else if (status.includes("received") || status.includes("접수")) {
     color = theme.palette.primary.main;
-  } else if (status.includes('vendor_selection') || status.includes('업체')) {
+  } else if (status.includes("vendor_selection") || status.includes("업체")) {
     color = theme.palette.secondary.main;
-  } else if (status.includes('contract_pending') || status.includes('계약')) {
+  } else if (status.includes("contract_pending") || status.includes("계약")) {
     color = theme.palette.warning.light;
-  } else if (status.includes('inspection') || status.includes('검수')) {
+  } else if (status.includes("inspection") || status.includes("검수")) {
     color = theme.palette.warning.main;
-  } else if (status.includes('invoice') || status.includes('인보이스')) {
+  } else if (status.includes("invoice") || status.includes("인보이스")) {
     color = theme.palette.info.dark;
-  } else if (status.includes('payment') || status.includes('지급')) {
+  } else if (status.includes("payment") || status.includes("지급")) {
     color = theme.palette.success.dark;
   }
 
   return {
     backgroundColor: color,
     color: theme.palette.getContrastText(color),
-    fontWeight: 'bold',
-    minWidth: '80px'
+    fontWeight: "bold",
+    minWidth: "80px"
   };
 });
 
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
-  maxHeight: 'calc(100vh - 320px)', // 화면 높이에 맞게 조정
-  '& .MuiTableHead-root': {
-    position: 'sticky',
+  maxHeight: "calc(100vh - 320px)", // 화면 높이에 맞게 조정
+  "& .MuiTableHead-root": {
+    position: "sticky",
     top: 0,
     backgroundColor: theme.palette.background.paper,
-    zIndex: 1,
+    zIndex: 1
   },
-  '& .MuiTableRow-root:hover': {
+  "& .MuiTableRow-root:hover": {
     backgroundColor: theme.palette.action.hover
   }
 }));
@@ -146,7 +146,7 @@ function PurchaseRequestListPage() {
 
     // 3. status 문자열이 있으면 파싱
     if (request.status) {
-      const parts = request.status.split('-');
+      const parts = request.status.split("-");
       // 형식이 무엇이든 마지막 부분을 상태 코드로 처리
       if (parts.length >= 2) {
         return parts[parts.length - 1]; // 마지막 부분 반환
@@ -159,36 +159,48 @@ function PurchaseRequestListPage() {
 
   // 상태 라벨 가져오기 함수 추가
   const getStatusLabel = (statusCode) => {
-    switch(statusCode) {
-      case 'REQUESTED': return '구매 요청';
-      case 'RECEIVED': return '요청 접수';
-      case 'VENDOR_SELECTION': return '업체 선정';
-      case 'CONTRACT_PENDING': return '계약 대기';
-      case 'INSPECTION': return '검수 진행';
-      case 'INVOICE_ISSUED': return '인보이스 발행';
-      case 'PAYMENT_COMPLETED': return '대금지급 완료';
-      default: return statusCode || '상태 정보 없음';
+    switch (statusCode) {
+      case "REQUESTED":
+        return "구매 요청";
+      case "RECEIVED":
+        return "요청 접수";
+      case "VENDOR_SELECTION":
+        return "업체 선정";
+      case "CONTRACT_PENDING":
+        return "계약 대기";
+      case "INSPECTION":
+        return "검수 진행";
+      case "INVOICE_ISSUED":
+        return "인보이스 발행";
+      case "PAYMENT_COMPLETED":
+        return "대금지급 완료";
+      default:
+        return statusCode || "상태 정보 없음";
     }
   };
 
   // 필터링된 구매 요청 목록 계산
   const filteredRequests = purchaseRequests
     ? purchaseRequests.filter((request) => {
-        const searchTermLower = filters.searchTerm ? filters.searchTerm.toLowerCase() : '';
-        const searchMatch = !searchTermLower || [
-          request.requestName?.toLowerCase(),
-          String(request.id),
-          request.customer?.toLowerCase(),
-          request.businessManager?.toLowerCase()
-        ].some((field) => field && field.includes(searchTermLower));
+        const searchTermLower = filters.searchTerm
+          ? filters.searchTerm.toLowerCase()
+          : "";
+        const searchMatch =
+          !searchTermLower ||
+          [
+            request.requestName?.toLowerCase(),
+            String(request.id),
+            request.customer?.toLowerCase(),
+            request.businessManager?.toLowerCase()
+          ].some((field) => field && field.includes(searchTermLower));
 
         const dateMatch =
           !filters.requestDate ||
           (request.requestDate &&
             moment(request.requestDate).isSame(filters.requestDate, "day"));
 
-    const statusMatch =
-      !filters.status || extractStatusCode(request) === filters.status;
+        const statusMatch =
+          !filters.status || extractStatusCode(request) === filters.status;
 
         return searchMatch && dateMatch && statusMatch;
       })
@@ -220,6 +232,13 @@ function PurchaseRequestListPage() {
       default:
         break;
     }
+  };
+
+  // 필터 초기화
+  const handleClearFilters = () => {
+    dispatch(setSearchTerm(""));
+    dispatch(setRequestDate(""));
+    dispatch(setStatus(""));
   };
 
   const downloadFile = async (attachment, e) => {
@@ -256,8 +275,16 @@ function PurchaseRequestListPage() {
   // 로딩 중 표시
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <Typography variant="h6">구매 요청 목록을 불러오는 중입니다...</Typography>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "80vh"
+        }}>
+        <Typography variant="h6">
+          구매 요청 목록을 불러오는 중입니다...
+        </Typography>
       </Box>
     );
   }
@@ -279,29 +306,25 @@ function PurchaseRequestListPage() {
         <PageTitle variant="h4">구매 요청 목록</PageTitle>
       </Box>
 
-      {/* 필터 섹션 - 상태 코드 수정 */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              label="검색"
-              value={filters.searchTerm}
-              onChange={(e) => handleFilterChange("searchTerm", e.target.value)}
-              variant="outlined"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <LocalizationProvider dateAdapter={AdapterMoment}>
-              <DatePicker
-                label="요청일"
-                value={filters.requestDate ? moment(filters.requestDate) : null}
-                onChange={(date) => handleFilterChange("requestDate", date)}
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    error: false
-                  }
+      {/* 필터 섹션 */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                label="검색"
+                value={filters.searchTerm || ""}
+                onChange={(e) =>
+                  handleFilterChange("searchTerm", e.target.value)
+                }
+                placeholder="요청명, 번호, 담당자, 고객사"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  )
                 }}
               />
             </Grid>
@@ -309,7 +332,9 @@ function PurchaseRequestListPage() {
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DatePicker
                   label="요청일"
-                  value={filters.requestDate ? moment(filters.requestDate) : null}
+                  value={
+                    filters.requestDate ? moment(filters.requestDate) : null
+                  }
                   onChange={(date) => handleFilterChange("requestDate", date)}
                   slotProps={{
                     textField: {
@@ -344,8 +369,7 @@ function PurchaseRequestListPage() {
                 variant="outlined"
                 color="inherit"
                 onClick={handleClearFilters}
-                startIcon={<ClearIcon />}
-              >
+                startIcon={<ClearIcon />}>
                 필터 초기화
               </Button>
             </Grid>
@@ -354,49 +378,28 @@ function PurchaseRequestListPage() {
       </Card>
 
       {/* 구매 요청 목록 테이블 */}
-      <StyledTableContainer component={Paper}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              <TableCell>진행상태</TableCell>
-              <TableCell>요청제목</TableCell>
-              <TableCell>요청번호</TableCell>
-              <TableCell>고객사</TableCell>
-              <TableCell>요청일</TableCell>
-              <TableCell>사업부서</TableCell>
-              <TableCell>첨부파일</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredRequests.map((request) => (
-              <TableRow
-                key={request.id}
-                hover
-                onClick={() => navigate(`/purchase-requests/${request.id}`)}
-                sx={{ cursor: "pointer" }}>
-                <TableCell>
-                  {getStatusLabel(extractStatusCode(request))}
-                </TableCell>
-                <TableCell>{request.requestName}</TableCell>
-                <TableCell>{request.id}</TableCell>
-                <TableCell>{request.customer}</TableCell>
-                <TableCell>
-                  {request.requestDate ? moment(request.requestDate).format("YYYY-MM-DD") : '-'}
-                </TableCell>
-                <TableCell>{request.businessDepartment}</TableCell>
-                <TableCell>
-                  {request.attachments && request.attachments.length > 0
-                    ? request.attachments.map((attachment) => (
-                        <Link
-                          key={attachment.id}
-                          component="button"
-                          variant="body2"
-                          onClick={(e) => downloadFile(attachment, e)}>
-                          {attachment.originalName || attachment.fileName}
-                        </Link>
-                      ))
-                    : "-"}
-                </TableCell>
+      <Card>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", p: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => navigate("/purchase-requests/new")}>
+            신규 구매 요청
+          </Button>
+        </Box>
+        <Divider />
+        <StyledTableContainer>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow>
+                <TableCell width="12%">진행상태</TableCell>
+                <TableCell width="25%">요청제목</TableCell>
+                <TableCell width="10%">요청번호</TableCell>
+                <TableCell width="12%">고객사</TableCell>
+                <TableCell width="12%">요청일</TableCell>
+                <TableCell width="14%">사업부서</TableCell>
+                <TableCell width="15%">첨부파일</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -409,7 +412,9 @@ function PurchaseRequestListPage() {
                       <TableRow
                         key={request.id}
                         hover
-                        onClick={() => navigate(`/purchase-requests/${request.id}`)}
+                        onClick={() =>
+                          navigate(`/purchase-requests/${request.id}`)
+                        }
                         sx={{ cursor: "pointer" }}>
                         <TableCell>
                           <StatusChip
@@ -418,31 +423,46 @@ function PurchaseRequestListPage() {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                        <TableCell
+                          sx={{ fontWeight: "bold", color: "primary.main" }}>
                           {request.requestName}
                         </TableCell>
-                        <TableCell>{request.requestNumber || request.id}</TableCell>
-                        <TableCell>{request.customer || '-'}</TableCell>
                         <TableCell>
-                          {request.requestDate ? moment(request.requestDate).format("YYYY-MM-DD") : '-'}
+                          {request.requestNumber || request.id}
                         </TableCell>
-                        <TableCell>{request.businessDepartment || '-'}</TableCell>
+                        <TableCell>{request.customer || "-"}</TableCell>
                         <TableCell>
-                          {request.attachments && request.attachments.length > 0 ? (
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                          {request.requestDate
+                            ? moment(request.requestDate).format("YYYY-MM-DD")
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {request.businessDepartment || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {request.attachments &&
+                          request.attachments.length > 0 ? (
+                            <Box sx={{ display: "flex", gap: 1 }}>
                               {request.attachments.map((attachment, index) => (
                                 <Link
                                   key={attachment.id}
                                   component="button"
                                   onClick={(e) => downloadFile(attachment, e)}
-                                  sx={{ display: 'flex', alignItems: 'center' }}
-                                >
-                                  <AttachFileIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center"
+                                  }}>
+                                  <AttachFileIcon
+                                    fontSize="small"
+                                    sx={{ mr: 0.5 }}
+                                  />
                                   {index + 1}
                                 </Link>
                               ))}
                             </Box>
-                          ) : "-"}
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -469,7 +489,9 @@ function PurchaseRequestListPage() {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           labelRowsPerPage="페이지당 행 수:"
-          labelDisplayedRows={({from, to, count}) => `${from}-${to} / 총 ${count}개`}
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} / 총 ${count}개`
+          }
         />
       </Card>
     </Box>

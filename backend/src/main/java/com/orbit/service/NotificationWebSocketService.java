@@ -101,6 +101,7 @@ public class NotificationWebSocketService {
             }
         }
     }
+
     public void sendNotificationToDepartment(String notificationType, String content, Long departmentId, int minLevel) {
         sendNotificationToDepartment(notificationType, content, departmentId, minLevel, BiddingStatus.NotificationPriority.NORMAL);
     }
@@ -196,6 +197,7 @@ public class NotificationWebSocketService {
             log.error("사용자 알림 전송 실패 - 사용자ID: {}, 오류: {}", userId, e.getMessage(), e);
         }
     }
+
     public void sendNotificationToDepartmentRole(String notificationType, String content, 
                                                Long departmentId, Member.Role role, String priority) {
         log.info("부서별 역할 알림 전송 - 유형: {}, 내용: {}, 부서ID: {}, 역할: {}, 우선순위: {}", 

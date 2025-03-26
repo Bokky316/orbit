@@ -71,7 +71,6 @@ public class BiddingEvaluationDto {
                 .reliabilityScore(this.reliabilityScore)
                 .serviceScore(this.serviceScore)
                 .additionalScore(this.additionalScore)
-                .totalScore(this.totalScore)
                 .comment(this.comment)
                 .selectedAt(this.selectedAt)
                 .isSelectedBidder(this.isSelectedBidder)

@@ -16,8 +16,6 @@ import com.orbit.entity.notification.NotificationRequest;
 import com.orbit.exception.ResourceNotFoundException;
 import com.orbit.repository.NotificationRepository;
 import com.orbit.repository.member.MemberRepository;
-import com.orbit.repository.NotificationRepository;
-import com.orbit.repository.member.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +78,7 @@ public NotificationDto sendNotification(NotificationRequest request) {
         request.setTitle(title);
         request.setContent(content);
         request.setReferenceId(referenceId);
+
         return sendNotification(request);
     }
 
@@ -124,6 +123,7 @@ public NotificationDto sendNotification(NotificationRequest request) {
         log.debug("알림 읽음 처리 - 알림 ID: {}", notificationId);
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("알림을 찾을 수 없습니다. ID: " + notificationId));
+
         notification.setRead(true);
         notification.setReadAt(LocalDateTime.now());
         notificationRepository.save(notification);
@@ -137,6 +137,7 @@ public NotificationDto sendNotification(NotificationRequest request) {
         log.debug("알림 삭제 - 알림 ID: {}", notificationId);
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("알림을 찾을 수 없습니다. ID: " + notificationId));
+
         notificationRepository.delete(notification);
     }
 
@@ -173,96 +174,6 @@ public NotificationDto sendNotification(NotificationRequest request) {
                 request.getRecipientIds() != null ? request.getRecipientIds().size() : 0, 
                 request.getTitle());
 
-        List<NotificationDto> results = new ArrayList<>();
-
-        if (request.getRecipientIds() != null && !request.getRecipientIds().isEmpty()) {
-            for (Long recipientId : request.getRecipientIds()) {
-                NotificationRequest individualRequest = new NotificationRequest();
-                individualRequest.setRecipientId(recipientId);
-                individualRequest.setType(request.getType());
-                individualRequest.setTitle(request.getTitle());
-                individualRequest.setContent(request.getContent());
-                individualRequest.setReferenceId(request.getReferenceId());
-                individualRequest.setPriority(request.getPriority());
-
-                NotificationDto result = sendNotification(individualRequest);
-                results.add(result);
-            }
-        }
-
-        return results;
-    }
-
-    /**
-     * 특정 역할을 가진 모든 사용자에게 알림 전송
-     */
-    @Override
-    public List<NotificationDto> sendNotificationsByRole(NotificationRequest request, String role) {
-        log.debug("역할별 알림 발송 - 역할: {}, 제목: {}", role, request.getTitle());
-
-        // 역할별 회원 ID 조회 - 실제 구현 시 적절한 메서드 추가 필요
-        List<Long> userIds = new ArrayList<>(); // memberRepository.findByRole(role)...
-
-        BulkNotificationRequest bulkRequest = new BulkNotificationRequest();
-        bulkRequest.setType(request.getType());
-        bulkRequest.setTitle(request.getTitle());
-        bulkRequest.setContent(request.getContent());
-        bulkRequest.setReferenceId(request.getReferenceId());
-        bulkRequest.setRecipientIds(userIds);
-        bulkRequest.setPriority(request.getPriority());
-
-        return sendBulkNotifications(bulkRequest);
-    }
-
-    /**
-     * 구매자(BUYER) 역할을 가진 모든 사용자에게 알림 전송
-     */
-    @Override
-    public List<NotificationDto> sendNotificationToBuyers(NotificationRequest request) {
-        log.debug("구매자 역할 알림 발송 - 제목: {}", request.getTitle());
-        return sendNotificationsByRole(request, "BUYER");
-    }
-
-    /**
-     * Notification 엔티티를 DTO로 변환
-     */
-    private NotificationDto convertToDto(Notification notification) {
-        return NotificationDto.builder()
-                .id(notification.getId())
-                .type(notification.getType())
-                .referenceId(notification.getReferenceId())
-                .title(notification.getTitle())
-                .content(notification.getContent())
-                .recipientId(notification.getRecipientId())
-                .recipientName(notification.getRecipientName())
-                .isRead(notification.isRead())
-                .priority(notification.getPriority())
-                .createdAt(notification.getCreatedAt())
-                .readAt(notification.getReadAt())
-                .build();
-    }
-
-    /**
-     * 특정 참조 ID의 알림 조회
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public List<NotificationDto> getNotificationsByRelatedId(Long relatedId) {
-        log.debug("관련 ID별 알림 목록 조회 - 관련 ID: {}", relatedId);
-        return notificationRepository.findByReferenceIdOrderByCreatedAtDesc(relatedId).stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 다수 사용자에게 동일한 알림 전송
-     */
-    @Override
-    public List<NotificationDto> sendBulkNotifications(BulkNotificationRequest request) {
-        log.debug("대량 알림 발송 - 수신자 수: {}, 제목: {}", 
-                request.getRecipientIds() != null ? request.getRecipientIds().size() : 0, 
-                request.getTitle());
-        
         List<NotificationDto> results = new ArrayList<>();
 
         if (request.getRecipientIds() != null && !request.getRecipientIds().isEmpty()) {

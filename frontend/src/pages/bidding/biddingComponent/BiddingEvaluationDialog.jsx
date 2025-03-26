@@ -124,7 +124,7 @@ function BiddingEvaluationDialog({
         qualityScore: scores[2] || 0,
         deliveryScore: scores[3] || 0,
         reliabilityScore: scores[4] || 0,
-        totalScore: Math.round(weightedScore * 100),
+
         comment: comments
       };
 

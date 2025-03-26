@@ -127,7 +127,7 @@ public BiddingEvaluationDto createEvaluation(BiddingEvaluationDto dto, Long eval
         (dto.getAdditionalScore() != null ? dto.getAdditionalScore() : 0);
 
     // 평가 엔티티 생성
-    BiddingEvaluation evaluation = BiddingEvaluation.builder()
+        BiddingEvaluation evaluation = BiddingEvaluation.builder()
         .participation(participation)
         .biddingParticipationId(dto.getBiddingParticipationId())
         .biddingId(dto.getBiddingId())
@@ -140,18 +140,21 @@ public BiddingEvaluationDto createEvaluation(BiddingEvaluationDto dto, Long eval
         .reliabilityScore(dto.getReliabilityScore())
         .serviceScore(dto.getServiceScore())
         .additionalScore(dto.getAdditionalScore())
-        .totalScore(totalScore)
         .comment(dto.getComment())
         .isSelectedBidder(false)
         .selectedForOrder(false)
         .evaluatedAt(LocalDateTime.now())
+        .bidding(bidding)
         .build();
 
-    // 저장
-    evaluation = evaluationRepository.save(evaluation);
+        // 총점 자동 계산
+        evaluation.calculateTotalScore();
 
-    return BiddingEvaluationDto.fromEntity(evaluation);
-}
+        evaluation = evaluationRepository.save(evaluation);
+
+        return BiddingEvaluationDto.fromEntity(evaluation);
+     }
+
 
 
     /**

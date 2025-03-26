@@ -438,49 +438,4 @@ public class BiddingOrderService {
         
         return BiddingOrderDto.fromEntity(savedOrder);
     }
-
-    @Transactional(readOnly = true)
-    public List<BiddingOrderDto> getAvailableBiddingOrderIds() {
-        // 승인된 발주 목록 조회
-        List<BiddingOrder> approvedOrders = biddingOrderRepository.findByApprovedAtIsNotNull();
-
-        // 입고된 발주 ID 목록 조회
-        List<Long> receivedOrderIds = deliveryRepository.findAll().stream()
-                .map(delivery -> delivery.getBiddingOrder().getId())
-                .collect(Collectors.toList());
-
-        // 승인되었지만 입고되지 않은 발주 필터링
-        List<BiddingOrderDto> availableOrders = approvedOrders.stream()
-                .filter(order -> !receivedOrderIds.contains(order.getId()))
-                .map(BiddingOrderDto::fromEntity)
-                .collect(Collectors.toList());
-
-        return availableOrders;
-    }
-
-
-    @Transactional(readOnly = true)
-    public BiddingOrderDto getBiddingOrderDetail(Long biddingOrderId) {
-        BiddingOrder order = biddingOrderRepository.findById(biddingOrderId)
-                .orElseThrow(() -> new EntityNotFoundException("발주를 찾을 수 없습니다. ID: " + biddingOrderId));
-
-        return BiddingOrderDto.fromEntity(order);
-    }
-
-    public List<MonthlyOrderStatisticsDto> getMonthlyOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
-        List<Object[]> results = biddingOrderRepository.findMonthlyOrderStatistics(startDate, endDate);
-
-        return results.stream()
-                .map(row -> MonthlyOrderStatisticsDto.builder()
-                        .yearMonth((String) row[0])
-                        .orderCount(((Number) row[1]).longValue())
-                        .totalAmount(((Number) row[2]).doubleValue())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<Object[]> getSupplierOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
-        return biddingOrderRepository.findSupplierOrderStatistics(startDate, endDate);
-    }
 }

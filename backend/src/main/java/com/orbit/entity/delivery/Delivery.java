@@ -95,12 +95,15 @@ public class Delivery extends BaseTimeEntity {
     @Column(name = "item_unit")
     private String itemUnit;
 
+    //송장 발행 여부
+    @Column(name = "invoice_issued", nullable = false)
+    @Builder.Default
+    private Boolean invoiceIssued = false;
+
     // 자동 번호 생성 및 초기화
     @PrePersist
     protected void onCreate() {
         // 현재 시간 생성 (이미 BaseEntity에서 상속)
-        super.setRegTime(LocalDateTime.now());
-        super.setUpdateTime(LocalDateTime.now());
         super.setRegTime(LocalDateTime.now());
         super.setUpdateTime(LocalDateTime.now());
 

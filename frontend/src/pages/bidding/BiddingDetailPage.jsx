@@ -141,14 +141,6 @@ function BiddingDetailPage() {
   });
   const [statusHistories, setStatusHistories] = useState([]);
 
-  // 상태 변경 다이얼로그 상태
-  const [statusChangeDialog, setStatusChangeDialog] = useState({
-    open: false,
-    newStatus: "",
-    reason: ""
-  });
-  const [statusHistories, setStatusHistories] = useState([]);
-
   // 입찰 프로세스 단계
   const biddingSteps = [
     { label: "입찰 등록", value: BiddingStatus.PENDING },
@@ -321,126 +313,6 @@ function BiddingDetailPage() {
     if (id) {
       fetchBiddingDetails();
     }
-  };
-
-  // 참여 목록 가져오기
-  const fetchParticipations = async (biddingId) => {
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/participations`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setParticipations(data);
-      }
-    } catch (error) {
-      console.error("참여 목록 로딩 실패:", error);
-    }
-  };
-
-  const fetchSuppliers = async (biddingId) => {
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/invited-suppliers`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSuppliers(data);
-      } else {
-        console.error("공급사 목록 응답 오류:", response.status);
-      }
-
-      // 응답을 텍스트로 가져오기
-      let responseText = await response.text();
-
-      try {
-        // 일반적인 JSON 파싱 시도
-        const data = JSON.parse(responseText);
-        setStatusHistories(data);
-      } catch (parseError) {
-        console.error("상태 이력 JSON 파싱 오류:", parseError);
-
-        // 파싱 오류 위치 정보 추출
-        const positionMatch = parseError.message.match(/position\s+(\d+)/i);
-        if (positionMatch && positionMatch[1]) {
-          const errorPosition = parseInt(positionMatch[1], 10);
-          console.error("JSON 오류 위치:", errorPosition);
-
-          // 출력하여 확인 (개발용)
-          const contextStart = Math.max(0, errorPosition - 30);
-          const contextEnd = Math.min(responseText.length, errorPosition + 30);
-          console.error("오류 문맥:", {
-            before: responseText.substring(contextStart, errorPosition),
-            errorChar: responseText.charAt(errorPosition),
-            after: responseText.substring(errorPosition + 1, contextEnd)
-          });
-
-          try {
-            // 데이터 정제 시도 - 응답 끝의 예상치 못한 문자 제거
-            // 정확한 위치에서 자르기
-            const cleanedText = responseText.substring(0, errorPosition);
-
-            // JSON 형식으로 끝나는지 확인 후 파싱 재시도
-            if (
-              cleanedText.trim().endsWith("]") ||
-              cleanedText.trim().endsWith("}")
-            ) {
-              const cleanedData = JSON.parse(cleanedText);
-              console.log("정제된 데이터로 파싱 성공:", cleanedData);
-              setStatusHistories(cleanedData);
-            } else {
-              // 적절한 JSON 끝 위치 찾기
-              const lastBracketPos = Math.max(
-                cleanedText.lastIndexOf("]"),
-                cleanedText.lastIndexOf("}")
-              );
-
-              if (lastBracketPos > 0) {
-                const truncatedText = cleanedText.substring(
-                  0,
-                  lastBracketPos + 1
-                );
-                const truncatedData = JSON.parse(truncatedText);
-                console.log("잘린 데이터로 파싱 성공:", truncatedData);
-                setStatusHistories(truncatedData);
-              } else {
-                // 정제 실패 시 빈 배열 사용
-                setStatusHistories([]);
-              }
-            }
-          } catch (secondError) {
-            console.error("정제 후에도 파싱 실패:", secondError);
-            setStatusHistories([]);
-          }
-        } else {
-          // 위치 정보가 없는 경우 빈 배열 사용
-          setStatusHistories([]);
-        }
-      }
-    } catch (error) {
-      console.error("공급사 목록 로딩 실패:", error);
-    }
-  };
-
-  const fetchStatusHistory = async (biddingId) => {
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}biddings/${biddingId}/status-history`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setStatusHistories(data);
-      }
-    } catch (error) {
-      console.error("상태 변경 이력 로딩 실패:", error);
-    }
-  };
-
-  // 페이지 로드 시 데이터 가져오기
-  useEffect(() => {
-    if (id) {
-      fetchBiddingDetail();
-    }
   }, [id]);
 
   // 입찰 마감 핸들러
@@ -459,37 +331,6 @@ function BiddingDetailPage() {
 
       await fetchBiddingDetails();
       alert("입찰이 성공적으로 마감되었습니다.");
-    } catch (error) {
-      console.error("입찰 마감 중 오류:", error);
-      alert(`오류 발생: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 입찰 삭제 핸들러
-  const handleDeleteBidding = async () => {
-    try {
-      setIsLoading(true);
-      setDeleteConfirmOpen(false);
-
-      const response = await fetchWithAuth(`${API_URL}biddings/${id}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          status: statusChangeDialog.newStatus,
-          reason: statusChangeDialog.reason
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("입찰 공고 삭제에 실패했습니다.");
-      }
-
-      alert("입찰 공고가 성공적으로 삭제되었습니다.");
-      navigate("/biddings");
     } catch (error) {
       console.error("입찰 마감 중 오류:", error);
       alert(`오류 발생: ${error.message}`);
