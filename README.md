@@ -3,21 +3,20 @@
 > **INTEGRATED PURCHASE MANAGEMENT SYSTEM**  
 > 기업의 구매 프로세스 전반을 관리하는 통합구매관리 시스템
 
-![orbit 사용자 대시보드](https://github.com/user-attachments/assets/54f8f4bb-4063-4370-85ed-8cd49f2a949c)
-
+![ORBIT Logo](https://img.shields.io/badge/ORBIT-Integrated%20Purchase%20Management-blue?style=for-the-badge)
 
 ## 📋 목차
 
 - [프로젝트 소개](#-프로젝트-소개)
+- [데모 및 링크](#-데모-및-링크)
 - [주요 기능](#-주요-기능)
+- [주요 화면](#-주요-화면)
 - [기술 스택](#-기술-스택)
 - [시스템 아키텍처](#-시스템-아키텍처)
 - [설치 및 실행](#-설치-및-실행)
-- [주요 화면](#-주요-화면)
 - [개발 프로세스](#-개발-프로세스)
 - [팀원 소개](#-팀원-소개)
 - [프로젝트 일정](#-프로젝트-일정)
-- [데모 및 링크](#-데모-및-링크)
 
 ## 🎯 프로젝트 소개
 
@@ -177,6 +176,9 @@ spring:
       secret: your_jwt_secret
 ```
 
+### 📸 주요 기능 스크린샷
+> 실제 구현된 화면들의 스크린샷을 여기에 추가하실 수 있습니다.
+
 ## 📱 주요 화면
 
 ### 메인 대시보드
@@ -225,10 +227,10 @@ git commit -m "feat: 구매요청 생성 기능 구현"
 
 | 이름 | 역할 | 담당 기능 |
 |------|------|-----------|
-| **안재은** | Backend/Frontend | 입찰 관리, 계약 관리, 발주 관리 |
-| **장보경** | Backend/Frontend | 구매요청, 결재선, 프로젝트, 대시보드, 인증 |
+| **장보경** | Backend/Frontend | 프로젝트, 구매요청, 결재 및 결재선, 공통코드, 품목, 대시보드, 로그인/회원가입, 배포 (CI/CD) |
 | **박슬기** | Backend/Frontend | 입고 관리, 송장 관리, 지불 관리, 통계 |
 | **김혜미** | Backend/Frontend | 사용자 관리, 협력업체 관리 |
+| **안재은** | Backend/Frontend | 입찰 관리, 계약 관리, 발주 관리 |
 
 ## 📅 프로젝트 일정
 
@@ -241,15 +243,6 @@ git commit -m "feat: 구매요청 생성 기능 구현"
 3월 24일-26일: 테스트 및 디버깅
 3월 27일:      최종 발표
 ```
-
-## 🎬 데모 및 링크
-
-### 🔗 관련 링크
-- **GitHub Repository**: [https://github.com/Bokky316/orbit](https://github.com/Bokky316/orbit)
-- **시연 영상**: [https://www.youtube.com/watch/LDKpw45f9QY](https://www.youtube.com/watch/LDKpw45f9QY)
-
-### 📸 주요 기능 스크린샷
-> 실제 구현된 화면들의 스크린샷을 여기에 추가하실 수 있습니다.
 
 ## 🤝 기여하기
 
