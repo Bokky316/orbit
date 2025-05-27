@@ -3,7 +3,7 @@
 > **INTEGRATED PURCHASE MANAGEMENT SYSTEM**  
 > 기업의 구매 프로세스 전반을 관리하는 통합구매관리 시스템
 
-![ORBIT Logo](https://img.shields.io/badge/ORBIT-Integrated%20Purchase%20Management-blue?style=for-the-badge)
+![two](https://github.com/user-attachments/assets/569edfdf-1937-4619-bf86-c69be7409e12)
 ![orbit 사용자 대시보드](https://github.com/user-attachments/assets/54f8f4bb-4063-4370-85ed-8cd49f2a949c)
 
 
